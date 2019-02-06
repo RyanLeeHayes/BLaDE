@@ -1,0 +1,2 @@
+# Modules uses for compilation
+module load cmake fftw/3.3.8_gcc_6.4.0 cuda/10.0 gcc/6.4.0 openmpi/3.1.2-gcc-6.4.0

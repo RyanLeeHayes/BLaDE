@@ -1,0 +1,9 @@
+#ifndef MAIN_DEFINES_H
+#define MAIN_DEFINES_H
+
+#define MAXLENGTHSTRING 1024
+#define ANGSTROM 0.1
+#define KCAL_MOL 4.186
+#define DEGREES 0.017453292519943
+
+#endif

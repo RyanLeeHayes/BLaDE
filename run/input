@@ -1,0 +1,4 @@
+! Comment line
+parameters file ../test/ec2acc_prep/toppar/par_all36_prot.prm
+parameters file ../test/ec2acc_prep/toppar/par_all36_cgenff.prm 
+parameters print

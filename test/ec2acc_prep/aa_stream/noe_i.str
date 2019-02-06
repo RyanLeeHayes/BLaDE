@@ -1,0 +1,19 @@
+* nuissance title
+*
+NOE
+assign sele atom @segid @resid@@site NI_A end -
+sele segid @segid .and. resid @resid@@site .and. (type N .or. type N*_A) end -
+kmin 59.2 rmin 0.0 kmax 59.2 rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid@@site CI_A end -
+sele segid @segid .and. resid @resid@@site .and. (type CA .or. type C*_A) end -
+kmin 59.2 rmin 0.0 kmax 59.2 rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid@@site HI_B end -
+sele segid @segid .and. resid @resid@@site .and. (type HA .or. type H*_B) end -
+kmin 59.2 rmin 0.0 kmax 59.2 rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid@@site CI_B end -
+sele segid @segid .and. resid @resid@@site .and. (type C .or. type C*_B) end -
+kmin 59.2 rmin 0.0 kmax 59.2 rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid@@site OI_A end -
+sele segid @segid .and. resid @resid@@site .and. (type O .or. type O*_A) end -
+kmin 59.2 rmin 0.0 kmax 59.2 rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+END

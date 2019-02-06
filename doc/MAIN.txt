@@ -1,0 +1,1 @@
+The goal of this program is to implement MSLD in a manner similar to CHARMM with better porting to GPU and better parallelization. Along those lines, many file formats will be borrowed from CHARMM, and the documentation may frequently reference the analogous CHARMM keywords.
