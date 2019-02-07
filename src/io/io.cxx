@@ -24,6 +24,7 @@ FILE* fpopen(const char* fnm,const char* type)
 {
   FILE *fp;
 
+  fprintf(stdout,"Opening file %s for %s\n",fnm,type);
   fp=fopen(fnm,type);
   if (fp==NULL) {
     fatal(__FILE__,__LINE__,"Error: Unable to open file %s\n",fnm);
@@ -134,7 +135,7 @@ void interpretter(FILE *fp,System *system,int level)
       FILE *fp2;
       char token2[MAXLENGTHSTRING];
       io_nexta(line,token);
-      fp=fpopen(token,"r");
+      fp2=fpopen(token,"r");
       interpretter(fp2,system,level+1);
     } else {
       fatal(__FILE__,__LINE__,"Unrecognized token: %s\n",token); // FIXIT add token name
