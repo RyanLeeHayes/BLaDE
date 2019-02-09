@@ -110,6 +110,7 @@ void parse_parameters(char *line,System *system)
     io_nexta(line,token);
     fp=fpopen(token,"r");
     system->parameters->add_parameter_file(fp);
+    fclose(fp);
   } else if (strcmp(token,"print")==0) {
     system->parameters->dump();
   } else {
@@ -352,12 +353,8 @@ void Parameters::add_parameter_cmaps(FILE *fp)
 
       for (i=0; i<cp.ngrid; i++) {
         for (j=0; j<cp.ngrid; j++) {
-          for (k=-INFINITY; !((k=io_nextf(line,k))>-INFINITY); escape=fgets(line, MAXLENGTHSTRING, fp)) {
-            if (escape==NULL) {
-              fatal(__FILE__,__LINE__,"CMAP error: could not read %dx%d matrix, stuck on element [%d][%d] at EOF\n",cp.ngrid,cp.ngrid,i,j);
-            }
-          }
-          cp.kcmap[i][j]=KCAL_MOL*k;
+          // Persistent search
+          cp.kcmap[i][j]=KCAL_MOL*io_nextf(line,fp,"cmap matrix element");
         }
       }
       cmapParameter[name]=cp;

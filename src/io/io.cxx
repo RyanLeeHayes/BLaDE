@@ -94,6 +94,25 @@ int io_nexti(char *line,int output)
   return output;
 }
 
+int io_nexti(char *line,FILE *fp,const char *tag)
+{
+  int ntoken, nchar;
+  int output;
+
+  ntoken=0;
+  while (ntoken!=1) {
+    ntoken=sscanf(line,"%d%n",&output,&nchar);
+    if (ntoken==1) {
+      io_shift(line,nchar);
+      return output;
+    }
+    if(!fgets(line, MAXLENGTHSTRING, fp)) {
+      fatal(__FILE__,__LINE__,"End of file while searching for int value for %s\n",tag);
+    }
+  }
+  return output;
+}
+
 double io_nextf(char *line)
 {
   int ntoken, nchar;
@@ -119,6 +138,25 @@ double io_nextf(char *line,double output)
   return output;
 }
 
+double io_nextf(char *line,FILE *fp,const char *tag)
+{
+  int ntoken, nchar;
+  double output;
+
+  ntoken=0;
+  while (ntoken!=1) {
+    ntoken=sscanf(line,"%lg%n",&output,&nchar);
+    if (ntoken==1) {
+      io_shift(line,nchar);
+      return output;
+    }
+    if(!fgets(line, MAXLENGTHSTRING, fp)) {
+      fatal(__FILE__,__LINE__,"End of file while searching for real value for %s\n",tag);
+    }
+  }
+  return output;
+}
+
 void interpretter(FILE *fp,System *system,int level)
 {
   char line[MAXLENGTHSTRING];
@@ -131,12 +169,15 @@ void interpretter(FILE *fp,System *system,int level)
       ;
     } else if (strcmp(token,"parameters")==0) {
       parse_parameters(line,system);
+    } else if (strcmp(token,"structure")==0) {
+      parse_structure(line,system);
     } else if (strcmp(token,"stream")==0) {
       FILE *fp2;
       char token2[MAXLENGTHSTRING];
       io_nexta(line,token);
       fp2=fpopen(token,"r");
       interpretter(fp2,system,level+1);
+      fclose(fp2);
     } else {
       fatal(__FILE__,__LINE__,"Unrecognized token: %s\n",token); // FIXIT add token name
     }

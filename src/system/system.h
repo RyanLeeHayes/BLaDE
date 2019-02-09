@@ -21,10 +21,18 @@ class System {
   }
 
   ~System() {
-    delete(structure);
-    delete(parameters);
-    delete(msld);
-    delete(state);
+    if (structure!=NULL) {
+      delete(structure);
+    }
+    if (parameters!=NULL) {
+      delete(parameters);
+    }
+    if (msld!=NULL) {
+      delete(msld);
+    }
+    if (state!=NULL) {
+      delete(state);
+    }
   }
 
 };

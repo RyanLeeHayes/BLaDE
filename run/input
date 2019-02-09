@@ -1,5 +1,7 @@
 ! Comment line
-stream input2
-! parameters file ../test/ec2acc_prep/toppar/par_all36_prot.prm
-! parameters file ../test/ec2acc_prep/toppar/par_all36_cgenff.prm 
+! stream input2
+parameters file ../test/ec2acc_prep/toppar/par_all36_prot.prm
+parameters file ../test/ec2acc_prep/toppar/par_all36_cgenff.prm 
 ! parameters print
+structure file psf ../test/ec2acc_prep/minimized.psf
+structure print

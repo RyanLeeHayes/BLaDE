@@ -12,8 +12,10 @@ void io_nexta(char *line,char *token);
 std::string io_nexts(char *line);
 int io_nexti(char *line);
 int io_nexti(char *line,int output);
+int io_nexti(char *line,FILE *fp,const char *tag);
 double io_nextf(char *line);
 double io_nextf(char *line,double output);
+double io_nextf(char *line,FILE *fp,const char *tag);
 
 void interpretter(FILE *fp,System *system,int level);
 
