@@ -3,6 +3,9 @@
 
 #include <stdio.h>
 
+// Forward declarations
+class System;
+
 class Msld {
   public:
 
@@ -14,5 +17,7 @@ class Msld {
   }
 
 };
+
+void parse_msld(char *line,System *system);
 
 #endif

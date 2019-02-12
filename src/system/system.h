@@ -1,40 +1,41 @@
 #ifndef SYSTEM_SYSTEM_H
 #define SYSTEM_SYSTEM_H
 
-#include "system/structure.h"
 #include "system/parameters.h"
-#include "system/state.h"
+#include "system/structure.h"
+#include "system/selections.h"
 #include "msld/msld.h"
+#include "system/potential.h"
+#include "system/state.h"
+
+// Forward declarations - not allowed when calling delete on objects
 
 class System {
   public:
-    Structure* structure;
     Parameters* parameters; // TEMPNOTE look in to std::map for atom types
+    Structure* structure;
+    Selections* selections;
     Msld* msld;
+    Potential* potential;
     State* state;
 
   System() {
-    structure=NULL;
     parameters=NULL;
+    structure=NULL;
+    selections=NULL;
     msld=NULL;
+    potential=NULL;
     state=NULL;
   }
 
   ~System() {
-    if (structure!=NULL) {
-      delete(structure);
-    }
-    if (parameters!=NULL) {
-      delete(parameters);
-    }
-    if (msld!=NULL) {
-      delete(msld);
-    }
-    if (state!=NULL) {
-      delete(state);
-    }
+    if (parameters) delete(parameters);
+    if (structure) delete(structure);
+    if (selections) delete(selections);
+    if (msld) delete(msld);
+    if (potential) delete(potential);
+    if (state) delete(state);
   }
-
 };
 
 #endif

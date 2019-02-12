@@ -13,28 +13,28 @@ class System;
 
 class TypeName2 {
   public:
-  std::string t1,t2;
+  std::string t[2];
 };
 bool operator==(const TypeName2& a,const TypeName2& b);
 bool operator<(const TypeName2& a,const TypeName2& b);
 
 class TypeName3 {
   public:
-  std::string t1,t2,t3;
+  std::string t[3];
 };
 bool operator==(const TypeName3& a,const TypeName3& b);
 bool operator<(const TypeName3& a,const TypeName3& b);
 
 class TypeName4 {
   public:
-  std::string t1,t2,t3,t4;
+  std::string t[4];
 };
 bool operator==(const TypeName4& a,const TypeName4& b);
 bool operator<(const TypeName4& a,const TypeName4& b);
 
 class TypeName8O { // O is for ordered, this one is not symmetric upon reversal
   public:
-  std::string t1,t2,t3,t4,t5,t6,t7,t8;
+  std::string t[8];
 };
 bool operator==(const TypeName8O& a,const TypeName8O& b);
 bool operator<(const TypeName8O& a,const TypeName8O& b);
@@ -176,6 +176,7 @@ class Parameters {
   void add_parameter_nbfixs(FILE *fp);
   void dump();
   std::string check_type_name(std::string type,const char *tag);
+  std::string require_type_name(std::string type,const char *tag);
 
 };
 

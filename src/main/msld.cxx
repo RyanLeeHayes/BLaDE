@@ -10,13 +10,9 @@ int main(int argc, char *argv[])
 
   // open input file
   if (argc < 2) {
-    fatal(__FILE__,__LINE__,"Error: need input file\n");
+    fatal(__FILE__,__LINE__,"Need input file\n");
   }
-  fp=fpopen(argv[1],"r");
-
-  interpretter(fp,system,1);
-
-  fclose(fp);
+  interpretter(argv[1],system,1);
 
   delete(system);
 }

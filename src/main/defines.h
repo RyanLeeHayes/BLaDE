@@ -6,4 +6,20 @@
 #define KCAL_MOL 4.186
 #define DEGREES 0.017453292519943
 
+struct Int2 {
+  int i[2];
+};
+
+struct Int3 {
+  int i[3];
+};
+
+struct Int4 {
+  int i[4];
+};
+
+struct Int8 {
+  int i[8];
+};
+
 #endif

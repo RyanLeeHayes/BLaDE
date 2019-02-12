@@ -15,4 +15,6 @@ class State {
 
 };
 
+void parse_state(char *line,System *system);
+
 #endif

@@ -3,43 +3,92 @@
 
 #include <stdio.h>
 #include <string>
-#include <new>
+#include <vector>
+
+#include "main/defines.h"
 
 // Forward declarations:
 class System;
 
+struct AtomStructure {
+  int atomIdx;
+  std::string segName;
+  int resIdx;
+  std::string resName;
+  std::string atomName;
+  std::string atomTypeName;
+  double charge;
+  double mass;
+};
+
+struct BondStructure {
+  int idx[2];
+  double kb;
+  double b0;
+};
+
+struct AngleStructure {
+  int idx[3];
+  double kangle;
+  double angle0;
+  double kureyb;
+  double ureyb0;
+};
+
+struct DiheStructure {
+  int idx[4];
+  double kdih;
+  int ndih;
+  double dih0;
+};
+
+struct ImprStructure {
+  int idx[4];
+  double kimp;
+  double imp0;
+};
+
+struct CmapStructure {
+  int idx[8];
+  int ngrid;
+  int kcmapIndex;
+};
+
 class Structure {
   public:
   int atomCount;
-  int *atomIdx;
-  std::string *segName;
-  int *resIdx;
-  std::string *resName;
-  std::string *atomName;
-  std::string *atomTypeName;
+  std::vector<struct AtomStructure> atomList;
+
   int *atomTypeIdx;
   double *charge;
   double *mass;
 
+#warning "Implement selections and reset them when atoms are deleted"
+  // NYI std::map<std::string,Selection> *selections;
+
+  std::vector<struct Int2> bondList; // std::vector<int[2]> bondList;
   int bondCount;
-  int (*bonds)[2];
+  struct BondStructure *bonds;
+
+  std::vector<struct Int3> angleList;
   int angleCount;
-  int (*angles)[3];
+  struct AngleStructure *angles;
+
+  std::vector<struct Int4> diheList;
   int diheCount;
-  int (*dihes)[4];
+  struct DiheStructure *dihes;
+
+  std::vector<struct Int4> imprList;
   int imprCount;
-  int (*imprs)[4];
+  struct ImprStructure *imprs;
+
+  std::vector<struct Int8> cmapList;
   int cmapCount;
-  int (*cmaps)[8];
+  struct CmapStructure *cmaps;
   
   Structure() {
     atomCount=0;
-    atomIdx=NULL;
-    segName=NULL;
-    resIdx=NULL;
-    resName=NULL;
-    atomName=NULL;
-    atomTypeName=NULL;
+
     atomTypeIdx=NULL;
     charge=NULL;
     mass=NULL;
@@ -57,23 +106,18 @@ class Structure {
   }
 
   ~Structure() {
-    if (atomIdx!=NULL) free(atomIdx);
-    if (segName!=NULL) delete[] segName;
-    if (resIdx!=NULL) free(resIdx);
-    if (resName!=NULL) delete[]resName;
-    if (atomName!=NULL) delete[]atomName;
-    if (atomTypeName!=NULL) delete[]atomTypeName;
-    if (atomTypeIdx!=NULL) free(atomTypeIdx);
-    if (charge!=NULL) free(charge);
-    if (mass!=NULL) free(mass);
-    if (bonds!=NULL) free(bonds);
-    if (angles!=NULL) free(angles);
-    if (dihes!=NULL) free(dihes);
-    if (imprs!=NULL) free(imprs);
-    if (cmaps!=NULL) free(cmaps);
+    if (atomTypeIdx) free(atomTypeIdx);
+    if (charge) free(charge);
+    if (mass) free(mass);
+    if (bonds) free(bonds);
+    if (angles) free(angles);
+    if (dihes) free(dihes);
+    if (imprs) free(imprs);
+    if (cmaps) free(cmaps);
   }
 
   void add_structure_psf_file(FILE *fp);
+  void setup(System *system);
   void dump();
 };
 

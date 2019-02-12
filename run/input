@@ -2,6 +2,15 @@
 ! stream input2
 parameters file ../test/ec2acc_prep/toppar/par_all36_prot.prm
 parameters file ../test/ec2acc_prep/toppar/par_all36_cgenff.prm 
+parameters file ../test/toppar_water_ions/par_water_ions.prm
 ! parameters print
 structure file psf ../test/ec2acc_prep/minimized.psf
 structure print
+selection print
+selection define Water resname TIP3
+selection define Backbone and atomnames N C NH O CA HA segid PROT
+selection define WaterH and hydrogen selection Water
+selection print
+selection delete WaterO
+selection print
+! structure setup
