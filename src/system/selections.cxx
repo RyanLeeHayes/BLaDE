@@ -56,6 +56,7 @@ Selection Selections::parse_selection_string(char *line,Structure *structure)
   knownTokens.insert("atomnames");
   knownTokens.insert("atom");
   knownTokens.insert("selection");
+  knownTokens.insert("");
 
   s1.sel_init(N);
 

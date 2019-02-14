@@ -63,9 +63,6 @@ class Structure {
   double *charge;
   double *mass;
 
-#warning "Implement selections and reset them when atoms are deleted"
-  // NYI std::map<std::string,Selection> *selections;
-
   std::vector<struct Int2> bondList; // std::vector<int[2]> bondList;
   int bondCount;
   struct BondStructure *bonds;

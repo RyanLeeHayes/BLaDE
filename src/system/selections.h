@@ -8,21 +8,13 @@ class Structure;
 
 class Selection {
   public:
-#warning "Selections take up a lot of memory"
-  // int length;
-  // bool useBoolSelection;
   bool *boolSelection;
   int boolCount;
-  // int *intSelection;
-  // int intCount;
 
   Selection()
   {
-    // length=0;
     boolCount=0;
-    // useBoolSelection=0;
     boolSelection=NULL;
-    // intSelection=NULL;
   }
 
   Selection(const Selection &other)
@@ -57,7 +49,6 @@ class Selection {
     if (boolSelection) delete [] boolSelection;
     boolCount=0;
     boolSelection=NULL;
-    // if (intSelection) delete [] intSelection;
   }
 
   void sel_init(int l)

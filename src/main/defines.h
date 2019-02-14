@@ -22,4 +22,8 @@ struct Int8 {
   int i[8];
 };
 
+struct Double3 {
+  double i[3];
+};
+
 #endif

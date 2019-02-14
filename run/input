@@ -11,6 +11,19 @@ selection define Water resname TIP3
 selection define Backbone and atomnames N C NH O CA HA segid PROT
 selection define WaterH and hydrogen selection Water
 selection print
-selection delete WaterO
+selection delete WaterH
 selection print
-! structure setup
+msld nblocks 2
+selection reset
+selection define site1sub2 and and segid PROT resid 29 atomnames NK_A HK_A CK_A HK_B CK_C HK_C HK_D CK_D HK_E HK_F CK_E HK_G HK_H CK_F HK_I HK_J NK_B HK_K HK_L HK_M CK_B OK_A
+selection define site1sub1 and and segid PROT resid 29 not selection site1sub2
+msld call 1 site1sub1
+msld call 2 site1sub2
+!               B S   t0  tv  tm  fb   q
+msld initialize 1 1  1.5 0.0 5.0 0.0 1.0
+msld initialize 2 1 -1.5 0.0 5.0 0.0 1.0
+msld removescaling bond angle ! scale urey dihe impr and cmap
+!        s1s2 t  l0   k n
+msld bias 1 2 6 0.0 0.0 0
+structure setup
+state file ../test/ec2acc_prep/minimized.pdb

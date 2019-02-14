@@ -16,3 +16,4 @@ int main(int argc, char *argv[])
 
   delete(system);
 }
+ // NYI - debug directive that allows the debugger to attach
