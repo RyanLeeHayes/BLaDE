@@ -14,6 +14,7 @@ class Potential {
   ~Potential() {
   }
 
+  void calc_force(int step,System *system);
 };
 
 void parse_potential(char *line,System *system);

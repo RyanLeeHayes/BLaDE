@@ -4,11 +4,40 @@
 #include "io/io.h"
 #include "system/state.h"
 
+
+
+// Utility functions
 bool operator<(const struct AtomState& a,const struct AtomState& b)
 {
   return (a.segName<b.segName   || (a.segName==b.segName   && 
          (a.resIdx<b.resIdx     || (a.resIdx==b.resIdx     &&
          (a.atomName<b.atomName)))));
+}
+
+
+
+// Parsing functions
+void parse_state(char *line,System *system)
+{
+  char token[MAXLENGTHSTRING];
+  std::string name;
+
+  if (!system->state) {
+    if (system->structure && system->structure->atomCount>0) {
+      system->state=new State(system->structure->atomCount);
+    } else {
+      fatal(__FILE__,__LINE__,"Must finish creating atoms (use \"structure\" commands) before loading in positions with \"state file\".\n");
+    }
+  }
+
+  io_nexta(line,token);
+  name=token;
+  if (system->state->parseState.count(name)==0) name="";
+  // So much for function pointers being elegant.
+  // call the function pointed to by: system->state->parseState[name]
+  // within the object: system->state
+  // with arguments: (line,token,system)
+  (system->state->*(system->state->parseState[name]))(line,token,system);
 }
 
 void State::setup_parse_state()
@@ -21,12 +50,20 @@ void State::setup_parse_state()
   helpState["file"]="?state file [filename]> This loads particle positions from the pdb filename\n";
   parseState["print"]=&State::dump;
   helpState["print"]="?state print> This prints selected contents of the state data structure to standard out\n";
+  parseState["help"]=&State::help;
+  helpState["help"]="?state help [directive]> Prints help on state directive, including a list of subdirectives. If a subdirective is listed, this prints help on that specific subdirective.\n";
 }
 
 void State::help(char *line,char *token,System *system)
 {
-  std::string name=token;
-  if (helpState.count(token)==1) {
+  std::string name=io_nexts(line);
+  if (name=="") {
+    fprintf(stdout,"?state > Available directives are:\n");
+    for (std::map<std::string,std::string>::iterator ii=helpState.begin(); ii!=helpState.end(); ii++) {
+      fprintf(stdout," %s",ii->first.c_str());
+    }
+    fprintf(stdout,"\n");
+  } else if (helpState.count(token)==1) {
     fprintf(stdout,helpState[name].c_str());
   } else {
     error(line,token,system);
@@ -115,32 +152,5 @@ void State::file_pdb(FILE *fp,System *system)
       position[i][2]=xyz.i[2];
     }
     i++;
-  }
-}
-
-void parse_state(char *line,System *system)
-{
-  char token[MAXLENGTHSTRING];
-  std::string name;
-
-  if (!system->state) {
-    if (system->structure && system->structure->atomCount>0) {
-      system->state=new State(system->structure->atomCount);
-    } else {
-      fatal(__FILE__,__LINE__,"Must finish creating atoms (use \"structure\" commands) before loading in positions with \"state file\".\n");
-    }
-  }
-
-  io_nexta(line,token);
-  name=token;
-  if (io_peeks(line)=="help") {
-    system->state->help(line,token,system);
-  } else {
-    if (system->state->parseState.count(name)==0) name="error";
-    // So much for function pointers being elegant.
-    // call the function pointed to by: system->state->parseState[name]
-    // within the object: system->state
-    // with arguments: (line,token,system)
-    (system->state->*(system->state->parseState[name]))(line,token,system);
   }
 }

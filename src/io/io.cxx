@@ -186,38 +186,36 @@ double io_nextf(char *line,FILE *fp,const char *tag)
 void interpretter(const char *fnm,System *system,int level)
 {
   FILE *fp;
+  fpos_t fp_pos;
   char line[MAXLENGTHSTRING];
   char token[MAXLENGTHSTRING];
+  Control control;
+  control.level=level;
 
   fp=fpopen(fnm,"r");
 
+  fgetpos(fp,&fp_pos);
+  // fsetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     fprintf(stdout,"IN%d> %s",level,line);
     io_nexta(line,token);
-    if (strcmp(token,"")==0) {
-      ;
-    } else if (strcmp(token,"parameters")==0) {
-      parse_parameters(line,system);
-    } else if (strcmp(token,"structure")==0) {
-      parse_structure(line,system);
-    } else if (strcmp(token,"selection")==0) {
-      parse_selection(line,system);
-    } else if (strcmp(token,"msld")==0) {
-      parse_msld(line,system);
-    } else if (strcmp(token,"potential")==0) {
-      parse_potential(line,system);
-    } else if (strcmp(token,"state")==0) {
-      parse_state(line,system);
-    } else if (strcmp(token,"stream")==0) {
-      io_nexta(line,token);
-      interpretter(token,system,level+1);
-    } else if (strcmp(token,"set")==0) {
-      fatal(__FILE__,__LINE__,"set is not yet implemented\n"); // NYI
-// also define, if, for, {} parsing, etc...
-    } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token: %s\n",token);
-    }
+    system->parse_system(line,token,system,&control);
+    fgetpos(fp,&fp_pos);
+    // fsetpos(fp,&fp_pos);
   }
 
   fclose(fp);
+}
+
+void print_dynamics_output(int step,System *system)
+{
+  if (step % system->run->freqXTC == 0) {
+    fprintf(stdout,"Spatial trajectory NYI\n");
+  }
+  if (step % system->run->freqLMD == 0) {
+    fprintf(stdout,"Lambda trajectory NYI\n");
+  }
+  if (step % system->run->freqNRG == 0) {
+    fprintf(stdout,"Energy output NYI\n");
+  }
 }
