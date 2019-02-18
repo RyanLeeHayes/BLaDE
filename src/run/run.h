@@ -4,6 +4,11 @@
 #include <map>
 #include <string>
 
+#include "main/defines.h"
+
+#include "xdr/xdrfile.h"
+#include "xdr/xdrfile_xtc.h"
+
 // Forward delcaration
 class System;
 
@@ -15,7 +20,7 @@ class Run {
   std::string fnmXTC;
   std::string fnmLMD;
   std::string fnmNRG;
-  FILE *fpXTC;
+  XDRFILE *fpXTC;
   FILE *fpLMD;
   FILE *fpNRG;
   int freqXTC;
@@ -26,12 +31,18 @@ class Run {
   int step; // current step
   int step0; // starting step
   int nsteps; // steps in next dynamics call
-  double dt;
+  real dt;
+  real T;
+  real gamma;
 
   Run()
   {
     step0=0;
     nsteps=5000;
+    dt=0.001; // ps
+#warning "Temperature and friction automatically set"
+    T=300; // K
+    gamma=1.0; // ps^-1
     fnmXTC="default.xtc";
     fnmLMD="default.lmd";
     fnmNRG="default.nrg";
@@ -46,7 +57,7 @@ class Run {
 
   ~Run()
   {
-    if (fpXTC) fclose(fpXTC);
+    if (fpXTC) xdrfile_close(fpXTC);
     if (fpLMD) fclose(fpLMD);
     if (fpNRG) fclose(fpNRG);
   }

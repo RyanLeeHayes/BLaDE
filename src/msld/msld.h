@@ -10,8 +10,8 @@ class System;
 struct VariableBias {
   int i,j;
   int type;
-  double l0;
-  double k;
+  real l0;
+  real k;
   int n;
 };
 
@@ -20,13 +20,13 @@ class Msld {
   int blockCount;
   int *atomBlock;
   int *lambdaSite;
-  double *lambda;
-  double *lambdaForce;
-  double *lambdaBias;
-  double *theta;
-  double *thetaVelocity;
-  double *thetaMass;
-  double *lambdaCharge;
+  real *lambda;
+  real *lambdaForce;
+  real *lambdaBias;
+  real *theta;
+  real *thetaVelocity;
+  real *thetaMass;
+  real *lambdaCharge;
   bool scaleTerms[6]; // bond,ureyb,angle,dihe,impr,cmap
   std::vector<struct VariableBias> variableBias;
   std::vector<Int2> softBonds;

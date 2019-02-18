@@ -31,13 +31,13 @@ void parse_msld(char *line,System *system)
     system->msld->blockCount=io_nexti(line)+1;
     system->msld->atomBlock=(int*)calloc(system->structure->atomList.size(),sizeof(int));
     system->msld->lambdaSite=(int*)calloc(system->msld->blockCount,sizeof(int));
-    system->msld->lambda=(double*)calloc(system->msld->blockCount,sizeof(double));
-    system->msld->lambdaForce=(double*)calloc(system->msld->blockCount,sizeof(double));
-    system->msld->lambdaBias=(double*)calloc(system->msld->blockCount,sizeof(double));
-    system->msld->theta=(double*)calloc(system->msld->blockCount,sizeof(double));
-    system->msld->thetaVelocity=(double*)calloc(system->msld->blockCount,sizeof(double));
-    system->msld->thetaMass=(double*)calloc(system->msld->blockCount,sizeof(double));
-    system->msld->lambdaCharge=(double*)calloc(system->msld->blockCount,sizeof(double));
+    system->msld->lambda=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->lambdaForce=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->lambdaBias=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->theta=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->thetaVelocity=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
   } else if (strcmp(token,"call")==0) {
     i=io_nexti(line);
     std::string name=io_nexts(line);

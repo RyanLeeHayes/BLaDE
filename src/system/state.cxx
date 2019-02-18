@@ -48,6 +48,8 @@ void State::setup_parse_state()
   helpState["reset"]="?state reset> This deletes the state data structure.\n";
   parseState["file"]=&State::file;
   helpState["file"]="?state file [filename]> This loads particle positions from the pdb filename\n";
+  parseState["box"]=&State::parse_box;
+  helpState["box"]="?state box [x1 y1 z1, x2 y2 z2, x3 y3 z3]> This loads the x y z cooridinates for the first, second, and third box vectors.\n";
   parseState["print"]=&State::dump;
   helpState["print"]="?state print> This prints selected contents of the state data structure to standard out\n";
   parseState["help"]=&State::help;
@@ -118,7 +120,8 @@ void State::file_pdb(FILE *fp,System *system)
   char token2[MAXLENGTHSTRING];
   int i;
   struct AtomState as;
-  struct Double3 xyz;
+  double x; // Intentional double
+  struct Real3 xyz;
 
   fileData.clear();
   while (fgets(line, MAXLENGTHSTRING, fp)==NULL) {
@@ -131,9 +134,12 @@ void State::file_pdb(FILE *fp,System *system)
       strncpy(token1,line+72,4);
       if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
       as.segName=token2;
-      if (sscanf(line+30,"%8.3lf",&xyz.i[0])!=1) fatal(__FILE__,__LINE__,"PDB error\n");
-      if (sscanf(line+38,"%8.3lf",&xyz.i[0])!=1) fatal(__FILE__,__LINE__,"PDB error\n");
-      if (sscanf(line+46,"%8.3lf",&xyz.i[0])!=1) fatal(__FILE__,__LINE__,"PDB error\n");
+      if (sscanf(line+30,"%8.3lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
+      xyz.i[0]=x;
+      if (sscanf(line+38,"%8.3lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
+      xyz.i[1]=x;
+      if (sscanf(line+46,"%8.3lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
+      xyz.i[2]=x;
       if (fileData.count(as)==0) {
         fileData[as]=xyz;
       }
@@ -152,5 +158,15 @@ void State::file_pdb(FILE *fp,System *system)
       position[i][2]=xyz.i[2];
     }
     i++;
+  }
+}
+
+void State::parse_box(char *line,char *token,System *system)
+{
+  int i,j;
+  for (i=0; i<3; i++) {
+    for (j=0; j<3; j++) {
+      box[i][j]=io_nextf(line);
+    }
   }
 }

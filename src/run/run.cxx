@@ -66,10 +66,12 @@ void Run::error(char *line,char *token,System *system)
 void Run::dump(char *line,char *token,System *system)
 {
   fprintf(stdout,"RUN PRINT> dt=%f (time step in ps)\n",dt);
+  fprintf(stdout,"RUN PRINT> T=%f (temperature in K)\n",dt);
   fprintf(stdout,"RUN PRINT> nsteps=%d (number of time steps for dynamics)\n",nsteps);
   fprintf(stdout,"RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
   fprintf(stdout,"RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
   fprintf(stdout,"RUN PRINT> fnmnrg=%s (file name for energy output)\n",fnmNRG.c_str());
+#warning "Missing some of the constants"
 }
 
 void Run::reset(char *line,char *token,System *system)
@@ -91,6 +93,18 @@ void Run::set_variable(char *line,char *token,System *system)
     fnmLMD=io_nexts(line);
   } else if (strcmp(token,"fnmnrg")==0) {
     fnmNRG=io_nexts(line);
+  } else if (strcmp(token,"freqxtc")==0) {
+    freqXTC=io_nexti(line);
+  } else if (strcmp(token,"freqlmd")==0) {
+    freqLMD=io_nexti(line);
+  } else if (strcmp(token,"freqnrg")==0) {
+    freqNRG=io_nexti(line);
+  } else if (strcmp(token,"T")==0) {
+    T=io_nextf(line);
+  } else if (strcmp(token,"dt")==0) {
+    dt=io_nextf(line);
+  } else if (strcmp(token,"gamma")==0) {
+    gamma=io_nextf(line);
   } else {
     fatal(__FILE__,__LINE__,"Unrecognized token %s in run setvariable command\n",token);
   }
@@ -99,10 +113,6 @@ void Run::set_variable(char *line,char *token,System *system)
 void Run::dynamics(char *line,char *token,System *system)
 {
   int step;
-
-  if (!fpXTC) fpXTC=fpopen(fnmXTC.c_str(),"w");
-  if (!fpLMD) fpLMD=fpopen(fnmLMD.c_str(),"w");
-  if (!fpNRG) fpNRG=fpopen(fnmNRG.c_str(),"w");
 
   // Initialize data structures
   dynamics_initialize(system);
@@ -119,9 +129,28 @@ void Run::dynamics(char *line,char *token,System *system)
 
 void Run::dynamics_initialize(System *system)
 {
-  if (system->update==NULL) {
+  // Open files
+  if (!fpXTC) {
+    fpXTC=xdrfile_open(fnmXTC.c_str(),"w");
+    if (!fpXTC) {
+      fatal(__FILE__,__LINE__,"Failed to open XTC file %s\n",fnmXTC.c_str());
+    }
+  }
+  if (!fpLMD) fpLMD=fpopen(fnmLMD.c_str(),"w");
+  if (!fpNRG) fpNRG=fpopen(fnmNRG.c_str(),"w");
+
+  // Set up update structures
+  if (!system->update) {
     system->update=new Update();
   }
+  if (system->update->leapParms) {
+    free(system->update->leapParms);
+  }
+  system->update->leapParms=system->update->alloc_leapparms(dt,gamma,T);
+
+  // Set up potential structures
+fprintf(stdout,"WORKING HERE - all the atoms.h structures need to get allocated somehwere.\n");
+
   //NYI read checkpoint
 }
 

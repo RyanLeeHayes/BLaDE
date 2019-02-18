@@ -231,9 +231,9 @@ void Structure::setup(System *system)
   if (atomTypeIdx) free(atomTypeIdx);
   atomTypeIdx=(int*)calloc(atomCount,sizeof(int));
   if (charge) free(charge);
-  charge=(double*)calloc(atomCount,sizeof(double));
+  charge=(real*)calloc(atomCount,sizeof(real));
   if (mass) free(mass);
-  mass=(double*)calloc(atomCount,sizeof(double));
+  mass=(real*)calloc(atomCount,sizeof(real));
 
   bonds=(struct BondStructure*)calloc(bondCount,sizeof(struct BondStructure));
   angles=(struct AngleStructure*)calloc(angleCount,sizeof(struct AngleStructure));

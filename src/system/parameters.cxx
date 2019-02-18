@@ -335,7 +335,7 @@ void Parameters::add_parameter_cmaps(FILE *fp)
   TypeName8O name;
   CmapParameter cp;
   int i,j;
-  double k;
+  real k;
   char *escape;
 
   fgetpos(fp,&fp_pos);
@@ -485,7 +485,7 @@ void Parameters::dump()
   }
   fprintf(stdout,"%s\n",tag);
 
-  for (std::map<std::string,double>::iterator ii=atomMass.begin(); ii!=atomMass.end(); ii++) {
+  for (std::map<std::string,real>::iterator ii=atomMass.begin(); ii!=atomMass.end(); ii++) {
     fprintf(stdout,"%s atomMass[%6s]=%g\n",tag,ii->first.c_str(),ii->second);
   }
   fprintf(stdout,"%s\n",tag);

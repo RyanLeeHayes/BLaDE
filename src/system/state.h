@@ -2,6 +2,8 @@
 #define SYSTEM_STATE_H
 
 #include <stdio.h>
+#include <math.h>
+
 #include <string>
 #include <map>
 
@@ -20,24 +22,35 @@ class State {
   std::map<std::string,void(State::*)(char*,char*,System*)> parseState;
   std::map<std::string,std::string> helpState;
 
-  std::map<struct AtomState,Double3> fileData;
+  std::map<struct AtomState,Real3> fileData;
 
   int atomCount;
-  double (*position)[3];
-  double (*velocity)[3];
-  double (*force)[3];
+  real box[3][3];
+  real (*position)[3];
+  float (*fposition)[3]; // Intentional float
+  real (*velocity)[3];
+  real (*force)[3];
 
   State(int n) {
     atomCount=n;
-    position=(double(*)[3])calloc(n,sizeof(double[3]));
-    velocity=(double(*)[3])calloc(n,sizeof(double[3]));
-    force=(double(*)[3])calloc(n,sizeof(double[3]));
+    box[0][0]=NAN;
+    position=(real(*)[3])calloc(n,sizeof(real[3]));
+#ifdef DOUBLE
+    fposition=(float(*)[3])calloc(n,sizoef(float[3]));
+#else
+    fposition=position;
+#endif
+    velocity=(real(*)[3])calloc(n,sizeof(real[3]));
+    force=(real(*)[3])calloc(n,sizeof(real[3]));
     setup_parse_state();
     fprintf(stdout,"IMPLEMENT State create %s %d\n",__FILE__,__LINE__);
   }
 
   ~State() {
     if (position) free(position);
+#ifdef DOUBLE
+    if (fposition) free(fposition);
+#endif
     if (velocity) free(velocity);
     if (force) free(force);
   }
@@ -48,6 +61,7 @@ class State {
   void error(char *line,char *token,System *system);
   void reset(char *line,char *token,System *system);
   void file(char *line,char *token,System *system);
+  void parse_box(char *line,char *token,System *system);
   void dump(char *line,char *token,System *system);
 
   void file_pdb(FILE *fp,System *system);

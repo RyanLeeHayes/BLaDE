@@ -6,6 +6,8 @@
 #include <map>
 #include <vector>
 
+#include "main/defines.h"
+
 // Forward declarations 
 class System;
 
@@ -44,12 +46,13 @@ std::string io_nexts(char *line);
 int io_nexti(char *line);
 int io_nexti(char *line,int output);
 int io_nexti(char *line,FILE *fp,const char *tag);
-double io_nextf(char *line);
-double io_nextf(char *line,double output);
-double io_nextf(char *line,FILE *fp,const char *tag);
+real io_nextf(char *line);
+real io_nextf(char *line,real input);
+real io_nextf(char *line,FILE *fp,const char *tag);
 
 void interpretter(const char *fnm,System *system,int level);
 
 void print_dynamics_output(int step,System *system);
+void print_xtc(int step,System *system);
 
 #endif

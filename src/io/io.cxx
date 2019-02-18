@@ -13,6 +13,8 @@
 #include "msld/msld.h"
 #include "system/potential.h"
 #include "system/state.h"
+#include "xdr/xdrfile.h"
+#include "xdr/xdrfile_xtc.h"
 
 void fatal(const char* fnm,int i,const char* format, ...)
 {
@@ -139,10 +141,10 @@ int io_nexti(char *line,FILE *fp,const char *tag)
   return output;
 }
 
-double io_nextf(char *line)
+real io_nextf(char *line)
 {
   int ntoken, nchar;
-  double output;
+  double output; // Intentional double
 
   ntoken=sscanf(line,"%lg%n",&output,&nchar);
   if (ntoken==1) {
@@ -150,24 +152,25 @@ double io_nextf(char *line)
   } else {
     fatal(__FILE__,__LINE__,"Error: failed to read double from: %s\n",line);
   }
-  return output;
+  return output; // Cast to real
 }
 
-double io_nextf(char *line,double output)
+real io_nextf(char *line,real input)
 {
   int ntoken, nchar;
+  double output=input; // Intentional double
 
   ntoken=sscanf(line,"%lg%n",&output,&nchar);
   if (ntoken==1) {
     io_shift(line,nchar);
   }
-  return output;
+  return output; // Cast to real
 }
 
-double io_nextf(char *line,FILE *fp,const char *tag)
+real io_nextf(char *line,FILE *fp,const char *tag)
 {
   int ntoken, nchar;
-  double output;
+  double output; // Intentional double
 
   ntoken=0;
   while (ntoken!=1) {
@@ -180,7 +183,7 @@ double io_nextf(char *line,FILE *fp,const char *tag)
       fatal(__FILE__,__LINE__,"End of file while searching for real value for %s\n",tag);
     }
   }
-  return output;
+  return output; // Cast to real
 }
 
 void interpretter(const char *fnm,System *system,int level)
@@ -210,7 +213,7 @@ void interpretter(const char *fnm,System *system,int level)
 void print_dynamics_output(int step,System *system)
 {
   if (step % system->run->freqXTC == 0) {
-    fprintf(stdout,"Spatial trajectory NYI\n");
+    print_xtc(step,system);
   }
   if (step % system->run->freqLMD == 0) {
     fprintf(stdout,"Lambda trajectory NYI\n");
@@ -218,4 +221,33 @@ void print_dynamics_output(int step,System *system)
   if (step % system->run->freqNRG == 0) {
     fprintf(stdout,"Energy output NYI\n");
   }
+}
+
+void print_xtc(int step,System *system)
+{
+  XDRFILE *fp=system->run->fpXTC;
+  real (*x)[3]=system->state->position;
+  float (*fx)[3]=system->state->fposition;
+  float fbox[3][3];
+  int i,j,N;
+  char fnm[100];
+
+  N=system->state->atomCount;
+  if (fx != x) {
+    for (i=0; i<N; i++) {
+      for (j=0; j<3; j++) {
+        fx[i][j]=x[i][j];
+      }
+    }
+  }
+  for (i=0; i<3; i++) {
+    for (j=0; j<3; j++) {
+      fbox[i][j]=system->state->box[i][j];
+    }
+  }
+
+//  extern int write_xtc(XDRFILE *xd,
+//                       int natoms,int step,real time,
+//                       matrix box,rvec *x,real prec);
+  write_xtc(fp,N,step,(float) (step*system->run->dt),fbox,fx,1000.0);
 }

@@ -8,6 +8,8 @@
 #include <vector>
 #include <set>
 
+#include "main/defines.h"
+
 // Forward declarations:
 class System;
 
@@ -40,33 +42,33 @@ bool operator==(const TypeName8O& a,const TypeName8O& b);
 bool operator<(const TypeName8O& a,const TypeName8O& b);
 
 struct BondParameter {
-  double kb;
-  double b0;
+  real kb;
+  real b0;
 };
 
 struct AngleParameter {
-  double kangle;
-  double angle0;
-  double kureyb;
-  double ureyb0;
+  real kangle;
+  real angle0;
+  real kureyb;
+  real ureyb0;
 };
 
 struct DiheParameter {
-  double kdih;
+  real kdih;
   int ndih;
-  double dih0;
+  real dih0;
 };
 
 struct ImprParameter {
-  double kimp;
-  double imp0;
+  real kimp;
+  real imp0;
 };
 
 /*
 class CmapParameter {
   int ngrid;
   public:
-  double *kcmap;
+  real *kcmap;
 
   void CmapParameter()
   {
@@ -85,21 +87,21 @@ class CmapParameter {
     if (kcmap!=NULL) {
       delete [] kcmap;
     }
-    kcmap=new double[ngrid*ngrid];
+    kcmap=new real[ngrid*ngrid];
   }
-  double* operator[](std::size_t idx) {return kcmap+ngrid*idx;}
+  real* operator[](std::size_t idx) {return kcmap+ngrid*idx;}
   int getNgrid() {return ngrid;}
 };*/
 struct CmapParameter {
   int ngrid;
-  double kcmap[24][24];
+  real kcmap[24][24];
 };
 
 struct NbondParameter {
-  double eps;
-  double sig;
-  double eps14;
-  double sig14;
+  real eps;
+  real sig;
+  real eps14;
+  real sig14;
 };
 
 class Parameters {
@@ -107,7 +109,7 @@ class Parameters {
     int atomTypeCount;
     std::map<std::string,int> atomTypeMap;
     std::vector<std::string> atomType;
-    std::map<std::string,double> atomMass;
+    std::map<std::string,real> atomMass;
 
     std::map<TypeName2,struct BondParameter> bondParameter;
     std::map<TypeName3,struct AngleParameter> angleParameter;

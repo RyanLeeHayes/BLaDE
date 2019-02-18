@@ -17,35 +17,35 @@ struct AtomStructure {
   std::string resName;
   std::string atomName;
   std::string atomTypeName;
-  double charge;
-  double mass;
+  real charge;
+  real mass;
 };
 
 struct BondStructure {
   int idx[2];
-  double kb;
-  double b0;
+  real kb;
+  real b0;
 };
 
 struct AngleStructure {
   int idx[3];
-  double kangle;
-  double angle0;
-  double kureyb;
-  double ureyb0;
+  real kangle;
+  real angle0;
+  real kureyb;
+  real ureyb0;
 };
 
 struct DiheStructure {
   int idx[4];
-  double kdih;
+  real kdih;
   int ndih;
-  double dih0;
+  real dih0;
 };
 
 struct ImprStructure {
   int idx[4];
-  double kimp;
-  double imp0;
+  real kimp;
+  real imp0;
 };
 
 struct CmapStructure {
@@ -60,8 +60,8 @@ class Structure {
   std::vector<struct AtomStructure> atomList;
 
   int *atomTypeIdx;
-  double *charge;
-  double *mass;
+  real *charge;
+  real *mass;
 
   std::vector<struct Int2> bondList; // std::vector<int[2]> bondList;
   int bondCount;
