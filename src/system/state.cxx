@@ -1,4 +1,5 @@
 #include <string.h>
+#include <math.h>
 
 #include "system/system.h"
 #include "io/io.h"
@@ -12,6 +13,11 @@ bool operator<(const struct AtomState& a,const struct AtomState& b)
   return (a.segName<b.segName   || (a.segName==b.segName   && 
          (a.resIdx<b.resIdx     || (a.resIdx==b.resIdx     &&
          (a.atomName<b.atomName)))));
+}
+
+bool operator==(const struct AtomState& a,const struct AtomState& b)
+{
+  return a.segName==b.segName && a.resIdx==b.resIdx && a.atomName==b.atomName;
 }
 
 
@@ -50,6 +56,8 @@ void State::setup_parse_state()
   helpState["file"]="?state file [filename]> This loads particle positions from the pdb filename\n";
   parseState["box"]=&State::parse_box;
   helpState["box"]="?state box [x1 y1 z1, x2 y2 z2, x3 y3 z3]> This loads the x y z cooridinates for the first, second, and third box vectors.\n";
+  parseState["velocity"]=&State::parse_velocity;
+  helpState["velocity"]="?state velocity [temperature]> This sets the velocities to a distribution centered on the specified temperature (in Kelvin)\n";
   parseState["print"]=&State::dump;
   helpState["print"]="?state print> This prints selected contents of the state data structure to standard out\n";
   parseState["help"]=&State::help;
@@ -124,22 +132,25 @@ void State::file_pdb(FILE *fp,System *system)
   struct Real3 xyz;
 
   fileData.clear();
-  while (fgets(line, MAXLENGTHSTRING, fp)==NULL) {
+  while (fgets(line, MAXLENGTHSTRING, fp)!=NULL) {
     if (strncmp(line,"ATOM  ",6)==0 || strncmp(line,"HETATM",6)==0) {
-      strncpy(token1,line+12,4);
+      io_strncpy(token1,line+12,4);
       if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
       as.atomName=token2;
       if (sscanf(line+21,"%d",&i)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
       as.resIdx=i;
-      strncpy(token1,line+72,4);
+      io_strncpy(token1,line+72,4);
       if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
       as.segName=token2;
-      if (sscanf(line+30,"%8.3lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
-      xyz.i[0]=x;
-      if (sscanf(line+38,"%8.3lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
-      xyz.i[1]=x;
-      if (sscanf(line+46,"%8.3lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
-      xyz.i[2]=x;
+      io_strncpy(token1,line+30,8);
+      if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
+      xyz.i[0]=ANGSTROM*x;
+      io_strncpy(token1,line+38,8);
+      if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
+      xyz.i[1]=ANGSTROM*x;
+      io_strncpy(token1,line+46,8);
+      if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
+      xyz.i[2]=ANGSTROM*x;
       if (fileData.count(as)==0) {
         fileData[as]=xyz;
       }
@@ -147,17 +158,16 @@ void State::file_pdb(FILE *fp,System *system)
   }
 
   // for (std::vector<struct AtomStructure>::iterator ii=system->structure->atomList.begin(); ii!=system->structure->atomList.end(); ii++)
-  for (std::vector<struct AtomStructure>::iterator ii=system->structure->atomList.begin(); ii!=system->structure->atomList.end(); ii++) {
-    as.segName=ii->segName;
-    as.resIdx=ii->resIdx;
-    as.atomName=ii->atomName;
+  for (i=0; i<system->structure->atomList.size(); i++) { 
+    as.segName=system->structure->atomList[i].segName;
+    as.resIdx=system->structure->atomList[i].resIdx;
+    as.atomName=system->structure->atomList[i].atomName;
     if (fileData.count(as)==1) {
       xyz=fileData[as];
       position[i][0]=xyz.i[0];
       position[i][1]=xyz.i[1];
       position[i][2]=xyz.i[2];
     }
-    i++;
   }
 }
 
@@ -167,6 +177,19 @@ void State::parse_box(char *line,char *token,System *system)
   for (i=0; i<3; i++) {
     for (j=0; j<3; j++) {
       box[i][j]=io_nextf(line);
+    }
+  }
+}
+
+void State::parse_velocity(char *line,char *token,System *system)
+{
+  int i,j;
+  real T=io_nextf(line);
+  for (i=0; i<atomCount; i++) {
+    for (j=0; j<3; j++) {
+#warning "Seg fault waiting to happen:"
+      mass[i][j]=system->structure->mass[i];
+      velocity[i][j]=sqrt(kB*T/mass[i][j])*rngCPU->rand_normal();
     }
   }
 }

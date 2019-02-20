@@ -40,6 +40,9 @@ void parse_msld(char *line,System *system)
     system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
   } else if (strcmp(token,"call")==0) {
     i=io_nexti(line);
+    if (i<0 || i>=system->msld->blockCount) {
+      fatal(__FILE__,__LINE__,"Error, tried to edit block %d of %d which does not exist.\n",i,system->msld->blockCount-1);
+    }
     std::string name=io_nexts(line);
     if (system->selections->selectionMap.count(name)==0) {
       fatal(__FILE__,__LINE__,"Selection %s not found\n",name.c_str());
@@ -55,6 +58,9 @@ void parse_msld(char *line,System *system)
   } else if (strcmp(token,"initialize")==0) {
 #warning "No input guards on data..."
     i=io_nexti(line);
+    if (i<0 || i>=system->msld->blockCount) {
+      fatal(__FILE__,__LINE__,"Error, tried to edit block %d of %d which does not exist.\n",i,system->msld->blockCount-1);
+    }
     system->msld->lambdaSite[i]=io_nexti(line);
     system->msld->theta[i]=io_nextf(line);
     system->msld->thetaVelocity[i]=io_nextf(line);

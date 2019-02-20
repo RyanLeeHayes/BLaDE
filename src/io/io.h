@@ -50,6 +50,8 @@ real io_nextf(char *line);
 real io_nextf(char *line,real input);
 real io_nextf(char *line,FILE *fp,const char *tag);
 
+void io_strncpy(char *targ,char *dest,int n);
+
 void interpretter(const char *fnm,System *system,int level);
 
 void print_dynamics_output(int step,System *system);

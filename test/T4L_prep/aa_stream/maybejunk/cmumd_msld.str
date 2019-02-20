@@ -1,0 +1,43 @@
+* Fragment PRES built by FragmentTest_8.8.11.pl in MATCH
+* and prep_proteinmutations.pl
+* stream file for all residues
+*
+
+goto @branchatom_@mutres
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+read para card flex append
+
+! -----------------------------------------------------------------------------------
+! Stream in missing dihedrals
+! -----------------------------------------------------------------------------------
+
+DIHEDRALS
+!atom types             Kchi    n   delta
+!H2  CC   CT1  CT2      0.0000  1     0.00 ! For ACE, adopted from N-C-CT1-CT2 dihe
+!H2  CC   CT1  CT2      0.0000  1     0.00 ! For CT2, adopted from NH1-C-CT1-CT2 dihe
+NH1  C    CT1  CT3      0.0000  1     0.00
+NH1  C    CT1  CT2      0.0000  1     0.00 !! Not necessary
+end
+return
+
+

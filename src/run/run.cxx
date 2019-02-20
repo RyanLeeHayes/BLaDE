@@ -143,10 +143,7 @@ void Run::dynamics_initialize(System *system)
   if (!system->update) {
     system->update=new Update();
   }
-  if (system->update->leapParms) {
-    free(system->update->leapParms);
-  }
-  system->update->leapParms=system->update->alloc_leapparms(dt,gamma,T);
+  system->update->initialize(system);
 
   // Set up potential structures
 fprintf(stdout,"WORKING HERE - all the atoms.h structures need to get allocated somehwere.\n");

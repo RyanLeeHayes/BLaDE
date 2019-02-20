@@ -1,0 +1,21 @@
+* nuissance title
+*
+define site@{site}sub@{sub} -
+   select ( -
+   segid @segid .and. resid @resid .and. ( -
+   type CBY .or. -
+   type HB1Y .or. -
+   type HB2Y .or. -
+   type CGY .or. -
+   type CD1Y .or. -
+   type HD1Y .or. -
+   type CE1Y .or. -
+   type HE1Y .or. -
+   type CZY .or. -
+   type OHY .or. -
+   type HH1Y .or. -
+   type CD2Y .or. -
+   type HD2Y .or. -
+   type CE2Y .or. -
+   type HE2Y .or. -
+   none ) ) end

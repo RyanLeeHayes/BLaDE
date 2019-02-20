@@ -1,6 +1,7 @@
 build
 buildDebug
-run/output
+run/output*
 run/*.xtc
 run/*.lmd
 run/*.nrg
+run/*.profile

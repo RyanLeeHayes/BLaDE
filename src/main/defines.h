@@ -7,6 +7,9 @@
 #define DEGREES 0.017453292519943
 #define kB 0.0083144598
 
+// CUDA block size for system update kernels
+#define BLUP 256
+
 #ifdef DOUBLE
 typedef double real;
 #else

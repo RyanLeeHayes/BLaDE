@@ -186,6 +186,12 @@ real io_nextf(char *line,FILE *fp,const char *tag)
   return output; // Cast to real
 }
 
+void io_strncpy(char *targ,char *dest,int n)
+{
+  strncpy(targ,dest,n);
+  targ[n]='\0';
+}
+
 void interpretter(const char *fnm,System *system,int level)
 {
   FILE *fp;
@@ -213,6 +219,7 @@ void interpretter(const char *fnm,System *system,int level)
 void print_dynamics_output(int step,System *system)
 {
   if (step % system->run->freqXTC == 0) {
+    system->state->recv_position();
     print_xtc(step,system);
   }
   if (step % system->run->freqLMD == 0) {
