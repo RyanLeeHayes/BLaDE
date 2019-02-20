@@ -30,8 +30,8 @@ class RngGPU
 
   void setup();
   // Generate n random numbers in the pointer p
-  void rand_normal(int n,real *p);
-  void rand_uniform(int n,real *p);
+  void rand_normal(int n,real *p,cudaStream_t s);
+  void rand_uniform(int n,real *p,cudaStream_t s);
 };
 
 #endif

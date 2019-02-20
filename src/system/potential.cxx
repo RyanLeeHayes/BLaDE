@@ -9,5 +9,5 @@ void parse_potential(char *line,System *system)
 
 void Potential::calc_force(int step,System *system)
 {
-  fprintf(stdout,"Force calculation placeholder (step %d)\n",step);
+  // fprintf(stdout,"Force calculation placeholder (step %d)\n",step);
 }

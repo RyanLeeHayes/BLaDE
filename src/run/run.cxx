@@ -153,6 +153,8 @@ fprintf(stdout,"WORKING HERE - all the atoms.h structures need to get allocated 
 
 void Run::dynamics_finalize(System *system)
 {
+  system->update->finalize();
+
   //NYI write checkpoint
   step0=step;
 }

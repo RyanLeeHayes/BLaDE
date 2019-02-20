@@ -27,14 +27,40 @@ void Update::initialize(System *system)
   system->state->send_position();
   system->state->send_velocity();
   system->state->send_invsqrtMass();
+
+  cudaStreamCreate(&updateStream);
+#ifdef CUDAGRAPH
+  cudaStreamBeginCapture(updateStream);
+  // https://pubs.acs.org/doi/10.1021/jp411770f equation 7
+
+  // Get Gaussian distributed random numbers
+  system->state->rngGPU->rand_normal(2*leapState->N,leapState->random,updateStream);
+
+  // equation 7f&g - after force calculation
+  // KERNEL
+  update_VO<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState,*leapParms2);
+  // grab velocity if you want it here, but apply bond constriants...
+  // equation 7a&b - after force calculation
+  // KERNEL
+  update_OV<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState,*leapParms2);
+#warning "Constrain velocities here"
+
+  // equation 7c&e
+  update_R<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState,*leapParms2);
+
+  reset_F<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState);
+  cudaStreamEndCapture(updateStream,&updateGraph);
+  cudaGraphInstantiate(&updateGraphExec,updateGraph,NULL,NULL,0);
+#endif
 }
 
 void Update::update(int step,System *system)
 {
+#ifndef CUDAGRAPH
   // https://pubs.acs.org/doi/10.1021/jp411770f equation 7
 
   // Get Gaussian distributed random numbers
-  system->state->rngGPU->rand_normal(2*leapState->N,leapState->random);
+  system->state->rngGPU->rand_normal(2*leapState->N,leapState->random,updateStream);
 
   // equation 7f&g - after force calculation
   // KERNEL
@@ -49,6 +75,17 @@ void Update::update(int step,System *system)
   update_R<<<(leapState->N+BLUP-1)/BLUP,BLUP>>>(*leapState,*leapParms2);
 
   reset_F<<<(leapState->N+BLUP-1)/BLUP,BLUP>>>(*leapState);
+#else
+  cudaGraphLaunch(updateGraphExec,updateStream);
+#endif
+}
+
+void Update::finalize()
+{
+#ifdef CUDAGRAPH
+  cudaGraphExecDestroy(updateGraphExec);
+  cudaGraphDestroy(updateGraph);
+#endif
 }
 
 __global__ void update_VO(struct LeapState ls,struct LeapParms2 lp)

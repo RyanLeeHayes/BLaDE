@@ -39,17 +39,17 @@ __global__ void kernel_uniform(curandStateMtgp32 *state,int n,real *p)
 }
 
 // Generate n random numbers in the pointer p
-void RngGPU::rand_normal(int n,real *p)
+void RngGPU::rand_normal(int n,real *p,cudaStream_t s)
 {
   int nblocks=(n+256-1)/256;
   nblocks=(nblocks>200)?200:nblocks;
-  kernel_normal<<<nblocks,256>>>(devStates,n,p);
+  kernel_normal<<<nblocks,256,0,s>>>(devStates,n,p);
 }
 
 // Generate n random numbers in the pointer p
-void RngGPU::rand_uniform(int n,real *p)
+void RngGPU::rand_uniform(int n,real *p,cudaStream_t s)
 {
   int nblocks=(n+256-1)/256;
   nblocks=(nblocks>200)?200:nblocks;
-  kernel_uniform<<<nblocks,256>>>(devStates,n,p);
+  kernel_uniform<<<nblocks,256,0,s>>>(devStates,n,p);
 }

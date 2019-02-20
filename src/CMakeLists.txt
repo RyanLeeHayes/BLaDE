@@ -5,6 +5,7 @@ file(GLOB_RECURSE sources *.cxx *.cu *.h)
 
 find_package(CUDA 10.0)
 
+add_definitions(-DCUDAGRAPH)
 # add_definitions(-DNOMPI)
 # add_definitions(-DDOUBLEFLAG)
 # set (CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -g -O3 -arch=sm_20)

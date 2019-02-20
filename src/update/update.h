@@ -63,6 +63,10 @@ class Update {
   struct LeapParms2 *leapParms2;
   struct LeapState *leapState;
 
+  cudaStream_t updateStream;
+  cudaGraph_t updateGraph;
+  cudaGraphExec_t updateGraphExec;
+
   Update()
   {
     leapParms1=NULL;
@@ -79,6 +83,7 @@ class Update {
 
   void initialize(System *system);
   void update(int step,System *system);
+  void finalize();
 
   // void calcABCD(real slambda,real* A,real* B,real* C,real* D);
   struct LeapParms1* alloc_leapparms1(real dt,real gamma,real T);
