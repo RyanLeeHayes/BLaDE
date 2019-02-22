@@ -23,6 +23,8 @@ Structure::Structure() {
   cmapCount=0;
 
   shakeHbond=false;
+
+  setup_parse_structure();
 }
 
 Structure::~Structure() {
@@ -34,46 +36,97 @@ Structure::~Structure() {
 
 
 // Parsing functions
+void Structure::setup_parse_structure()
+{
+  parseStructure[""]=&Structure::error;
+  helpStructure[""]="?> How did we get here?\n";
+  parseStructure["reset"]=&Structure::reset;
+  helpStructure["reset"]="?structure reset> This deletes the structure data structure.\n";
+  parseStructure["file"]=&Structure::file;
+  helpStructure["file"]="?structure file psf [filename]> This loads the system structure from the CHARMM PSF (protein structure file)\n";
+  parseStructure["shake"]=&Structure::parse_shake;
+  helpStructure["shake"]="?structure shake [hbond/none]> Turn hydrogen bond length constraints on or off.\n";
+  parseStructure["print"]=&Structure::dump;
+  helpStructure["print"]="?structure print> This prints selected contents of the structure data structure to standard out\n";
+  parseStructure["help"]=&Structure::help;
+  helpStructure["help"]="?structure help [directive]> Prints help on state directive, including a list of subdirectives. If a subdirective is listed, this prints help on that specific subdirective.\n";
+}
+
 void parse_structure(char *line,System *system)
 {
   char token[MAXLENGTHSTRING];
-  FILE *fp;
+  std::string name;
 
-  // All routines except reset need a strcture, so just initialize it and save time.
-  if (system->structure==NULL) {
+  if (!system->structure) {
     system->structure=new Structure();
   }
 
   io_nexta(line,token);
-  if (strcmp(token,"reset")==0) {
-    if (system->structure) {
-      delete(system->structure);
-      system->structure=NULL;
+  name=token;
+  if (system->structure->parseStructure.count(name)==0) name="";
+  // So much for function pointers being elegant.
+  // call the function pointed to by: system->structure->parseStructure[name]
+  // within the object: system->structure
+  // with arguments: (line,token,system)
+  (system->structure->*(system->structure->parseStructure[name]))(line,token,system);
+}
+
+void Structure::help(char *line,char *token,System *system)
+{
+  std::string name=io_nexts(line);
+  if (name=="") {
+    fprintf(stdout,"?structure > Available directives are:\n");
+    for (std::map<std::string,std::string>::iterator ii=helpStructure.begin(); ii!=helpStructure.end(); ii++) {
+      fprintf(stdout," %s",ii->first.c_str());
     }
-  } else if (strcmp(token,"file")==0) {
-    io_nexta(line,token);
-    if (strcmp(token,"psf")==0) {
-      io_nexta(line,token);
-      fp=fpopen(token,"r");
-      system->structure->add_structure_psf_file(fp);
-      fclose(fp);
-    } else {
-      fatal(__FILE__,__LINE__,"Unsupported structure file format: %s\n",token);
-    }
-  } else if (strcmp(token,"shake")==0) {
-    io_nexta(line,token);
-    if (strcmp(token,"hbond")==0) {
-      system->structure->shakeHbond=true;
-    } else if (strcmp(token,"none")==0) {
-      system->structure->shakeHbond=false;
-    } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token %s for structure shake selection. Try hbond or none\n",token);
-    }
-  } else if (strcmp(token,"print")==0) {
-    system->structure->dump();
+    fprintf(stdout,"\n");
+  } else if (helpStructure.count(token)==1) {
+    fprintf(stdout,helpStructure[name].c_str());
   } else {
-    fatal(__FILE__,__LINE__,"Unrecognized structure token: %s\n",token);
+    error(line,token,system);
   }
+}
+
+void Structure::error(char *line,char *token,System *system)
+{
+  fatal(__FILE__,__LINE__,"Unrecognized token after structure: %s\n",token);
+}
+
+void Structure::reset(char *line,char *token,System *system)
+{
+  delete system->structure;
+  system->structure=NULL;
+}
+
+void Structure::file(char *line,char *token,System *system)
+{
+  FILE *fp;
+  io_nexta(line,token);
+  if (strcmp(token,"psf")==0) {
+    io_nexta(line,token);
+    fp=fpopen(token,"r");
+    add_structure_psf_file(fp);
+    fclose(fp);
+  } else {
+    fatal(__FILE__,__LINE__,"Unsupported structure file format: %s\n",token);
+  }
+}
+
+void Structure::parse_shake(char *line,char *token,System *system)
+{
+  io_nexta(line,token);
+  if (strcmp(token,"hbond")==0) {
+    shakeHbond=true;
+  } else if (strcmp(token,"none")==0) {
+    shakeHbond=false;
+  } else {
+    fatal(__FILE__,__LINE__,"Unrecognized token %s for structure shake selection. Try hbond or none\n",token);
+  }
+}
+
+void Structure::dump(char *line,char *token,System *system)
+{
+  fprintf(stdout,"%s:%d IMPLEMENT Structure::dump function.\n",__FILE__,__LINE__);
 }
 
 void Structure::add_structure_psf_file(FILE *fp)
@@ -250,9 +303,4 @@ void Structure::add_structure_psf_file(FILE *fp)
     }
     cmapList.emplace_back(cmap);
   }
-}
-
-void Structure::dump()
-{
-  fprintf(stdout,"%s:%d IMPLEMENT Structure::dump function.\n",__FILE__,__LINE__);
 }

@@ -21,8 +21,13 @@ struct AtomStructure {
   real mass;
 };
 
+
+
 class Structure {
   public:
+  std::map<std::string,void(Structure::*)(char*,char*,System*)> parseStructure;
+  std::map<std::string,std::string> helpStructure;
+
   int atomCount;
   std::vector<struct AtomStructure> atomList;
 
@@ -50,8 +55,14 @@ class Structure {
   Structure();
   ~Structure();
 
+  void setup_parse_structure();
+  void help(char *line,char *token,System *system);
+  void error(char *line,char *token,System *system);
+  void reset(char *line,char *token,System *system);
+  void file(char *line,char *token,System *system);
+  void parse_shake(char *line,char *token,System *system);
+  void dump(char *line,char *token,System *system);
   void add_structure_psf_file(FILE *fp);
-  void dump();
 };
 
 void parse_structure(char *line,System *system);

@@ -13,10 +13,24 @@ void at_real3_scaleinc(real3 *a,real f,real3 x)
   realAtomicAdd(&(a[0].z),f*x.z);
 }
 
+__device__ static inline
+void at_real3_inc(real3 *a,real3 x)
+{
+  realAtomicAdd(&(a[0].x),x.x);
+  realAtomicAdd(&(a[0].y),x.y);
+  realAtomicAdd(&(a[0].z),x.z);
+}
+
 __host__ __device__ static inline
 real real3_mag(real3 a)
 {
   return sqrt(a.x*a.x+a.y*a.y+a.z*a.z);
+}
+
+__host__ __device__ static inline
+real real3_mag2(real3 a)
+{
+  return a.x*a.x+a.y*a.y+a.z*a.z;
 }
 
 __host__ __device__ static inline
@@ -31,6 +45,82 @@ real3 real3_subpbc(real3 a,real3 b,real3 box)
   c.z-=box.x*floor(c.z/box.z+0.5);
   return c;
 }
+
+__host__ __device__ static inline
+real3 real3_add(real3 a,real3 b)
+{
+  real3 c;
+  c.x=a.x+b.x;
+  c.y=a.y+b.y;
+  c.z=a.z+b.z;
+  return c;
+}
+
+__host__ __device__ static inline
+real real3_dot(real3 a,real3 b)
+{
+  return a.x*b.x+a.y*b.y+a.z*b.z;
+}
+
+__host__ __device__ static inline
+real3 real3_cross(real3 a,real3 b)
+{
+  real3 c;
+  c.x=a.y*b.z-a.z*b.y;
+  c.y=a.z*b.x-a.x*b.z;
+  c.z=a.x*b.y-a.y*b.x;
+  return c;
+}
+
+__host__ __device__ static inline
+real3 real3_scale(real f,real3 a)
+{
+  real3 c;
+  c.x=f*a.x;
+  c.y=f*a.y;
+  c.z=f*a.z;
+  return c;
+}
+
+__host__ __device__ static inline
+void real3_scaleinc(real3 *a,real f,real3 x)
+{
+  a[0].x+=f*x.x;
+  a[0].y+=f*x.y;
+  a[0].z+=f*x.z;
+}
+
+__host__ __device__ static inline
+void real3_scaleself(real3 *a,real f)
+{
+  a[0].x*=f;
+  a[0].y*=f;
+  a[0].z*=f;
+}
+
+__host__ __device__ static inline
+void real3_inc(real3 *a,real3 x)
+{
+  a[0].x+=x.x;
+  a[0].y+=x.y;
+  a[0].z+=x.z;
+}
+
+__host__ __device__ static inline
+void real3_dec(real3 *a,real3 x)
+{
+  a[0].x-=x.x;
+  a[0].y-=x.y;
+  a[0].z-=x.z;
+}
+
+
+
+
+
+
+
+
 
 #ifdef COMMENTED
 __host__ __device__ static inline

@@ -282,6 +282,9 @@ void Potential::calc_force(int step,System *system)
   }
 
   getforce_bond(system,calcEnergy);
+  getforce_angle(system,calcEnergy);
+  getforce_dihe(system,calcEnergy);
+  getforce_impr(system,calcEnergy);
 
   // cudaEventRecord(forceComplete,bondedStream[0]);
   cudaDeviceSynchronize();

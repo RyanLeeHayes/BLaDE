@@ -27,6 +27,8 @@ Msld::Msld() {
   thetaVelocity_d=NULL;
   thetaMass_d=NULL;
 
+  fprintf(stdout,"blocksPerSite is NYI, %s:%d\n",__FILE__,__LINE__);
+
   variableBias.clear();
   softBonds.clear();
   atomRestraints.clear();
