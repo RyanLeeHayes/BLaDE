@@ -1,9 +1,76 @@
 #include <string.h>
 #include <math.h>
 
-#include "system/system.h"
-#include "io/io.h"
 #include "system/state.h"
+#include "io/io.h"
+#include "system/system.h"
+#include "system/structure.h"
+#include "rng/rng_cpu.h"
+#include "rng/rng_gpu.h"
+
+
+
+// Class constructors
+State::State(int n,System *system) {
+  int i,j;
+
+  atomCount=n;
+  box=(real(*)[3])calloc(3,sizeof(real[3]));
+  box[0][0]=NAN;
+  position=(real(*)[3])calloc(n,sizeof(real[3]));
+#ifdef DOUBLE
+  fposition=(float(*)[3])calloc(n,sizoef(float[3]));
+#else
+  fposition=position;
+#endif
+  velocity=(real(*)[3])calloc(n,sizeof(real[3]));
+  force=(real(*)[3])calloc(n,sizeof(real[3]));
+  mass=(real(*)[3])calloc(n,sizeof(real[3]));
+  invsqrtMass=(real(*)[3])calloc(n,sizeof(real[3]));
+  energy=(real*)calloc(eeend,sizeof(real));
+
+  cudaMalloc(&(box_d),3*sizeof(real[3]));
+  cudaMalloc(&(position_d),n*sizeof(real[3]));
+  cudaMalloc(&(velocity_d),n*sizeof(real[3]));
+  cudaMalloc(&(force_d),n*sizeof(real[3]));
+  cudaMalloc(&(mass_d),n*sizeof(real[3]));
+  cudaMalloc(&(invsqrtMass_d),n*sizeof(real[3]));
+  cudaMalloc(&(random_d),2*n*sizeof(real[3]));
+  cudaMalloc(&(energy_d),eeend*sizeof(real));
+
+  for (i=0; i<n; i++) {
+    for (j=0; j<3; j++) {
+      mass[i][j]=system->structure->atomList[i].mass;
+      invsqrtMass[i][j]=1.0/sqrt(mass[i][j]);
+    }
+  }
+
+  rngCPU=new RngCPU;
+  rngGPU=new RngGPU;
+
+  setup_parse_state();
+}
+
+State::~State() {
+  if (position) free(position);
+#ifdef DOUBLE
+  if (fposition) free(fposition);
+#endif
+  if (velocity) free(velocity);
+  if (force) free(force);
+  if (mass) free(mass);
+  if (invsqrtMass) free(invsqrtMass);
+
+  if (position_d) cudaFree(position_d);
+  if (velocity_d) cudaFree(velocity_d);
+  if (force_d) cudaFree(force_d);
+  if (mass_d) cudaFree(mass_d);
+  if (invsqrtMass_d) cudaFree(invsqrtMass_d);
+  if (random_d) cudaFree(random_d);
+
+  delete rngCPU;
+  delete rngGPU;
+}
 
 
 
@@ -30,7 +97,7 @@ void parse_state(char *line,System *system)
 
   if (!system->state) {
     if (system->structure && system->structure->atomCount>0) {
-      system->state=new State(system->structure->atomCount);
+      system->state=new State(system->structure->atomCount,system);
     } else {
       fatal(__FILE__,__LINE__,"Must finish creating atoms (use \"structure\" commands) before loading in positions with \"state file\".\n");
     }
@@ -177,8 +244,15 @@ void State::parse_box(char *line,char *token,System *system)
   for (i=0; i<3; i++) {
     for (j=0; j<3; j++) {
       box[i][j]=io_nextf(line);
+      if (i!=j && box[i][j]!=0) {
+        fatal(__FILE__,__LINE__,"Non-orthogonal boxes are not yet implemented NYI\n");
+      }
     }
   }
+  send_box();
+  orthBox.x=box[0][0];
+  orthBox.y=box[1][1];
+  orthBox.z=box[2][2];
 }
 
 void State::parse_velocity(char *line,char *token,System *system)
@@ -187,9 +261,38 @@ void State::parse_velocity(char *line,char *token,System *system)
   real T=io_nextf(line);
   for (i=0; i<atomCount; i++) {
     for (j=0; j<3; j++) {
-#warning "Seg fault waiting to happen:"
-      mass[i][j]=system->structure->mass[i];
       velocity[i][j]=sqrt(kB*T/mass[i][j])*rngCPU->rand_normal();
     }
   }
+}
+
+void State::send_box() {
+  cudaMemcpy(box_d,box,3*sizeof(real[3]),cudaMemcpyHostToDevice);
+}
+void State::recv_box() {
+  cudaMemcpy(box,box_d,3*sizeof(real[3]),cudaMemcpyDeviceToHost);
+}
+void State::send_position() {
+  cudaMemcpy(position_d,position,atomCount*sizeof(real[3]),cudaMemcpyHostToDevice);
+}
+void State::recv_position() {
+  cudaMemcpy(position,position_d,atomCount*sizeof(real[3]),cudaMemcpyDeviceToHost);
+}
+void State::send_velocity() {
+  cudaMemcpy(velocity_d,velocity,atomCount*sizeof(real[3]),cudaMemcpyHostToDevice);
+}
+void State::recv_velocity() {
+  cudaMemcpy(velocity,velocity_d,atomCount*sizeof(real[3]),cudaMemcpyDeviceToHost);
+}
+void State::send_invsqrtMass() {
+  cudaMemcpy(invsqrtMass_d,invsqrtMass,atomCount*sizeof(real[3]),cudaMemcpyHostToDevice);
+}
+void State::recv_invsqrtMass() {
+  cudaMemcpy(invsqrtMass,invsqrtMass_d,atomCount*sizeof(real[3]),cudaMemcpyDeviceToHost);
+}
+void State::send_energy() {
+  cudaMemcpy(energy_d,energy,eeend*sizeof(real),cudaMemcpyHostToDevice);
+}
+void State::recv_energy() {
+  cudaMemcpy(energy,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToHost);
 }

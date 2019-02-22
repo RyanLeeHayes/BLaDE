@@ -3,6 +3,38 @@
 #include "run/run.h"
 #include "system/system.h"
 #include "io/io.h"
+#include "msld/msld.h"
+#include "update/update.h"
+#include "system/potential.h"
+
+
+
+// Class constructors
+Run::Run()
+{
+  step0=0;
+  nsteps=5000;
+  dt=0.001; // ps
+  T=300; // K
+  gamma=1.0; // ps^-1
+  fnmXTC="default.xtc";
+  fnmLMD="default.lmd";
+  fnmNRG="default.nrg";
+  fpXTC=NULL;
+  fpLMD=NULL;
+  fpNRG=NULL;
+  freqXTC=1000;
+  freqLMD=10;
+  freqNRG=10;
+  setup_parse_run();
+}
+
+Run::~Run()
+{
+  if (fpXTC) xdrfile_close(fpXTC);
+  if (fpLMD) fclose(fpLMD);
+  if (fpNRG) fclose(fpNRG);
+}
 
 
 
@@ -66,12 +98,12 @@ void Run::error(char *line,char *token,System *system)
 void Run::dump(char *line,char *token,System *system)
 {
   fprintf(stdout,"RUN PRINT> dt=%f (time step in ps)\n",dt);
-  fprintf(stdout,"RUN PRINT> T=%f (temperature in K)\n",dt);
+  fprintf(stdout,"RUN PRINT> T=%f (temperature in K)\n",T);
+  fprintf(stdout,"RUN PRINT> gamma=%f (friction in ps^-1)\n",gamma);
   fprintf(stdout,"RUN PRINT> nsteps=%d (number of time steps for dynamics)\n",nsteps);
   fprintf(stdout,"RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
   fprintf(stdout,"RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
   fprintf(stdout,"RUN PRINT> fnmnrg=%s (file name for energy output)\n",fnmNRG.c_str());
-#warning "Missing some of the constants"
 }
 
 void Run::reset(char *line,char *token,System *system)
@@ -122,6 +154,12 @@ void Run::dynamics(char *line,char *token,System *system)
     system->potential->calc_force(step,system);
     system->update->update(step,system);
     print_dynamics_output(step,system);
+
+    // NYI check gpu
+    if (cudaPeekAtLastError() != cudaSuccess) {
+      cudaError_t err=cudaPeekAtLastError();
+      fatal(__FILE__,__LINE__,"GPU error code %d during run initialization\n%s\n",err,cudaGetErrorString(err));
+    }
   }
 
   dynamics_finalize(system);
@@ -140,15 +178,26 @@ void Run::dynamics_initialize(System *system)
   if (!fpNRG) fpNRG=fpopen(fnmNRG.c_str(),"w");
 
   // Set up update structures
-  if (!system->update) {
-    system->update=new Update();
-  }
+  if (system->update) delete system->update;
+  system->update=new Update();
   system->update->initialize(system);
 
+  // Set up msld update structures
+  // NYI
+  system->msld->send_real(system->msld->lambda_d,system->msld->lambda);
+
   // Set up potential structures
-fprintf(stdout,"WORKING HERE - all the atoms.h structures need to get allocated somehwere.\n");
+  if (system->potential) delete system->potential;
+  system->potential=new Potential();
+  system->potential->initialize(system);
 
   //NYI read checkpoint
+
+  // NYI check gpu
+  if (cudaPeekAtLastError() != cudaSuccess) {
+    cudaError_t err=cudaPeekAtLastError();
+    fatal(__FILE__,__LINE__,"GPU error code %d during run initialization\n%s\n",err,cudaGetErrorString(err));
+  }
 }
 
 void Run::dynamics_finalize(System *system)

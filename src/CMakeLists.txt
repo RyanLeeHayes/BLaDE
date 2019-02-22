@@ -5,13 +5,11 @@ file(GLOB_RECURSE sources *.cxx *.cu *.h)
 
 find_package(CUDA 10.0)
 
-add_definitions(-DCUDAGRAPH)
-# add_definitions(-DNOMPI)
-# add_definitions(-DDOUBLEFLAG)
-# set (CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -g -O3 -arch=sm_20)
+## Add compiler definition flags here
+# add_definitions(-DCUDAGRAPH)
 
 ## Use for debugging kernels
-# set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-g;-G")
+set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
 
 # message("${sources}")
 cuda_add_executable(msld ${sources})

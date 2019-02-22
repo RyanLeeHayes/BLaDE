@@ -35,32 +35,8 @@ class Run {
   real T;
   real gamma;
 
-  Run()
-  {
-    step0=0;
-    nsteps=5000;
-    dt=0.001; // ps
-#warning "Temperature and friction automatically set"
-    T=300; // K
-    gamma=1.0; // ps^-1
-    fnmXTC="default.xtc";
-    fnmLMD="default.lmd";
-    fnmNRG="default.nrg";
-    fpXTC=NULL;
-    fpLMD=NULL;
-    fpNRG=NULL;
-    freqXTC=1000;
-    freqLMD=10;
-    freqNRG=10;
-    setup_parse_run();
-  }
-
-  ~Run()
-  {
-    if (fpXTC) xdrfile_close(fpXTC);
-    if (fpLMD) fclose(fpLMD);
-    if (fpNRG) fclose(fpNRG);
-  }
+  Run();
+  ~Run();
 
   void setup_parse_run();
 

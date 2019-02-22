@@ -1,6 +1,8 @@
 #ifndef MAIN_DEFINES_H
 #define MAIN_DEFINES_H
 
+#include <cuda_runtime.h>
+
 #define MAXLENGTHSTRING 1024
 #define ANGSTROM 0.1
 #define KCAL_MOL 4.186
@@ -9,11 +11,16 @@
 
 // CUDA block size for system update kernels
 #define BLUP 256
+#define BLBO 256
 
 #ifdef DOUBLE
 typedef double real;
+typedef double3 real3;
+#define realAtomicAdd doubleAtomicAdd
 #else
 typedef float real;
+typedef float3 real3;
+#define realAtomicAdd atomicAdd
 #endif
 
 struct Int2 {

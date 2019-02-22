@@ -8,6 +8,7 @@ parameters file ../test/toppar_water_ions/par_water_ions.prm
 
 structure file psf ../test/T4L_prep/minimized.psf
 ! structure print
+structure shake none
 
 selection define site1 and segid PROT resid 99
 selection define site1subBB and selection site1 atomnames N HN CA HA C O HT1 HT2 HT3 OXT
@@ -44,10 +45,8 @@ msld removescaling bond angle ! scale urey dihe impr and cmap
 !        s1s2 t  l0   k n
 msld bias 1 2 6 0.0 0.0 0
 
-structure setup
-
 state file ../test/T4L_prep/minimized.pdb
-state box 41.271760 0 0   0 41.271760 0   0 0 41.271760
+state box 4.1271760 0 0   0 4.1271760 0   0 0 4.1271760
 state velocity 300
 
 run setvariable nsteps 2000

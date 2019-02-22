@@ -1,17 +1,20 @@
 #ifndef SYSTEM_SYSTEM_H
 #define SYSTEM_SYSTEM_H
 
-#include "io/io.h"
-#include "system/parameters.h"
-#include "system/structure.h"
-#include "system/selections.h"
-#include "msld/msld.h"
-#include "system/state.h"
-#include "run/run.h"
-#include "system/potential.h"
-#include "update/update.h"
+#include <string>
+#include <map>
+
 
 // Forward declarations - not allowed when calling delete on objects
+class Control; // io/io.h
+class Parameters;
+class Structure;
+class Selections;
+class Msld;
+class State;
+class Run;
+class Potential;
+class Update;
 
 class System {
   public:
@@ -29,28 +32,8 @@ class System {
   std::map<std::string,void (System::*)(char*,char*,System*,Control*)> parseSystem;
   std::map<std::string,std::string> helpSystem;
 
-  System() {
-    parameters=NULL;
-    structure=NULL;
-    selections=NULL;
-    msld=NULL;
-    state=NULL;
-    run=NULL;
-    potential=NULL;
-    update=NULL;
-    setup_parse_system();
-  }
-
-  ~System() {
-    if (parameters) delete(parameters);
-    if (structure) delete(structure);
-    if (selections) delete(selections);
-    if (msld) delete(msld);
-    if (state) delete(state);
-    if (run) delete(run);
-    if (potential) delete(potential);
-    if (update) delete(update);
-  }
+  System();
+  ~System();
 
   void setup_parse_system();
   void parse_system(char *line,char *token,System *system,Control *control);

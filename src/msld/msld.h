@@ -1,7 +1,9 @@
 #ifndef MSLD_MSLD_H
 #define MSLD_MSLD_H
 
-#include <stdio.h>
+#include <vector>
+
+#include "main/defines.h"
 
 // Forward declarations
 class System;
@@ -27,40 +29,31 @@ class Msld {
   real *thetaVelocity;
   real *thetaMass;
   real *lambdaCharge;
+
+  real *lambda_d;
+  real *lambdaForce_d;
+  real *theta_d;
+  real *thetaVelocity_d;
+  real *thetaMass_d;
+
   bool scaleTerms[6]; // bond,ureyb,angle,dihe,impr,cmap
   std::vector<struct VariableBias> variableBias;
   std::vector<Int2> softBonds;
   std::vector<std::vector<int>> atomRestraints;
 
-  Msld() {
-    fprintf(stdout,"IMPLEMENT MSLD create %s %d\n",__FILE__,__LINE__);
-    blockCount=1;
-    atomBlock=NULL;
-    lambdaSite=NULL;
-    lambda=NULL;
-    lambdaForce=NULL;
-    lambdaBias=NULL;
-    theta=NULL;
-    thetaVelocity=NULL;
-    thetaMass=NULL;
-    lambdaCharge=NULL;
-    variableBias.clear();
-    softBonds.clear();
-    atomRestraints.clear();
-  }
+  Msld();
+  ~Msld();
 
-  ~Msld() {
-    if (atomBlock) free(atomBlock);
-    if (lambdaSite) free(lambdaSite);
-    if (lambda) free(lambda);
-    if (lambdaForce) free(lambdaForce);
-    if (lambdaBias) free(lambdaBias);
-    if (theta) free(theta);
-    if (thetaVelocity) free(thetaVelocity);
-    if (thetaMass) free(thetaMass);
-    if (lambdaCharge) free(lambdaCharge);
-  }
+  void bonded_scaling(int *idx,int *siteBlock,int type,int Nat,int Nsc);
+  void bond_scaling(int idx[2],int siteBlock[2]);
+  void ureyb_scaling(int idx[3],int siteBlock[2]);
+  void angle_scaling(int idx[3],int siteBlock[2]);
+  void dihe_scaling(int idx[4],int siteBlock[2]);
+  void impr_scaling(int idx[4],int siteBlock[2]);
+  void cmap_scaling(int idx[8],int siteBlock[3]);
 
+  void send_real(real *p_d,real *p);
+  void recv_real(real *p,real *p_d);
 };
 
 void parse_msld(char *line,System *system);

@@ -398,7 +398,7 @@ void Parameters::add_parameter_nbonds(char *line,FILE *fp)
     if (strcmp(iname.c_str(),"")==0) {
       ;
 // Other acceptable tokens
-#warning "Currently ignores nonbonded default parameters"
+// NOTE: "Currently ignores nonbonded default parameters"
 //      cutnb  14.0 ctofnb 12.0 ctonnb 10.0 eps 1.0 e14fac 1.0 wmin 1.5 
     } else if (strcmp(iname.c_str(),"cutnb")==0 ||
                strcmp(iname.c_str(),"ctofnb")==0 ||

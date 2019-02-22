@@ -1,10 +1,39 @@
 #include <string.h>
 
 #include "system/system.h"
+#include "system/parameters.h"
 #include "system/structure.h"
 #include "main/defines.h"
 #include "io/io.h"
 
+
+
+// Class constructors
+Structure::Structure() {
+  atomCount=0;
+
+  atomTypeIdx=NULL;
+  charge=NULL;
+  mass=NULL; // DEPRECATED
+
+  bondCount=0;
+  angleCount=0;
+  diheCount=0;
+  imprCount=0;
+  cmapCount=0;
+
+  shakeHbond=false;
+}
+
+Structure::~Structure() {
+  if (atomTypeIdx) free(atomTypeIdx);
+  if (charge) free(charge);
+  if (mass) free(mass);
+}
+
+
+
+// Parsing functions
 void parse_structure(char *line,System *system)
 {
   char token[MAXLENGTHSTRING];
@@ -31,8 +60,15 @@ void parse_structure(char *line,System *system)
     } else {
       fatal(__FILE__,__LINE__,"Unsupported structure file format: %s\n",token);
     }
-  } else if (strcmp(token,"setup")==0) {
-    system->structure->setup(system);
+  } else if (strcmp(token,"shake")==0) {
+    io_nexta(line,token);
+    if (strcmp(token,"hbond")==0) {
+      system->structure->shakeHbond=true;
+    } else if (strcmp(token,"none")==0) {
+      system->structure->shakeHbond=false;
+    } else {
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for structure shake selection. Try hbond or none\n",token);
+    }
   } else if (strcmp(token,"print")==0) {
     system->structure->dump();
   } else {
@@ -214,152 +250,6 @@ void Structure::add_structure_psf_file(FILE *fp)
     }
     cmapList.emplace_back(cmap);
   }
-}
-
-void Structure::setup(System *system)
-{
-  int i,j;
-  Parameters *param=system->parameters;
-
-  atomCount=atomList.size();
-  bondCount=bondList.size();
-  angleCount=angleList.size();
-  diheCount=diheList.size();
-  imprCount=imprList.size();
-  cmapCount=cmapList.size();
-
-  if (atomTypeIdx) free(atomTypeIdx);
-  atomTypeIdx=(int*)calloc(atomCount,sizeof(int));
-  if (charge) free(charge);
-  charge=(real*)calloc(atomCount,sizeof(real));
-  if (mass) free(mass);
-  mass=(real*)calloc(atomCount,sizeof(real));
-
-  bonds=(struct BondStructure*)calloc(bondCount,sizeof(struct BondStructure));
-  angles=(struct AngleStructure*)calloc(angleCount,sizeof(struct AngleStructure));
-  dihes=(struct DiheStructure*)calloc(diheCount,sizeof(struct DiheStructure));
-  imprs=(struct ImprStructure*)calloc(imprCount,sizeof(struct ImprStructure));
-  cmaps=(struct CmapStructure*)calloc(cmapCount,sizeof(struct CmapStructure));
-
-  for (i=0; i<atomCount; i++) {
-    struct AtomStructure at=atomList[i];
-    param->require_type_name(at.atomTypeName,"searching for atom types in structure setup");
-    atomTypeIdx[i]=param->atomTypeMap[at.atomTypeName];
-    charge[i]=at.charge;
-    mass[i]=param->atomMass[at.atomTypeName];
-  }
-
-  for (i=0; i<bondCount; i++) {
-    TypeName2 type;
-    struct BondStructure bond;
-    struct BondParameter bp;
-    for (j=0; j<2; j++) {
-      bond.idx[j]=bondList[i].i[j];
-      type.t[j]=atomList[bond.idx[j]].atomTypeName;
-    }
-    if (param->bondParameter.count(type)==0) {
-      fatal(__FILE__,__LINE__,"No bond parameter for %6d(%6s) %6d(%6s)\n",bond.idx[0],type.t[0].c_str(),bond.idx[1],type.t[1].c_str());
-    }
-    bp=param->bondParameter[type];
-    bond.kb=bp.kb;
-    bond.b0=bp.b0;
-    bonds[i]=bond;
-  }
-    
-  for (i=0; i<angleCount; i++) {
-    TypeName3 type;
-    struct AngleStructure angle;
-    struct AngleParameter ap;
-    for (j=0; j<3; j++) {
-      angle.idx[j]=angleList[i].i[j];
-      type.t[j]=atomList[angle.idx[j]].atomTypeName;
-    }
-    if (param->angleParameter.count(type)==0) {
-      fatal(__FILE__,__LINE__,"No angle parameter for %6d(%6s) %6d(%6s) %6d(%6s)\n",angle.idx[0],type.t[0].c_str(),angle.idx[1],type.t[1].c_str(),angle.idx[2],type.t[2].c_str());
-    }
-    ap=param->angleParameter[type];
-    angle.kangle=ap.kangle;
-    angle.angle0=ap.angle0;
-#warning "Urey Bradley terms are not separated out, may be inefficient.
-    angle.kureyb=ap.kureyb;
-    angle.ureyb0=ap.ureyb0;
-    angles[i]=angle;
-  }
-    
-  for (i=0; i<diheCount; i++) {
-    TypeName4 type,typx;
-    struct DiheStructure dihe;
-    std::vector<struct DiheParameter> dp;
-    for (j=0; j<4; j++) {
-      dihe.idx[j]=diheList[i].i[j];
-      type.t[j]=atomList[dihe.idx[j]].atomTypeName;
-    }
-    if (param->diheParameter.count(type)==1) {
-      dp=param->diheParameter[type];
-    } else {
-      typx=type;
-      typx.t[0]="X";
-      typx.t[3]="X";
-      if (param->diheParameter.count(typx)==1) {
-        dp=param->diheParameter[typx];
-      } else {
-        fatal(__FILE__,__LINE__,"No dihe parameter for %6d(%6s) %6d(%6s) %6d(%6s) %6d(%6s)\n",dihe.idx[0],type.t[0].c_str(),dihe.idx[1],type.t[1].c_str(),dihe.idx[2],type.t[2].c_str(),dihe.idx[3],type.t[3].c_str());
-      }
-    }
-#warning "Serious error: ignoring higher order dihedral terms for now"
-    dihe.kdih=dp[0].kdih;
-    dihe.ndih=dp[0].ndih;
-    dihe.dih0=dp[0].dih0;
-    dihes[i]=dihe;
-  }
-
-  for (i=0; i<imprCount; i++) {
-    TypeName4 type,typx;
-    struct ImprStructure impr;
-    struct ImprParameter ip;
-    for (j=0; j<4; j++) {
-      impr.idx[j]=imprList[i].i[j];
-      type.t[j]=atomList[impr.idx[j]].atomTypeName;
-    }
-    if (param->imprParameter.count(type)==1) { // 1st ABCD
-      ip=param->imprParameter[type];
-    } else {
-      typx=type;
-      typx.t[1]="X";
-      typx.t[2]="X";
-      if (param->imprParameter.count(typx)==1) { // 2nd AXXD
-        ip=param->imprParameter[typx];
-      } else {
-        typx=type;
-        typx.t[0]="X";
-        if (param->imprParameter.count(typx)==1) { // 3rd XBCD
-          ip=param->imprParameter[typx];
-        } else {
-          typx.t[3]="X";
-          if (param->imprParameter.count(typx)==1) { // 4th XBCX
-            ip=param->imprParameter[typx];
-          } else {
-            typx=type;
-            typx.t[0]="X";
-            typx.t[1]="X";
-            if (param->imprParameter.count(typx)==1) { // 5th AXXD
-              ip=param->imprParameter[typx];
-            } else {
-              fatal(__FILE__,__LINE__,"No impr parameter for %6d(%6s) %6d(%6s) %6d(%6s) %6d(%6s)\n",impr.idx[0],type.t[0].c_str(),impr.idx[1],type.t[1].c_str(),impr.idx[2],type.t[2].c_str(),impr.idx[3],type.t[3].c_str());
-            }
-          }
-        }
-      }
-    }
-    impr.kimp=ip.kimp;
-    impr.imp0=ip.imp0;
-    imprs[i]=impr;
-  }
-
-#warning "Missing CMAP terms"
-#warning "Missing nonbonded terms"
-
-  fprintf(stdout,"Implement nonbonded structures too\n");
 }
 
 void Structure::dump()

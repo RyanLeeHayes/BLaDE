@@ -9,6 +9,7 @@
 #include "io/io.h"
 #include "system/system.h"
 #include "system/selections.h"
+#include "system/structure.h"
 
 void Selections::erase(const char *token)
 {

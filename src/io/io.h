@@ -1,7 +1,7 @@
 #ifndef IO_IO_H
 #define IO_IO_H
 
-#include <stdio.h>
+#include <stdio.h> // For FILE
 #include <string>
 #include <map>
 #include <vector>
@@ -55,6 +55,5 @@ void io_strncpy(char *targ,char *dest,int n);
 void interpretter(const char *fnm,System *system,int level);
 
 void print_dynamics_output(int step,System *system);
-void print_xtc(int step,System *system);
 
 #endif

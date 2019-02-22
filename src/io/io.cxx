@@ -7,12 +7,14 @@
 #include "system/system.h"
 
 // parse_whatever
+#include "io/io.h"
 #include "system/parameters.h"
 #include "system/structure.h"
 #include "system/selections.h"
 #include "msld/msld.h"
 #include "system/potential.h"
 #include "system/state.h"
+#include "run/run.h"
 #include "xdr/xdrfile.h"
 #include "xdr/xdrfile_xtc.h"
 
@@ -216,20 +218,6 @@ void interpretter(const char *fnm,System *system,int level)
   fclose(fp);
 }
 
-void print_dynamics_output(int step,System *system)
-{
-  if (step % system->run->freqXTC == 0) {
-    system->state->recv_position();
-    print_xtc(step,system);
-  }
-  if (step % system->run->freqLMD == 0) {
-    fprintf(stdout,"Lambda trajectory NYI\n");
-  }
-  if (step % system->run->freqNRG == 0) {
-    fprintf(stdout,"Energy output NYI\n");
-  }
-}
-
 void print_xtc(int step,System *system)
 {
   XDRFILE *fp=system->run->fpXTC;
@@ -257,4 +245,37 @@ void print_xtc(int step,System *system)
 //                       int natoms,int step,real time,
 //                       matrix box,rvec *x,real prec);
   write_xtc(fp,N,step,(float) (step*system->run->dt),fbox,fx,1000.0);
+}
+
+void print_nrg(int step,System *system)
+{
+  FILE *fp=system->run->fpNRG;
+  real *e=system->state->energy;
+  int i;
+
+  for (i=0; i<eepotential; i++) {
+    e[eepotential]+=e[i];
+  }
+  e[eetotal]=e[eepotential]+e[eekinetic];
+
+  fprintf(fp,"%10d",step);
+  for (i=0; i<eeend; i++) {
+    fprintf(fp," %12.4f",e[i]);
+  }
+  fprintf(fp,"\n");
+}
+
+void print_dynamics_output(int step,System *system)
+{
+  if (step % system->run->freqXTC == 0) {
+    system->state->recv_position();
+    print_xtc(step,system);
+  }
+  if (step % system->run->freqLMD == 0) {
+    fprintf(stdout,"Lambda trajectory NYI\n");
+  }
+  if (step % system->run->freqNRG == 0) {
+    system->state->recv_energy();
+    print_nrg(step,system);
+  }
 }

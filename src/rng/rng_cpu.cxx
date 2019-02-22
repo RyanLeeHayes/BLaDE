@@ -44,11 +44,12 @@ R
    email: m-mat @ math.sci.hiroshima-u.ac.jp (remove space)
 */
 
-#include "rng/rng_cpu.h"
-
+#include <time.h>
 #include <math.h>
 #include <stdlib.h>
 
+#include "rng/rng_cpu.h"
+ 
 /* Period parameters */
 #define MT_N 624
 #define MT_M 397
@@ -58,6 +59,21 @@ R
 
 // static unsigned long mt[MT_N]; /* the array for the state vector  */
 // static int mti=MT_N+1; /* mti==N+1 means mt[N] is not initialized */
+
+
+
+// Class Constructors
+RngCPU::RngCPU()
+{
+  mtState=alloc_mtstate(time(NULL));
+}
+
+RngCPU::~RngCPU()
+{
+  free_mtstate(mtState);
+}
+
+
 
 /* initializes mt[N] with a seed */
 void RngCPU::init_genrand(unsigned long s, unsigned long *mt, int* pt_mti)

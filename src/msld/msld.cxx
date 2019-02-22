@@ -1,9 +1,58 @@
 #include <string.h>
 
+#include "msld/msld.h"
 #include "system/system.h"
 #include "io/io.h"
-#include "msld/msld.h"
+#include "system/selections.h"
+#include "system/structure.h"
 
+
+
+// Class constructors
+Msld::Msld() {
+  blockCount=1;
+  atomBlock=NULL;
+  lambdaSite=NULL;
+  lambda=NULL;
+  lambdaForce=NULL;
+  lambdaBias=NULL;
+  theta=NULL;
+  thetaVelocity=NULL;
+  thetaMass=NULL;
+  lambdaCharge=NULL;
+
+  lambda_d=NULL;
+  lambdaForce_d=NULL;
+  theta_d=NULL;
+  thetaVelocity_d=NULL;
+  thetaMass_d=NULL;
+
+  variableBias.clear();
+  softBonds.clear();
+  atomRestraints.clear();
+}
+
+Msld::~Msld() {
+  if (atomBlock) free(atomBlock);
+  if (lambdaSite) free(lambdaSite);
+  if (lambda) free(lambda);
+  if (lambdaForce) free(lambdaForce);
+  if (lambdaBias) free(lambdaBias);
+  if (theta) free(theta);
+  if (thetaVelocity) free(thetaVelocity);
+  if (thetaMass) free(thetaMass);
+  if (lambdaCharge) free(lambdaCharge);
+
+  if (lambda_d) cudaFree(lambda_d);
+  if (lambdaForce_d) cudaFree(lambdaForce_d);
+  if (theta_d) cudaFree(theta_d);
+  if (thetaVelocity_d) cudaFree(thetaVelocity_d);
+  if (thetaMass_d) cudaFree(thetaMass_d);
+}
+
+
+
+// Class parsing
 void parse_msld(char *line,System *system)
 {
   char token[MAXLENGTHSTRING];
@@ -38,6 +87,15 @@ void parse_msld(char *line,System *system)
     system->msld->thetaVelocity=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
+
+    cudaMalloc(&(system->msld->lambda_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->lambdaForce_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->theta_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->thetaVelocity_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->thetaMass_d),system->msld->blockCount*sizeof(real));
+
+    // NYI - this would be a lot easier to read if these were split in to parsing functions.
+    fprintf(stdout,"NYI - Initialize all blocks in first site %s:%d\n",__FILE__,__LINE__);
   } else if (strcmp(token,"call")==0) {
     i=io_nexti(line);
     if (i<0 || i>=system->msld->blockCount) {
@@ -143,4 +201,88 @@ void parse_msld(char *line,System *system)
   } else {
     fatal(__FILE__,__LINE__,"Unrecognized selection token: %s\n",token);
   }
+}
+
+int merge_site_block(int site,int block)
+{
+  if (site>=(1<<16) || block>=(1<<16)) {
+    fatal(__FILE__,__LINE__,"Site or block cap of 2^16 exceeded. Site=%d,Block=%d\n",site,block);
+  }
+  return ((site<<16)|block);
+}
+
+// NYI: soft bonds or constrained atom scaling
+void Msld::bonded_scaling(int *idx,int *siteBlock,int type,int Nat,int Nsc)
+{
+  int i,j;
+  int ab;
+  int block[Nsc+2]={0}; // First term is blockCount, last term is for error checking
+  block[0]=blockCount;
+
+  // Sort into a descending list with no duplicates.
+  if (scaleTerms[type]) {
+    for (i=1; i<Nsc+2; i++) {
+      for (j=0; j<Nat; j++) {
+        ab=atomBlock[idx[j]];
+        if (ab>block[i] && ab<block[i-1]) {
+          block[i]=ab;
+        }
+      }
+    }
+    // Check for errors
+    for (i=1; i<Nsc+1; i++) {
+      for (j=i+1; j<Nsc+1; j++) {
+        if (block[i]>0 && block[j]>0 && block[i]!=block[j] && lambdaSite[block[i]]==lambdaSite[block[j]]) {
+          fatal(__FILE__,__LINE__,"Illegal MSLD scaling between two atoms in the same site (%d) but different blocks (%d and %d)\n",lambdaSite[block[i]],block[i],block[j]);
+        }
+      }
+    }
+    if (block[Nsc+1] != 0) {
+      fatal(__FILE__,__LINE__,"Only %d lambda scalings allowed in a group of %d bonded atoms\n",Nsc,Nat);
+    }
+  }
+
+  for (i=0; i<Nsc; i++) {
+    siteBlock[i]=merge_site_block(lambdaSite[block[i+1]],block[i+1]);
+  }
+}
+
+void Msld::bond_scaling(int idx[2],int siteBlock[2])
+{
+  bonded_scaling(idx,siteBlock,0,2,2);
+}
+
+void Msld::ureyb_scaling(int idx[3],int siteBlock[2])
+{
+  bonded_scaling(idx,siteBlock,1,3,2);
+}
+
+void Msld::angle_scaling(int idx[3],int siteBlock[2])
+{
+  bonded_scaling(idx,siteBlock,2,3,2);
+}
+
+void Msld::dihe_scaling(int idx[4],int siteBlock[2])
+{
+  bonded_scaling(idx,siteBlock,3,4,2);
+}
+
+void Msld::impr_scaling(int idx[4],int siteBlock[2])
+{
+  bonded_scaling(idx,siteBlock,4,4,2);
+}
+
+void Msld::cmap_scaling(int idx[8],int siteBlock[3])
+{
+  bonded_scaling(idx,siteBlock,5,8,3);
+}
+
+void Msld::send_real(real *p_d,real *p)
+{
+  cudaMemcpy(p_d,p,blockCount*sizeof(real),cudaMemcpyHostToDevice);
+}
+
+void Msld::recv_real(real *p,real *p_d)
+{
+  cudaMemcpy(p,p_d,blockCount*sizeof(real),cudaMemcpyDeviceToHost);
 }

@@ -1,8 +1,6 @@
 #ifndef RNG_RNG_CPU_H
 #define RNG_RNG_CPU_H
 
-#include <time.h>
-
 #include "main/defines.h"
 
 struct MTState
@@ -18,15 +16,8 @@ class RngCPU
   public:
   struct MTState *mtState;
 
-  RngCPU()
-  {
-    mtState=alloc_mtstate(time(NULL));
-  }
-
-  ~RngCPU()
-  {
-    free_mtstate(mtState);
-  }
+  RngCPU();
+  ~RngCPU();
 
   void init_genrand(unsigned long s, unsigned long *mt, int* pt_mti);
   void init_by_array(unsigned long *init_key, int key_length, unsigned long *mt, int* pt_mti);

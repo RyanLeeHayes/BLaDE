@@ -8,32 +8,12 @@
 // See also for integrator/bond constraints/thermostat
 // https://pubs.acs.org/doi/10.1021/jp411770f
 
+#include <cuda_runtime.h>
+
 #include "main/defines.h"
 
 // Forward declarations
 class System;
-
-/*struct LeapParms
-{
-  real dt;
-  real gamma;
-  real kT;
-  // real mDiff;
-  real SigmaVsVs;
-  real XsVsCoeff;
-  real CondSigmaXsXs;
-  real SigmaVrVr;
-  real XrVrCoeff;
-  real CondSigmaXrXr;
-  // real vhalf_vscale;
-  // real vhalf_ascale;
-  // real vhalf_Vsscale;
-  real v_vscale;
-  real v_ascale;
-  real v_Vsscale;
-  real x_vscale;
-  real x_Xrscale;
-};*/
 
 struct LeapParms1
 {
@@ -41,12 +21,14 @@ struct LeapParms1
   real gamma;
   real kT;
 };
+
 struct LeapParms2
 {
   real sqrta; // a=exp(-gamma*dt)
   real noise; // sqrt((1-a)*kT) - still need to divide by sqrt(m)
   real fscale; // 0.5*b*dt; b=sqrt(tanh(0.5*gamma*dt)/(0.5*gamma*dt));
 };
+
 struct LeapState
 {
   int N;
@@ -64,22 +46,14 @@ class Update {
   struct LeapState *leapState;
 
   cudaStream_t updateStream;
+  cudaEvent_t updateComplete;
+#ifdef CUDAGRAPH
   cudaGraph_t updateGraph;
   cudaGraphExec_t updateGraphExec;
+#endif
 
-  Update()
-  {
-    leapParms1=NULL;
-    leapParms2=NULL;
-    leapState=NULL;
-  }
-
-  ~Update()
-  {
-    if (leapParms1) free(leapParms1);
-    if (leapParms2) free(leapParms2);
-    if (leapState) free(leapState);
-  }
+  Update();
+  ~Update();
 
   void initialize(System *system);
   void update(int step,System *system);

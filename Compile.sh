@@ -11,6 +11,6 @@ source modules
 
 mkdir build
 cd build
-cmake ../src
+cmake -DCMAKE_BUILD_TYPE=Release ../src
 
 make $1 msld

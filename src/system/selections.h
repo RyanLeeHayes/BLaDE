@@ -1,7 +1,8 @@
 #ifndef SYSTEM_SELECTIONS_H
 #define SYSTEM_SELECTIONS_H
 
-#include "io/io.h"
+#include <string>
+#include <map>
 
 // Forward declarations
 class Structure;

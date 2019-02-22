@@ -2,6 +2,41 @@
 #include <string>
 
 #include "system/system.h"
+#include "io/io.h"
+#include "system/parameters.h"
+#include "system/structure.h"
+#include "system/selections.h"
+#include "msld/msld.h"
+#include "system/state.h"
+#include "run/run.h"
+#include "system/potential.h"
+#include "update/update.h"
+
+
+
+// Class constructors
+System::System() {
+  parameters=NULL;
+  structure=NULL;
+  selections=NULL;
+  msld=NULL;
+  state=NULL;
+  run=NULL;
+  potential=NULL;
+  update=NULL;
+  setup_parse_system();
+}
+
+System::~System() {
+  if (parameters) delete(parameters);
+  if (structure) delete(structure);
+  if (selections) delete(selections);
+  if (msld) delete(msld);
+  if (state) delete(state);
+  if (run) delete(run);
+  if (potential) delete(potential);
+  if (update) delete(update);
+}
 
 
 
