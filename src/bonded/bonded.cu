@@ -6,6 +6,7 @@
 #include "system/system.h"
 #include "system/state.h"
 #include "msld/msld.h"
+#include "run/run.h"
 #include "system/potential.h"
 
 #include "main/real3.h"
@@ -96,21 +97,21 @@ __global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,r
   // Energy, if requested
   if (energy) {
     lEnergy*=l[0]*l[1];
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,1);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,2);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,4);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,8);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,16);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,8);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,16);
     __syncthreads();
     if ((0x1F & threadIdx.x)==0) {
       sEnergy[threadIdx.x>>5]=lEnergy;
     }
     __syncthreads();
-    if (threadIdx.x < (BLBO>>5)) {
+    if (threadIdx.x < (blockDim.x>>5)) {
       lEnergy=sEnergy[threadIdx.x];
-      lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,1);
-      lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,2);
-      lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,4);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
     }
     if (threadIdx.x==0) {
       realAtomicAdd(energy,lEnergy);
@@ -132,6 +133,7 @@ void getforce_bond(System *system,bool calcEnergy)
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eebond;
   }
+
   getforce_bond_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->bonds_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
 }
 
@@ -170,7 +172,7 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
     dotp=real3_dot(drij,drkj);
     crop=real3_cross(drij,drkj); // c = a x b
     mcrop=real3_mag(crop);
-    t=atan2(mcrop,dotp);
+    t=atan2f(mcrop,dotp);
 
     // Scaling
     b[0]=0xFFFF & ap.siteBlock[0];
@@ -212,21 +214,21 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
   // Energy, if requested
   if (energy) {
     lEnergy*=l[0]*l[1];
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,1);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,2);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,4);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,8);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,16);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,8);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,16);
     __syncthreads();
     if ((0x1F & threadIdx.x)==0) {
       sEnergy[threadIdx.x>>5]=lEnergy;
     }
     __syncthreads();
-    if (threadIdx.x < (BLBO>>5)) {
+    if (threadIdx.x < (blockDim.x>>5)) {
       lEnergy=sEnergy[threadIdx.x];
-      lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,1);
-      lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,2);
-      lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,4);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
     }
     if (threadIdx.x==0) {
       realAtomicAdd(energy,lEnergy);
@@ -247,6 +249,7 @@ void getforce_angle(System *system,bool calcEnergy)
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eeangle;
   }
+
   getforce_angle_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->angles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
 }
 
@@ -257,9 +260,9 @@ __device__ void function_torsion(DihePotential dp,real phi,real *fphi,real *lE,b
   real dphi;
 
   dphi=dp.ndih*phi-dp.dih0;
-  fphi[0]=-dp.kdih*dp.ndih*sin(dphi);
+  fphi[0]=-dp.kdih*dp.ndih*sinf(dphi);
   if (calcEnergy) {
-    lE[0]=dp.kdih*(cos(dphi)+1);
+    lE[0]=dp.kdih*(cosf(dphi)+1);
   }
 }
 
@@ -319,7 +322,7 @@ __global__ void getforce_torsion_kernel(int torsionCount,struct TorsionPotential
     dsinp=real3_cross(mvec,nvec);
     sinp=real3_mag(dsinp);
     cosp=real3_dot(mvec,nvec);
-    phi=atan2(sinp,cosp);
+    phi=atan2f(sinp,cosp);
     ipr=real3_dot(drij,nvec);
     sign=(ipr > 0.0) ? -1.0 : 1.0; // Opposite of gromacs because m and n are opposite
     phi=sign*phi;
@@ -363,21 +366,21 @@ __global__ void getforce_torsion_kernel(int torsionCount,struct TorsionPotential
   // Energy, if requested
   if (energy) {
     lEnergy*=l[0]*l[1];
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,1);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,2);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,4);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,8);
-    lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,16);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,8);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,16);
     __syncthreads();
     if ((0x1F & threadIdx.x)==0) {
       sEnergy[threadIdx.x>>5]=lEnergy;
     }
     __syncthreads();
-    if (threadIdx.x < (BLBO>>5)) {
+    if (threadIdx.x < (blockDim.x>>5)) {
       lEnergy=sEnergy[threadIdx.x];
-      lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,1);
-      lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,2);
-      lEnergy+=__shfl_up_sync(0xFFFFFFFF,lEnergy,4);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
     }
     if (threadIdx.x==0) {
       realAtomicAdd(energy,lEnergy);
@@ -398,6 +401,7 @@ void getforce_dihe(System *system,bool calcEnergy)
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eedihe;
   }
+
   getforce_torsion_kernel <DihePotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->dihes_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
 }
 
@@ -414,5 +418,6 @@ void getforce_impr(System *system,bool calcEnergy)
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eeimpr;
   }
+
   getforce_torsion_kernel <ImprPotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->imprs_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
 }

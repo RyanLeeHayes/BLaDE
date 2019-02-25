@@ -1,8 +1,11 @@
 #ifndef SYSTEM_SYSTEM_H
 #define SYSTEM_SYSTEM_H
 
+#include <cuda_runtime.h>
+
 #include <string>
 #include <map>
+
 
 
 // Forward declarations - not allowed when calling delete on objects

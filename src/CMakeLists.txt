@@ -7,9 +7,11 @@ find_package(CUDA 10.0)
 
 ## Add compiler definition flags here
 # add_definitions(-DCUDAGRAPH)
+# add_definitions(-DPROFILESERIAL)
 
 ## Use for debugging kernels
 set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
+set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "--use_fast_math")
 
 # message("${sources}")
 cuda_add_executable(msld ${sources})

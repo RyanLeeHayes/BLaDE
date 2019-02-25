@@ -26,6 +26,13 @@ Run::Run()
   freqXTC=1000;
   freqLMD=10;
   freqNRG=10;
+#ifdef PROFILESERIAL
+  masterStream=0;
+#else
+  cudaStreamCreate(&masterStream);
+#endif
+  cudaEventCreate(&forceComplete);
+  cudaEventCreate(&updateComplete);
   setup_parse_run();
 }
 
@@ -34,6 +41,11 @@ Run::~Run()
   if (fpXTC) xdrfile_close(fpXTC);
   if (fpLMD) fclose(fpLMD);
   if (fpNRG) fclose(fpNRG);
+#ifndef PROFILESERIAL
+  cudaStreamDestroy(masterStream);
+#endif
+  cudaEventDestroy(forceComplete);
+  cudaEventDestroy(updateComplete);
 }
 
 
@@ -177,14 +189,13 @@ void Run::dynamics_initialize(System *system)
   if (!fpLMD) fpLMD=fpopen(fnmLMD.c_str(),"w");
   if (!fpNRG) fpNRG=fpopen(fnmNRG.c_str(),"w");
 
+  // Finish setting up MSLD
+  system->msld->initialize(); 
+
   // Set up update structures
   if (system->update) delete system->update;
   system->update=new Update();
   system->update->initialize(system);
-
-  // Set up msld update structures
-  // NYI
-  system->msld->send_real(system->msld->lambda_d,system->msld->lambda);
 
   // Set up potential structures
   if (system->potential) delete system->potential;
@@ -198,6 +209,8 @@ void Run::dynamics_initialize(System *system)
     cudaError_t err=cudaPeekAtLastError();
     fatal(__FILE__,__LINE__,"GPU error code %d during run initialization\n%s\n",err,cudaGetErrorString(err));
   }
+
+  cudaEventRecord(updateComplete,masterStream);
 }
 
 void Run::dynamics_finalize(System *system)

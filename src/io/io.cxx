@@ -247,6 +247,19 @@ void print_xtc(int step,System *system)
   write_xtc(fp,N,step,(float) (step*system->run->dt),fbox,fx,1000.0);
 }
 
+void print_lmd(int step,System *system)
+{
+  FILE *fp=system->run->fpLMD;
+  real *l=system->msld->lambda;
+  int i;
+
+  fprintf(fp,"%10d",step);
+  for (i=1; i<system->msld->blockCount; i++) {
+    fprintf(fp," %8.6f",l[i]);
+  }
+  fprintf(fp,"\n");
+}
+
 void print_nrg(int step,System *system)
 {
   FILE *fp=system->run->fpNRG;
@@ -272,7 +285,8 @@ void print_dynamics_output(int step,System *system)
     print_xtc(step,system);
   }
   if (step % system->run->freqLMD == 0) {
-    fprintf(stdout,"Lambda trajectory NYI\n");
+    system->msld->recv_real(system->msld->lambda,system->msld->lambda_d);
+    print_lmd(step,system);
   }
   if (step % system->run->freqNRG == 0) {
     system->state->recv_energy();

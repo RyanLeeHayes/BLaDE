@@ -45,11 +45,15 @@ class Update {
   struct LeapParms2 *leapParms2;
   struct LeapState *leapState;
 
-  cudaStream_t updateStream;
-  cudaEvent_t updateComplete;
+  struct LeapParms1 *lambdaLeapParms1;
+  struct LeapParms2 *lambdaLeapParms2;
+  struct LeapState *lambdaLeapState;
+
+  cudaStream_t updateStream, updateLambdaStream;
+  cudaEvent_t updateComplete, updateLambdaComplete;
 #ifdef CUDAGRAPH
-  cudaGraph_t updateGraph;
-  cudaGraphExec_t updateGraphExec;
+  cudaGraph_t updateGraph, updateLambdaGraph;
+  cudaGraphExec_t updateGraphExec, updateLambdaGraphExec;
 #endif
 
   Update();
@@ -62,7 +66,7 @@ class Update {
   // void calcABCD(real slambda,real* A,real* B,real* C,real* D);
   struct LeapParms1* alloc_leapparms1(real dt,real gamma,real T);
   struct LeapParms2* alloc_leapparms2(real dt,real gamma,real T);
-  struct LeapState* alloc_leapstate(System *system);
+  struct LeapState* alloc_leapstate(int N,real *x,real *v,real *f,real *ism,real *random);
 };
 
 __global__ void update_VO(struct LeapState ls,struct LeapParms2 lp);

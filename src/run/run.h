@@ -35,6 +35,10 @@ class Run {
   real T;
   real gamma;
 
+  cudaStream_t masterStream;
+  cudaEvent_t forceComplete;
+  cudaEvent_t updateComplete;
+
   Run();
   ~Run();
 

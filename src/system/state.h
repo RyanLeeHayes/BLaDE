@@ -22,6 +22,7 @@ typedef enum eeterm {
   eecmap,
   eenbdirect,
   eenbrecip,
+  eelambda,
   eepotential,
   eekinetic,
   eetotal,

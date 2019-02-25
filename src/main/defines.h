@@ -12,6 +12,8 @@
 // CUDA block size for system update kernels
 #define BLUP 256
 #define BLBO 256
+#define BLNB 256
+#define BLMS 256
 
 #ifdef DOUBLE
 typedef double real;

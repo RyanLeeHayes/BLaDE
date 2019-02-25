@@ -73,12 +73,14 @@ class Potential {
 
   // cudaStream_t bondedStream[5];
   cudaStream_t bondedStream;
+  cudaStream_t biaspotStream;
   cudaStream_t nbdirectStream;
   cudaStream_t nbrecipStream;
   // NYI - might need some more
 
-  cudaEvent_t bondedComplete[5];
-  cudaEvent_t forceComplete;
+  cudaEvent_t bondedComplete;
+  cudaEvent_t biaspotComplete;
+  // cudaEvent_t forceComplete;
   
   Potential();
   ~Potential();

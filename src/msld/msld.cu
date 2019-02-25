@@ -1,10 +1,13 @@
 #include <string.h>
+#include <cuda_runtime.h>
 
 #include "msld/msld.h"
 #include "system/system.h"
 #include "io/io.h"
 #include "system/selections.h"
 #include "system/structure.h"
+#include "system/state.h"
+#include "system/potential.h"
 
 
 
@@ -19,17 +22,33 @@ Msld::Msld() {
   theta=NULL;
   thetaVelocity=NULL;
   thetaMass=NULL;
+  thetaInvsqrtMass=NULL;
   lambdaCharge=NULL;
 
+  lambdaSite_d=NULL;
   lambda_d=NULL;
   lambdaForce_d=NULL;
+  lambdaBias_d=NULL;
   theta_d=NULL;
   thetaVelocity_d=NULL;
+  thetaForce_d=NULL;
   thetaMass_d=NULL;
+  thetaInvsqrtMass_d=NULL;
+  thetaRandom_d=NULL;
 
-  fprintf(stdout,"blocksPerSite is NYI, %s:%d\n",__FILE__,__LINE__);
+  blocksPerSite=NULL;
+  blocksPerSite_d=NULL;
+  siteBound=NULL;
+  siteBound_d=NULL;
 
-  variableBias.clear();
+  gamma=1; // ps^-1
+#warning "fnex defaults to 5.5"
+  fnex=5.5;
+
+  variableBias_tmp.clear();
+  variableBias=NULL;
+  variableBias_d=NULL;
+
   softBonds.clear();
   atomRestraints.clear();
 }
@@ -43,13 +62,24 @@ Msld::~Msld() {
   if (theta) free(theta);
   if (thetaVelocity) free(thetaVelocity);
   if (thetaMass) free(thetaMass);
+  if (thetaInvsqrtMass) free(thetaInvsqrtMass);
   if (lambdaCharge) free(lambdaCharge);
 
+  if (lambdaSite_d) cudaFree(lambdaSite_d);
   if (lambda_d) cudaFree(lambda_d);
   if (lambdaForce_d) cudaFree(lambdaForce_d);
+  if (lambdaBias_d) cudaFree(lambdaBias_d);
   if (theta_d) cudaFree(theta_d);
   if (thetaVelocity_d) cudaFree(thetaVelocity_d);
+  if (thetaForce_d) cudaFree(thetaForce_d);
   if (thetaMass_d) cudaFree(thetaMass_d);
+  if (thetaInvsqrtMass_d) cudaFree(thetaInvsqrtMass_d);
+  if (thetaRandom_d) cudaFree(thetaRandom_d);
+
+  if (blocksPerSite) free(blocksPerSite);
+  if (blocksPerSite_d) cudaFree(blocksPerSite_d);
+  if (siteBound) free(siteBound);
+  if (siteBound_d) cudaFree(siteBound_d);
 }
 
 
@@ -88,13 +118,19 @@ void parse_msld(char *line,System *system)
     system->msld->theta=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaVelocity=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->thetaInvsqrtMass=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
 
+    cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
     cudaMalloc(&(system->msld->lambda_d),system->msld->blockCount*sizeof(real));
     cudaMalloc(&(system->msld->lambdaForce_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
     cudaMalloc(&(system->msld->theta_d),system->msld->blockCount*sizeof(real));
     cudaMalloc(&(system->msld->thetaVelocity_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->thetaForce_d),system->msld->blockCount*sizeof(real));
     cudaMalloc(&(system->msld->thetaMass_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->thetaInvsqrtMass_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->thetaRandom_d),2*system->msld->blockCount*sizeof(real));
 
     // NYI - this would be a lot easier to read if these were split in to parsing functions.
     fprintf(stdout,"NYI - Initialize all blocks in first site %s:%d\n",__FILE__,__LINE__);
@@ -127,6 +163,8 @@ void parse_msld(char *line,System *system)
     system->msld->thetaMass[i]=io_nextf(line);
     system->msld->lambdaBias[i]=io_nextf(line);
     system->msld->lambdaCharge[i]=io_nextf(line);
+  } else if (strcmp(token,"gamma")==0) {
+    system->msld->gamma=io_nextf(line); // units: ps^-1
   } else if (strcmp(token,"bias")==0) {
     // NYI - add option to reset variable biases
     struct VariableBias vb;
@@ -136,7 +174,7 @@ void parse_msld(char *line,System *system)
     vb.l0=io_nextf(line);
     vb.k=io_nextf(line);
     vb.n=io_nexti(line);
-    system->msld->variableBias.emplace_back(vb);
+    system->msld->variableBias_tmp.emplace_back(vb);
   } else if (strcmp(token,"removescaling")==0) {
     std::string name;
     while ((name=io_nexts(line))!="") {
@@ -279,6 +317,57 @@ void Msld::cmap_scaling(int idx[8],int siteBlock[3])
   bonded_scaling(idx,siteBlock,5,8,3);
 }
 
+// Initialize MSLD for a simulation
+void Msld::initialize()
+{
+  int i;
+
+  for (i=1; i<blockCount; i++) {
+    thetaInvsqrtMass[i]=1/sqrt(thetaMass[i]);
+  }
+
+  // Send the biases over
+  send_real(lambdaBias_d,lambdaBias);
+  variableBiasCount=variableBias_tmp.size();
+  variableBias=(struct VariableBias*)calloc(variableBiasCount,sizeof(struct VariableBias));
+  cudaMalloc(&variableBias_d,variableBiasCount*sizeof(struct VariableBias));
+  for (i=0; i<variableBiasCount; i++) {
+    variableBias[i]=variableBias_tmp[i];
+  }
+  cudaMemcpy(variableBias_d,variableBias,variableBiasCount*sizeof(struct VariableBias),cudaMemcpyHostToDevice);
+
+  // Get blocksPerSite
+  siteCount=1;
+  for (i=0; i<blockCount; i++) {
+    siteCount=((siteCount>lambdaSite[i])?siteCount:(lambdaSite[i]+1));
+    if (i!=0 && lambdaSite[i]!=lambdaSite[i-1] && lambdaSite[i]!=lambdaSite[i-1]+1) {
+      fatal(__FILE__,__LINE__,"Blocks must be ordered by consecutive sites. Block %d (site %d) is out of order with block %d (site %d)\n",i,lambdaSite[i],i-1,lambdaSite[i-1]);
+    }
+  }
+  blocksPerSite=(int*)calloc(siteCount,sizeof(int));
+  siteBound=(int*)calloc(siteCount+1,sizeof(int));
+  cudaMalloc(&blocksPerSite_d,siteCount*sizeof(int));
+  cudaMalloc(&siteBound_d,(siteCount+1)*sizeof(int));
+  for (i=0; i<blockCount; i++) {
+    blocksPerSite[lambdaSite[i]]++;
+  }
+  if (blocksPerSite[0]!=1) fatal(__FILE__,__LINE__,"Only one block allowed in site 0\n");
+  siteBound[0]=0;
+  for (i=0; i<siteCount; i++) {
+    if (i && blocksPerSite[i]<2) fatal(__FILE__,__LINE__,"At least two blocks are required in each site. %d found at site %d\n",blocksPerSite[i],i);
+    siteBound[i+1]=siteBound[i]+blocksPerSite[i];
+  }
+  cudaMemcpy(blocksPerSite_d,blocksPerSite,siteCount*sizeof(int),cudaMemcpyHostToDevice);
+  cudaMemcpy(siteBound_d,siteBound,(siteCount+1)*sizeof(int),cudaMemcpyHostToDevice);
+  cudaMemcpy(lambdaSite_d,lambdaSite,blockCount*sizeof(int),cudaMemcpyHostToDevice);
+
+  // Get lambda on remote node
+  send_real(theta_d,theta);
+  calc_lambda_from_theta(0); // NYI - pick a stream...
+  
+//  send_real(system->msld->lambda_d,system->msld->lambda);
+}
+
 void Msld::send_real(real *p_d,real *p)
 {
   cudaMemcpy(p_d,p,blockCount*sizeof(real),cudaMemcpyHostToDevice);
@@ -287,4 +376,188 @@ void Msld::send_real(real *p_d,real *p)
 void Msld::recv_real(real *p,real *p_d)
 {
   cudaMemcpy(p,p_d,blockCount*sizeof(real),cudaMemcpyDeviceToHost);
+}
+
+__global__ void calc_lambda_from_theta_kernel(real *lambda,real *theta,int siteCount,int *siteBound,real fnex)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  int j,ji,jf;
+  real lLambda;
+  real norm=0;
+
+  if (i<siteCount) {
+    ji=siteBound[i];
+    jf=siteBound[i+1];
+    for (j=ji; j<jf; j++) {
+#warning "Hardcoded in expf and sinf"
+      lLambda=expf(fnex*sinf(theta[j]*ANGSTROM));
+      lambda[j]=lLambda;
+      norm+=lLambda;
+    }
+    norm=1/norm;
+    for (j=ji; j<jf; j++) {
+      lambda[j]*=norm;
+    }
+  }
+}
+
+void Msld::calc_lambda_from_theta(cudaStream_t s)
+{
+  calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,s>>>(lambda_d,theta_d,siteCount,siteBound_d,fnex);
+}
+
+__global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta,real *lambdaForce,real *thetaForce,int blockCount,int *lambdaSite,int *siteBound,real fnex)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  int j, ji, jf;
+  real li, fi;
+
+  if (i<blockCount) {
+    li=lambda[i];
+    fi=lambdaForce[i];
+    ji=siteBound[lambdaSite[i]];
+    jf=siteBound[lambdaSite[i]+1];
+    for (j=ji; j<jf; j++) {
+      fi+=-lambda[j]*lambdaForce[j];
+    }
+    fi*=li*fnex*cosf(ANGSTROM*theta[i])*ANGSTROM;
+    thetaForce[i]=fi;
+  }
+}
+
+void Msld::calc_thetaForce_from_lambdaForce(cudaStream_t s)
+{
+  calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,s>>>(lambda_d,theta_d,lambdaForce_d,thetaForce_d,blockCount,lambdaSite_d,siteBound_d,fnex);
+}
+
+__global__ void calc_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambdaForce,real *energy,int blockCount)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  extern __shared__ real sEnergy[];
+  real lEnergy=0;
+
+  if (i<blockCount) {
+    realAtomicAdd(&lambdaForce[i],lambdaBias[i]);
+    if (energy) {
+      lEnergy=lambdaBias[i]*lambda[i];
+    }
+  }
+
+  // Energy, if requested
+  if (energy) {
+    __syncthreads();
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,8);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,16);
+    __syncthreads();
+    if ((0x1F & threadIdx.x)==0) {
+      sEnergy[threadIdx.x>>5]=lEnergy;
+    }
+    __syncthreads();
+    if (threadIdx.x < (blockDim.x>>5)) {
+      lEnergy=sEnergy[threadIdx.x];
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
+    }
+    if (threadIdx.x==0) {
+      realAtomicAdd(energy,lEnergy);
+    }
+  }
+}
+
+void Msld::calc_fixedBias(System *system,bool calcEnergy)
+{
+  cudaStream_t s=0;
+  real *pEnergy=NULL;
+  int shMem=0;
+
+  if (calcEnergy) {
+    shMem=BLMS*sizeof(real)/32;
+    pEnergy=system->state->energy_d+eelambda;
+  }
+  if (system->potential) {
+    s=system->potential->biaspotStream;
+  }
+
+  calc_fixedBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,s>>>(lambda_d,lambdaBias_d,lambdaForce_d,pEnergy,blockCount);
+}
+
+__global__ void calc_variableBias_kernel(real *lambda,real *lambdaForce,real *energy,int variableBiasCount,struct VariableBias *variableBias)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  struct VariableBias vb;
+  real li,lj;
+  real fi,fj;
+  extern __shared__ real sEnergy[];
+  real lEnergy=0;
+
+  if (i<variableBiasCount) {
+    vb=variableBias[i];
+    li=lambda[vb.i];
+    lj=lambda[vb.j];
+    if (vb.type==6) {
+      lEnergy=vb.k*li*lj;
+      fi=vb.k*lj;
+      fj=vb.k*li;
+    } else if (vb.type==8) {
+      lEnergy=vb.k*li*lj/(li+vb.l0);
+      fi=vb.k*vb.l0*lj/((li+vb.l0)*(li+vb.l0));
+      fj=vb.k*li/(li+vb.l0);
+    } else if (vb.type==10) {
+      lEnergy=vb.k*lj*(1-expf(vb.l0*li));
+      fi=vb.k*lj*(-vb.l0*expf(vb.l0*li));
+      fj=vb.k*(1-expf(vb.l0*li));
+    } else {
+#warning "Need error checking to make sure this doesn't happen"
+      lEnergy=NAN;
+      fi=NAN;
+      fj=NAN;
+    }
+    realAtomicAdd(&lambdaForce[vb.i],fi);
+    realAtomicAdd(&lambdaForce[vb.j],fj);
+  }
+
+  // Energy, if requested
+  if (energy) {
+    __syncthreads();
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,8);
+    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,16);
+    __syncthreads();
+    if ((0x1F & threadIdx.x)==0) {
+      sEnergy[threadIdx.x>>5]=lEnergy;
+    }
+    __syncthreads();
+    if (threadIdx.x < (blockDim.x>>5)) {
+      lEnergy=sEnergy[threadIdx.x];
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
+    }
+    if (threadIdx.x==0) {
+      realAtomicAdd(energy,lEnergy);
+    }
+  }
+}
+
+void Msld::calc_variableBias(System *system,bool calcEnergy)
+{
+  cudaStream_t s=0;
+  real *pEnergy=NULL;
+  int shMem=0;
+
+  if (calcEnergy) {
+    shMem=BLMS*sizeof(real)/32;
+    pEnergy=system->state->energy_d+eelambda;
+  }
+  if (system->potential) {
+    s=system->potential->biaspotStream;
+  }
+
+  calc_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,s>>>(lambda_d,lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
 }

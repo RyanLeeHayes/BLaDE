@@ -28,16 +28,36 @@ class Msld {
   real *theta;
   real *thetaVelocity;
   real *thetaMass;
+  real *thetaInvsqrtMass;
   real *lambdaCharge;
 
+  int *lambdaSite_d;
   real *lambda_d;
   real *lambdaForce_d;
+  real *lambdaBias_d;
   real *theta_d;
   real *thetaVelocity_d;
+  real *thetaForce_d;
   real *thetaMass_d;
+  real *thetaInvsqrtMass_d;
+  real *thetaRandom_d;
+
+  int siteCount;
+  int *blocksPerSite;
+  int *blocksPerSite_d;
+  int *siteBound;
+  int *siteBound_d;
+
+  real gamma;
+  real fnex;
 
   bool scaleTerms[6]; // bond,ureyb,angle,dihe,impr,cmap
-  std::vector<struct VariableBias> variableBias;
+
+  int variableBiasCount;
+  std::vector<struct VariableBias> variableBias_tmp;
+  struct VariableBias *variableBias;
+  struct VariableBias *variableBias_d;
+
   std::vector<Int2> softBonds;
   std::vector<std::vector<int>> atomRestraints;
 
@@ -52,8 +72,15 @@ class Msld {
   void impr_scaling(int idx[4],int siteBlock[2]);
   void cmap_scaling(int idx[8],int siteBlock[3]);
 
+  void initialize();
+
   void send_real(real *p_d,real *p);
   void recv_real(real *p,real *p_d);
+
+  void calc_lambda_from_theta(cudaStream_t s);
+  void calc_thetaForce_from_lambdaForce(cudaStream_t s);
+  void calc_fixedBias(System *system,bool calcEnergy);
+  void calc_variableBias(System *system,bool calcEnergy);
 };
 
 void parse_msld(char *line,System *system);

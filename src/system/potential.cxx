@@ -29,6 +29,23 @@ Potential::Potential() {
   cmapCount=0;
   cmaps=NULL;
   cmaps_d=NULL;
+
+#ifdef PROFILESERIAL
+  bondedStream=0;
+#else
+  cudaStreamCreate(&bondedStream);
+#endif
+  cudaEventCreate(&bondedComplete);
+#ifdef PROFILESERIAL
+  biaspotStream=0;
+  nbdirectStream=0;
+  nbrecipStream=0;
+#else
+  cudaStreamCreate(&biaspotStream);
+  cudaStreamCreate(&nbdirectStream);
+  cudaStreamCreate(&nbrecipStream);
+#endif
+  cudaEventCreate(&biaspotComplete);
 }
 
 Potential::~Potential()
@@ -43,6 +60,17 @@ Potential::~Potential()
   if (dihes_d) cudaFree(dihes);
   if (imprs_d) cudaFree(imprs);
   if (cmaps_d) cudaFree(cmaps);
+
+#ifndef PROFILESERIAL
+  cudaStreamDestroy(bondedStream);
+#endif
+  cudaEventDestroy(bondedComplete);
+#ifndef PROFILESERIAL
+  cudaStreamDestroy(biaspotStream);
+  cudaStreamDestroy(nbdirectStream);
+  cudaStreamDestroy(nbrecipStream);
+#endif
+  cudaEventDestroy(biaspotComplete);
 }
 
 
@@ -259,13 +287,6 @@ void Potential::initialize(System *system)
   }
   cudaMemcpy(cmaps_d,cmaps,cmapCount*sizeof(struct CmapPotential),cudaMemcpyHostToDevice);
 
-  // for (i=0; i<5; i++) {
-  //   cudaStreamCreate(&bondedStream[i]);
-  //   cudaEventCreate(&bondedComplete[i]);
-  // }
-  cudaStreamCreate(&bondedStream);
-  cudaStreamCreate(&nbdirectStream);
-  cudaStreamCreate(&nbrecipStream);
 // WORKING HERE, add everything to bonds_tmp, remove hbonds if appropriate, put urey bradleys in too if they exit. Also create a structure for constrained bonds.
 
   // forceComplete=bondedComplete[i];
@@ -281,12 +302,21 @@ void Potential::calc_force(int step,System *system)
     cudaMemset(system->state->energy_d,0,eeend*sizeof(real));
   }
 
+  cudaStreamWaitEvent(bondedStream,system->run->updateComplete,0);
   getforce_bond(system,calcEnergy);
   getforce_angle(system,calcEnergy);
   getforce_dihe(system,calcEnergy);
   getforce_impr(system,calcEnergy);
+  cudaEventRecord(bondedComplete,bondedStream);
+  cudaStreamWaitEvent(system->run->masterStream,bondedComplete,0);
 
-  // cudaEventRecord(forceComplete,bondedStream[0]);
-  cudaDeviceSynchronize();
+  cudaStreamWaitEvent(biaspotStream,system->run->updateComplete,0);
+  system->msld->calc_fixedBias(system,calcEnergy);
+  system->msld->calc_variableBias(system,calcEnergy);
+  cudaEventRecord(biaspotComplete,biaspotStream);
+  cudaStreamWaitEvent(system->run->masterStream,biaspotComplete,0);
+
+  cudaEventRecord(system->run->forceComplete,system->run->masterStream);
+  // cudaDeviceSynchronize();
 }
 
