@@ -352,16 +352,17 @@ void Parameters::add_parameter_cmaps(FILE *fp)
       name.t[5]=check_type_name(io_nexts(line),"CMAPS");
       name.t[6]=check_type_name(io_nexts(line),"CMAPS");
       name.t[7]=check_type_name(io_nexts(line),"CMAPS");
-#warning "Assume cmap size of 24"
       cp.ngrid=io_nexti(line);
-      if (cp.ngrid!=24) {
-        fatal(__FILE__,__LINE__,"Error: lazy coding, programmer assumed CMAP size would be 24 when it was %d\n",cp.ngrid);
+      if (cp.ngrid>60) {
+        fatal(__FILE__,__LINE__,"CMAP grid is greater than 60 points per 360 degrees (%d). Have you really thought about how much memory that will take?\n",cp.ngrid);
       }
+      cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
+    fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
 
       for (i=0; i<cp.ngrid; i++) {
         for (j=0; j<cp.ngrid; j++) {
           // Persistent search
-          cp.kcmap[i][j]=KCAL_MOL*io_nextf(line,fp,"cmap matrix element");
+          cp.kcmap[cp.ngrid*i+j]=KCAL_MOL*io_nextf(line,fp,"cmap matrix element");
         }
       }
       cmapParameter[name]=cp;

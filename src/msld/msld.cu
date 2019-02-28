@@ -9,6 +9,8 @@
 #include "system/state.h"
 #include "system/potential.h"
 
+#include "main/real3.h"
+
 
 
 // Class constructors
@@ -42,7 +44,6 @@ Msld::Msld() {
   siteBound_d=NULL;
 
   gamma=1; // ps^-1
-#warning "fnex defaults to 5.5"
   fnex=5.5;
 
   variableBias_tmp.clear();
@@ -152,7 +153,6 @@ void parse_msld(char *line,System *system)
 // CHARMM: LDIN BLOCK L0 LVEL LMASS LBIAS
 // BLOCK SITE THETA THETAV THETAM LBIAS
   } else if (strcmp(token,"initialize")==0) {
-#warning "No input guards on data..."
     i=io_nexti(line);
     if (i<0 || i>=system->msld->blockCount) {
       fatal(__FILE__,__LINE__,"Error, tried to edit block %d of %d which does not exist.\n",i,system->msld->blockCount-1);
@@ -165,12 +165,23 @@ void parse_msld(char *line,System *system)
     system->msld->lambdaCharge[i]=io_nextf(line);
   } else if (strcmp(token,"gamma")==0) {
     system->msld->gamma=io_nextf(line); // units: ps^-1
+  } else if (strcmp(token,"fnex")==0) {
+    system->msld->fnex=io_nextf(line);
   } else if (strcmp(token,"bias")==0) {
     // NYI - add option to reset variable biases
     struct VariableBias vb;
     vb.i=io_nexti(line);
+    if (vb.i<0 || vb.i>=system->msld->blockCount) {
+      fatal(__FILE__,__LINE__,"Error, tried to edit block %d of %d which does not exist.\n",i,system->msld->blockCount-1);
+    }
     vb.j=io_nexti(line);
+    if (vb.j<0 || vb.j>=system->msld->blockCount) {
+      fatal(__FILE__,__LINE__,"Error, tried to edit block %d of %d which does not exist.\n",i,system->msld->blockCount-1);
+    }
     vb.type=io_nexti(line);
+    if (vb.type!=6 && vb.type!=8 && vb.type!=10) {
+      fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type (6, 8, or 10)\n",vb.type);
+    }
     vb.l0=io_nextf(line);
     vb.k=io_nextf(line);
     vb.n=io_nexti(line);
@@ -389,7 +400,7 @@ __global__ void calc_lambda_from_theta_kernel(real *lambda,real *theta,int siteC
     ji=siteBound[i];
     jf=siteBound[i+1];
     for (j=ji; j<jf; j++) {
-#warning "Hardcoded in expf and sinf"
+// NOTE #warning "Hardcoded in expf and sinf"
       lLambda=expf(fnex*sinf(theta[j]*ANGSTROM));
       lambda[j]=lLambda;
       norm+=lLambda;
@@ -446,25 +457,7 @@ __global__ void calc_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambda
   // Energy, if requested
   if (energy) {
     __syncthreads();
-    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
-    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
-    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
-    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,8);
-    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,16);
-    __syncthreads();
-    if ((0x1F & threadIdx.x)==0) {
-      sEnergy[threadIdx.x>>5]=lEnergy;
-    }
-    __syncthreads();
-    if (threadIdx.x < (blockDim.x>>5)) {
-      lEnergy=sEnergy[threadIdx.x];
-      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
-      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
-      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
-    }
-    if (threadIdx.x==0) {
-      realAtomicAdd(energy,lEnergy);
-    }
+    real_sum_reduce(lEnergy,sEnergy,energy);
   }
 }
 
@@ -511,10 +504,9 @@ __global__ void calc_variableBias_kernel(real *lambda,real *lambdaForce,real *en
       fi=vb.k*lj*(-vb.l0*expf(vb.l0*li));
       fj=vb.k*(1-expf(vb.l0*li));
     } else {
-#warning "Need error checking to make sure this doesn't happen"
-      lEnergy=NAN;
-      fi=NAN;
-      fj=NAN;
+      lEnergy=0;
+      fi=0;
+      fj=0;
     }
     realAtomicAdd(&lambdaForce[vb.i],fi);
     realAtomicAdd(&lambdaForce[vb.j],fj);
@@ -523,25 +515,7 @@ __global__ void calc_variableBias_kernel(real *lambda,real *lambdaForce,real *en
   // Energy, if requested
   if (energy) {
     __syncthreads();
-    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
-    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
-    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
-    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,8);
-    lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,16);
-    __syncthreads();
-    if ((0x1F & threadIdx.x)==0) {
-      sEnergy[threadIdx.x>>5]=lEnergy;
-    }
-    __syncthreads();
-    if (threadIdx.x < (blockDim.x>>5)) {
-      lEnergy=sEnergy[threadIdx.x];
-      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
-      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
-      lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
-    }
-    if (threadIdx.x==0) {
-      realAtomicAdd(energy,lEnergy);
-    }
+    real_sum_reduce(lEnergy,sEnergy,energy);
   }
 }
 

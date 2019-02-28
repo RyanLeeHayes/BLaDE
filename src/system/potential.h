@@ -4,11 +4,16 @@
 #include <cuda_runtime.h>
 
 #include <vector>
+#include <map>
+#include <string>
 
 #include "main/defines.h"
 
 // Forward declarations
 class System;
+class TypeName8O;
+bool operator==(const TypeName8O& a,const TypeName8O& b);
+bool operator<(const TypeName8O& a,const TypeName8O& b);
 
 struct BondPotential {
   int idx[2];
@@ -45,7 +50,7 @@ struct CmapPotential {
   int idx[8];
   int siteBlock[3];
   int ngrid;
-  int kcmapIndex;
+  real (*kcmapPtr)[4][4];
 };
 
 class Potential {
@@ -70,6 +75,8 @@ class Potential {
   std::vector<struct CmapPotential> cmaps_tmp;
   struct CmapPotential *cmaps;
   struct CmapPotential *cmaps_d;
+
+  std::map<TypeName8O,real(*)[4][4]> cmapTypeToPtr;
 
   // cudaStream_t bondedStream[5];
   cudaStream_t bondedStream;

@@ -1,4 +1,5 @@
 #include <cuda_runtime.h>
+#include <math.h>
 
 #include "system/potential.h"
 #include "system/system.h"
@@ -61,6 +62,11 @@ Potential::~Potential()
   if (imprs_d) cudaFree(imprs);
   if (cmaps_d) cudaFree(cmaps);
 
+  for (std::map<TypeName8O,real(*)[4][4]>::iterator ii=cmapTypeToPtr.begin(); ii!=cmapTypeToPtr.end(); ii++) {
+    cudaFree(ii->second);
+  }
+  cmapTypeToPtr.clear();
+
 #ifndef PROFILESERIAL
   cudaStreamDestroy(bondedStream);
 #endif
@@ -76,6 +82,250 @@ Potential::~Potential()
 
 
 // Methods
+// Bicubic spline interpolation is used for CMAP interactions. Bicubic spline interpolation is a special case of bicubic interpolation, where cubic splines are used to obtain the derivatives requires for bicubic interpolation. The function below, cmap_cubic_spline_interpolate can be used to interpolate for function values and slopes once splines have been set up with cmap_cubic_spline_setup, but since bicubic interpolation only needs slopes at the vertices, setting up the splines with cmap_cubic_spline_setup is sufficient, and this function is never called.
+// Input:
+// ngrid - number of spline/grid points
+// xin - input value for interpolation
+// dx - uniform spacing of grid points
+// yin - vector of length ngrid of the target values as the grid points
+// dyin - vector of length ngrid of the slopes at grid points (computed elsewhere)
+// Output:
+// yout - the interpolated value of the function
+// dyout - inter interpolated slope of the function
+void cmap_cubic_spline_interpolate(int ngrid,real xin,real dx,real *yin,real *dyin,real *yout,real *dyout)
+{
+  int xint0,xint1;
+  real remainder;
+  int u,v;
+
+  xin/=dx; // Function only operates with unit scaling, you need to multiply by 1/dx outside if you want the real derivative.
+  xin=fmod(xin,ngrid);
+  xin+=(xin<0)?ngrid:0;
+  xint0=((int)floor(xin))%ngrid;
+  xint1=(xint0+1)%ngrid;
+  remainder=xin-xint0;
+
+  u=remainder;
+  v=1-remainder;
+
+  yout[0]=yin[xint0]*v*v*(3*u+v) + dyin[xint0]*u*v*v
+    - dyin[xint1]*u*u*v + yin[xint1]*u*u*(3*v+u);
+  dyout[0]=yin[xint0]*-6*u*v + dyin[xint0]*v*(v-2*u)
+    + dyin[xint1]*u*(u-2*v) + yin[xint1]*6*u*v;
+}
+
+// cubic splines are piecewise cubic polynomicals with the constraint that functions go through target point, and interpolated functions have continuous first and second derivatives. A cubic spline is most easily represented in terms of the values of the function at points (which are given), and the slope of the function at the grid points (which is determined by this function. In the CHARMM implementation of CMAP, rather than correctly treating the periodic boundary conditions, a buffer of ngrid/2 extra points is added on each side to mitigate artifacts due to edge effects. Errors due to that approximation appear to be one part in 10^6 to 10^7 for standard grids of 24 points. Periodic boundary conditions are correctly treated here.
+// Input:
+// ngrid - number of uniformly spaced points
+// y - target function values
+// Output:
+// dy - the slopes at the grid points necessary to satisfy the cubic spline definition.
+// Algorithm:
+// The problem to be solved can be expressed in matrix notation as
+// [ 4  1  0  ... 0  0  1 ]   [  dy[0]  ]   [ 3*(y[1]-y[N-1]) ]
+// [ 1  4  1  ... 0  0  0 ]   [  dy[1]  ]   [  3*(y[2]-y[0])  ]
+// [ 0  1  4  ... 0  0  0 ]   [  dy[2]  ]   [  3*(y[3]-y[1])  ]
+// [   ...    ...   ...   ] X [   ...   ] = [       ...       ]
+// [ 0  0  0  ... 4  1  0 ]   [ dy[N-3] ]   [3*(y[N-2]-y[N-4])]
+// [ 0  0  0  ... 1  4  1 ]   [ dy[N-2] ]   [3*(y[N-1]-y[N-3])]
+// [ 1  0  0  ... 0  1  4 ]   [ dy[N-1] ]   [ 3*(y[0]-y[N-2]) ]
+// Using non-periodic boundary conditions changes the first and last rows
+void cmap_cubic_spline_setup(int ngrid,real *y,real *dy)
+{
+  real diag[ngrid]; // diagonal corners of reduced matrix
+  real offDiag[ngrid]; // off diagonal corners of reduced matrix
+  int i,im1,ip1;
+  real det,dy0,dy1;
+
+  diag[ngrid-1]=4;
+  offDiag[ngrid-1]=1;
+
+  for (i=0; i<ngrid; i++) {
+    im1=(i-1)%ngrid;
+    ip1=(i+1)%ngrid;
+    dy[i]=3*(y[ip1]-y[im1]);
+  }
+
+  for (i=(ngrid-2); i>0; i--) {
+    offDiag[i]=-offDiag[i+1]/diag[i+1];
+    diag[i]=diag[i+1]+offDiag[i+1]*offDiag[i];
+    dy[0]+=dy[i+1]*offDiag[i];
+    dy[i]+=dy[i+1]*(-1/diag[i+1]);
+  }
+
+  det=diag[1]*diag[1]-(1+offDiag[1])*(1+offDiag[1]);
+  dy0=(diag[1]*dy[0]-(1+offDiag[1])*dy[1])/det;
+  dy1=(diag[1]*dy[1]-(1+offDiag[1])*dy[0])/det;
+  dy[0]=dy0;
+  dy[1]=dy1;
+
+  for (i=2; i<ngrid; i++) {
+    dy[i]=(dy[i]-dy[i-1]-offDiag[i]*dy[0])/diag[i];
+  }
+}
+
+// Convert f (first element of intermediate), fx (second element of intermediate), fy (third element of intermediate), and fxy (fourth element of intermediate to a[4][4] which is stored in cmap parameters. Procedure is noted both in CHARMM source code, on wikipedia https://en.wikipedia.org/wiki/Bicubic_interpolation and in various other references. x=[f00,f10,f01,f11,fx00,fx10,fx01,fx11,fy00,fy10,fy01,fy11,fxy00,fxy10,fxy01,fxy11], and a=[a00,a10,a20,a30,a01,a11,a21,a31,a02,a12,a22,a32,a03,a13,a23,a33] -- gives me the jeebies, that's fortran ordering.
+// a=Ainv*x
+// F(phi,psi)=sum_{i=0 to 3} sum_{j=0 to 3} aij*phi^i*psi^j
+void bicubic_setup(int ngrid,real (*cmapIntermediate)[4],real (*cmapParameters)[4][4])
+{
+  real Ainv[16][16]={
+    { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {-3, 3, 0, 0,-2,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    { 2,-2, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    { 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0},
+    { 0, 0, 0, 0, 0, 0, 0, 0,-3, 3, 0, 0,-2,-1, 0, 0},
+    { 0, 0, 0, 0, 0, 0, 0, 0, 2,-2, 0, 0, 1, 1, 0, 0},
+    {-3, 0, 3, 0, 0, 0, 0, 0,-2, 0,-1, 0, 0, 0, 0, 0},
+    { 0, 0, 0, 0,-3, 0, 3, 0, 0, 0, 0, 0,-2, 0,-1, 0},
+    { 9,-9,-9, 9, 6, 3,-6,-3, 6,-6, 3,-3, 4, 2, 2, 1},
+    {-6, 6, 6,-6,-3,-3, 3, 3,-4, 4,-2, 2,-2,-2,-1,-1},
+    { 2, 0,-2, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0},
+    { 0, 0, 0, 0, 2, 0,-2, 0, 0, 0, 0, 0, 1, 0, 1, 0},
+    {-6, 6, 6,-6,-4,-2, 4, 2,-3, 3,-3, 3,-2,-1,-2,-1},
+    { 4,-4,-4, 4, 2, 2,-2,-2, 2,-2, 2,-2, 1, 1, 1, 1}};
+  real x[16], a[16];
+  int i,j,k,l;
+  int ip1,jp1;
+
+  for (i=0; i<ngrid; i++) {
+    ip1=(i+1)%ngrid;
+    for (j=0; j<ngrid; j++) {
+      jp1=(j+1)%ngrid;
+      for (k=0; k<4; k++) {
+        x[4*k+0]=cmapIntermediate[ngrid*i  +j  ][k];
+        x[4*k+1]=cmapIntermediate[ngrid*ip1+j  ][k];
+        x[4*k+2]=cmapIntermediate[ngrid*i  +jp1][k];
+        x[4*k+3]=cmapIntermediate[ngrid*ip1+jp1][k];
+      }
+      for (k=0; k<16; k++) {
+        a[k]=0;
+        for (l=0; l<16; l++) {
+          a[k]+=Ainv[k][l]*x[l];
+        }
+      }
+      for (k=0; k<4; k++) {
+        for (l=0; l<4; l++) {
+          cmapParameters[ngrid*i+j][k][l]=a[k+4*l];
+        }
+      }
+    }
+  }
+}
+
+// Another method to get the same parameters. (Used to check for correctness during development).
+void bicubic_setup_alternative(int ngrid,real (*cmapIntermediate)[4],real (*cmapParameters)[4][4])
+{
+  real T[4][4]={
+    { 1, 0, 0, 0},
+    { 0, 0, 1, 0},
+    {-3, 3,-2,-1},
+    { 2,-2, 1, 1}};
+  real P[4][4]; // intermediate product
+  real f[4][4];
+  int i,j,k,l,m;
+  int ip1,jp1;
+
+  for (i=0; i<ngrid; i++) {
+    ip1=(i+1)%ngrid;
+    for (j=0; j<ngrid; j++) {
+      jp1=(j+1)%ngrid;
+      for (k=0; k<2; k++) {
+        for (l=0; l<2; l++) {
+          f[2*k+0][2*l+0]=cmapIntermediate[ngrid*i  +j  ][k+2*l];
+          f[2*k+0][2*l+1]=cmapIntermediate[ngrid*i  +jp1][k+2*l];
+          f[2*k+1][2*l+0]=cmapIntermediate[ngrid*ip1+j  ][k+2*l];
+          f[2*k+1][2*l+1]=cmapIntermediate[ngrid*ip1+jp1][k+2*l];
+        }
+      }
+      for (k=0; k<4; k++) {
+        for (l=0; l<4; l++) {
+          P[k][l]=0;
+          for (m=0; m<4; m++) {
+            // P=f*T'
+            P[k][l]+=f[k][m]*T[l][m]; // T transpose
+          }
+        }
+      }
+      for (k=0; k<4; k++) {
+        for (l=0; l<4; l++) {
+          cmapParameters[ngrid*i+j][k][l]=0;
+          for (m=0; m<4; m++) {
+            // a=T*P
+            cmapParameters[ngrid*i+j][k][l]+=T[k][m]*P[m][l];
+          }
+        }
+      }
+    }
+  }
+}
+
+real (*alloc_kcmapPtr(int ngrid,real *kcmap))[4][4]
+{
+  real (*cmapIntermediate)[4]; // E dEdphi dEdpsi ddEdphidpsi
+  real (*cmapParameters)[4][4]; // E_(phi_i,psi_j)
+  real (*kcmapPtr)[4][4];
+  real y[ngrid]; // target for cubic spline interpolation
+  real dy[ngrid]; // derivative of target for cubid spline interpolation
+  int i,j;
+
+  cmapIntermediate=(real(*)[4])calloc(ngrid*ngrid,sizeof(real[4]));;
+  cmapParameters=(real(*)[4][4])calloc(ngrid*ngrid,sizeof(real[4][4]));;
+  cudaMalloc(&kcmapPtr,ngrid*ngrid*sizeof(real[4][4]));
+
+  // 0 element of intermediate is the function values
+  for (i=0; i<ngrid; i++) {
+    for (j=0; j<ngrid; j++) {
+      cmapIntermediate[ngrid*i+j][0]=kcmap[ngrid*i+j];
+    }
+  }
+
+  // 1 element of intermediate is gradient with respect to phi
+  for (j=0; j<ngrid; j++) {
+    for (i=0; i<ngrid; i++) {
+      y[i]=kcmap[ngrid*i+j];
+    }
+    cmap_cubic_spline_setup(ngrid,y,dy);
+    for (i=0; i<ngrid; i++) {
+      cmapIntermediate[ngrid*i+j][1]=dy[i];
+    }
+  }
+
+  // 2 element of intermediate is gradient with respect to psi
+  for (i=0; i<ngrid; i++) {
+    for (j=0; j<ngrid; j++) {
+      y[j]=kcmap[ngrid*i+j];
+    }
+    cmap_cubic_spline_setup(ngrid,y,dy);
+    for (j=0; j<ngrid; j++) {
+      cmapIntermediate[ngrid*i+j][2]=dy[j];
+    }
+  }
+
+  // 3 element of intermediate is gradient with respect to both
+  for (i=0; i<ngrid; i++) {
+    for (j=0; j<ngrid; j++) {
+      y[j]=cmapIntermediate[ngrid*i+j][1]; // targets y are derivatives with respect to phi
+    }
+    cmap_cubic_spline_setup(ngrid,y,dy);
+    for (j=0; j<ngrid; j++) {
+      cmapIntermediate[ngrid*i+j][3]=dy[j];
+    }
+  }
+
+  // Make 16 bicubic parameters at each point from the slopes determined with the splines.
+  bicubic_setup(ngrid,cmapIntermediate,cmapParameters);
+
+  cudaMemcpy(kcmapPtr,cmapParameters,ngrid*ngrid*sizeof(real[4][4]),cudaMemcpyHostToDevice);
+
+  if (cmapIntermediate) free(cmapIntermediate);
+  if (cmapParameters) free(cmapParameters);
+
+  return kcmapPtr;
+}
+
 void Potential::initialize(System *system)
 {
   int i,j;
@@ -226,9 +476,34 @@ void Potential::initialize(System *system)
     imprs_tmp.emplace_back(impr);
   }
 
+  for (i=0; i<struc->cmapList.size(); i++) {
+    TypeName8O type;
+    struct CmapPotential cmap;
+    struct CmapParameter cp;
+    // Get participating atoms
+    for (j=0; j<8; j++) {
+      cmap.idx[j]=struc->cmapList[i].i[j];
+      type.t[j]=struc->atomList[cmap.idx[j]].atomTypeName;
+    }
+    // Get their MSLD scaling
+    msld->cmap_scaling(cmap.idx,cmap.siteBlock);
+    // Get their parameters
+    if (param->cmapParameter.count(type)==1) {
+      cp=param->cmapParameter[type];
+    } else {
+      fatal(__FILE__,__LINE__,"No cmap parameter for\n%6d(%6s) %6d(%6s) %6d(%6s) %6d(%6s)\n%6d(%6s) %6d(%6s) %6d(%6s) %6d(%6s)\n",cmap.idx[0],type.t[0].c_str(),cmap.idx[1],type.t[1].c_str(),cmap.idx[2],type.t[2].c_str(),cmap.idx[3],type.t[3].c_str(),cmap.idx[4],type.t[4].c_str(),cmap.idx[5],type.t[5].c_str(),cmap.idx[6],type.t[6].c_str(),cmap.idx[7],type.t[7].c_str());
+    }
+    cmap.ngrid=cp.ngrid;
+    // See if we have to copy the data onto the GPU or if it's already there
+    if (cmapTypeToPtr.count(type)!=1) {
+      cmapTypeToPtr[type]=alloc_kcmapPtr(cp.ngrid,cp.kcmap);
+    }
+    cmap.kcmapPtr=cmapTypeToPtr[type];
+    cmaps_tmp.emplace_back(cmap);
+  }
+
+// NYI #warning "Missing nonbonded terms"
 /*
-#warning "Missing CMAP terms"
-#warning "Missing nonbonded terms"
   if (atomTypeIdx) free(atomTypeIdx);
   atomTypeIdx=(int*)calloc(atomCount,sizeof(int));
   if (charge) free(charge);
@@ -307,6 +582,7 @@ void Potential::calc_force(int step,System *system)
   getforce_angle(system,calcEnergy);
   getforce_dihe(system,calcEnergy);
   getforce_impr(system,calcEnergy);
+  getforce_cmap(system,calcEnergy);
   cudaEventRecord(bondedComplete,bondedStream);
   cudaStreamWaitEvent(system->run->masterStream,bondedComplete,0);
 

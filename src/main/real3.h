@@ -116,6 +116,33 @@ void real3_dec(real3 *a,real3 x)
 
 
 
+__device__ static inline
+void real_sum_reduce(real input,real *shared,real *global)
+{
+  real local=input;
+  local+=__shfl_down_sync(0xFFFFFFFF,local,1);
+  local+=__shfl_down_sync(0xFFFFFFFF,local,2);
+  local+=__shfl_down_sync(0xFFFFFFFF,local,4);
+  local+=__shfl_down_sync(0xFFFFFFFF,local,8);
+  local+=__shfl_down_sync(0xFFFFFFFF,local,16);
+  __syncthreads();
+  if ((0x1F & threadIdx.x)==0) {
+    shared[threadIdx.x>>5]=local;
+  }
+  __syncthreads();
+  if (threadIdx.x < (blockDim.x>>5)) {
+    local=shared[threadIdx.x];
+    if (blockDim.x>=64) local+=__shfl_down_sync(0xFFFFFFFF,local,1);
+    if (blockDim.x>=128) local+=__shfl_down_sync(0xFFFFFFFF,local,2);
+    if (blockDim.x>=256) local+=__shfl_down_sync(0xFFFFFFFF,local,4);
+    if (blockDim.x>=512) local+=__shfl_down_sync(0xFFFFFFFF,local,8);
+    if (blockDim.x>=1024) local+=__shfl_down_sync(0xFFFFFFFF,local,16);
+  }
+  if (threadIdx.x==0) {
+    realAtomicAdd(global,local);
+  }
+}
+
 
 
 

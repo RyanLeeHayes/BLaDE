@@ -64,37 +64,48 @@ struct ImprParameter {
   real imp0;
 };
 
-/*
+
 class CmapParameter {
-  int ngrid;
   public:
+  int ngrid;
   real *kcmap;
 
-  void CmapParameter()
-  {
+  CmapParameter() {
     ngrid=0;
     kcmap=NULL;
   }
-  void ~CmapParameter()
-  {
-    if (kcmal!=NULL) {
-      delete [] kcmap;
+  CmapParameter(const CmapParameter &other) {
+    ngrid=other.ngrid;
+    if (ngrid>0) {
+      kcmap=(real*)calloc(ngrid*ngrid,sizeof(real));
+      for (int i=0; i<ngrid*ngrid; i++) {
+        kcmap[i]=other.kcmap[i];
+      }
+    } else {
+      kcmap=NULL;
     }
   }
-  void setNgrid(int in)
-  {
-    ngrid=in;
-    if (kcmap!=NULL) {
-      delete [] kcmap;
+  CmapParameter operator=(const CmapParameter &other) {
+    if (kcmap) free(kcmap);
+    ngrid=other.ngrid;
+    if (ngrid>0) {
+      kcmap=(real*)calloc(ngrid*ngrid,sizeof(real));
+      for (int i=0; i<ngrid*ngrid; i++) {
+        kcmap[i]=other.kcmap[i];
+      }
+    } else {
+      kcmap=NULL;
     }
-    kcmap=new real[ngrid*ngrid];
+    return *this;
   }
-  real* operator[](std::size_t idx) {return kcmap+ngrid*idx;}
-  int getNgrid() {return ngrid;}
-};*/
-struct CmapParameter {
-  int ngrid;
-  real kcmap[24][24];
+  CmapParameter(CmapParameter &&other) {
+    ngrid=other.ngrid;
+    kcmap=other.kcmap;
+    other.kcmap=NULL;
+  }
+  ~CmapParameter() {
+    if (kcmap) free(kcmap);
+  }
 };
 
 struct NbondParameter {
@@ -115,7 +126,7 @@ class Parameters {
     std::map<TypeName3,struct AngleParameter> angleParameter;
     std::map<TypeName4,std::vector<struct DiheParameter>> diheParameter;
     std::map<TypeName4,struct ImprParameter> imprParameter;
-    std::map<TypeName8O,struct CmapParameter> cmapParameter;
+    std::map<TypeName8O,CmapParameter> cmapParameter;
     std::map<std::string,struct NbondParameter> nbondParameter;
     std::map<TypeName2,struct NbondParameter> nbfixParameter;
 

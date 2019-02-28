@@ -22,7 +22,7 @@ class Selection {
   {
     boolCount=other.boolCount;
     if (boolCount==0) {
-      boolSelection==NULL;
+      boolSelection=NULL;
     } else {
       boolSelection=new bool[boolCount];
       for (int i=0; i<boolCount; i++) {
@@ -31,18 +31,20 @@ class Selection {
     }
   }
 
-  Selection& operator = (const Selection &other)
+// NYI - tried deleting this and got seg faults. Look into it further later
+  Selection operator=(const Selection &other)
   {
     if (boolSelection) delete [] boolSelection;
     boolCount=other.boolCount;
     if (boolCount==0) {
-      boolSelection==NULL;
+      boolSelection=NULL;
     } else {
       boolSelection=new bool[boolCount];
       for (int i=0; i<boolCount; i++) {
         boolSelection[i]=other.boolSelection[i];
       }
     }
+    return *this;
   }
 
   ~Selection()
