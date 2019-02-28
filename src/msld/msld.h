@@ -31,6 +31,7 @@ class Msld {
   real *thetaInvsqrtMass;
   real *lambdaCharge;
 
+  int *atomBlock_d;
   int *lambdaSite_d;
   real *lambda_d;
   real *lambdaForce_d;
@@ -72,7 +73,7 @@ class Msld {
   void impr_scaling(int idx[4],int siteBlock[2]);
   void cmap_scaling(int idx[8],int siteBlock[3]);
 
-  void initialize();
+  void initialize(System *system);
 
   void send_real(real *p_d,real *p);
   void recv_real(real *p,real *p_d);

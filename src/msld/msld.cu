@@ -27,6 +27,7 @@ Msld::Msld() {
   thetaInvsqrtMass=NULL;
   lambdaCharge=NULL;
 
+  atomBlock_d=NULL;
   lambdaSite_d=NULL;
   lambda_d=NULL;
   lambdaForce_d=NULL;
@@ -43,7 +44,7 @@ Msld::Msld() {
   siteBound=NULL;
   siteBound_d=NULL;
 
-  gamma=1; // ps^-1
+  gamma=1.0/PICOSECOND; // ps^-1
   fnex=5.5;
 
   variableBias_tmp.clear();
@@ -66,6 +67,7 @@ Msld::~Msld() {
   if (thetaInvsqrtMass) free(thetaInvsqrtMass);
   if (lambdaCharge) free(lambdaCharge);
 
+  if (atomBlock_d) cudaFree(atomBlock_d);
   if (lambdaSite_d) cudaFree(lambdaSite_d);
   if (lambda_d) cudaFree(lambda_d);
   if (lambdaForce_d) cudaFree(lambdaForce_d);
@@ -122,6 +124,7 @@ void parse_msld(char *line,System *system)
     system->msld->thetaInvsqrtMass=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
 
+    cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
     cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
     cudaMalloc(&(system->msld->lambda_d),system->msld->blockCount*sizeof(real));
     cudaMalloc(&(system->msld->lambdaForce_d),system->msld->blockCount*sizeof(real));
@@ -164,7 +167,7 @@ void parse_msld(char *line,System *system)
     system->msld->lambdaBias[i]=io_nextf(line);
     system->msld->lambdaCharge[i]=io_nextf(line);
   } else if (strcmp(token,"gamma")==0) {
-    system->msld->gamma=io_nextf(line); // units: ps^-1
+    system->msld->gamma=io_nextf(line)/PICOSECOND; // units: ps^-1
   } else if (strcmp(token,"fnex")==0) {
     system->msld->fnex=io_nextf(line);
   } else if (strcmp(token,"bias")==0) {
@@ -329,7 +332,7 @@ void Msld::cmap_scaling(int idx[8],int siteBlock[3])
 }
 
 // Initialize MSLD for a simulation
-void Msld::initialize()
+void Msld::initialize(System *system)
 {
   int i;
 
@@ -338,6 +341,7 @@ void Msld::initialize()
   }
 
   // Send the biases over
+  cudaMemcpy(atomBlock_d,atomBlock,system->structure->atomCount*sizeof(int),cudaMemcpyHostToDevice);
   send_real(lambdaBias_d,lambdaBias);
   variableBiasCount=variableBias_tmp.size();
   variableBias=(struct VariableBias*)calloc(variableBiasCount,sizeof(struct VariableBias));

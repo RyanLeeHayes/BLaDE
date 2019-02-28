@@ -14,9 +14,9 @@ Run::Run()
 {
   step0=0;
   nsteps=5000;
-  dt=0.001; // ps
+  dt=0.001*PICOSECOND; // ps
   T=300; // K
-  gamma=1.0; // ps^-1
+  gamma=1.0/PICOSECOND; // ps^-1
   fnmXTC="default.xtc";
   fnmLMD="default.lmd";
   fnmNRG="default.nrg";
@@ -26,6 +26,10 @@ Run::Run()
   freqXTC=1000;
   freqLMD=10;
   freqNRG=10;
+// Nonbonded options
+  betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANSTROM, erfc(betaEwald*rCut)=1e-5
+  rCut=10*ANGSTROM;
+  rSwitch=8.5*ANGSTROM;
 #ifdef PROFILESERIAL
   masterStream=0;
 #else
@@ -109,13 +113,16 @@ void Run::error(char *line,char *token,System *system)
 
 void Run::dump(char *line,char *token,System *system)
 {
-  fprintf(stdout,"RUN PRINT> dt=%f (time step in ps)\n",dt);
+  fprintf(stdout,"RUN PRINT> dt=%f (time step input in ps)\n",dt);
   fprintf(stdout,"RUN PRINT> T=%f (temperature in K)\n",T);
-  fprintf(stdout,"RUN PRINT> gamma=%f (friction in ps^-1)\n",gamma);
+  fprintf(stdout,"RUN PRINT> gamma=%f (friction input in ps^-1)\n",gamma);
   fprintf(stdout,"RUN PRINT> nsteps=%d (number of time steps for dynamics)\n",nsteps);
   fprintf(stdout,"RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
   fprintf(stdout,"RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
   fprintf(stdout,"RUN PRINT> fnmnrg=%s (file name for energy output)\n",fnmNRG.c_str());
+  fprintf(stdout,"RUN PRINT> betaEwald=%f (input invbetaewald in A)\n",betaEwald);
+  fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut);
+  fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch);
 }
 
 void Run::reset(char *line,char *token,System *system)
@@ -146,9 +153,15 @@ void Run::set_variable(char *line,char *token,System *system)
   } else if (strcmp(token,"T")==0) {
     T=io_nextf(line);
   } else if (strcmp(token,"dt")==0) {
-    dt=io_nextf(line);
+    dt=PICOSECOND*io_nextf(line);
   } else if (strcmp(token,"gamma")==0) {
-    gamma=io_nextf(line);
+    gamma=io_nextf(line)/PICOSECOND;
+  } else if (strcmp(token,"invbetaewald")==0) {
+    betaEwald=1/(io_nextf(line)*ANGSTROM);
+  } else if (strcmp(token,"rcut")==0) {
+    rCut=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"rswitch")==0) {
+    rSwitch=io_nextf(line)*ANGSTROM;
   } else {
     fatal(__FILE__,__LINE__,"Unrecognized token %s in run setvariable command\n",token);
   }
@@ -190,7 +203,7 @@ void Run::dynamics_initialize(System *system)
   if (!fpNRG) fpNRG=fpopen(fnmNRG.c_str(),"w");
 
   // Finish setting up MSLD
-  system->msld->initialize(); 
+  system->msld->initialize(system); 
 
   // Set up update structures
   if (system->update) delete system->update;

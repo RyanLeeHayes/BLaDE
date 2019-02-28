@@ -122,7 +122,7 @@ void State::setup_parse_state()
   parseState["file"]=&State::file;
   helpState["file"]="?state file [filename]> This loads particle positions from the pdb filename\n";
   parseState["box"]=&State::parse_box;
-  helpState["box"]="?state box [x1 y1 z1, x2 y2 z2, x3 y3 z3]> This loads the x y z cooridinates for the first, second, and third box vectors.\n";
+  helpState["box"]="?state box [x1 y1 z1, x2 y2 z2, x3 y3 z3]> This loads the x y z cooridinates for the first, second, and third box vectors. Input in Angstroms.\n";
   parseState["velocity"]=&State::parse_velocity;
   helpState["velocity"]="?state velocity [temperature]> This sets the velocities to a distribution centered on the specified temperature (in Kelvin)\n";
   parseState["print"]=&State::dump;
@@ -243,7 +243,7 @@ void State::parse_box(char *line,char *token,System *system)
   int i,j;
   for (i=0; i<3; i++) {
     for (j=0; j<3; j++) {
-      box[i][j]=io_nextf(line);
+      box[i][j]=ANGSTROM*io_nextf(line);
       if (i!=j && box[i][j]!=0) {
         fatal(__FILE__,__LINE__,"Non-orthogonal boxes are not yet implemented NYI\n");
       }

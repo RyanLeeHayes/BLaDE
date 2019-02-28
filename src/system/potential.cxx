@@ -10,11 +10,13 @@
 #include "system/state.h"
 #include "run/run.h"
 #include "bonded/bonded.h"
+#include "nbrecip/nbrecip.h"
 
 
 
 // Class constructors
 Potential::Potential() {
+  atomCount=0;
   bondCount=0;
   bonds=NULL;
   bonds_d=NULL;
@@ -30,6 +32,9 @@ Potential::Potential() {
   cmapCount=0;
   cmaps=NULL;
   cmaps_d=NULL;
+
+  charge=NULL;
+  charge_d=NULL;
 
 #ifdef PROFILESERIAL
   bondedStream=0;
@@ -47,6 +52,8 @@ Potential::Potential() {
   cudaStreamCreate(&nbrecipStream);
 #endif
   cudaEventCreate(&biaspotComplete);
+  cudaEventCreate(&nbdirectComplete);
+  cudaEventCreate(&nbrecipComplete);
 }
 
 Potential::~Potential()
@@ -56,16 +63,19 @@ Potential::~Potential()
   if (dihes) free(dihes);
   if (imprs) free(imprs);
   if (cmaps) free(cmaps);
-  if (bonds_d) cudaFree(bonds);
-  if (angles_d) cudaFree(angles);
-  if (dihes_d) cudaFree(dihes);
-  if (imprs_d) cudaFree(imprs);
-  if (cmaps_d) cudaFree(cmaps);
+  if (bonds_d) cudaFree(bonds_d);
+  if (angles_d) cudaFree(angles_d);
+  if (dihes_d) cudaFree(dihes_d);
+  if (imprs_d) cudaFree(imprs_d);
+  if (cmaps_d) cudaFree(cmaps_d);
 
   for (std::map<TypeName8O,real(*)[4][4]>::iterator ii=cmapTypeToPtr.begin(); ii!=cmapTypeToPtr.end(); ii++) {
     cudaFree(ii->second);
   }
   cmapTypeToPtr.clear();
+
+  if (charge) free(charge);
+  if (charge_d) cudaFree(charge_d);
 
 #ifndef PROFILESERIAL
   cudaStreamDestroy(bondedStream);
@@ -77,6 +87,8 @@ Potential::~Potential()
   cudaStreamDestroy(nbrecipStream);
 #endif
   cudaEventDestroy(biaspotComplete);
+  cudaEventDestroy(nbdirectComplete);
+  cudaEventDestroy(nbrecipComplete);
 }
 
 
@@ -502,26 +514,7 @@ void Potential::initialize(System *system)
     cmaps_tmp.emplace_back(cmap);
   }
 
-// NYI #warning "Missing nonbonded terms"
-/*
-  if (atomTypeIdx) free(atomTypeIdx);
-  atomTypeIdx=(int*)calloc(atomCount,sizeof(int));
-  if (charge) free(charge);
-  charge=(real*)calloc(atomCount,sizeof(real));
-  if (mass) free(mass);
-  mass=(real*)calloc(atomCount,sizeof(real));
-
-
-  for (i=0; i<atomCount; i++) {
-    struct AtomStructure at=atomList[i];
-    param->require_type_name(at.atomTypeName,"searching for atom types in structure setup");
-    atomTypeIdx[i]=param->atomTypeMap[at.atomTypeName];
-    charge[i]=at.charge;
-    mass[i]=param->atomMass[at.atomTypeName];
-  }
-*/
-  fprintf(stdout,"Implement nonbonded structures too\n");
-
+  // ---------- Bonded setup complete, copy over data ----------
   bondCount=bonds_tmp.size();
   bonds=(struct BondPotential*)calloc(bondCount,sizeof(struct BondPotential));
   cudaMalloc(&(bonds_d),bondCount*sizeof(struct BondPotential));
@@ -561,10 +554,38 @@ void Potential::initialize(System *system)
     cmaps[i]=cmaps_tmp[i];
   }
   cudaMemcpy(cmaps_d,cmaps,cmapCount*sizeof(struct CmapPotential),cudaMemcpyHostToDevice);
+  // ---------- Data copy complete ----------
+
 
 // WORKING HERE, add everything to bonds_tmp, remove hbonds if appropriate, put urey bradleys in too if they exit. Also create a structure for constrained bonds.
+  fprintf(stdout,"Implement nonbonded structures too\n");
 
-  // forceComplete=bondedComplete[i];
+  atomCount=struc->atomList.size();
+  charge=(real*)calloc(atomCount,sizeof(real));
+  cudaMalloc(&charge_d,atomCount*sizeof(real));
+  for (i=0; i<atomCount; i++) {
+    charge[i]=struc->atomList[i].charge;
+  }
+  cudaMemcpy(charge_d,charge,atomCount*sizeof(real),cudaMemcpyHostToDevice);
+  
+// NYI #warning "Missing nonbonded terms"
+/*
+  if (atomTypeIdx) free(atomTypeIdx);
+  atomTypeIdx=(int*)calloc(atomCount,sizeof(int));
+  if (charge) free(charge);
+  charge=(real*)calloc(atomCount,sizeof(real));
+  if (mass) free(mass);
+  mass=(real*)calloc(atomCount,sizeof(real));
+
+
+  for (i=0; i<atomCount; i++) {
+    struct AtomStructure at=atomList[i];
+    param->require_type_name(at.atomTypeName,"searching for atom types in structure setup");
+    atomTypeIdx[i]=param->atomTypeMap[at.atomTypeName];
+    charge[i]=at.charge;
+    mass[i]=param->atomMass[at.atomTypeName];
+  }
+*/
 }
 
 void Potential::calc_force(int step,System *system)
@@ -585,6 +606,11 @@ void Potential::calc_force(int step,System *system)
   getforce_cmap(system,calcEnergy);
   cudaEventRecord(bondedComplete,bondedStream);
   cudaStreamWaitEvent(system->run->masterStream,bondedComplete,0);
+
+  cudaStreamWaitEvent(nbrecipStream,system->run->updateComplete,0);
+  getforce_ewaldself(system,calcEnergy);
+  cudaEventRecord(nbrecipComplete,nbrecipStream);
+  cudaStreamWaitEvent(system->run->masterStream,nbrecipComplete,0);
 
   cudaStreamWaitEvent(biaspotStream,system->run->updateComplete,0);
   system->msld->calc_fixedBias(system,calcEnergy);

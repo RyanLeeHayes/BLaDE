@@ -46,7 +46,7 @@ msld removescaling bond angle ! scale urey dihe impr and cmap
 msld bias 1 2 6 0.0 0.0 0
 
 state file ../test/T4L_prep/minimized.pdb
-state box 4.1271760 0 0   0 4.1271760 0   0 0 4.1271760
+state box 41.271760 0 0   0 41.271760 0   0 0 41.271760
 state velocity 300
 
 run setvariable nsteps 2000

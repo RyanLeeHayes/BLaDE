@@ -55,6 +55,8 @@ struct CmapPotential {
 
 class Potential {
   public:
+  int atomCount;
+
   int bondCount;
   std::vector<struct BondPotential> bonds_tmp;
   struct BondPotential *bonds;
@@ -78,16 +80,18 @@ class Potential {
 
   std::map<TypeName8O,real(*)[4][4]> cmapTypeToPtr;
 
-  // cudaStream_t bondedStream[5];
+  real *charge;
+  real *charge_d;
+
   cudaStream_t bondedStream;
   cudaStream_t biaspotStream;
   cudaStream_t nbdirectStream;
   cudaStream_t nbrecipStream;
-  // NYI - might need some more
 
   cudaEvent_t bondedComplete;
   cudaEvent_t biaspotComplete;
-  // cudaEvent_t forceComplete;
+  cudaEvent_t nbdirectComplete;
+  cudaEvent_t nbrecipComplete;
   
   Potential();
   ~Potential();

@@ -4,10 +4,48 @@
 #include <cuda_runtime.h>
 
 #define MAXLENGTHSTRING 1024
-#define ANGSTROM 0.1
-#define KCAL_MOL 4.186
+
+// Units
+// At least this is uncontroversial...
 #define DEGREES 0.017453292519943
+
+#ifdef CHARMM_UNITS
+
+// Use CHARMM units, energy: kcal/mol, distance: A, time: A/sqrt(kcal/mol/amu), mass: amu
+
+// See values in charmm/source/ltm/consta_ltm.F90
+#define ANGSTROM 1.0
+#define KCAL_MOL 1.0
+// 1 / CHARMM TIMFAC value 0.0488882129
+#define PICOSECOND 20.454828284385908
+// CHARMM KBOLTZ
+#define kB 0.001987191
+// Charmm CCELEC0 value
+#define kELECTRIC 332.0716
+
+// NOTE kB and KCAL_MOL disagree by 3.01E-5 in 1 over temperature scale
+// That's 0.01 K at T=300 K
+
+#else
+
+// Use gromacs units, energy: kJ/mol, distance: nm, time: ps, mass: amu
+
+// 2019-02-28 Google searches
+// eps0 8.85418782E-12 J*m/C^2
+// e 1.60217662E-19 C
+// NA 6.02214076E23
+
+#define ANGSTROM 0.1
+// 4.184 according to CHARMM, this number is from kELECTRIC conversion
+#define KCAL_MOL 4.183900553475091
+#define PICOSECOND 1.0
 #define kB 0.0083144598
+#define kELECTRIC 138.935455103336
+
+// NOTE kB and KCAL_MOL disagree by 3.01E-5 in 1 over temperature scale
+// That's 0.01 K at T=300 K
+
+#endif
 
 // CUDA block size for system update kernels
 #define BLUP 256
