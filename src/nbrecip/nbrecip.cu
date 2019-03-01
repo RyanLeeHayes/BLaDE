@@ -1,4 +1,5 @@
 #include <cuda_runtime.h>
+#include <cufft.h>
 #include <math.h>
 
 #include "nbrecip/nbrecip.h"
@@ -71,5 +72,30 @@ void getforce_ewaldself(System *system,bool calcEnergy)
 
 
 
+// NYI - not sure if I need this comment for a template
 // getforce_angle_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->angles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
 // __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angles,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
+
+void getforce_ewald(System *system,bool calcEnergy)
+{
+  Potential *p=system->potential;
+  State *s=system->state;
+  Msld *m=system->msld;
+  int N=p->atomCount;
+  int shMem=0;
+  real *pEnergy=NULL;
+  real prefactor=system->run->betaEwald*(kELECTRIC/sqrt(M_PI));
+
+  if (calcEnergy) {
+    shMem=BLNB*sizeof(real)/32;
+    pEnergy=s->energy_d+eenbrecip;
+  }
+
+  // getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,p->nbrecipStream>>>(N,p->charge_d,prefactor,m->atomBlock_d,m->lambda_d,m->lambdaForce_d,pEnergy);
+
+  // Spread kernel
+  cufftExecR2C(p->planFFTPME,p->chargeGridPME_d,p->fourierGridPME_d);
+  // Convolution kernel
+  cufftExecC2R(p->planFFTPME,p->fourierGridPME_d,p->potentialGridPME_d);
+  // Gather kernel
+}

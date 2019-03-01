@@ -30,6 +30,7 @@ Run::Run()
   betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
+  gridSpace=1.0*ANGSTROM;
 #ifdef PROFILESERIAL
   masterStream=0;
 #else
@@ -123,6 +124,7 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> betaEwald=%f (input invbetaewald in A)\n",betaEwald);
   fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut);
   fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch);
+  fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace);
 }
 
 void Run::reset(char *line,char *token,System *system)
@@ -162,6 +164,8 @@ void Run::set_variable(char *line,char *token,System *system)
     rCut=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"rswitch")==0) {
     rSwitch=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"gridspace")==0) {
+    gridSpace=io_nextf(line)*ANGSTROM;
   } else {
     fatal(__FILE__,__LINE__,"Unrecognized token %s in run setvariable command\n",token);
   }
@@ -229,6 +233,7 @@ void Run::dynamics_initialize(System *system)
 void Run::dynamics_finalize(System *system)
 {
   system->update->finalize();
+  system->potential->finalize(system);
 
   //NYI write checkpoint
   step0=step;

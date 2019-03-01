@@ -2,6 +2,7 @@
 #define SYSTEM_POTENTIAL_H
 
 #include <cuda_runtime.h>
+#include <cufft.h>
 
 #include <vector>
 #include <map>
@@ -83,6 +84,13 @@ class Potential {
   real *charge;
   real *charge_d;
 
+  int gridDimPME[3];
+  cufftReal *chargeGridPME_d;
+  cufftComplex *fourierGridPME_d;
+  cufftReal *potentialGridPME_d;
+  cufftHandle planFFTPME, planIFFTPME;
+  size_t bufferSizeFFTPME,bufferSizeIFFTPME;
+
   cudaStream_t bondedStream;
   cudaStream_t biaspotStream;
   cudaStream_t nbdirectStream;
@@ -97,6 +105,7 @@ class Potential {
   ~Potential();
 
   void initialize(System *system);
+  void finalize(System *system);
 
   void calc_force(int step,System *system);
 };

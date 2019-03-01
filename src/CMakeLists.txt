@@ -12,6 +12,7 @@ find_package(CUDA 10.0)
 ## Use for debugging kernels
 set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
 set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "--use_fast_math")
+set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -lcufft")
 
 # message("${sources}")
 cuda_add_executable(msld ${sources})

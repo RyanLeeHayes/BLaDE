@@ -38,6 +38,7 @@ class Run {
   real betaEwald;
   real rCut;
   real rSwitch;
+  real gridSpace; // grid spacing for PME calculation
 
   cudaStream_t masterStream;
   cudaEvent_t forceComplete;

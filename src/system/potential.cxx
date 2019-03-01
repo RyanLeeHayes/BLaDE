@@ -36,6 +36,10 @@ Potential::Potential() {
   charge=NULL;
   charge_d=NULL;
 
+  chargeGridPME_d=NULL;
+  fourierGridPME_d=NULL;
+  potentialGridPME_d=NULL;
+
 #ifdef PROFILESERIAL
   bondedStream=0;
 #else
@@ -76,6 +80,9 @@ Potential::~Potential()
 
   if (charge) free(charge);
   if (charge_d) cudaFree(charge_d);
+  if (chargeGridPME_d) cudaFree(chargeGridPME_d);
+  if (fourierGridPME_d) cudaFree(fourierGridPME_d);
+  if (potentialGridPME_d) cudaFree(potentialGridPME_d);
 
 #ifndef PROFILESERIAL
   cudaStreamDestroy(bondedStream);
@@ -340,7 +347,7 @@ real (*alloc_kcmapPtr(int ngrid,real *kcmap))[4][4]
 
 void Potential::initialize(System *system)
 {
-  int i,j;
+  int i,j,k;
   Parameters *param=system->parameters;
   Structure *struc=system->structure;
   Msld *msld=system->msld;
@@ -567,7 +574,32 @@ void Potential::initialize(System *system)
     charge[i]=struc->atomList[i].charge;
   }
   cudaMemcpy(charge_d,charge,atomCount*sizeof(real),cudaMemcpyHostToDevice);
-  
+
+  // Choose PME grid sizes
+  int goodSizes[]={32,27,24,20,18,16};
+  fprintf(stdout,"NYI - need orthogonal box for automatic grid determination\n");
+  for (i=0; i<3; i++) {
+    real minDim=system->state->box[i][i]/system->run->gridSpace;
+    for (j=1; minDim>=32*j; j*=2) {
+      ;
+    }
+    for (k=0; k<5 && minDim<j*goodSizes[k]; k++) { // guaranteed to pass k=0
+      ;
+    }
+    gridDimPME[i]=j*goodSizes[k-1];
+    fprintf(stdout,"PME grid(%d) size: %d\n",i,gridDimPME[i]);
+  }
+
+  cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(cufftReal));
+  cudaMalloc(&fourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(cufftReal));
+  cudaMalloc(&potentialGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(cufftReal));
+
+  cufftCreate(&planFFTPME);
+  cufftMakePlan3d(planFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],CUFFT_R2C,&bufferSizeFFTPME);
+  cufftCreate(&planIFFTPME);
+  cufftMakePlan3d(planIFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],CUFFT_C2R,&bufferSizeIFFTPME);
+
+  // WORKING HERE
 // NYI #warning "Missing nonbonded terms"
 /*
   if (atomTypeIdx) free(atomTypeIdx);
@@ -586,6 +618,12 @@ void Potential::initialize(System *system)
     mass[i]=param->atomMass[at.atomTypeName];
   }
 */
+}
+
+void Potential::finalize(System *system)
+{
+  cufftDestroy(planFFTPME);
+  cufftDestroy(planIFFTPME);
 }
 
 void Potential::calc_force(int step,System *system)
@@ -609,6 +647,7 @@ void Potential::calc_force(int step,System *system)
 
   cudaStreamWaitEvent(nbrecipStream,system->run->updateComplete,0);
   getforce_ewaldself(system,calcEnergy);
+  getforce_ewald(system,calcEnergy);
   cudaEventRecord(nbrecipComplete,nbrecipStream);
   cudaStreamWaitEvent(system->run->masterStream,nbrecipComplete,0);
 
