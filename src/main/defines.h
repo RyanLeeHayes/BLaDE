@@ -56,10 +56,12 @@
 #ifdef DOUBLE
 typedef double real;
 typedef double3 real3;
+typedef double2 real2;
 #define realAtomicAdd doubleAtomicAdd
 #else
 typedef float real;
 typedef float3 real3;
+typedef float2 real2;
 #define realAtomicAdd atomicAdd
 #endif
 

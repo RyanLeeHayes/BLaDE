@@ -88,6 +88,7 @@ class Potential {
   cufftReal *chargeGridPME_d;
   cufftComplex *fourierGridPME_d;
   cufftReal *potentialGridPME_d;
+  real *bGridPME, *bGridPME_d;
   cufftHandle planFFTPME, planIFFTPME;
   size_t bufferSizeFFTPME,bufferSizeIFFTPME;
 

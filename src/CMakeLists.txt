@@ -5,6 +5,10 @@ file(GLOB_RECURSE sources *.cxx *.cu *.h)
 
 find_package(CUDA 10.0)
 
+option(UNITS "AKMA (CHARMM) or NMPS (GROMACS)" "NMPS")
+if (UNITS STREQUAL "AKMA")
+  add_definitions(-DCHARMM_UNITS)
+endif()
 ## Add compiler definition flags here
 # add_definitions(-DCUDAGRAPH)
 # add_definitions(-DPROFILESERIAL)

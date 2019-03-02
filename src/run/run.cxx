@@ -137,7 +137,7 @@ void Run::set_variable(char *line,char *token,System *system)
 {
   io_nexta(line,token);
   if (strcmp(token,"dt")==0) {
-    dt=io_nextf(line);
+    dt=PICOSECOND*io_nextf(line);
   } else if (strcmp(token,"nsteps")==0) {
     nsteps=io_nexti(line);
   } else if (strcmp(token,"fnmxtc")==0) {
@@ -154,8 +154,6 @@ void Run::set_variable(char *line,char *token,System *system)
     freqNRG=io_nexti(line);
   } else if (strcmp(token,"T")==0) {
     T=io_nextf(line);
-  } else if (strcmp(token,"dt")==0) {
-    dt=PICOSECOND*io_nextf(line);
   } else if (strcmp(token,"gamma")==0) {
     gamma=io_nextf(line)/PICOSECOND;
   } else if (strcmp(token,"invbetaewald")==0) {
@@ -180,6 +178,7 @@ void Run::dynamics(char *line,char *token,System *system)
 
   // Run dynamics
   for (step=step0; step<step0+nsteps; step++) {
+    fprintf(stdout,"Step %d\n",step);
     system->potential->calc_force(step,system);
     system->update->update(step,system);
     print_dynamics_output(step,system);
