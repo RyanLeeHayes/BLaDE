@@ -1,0 +1,354 @@
+* Lame Title - run with openMM
+*
+
+set box = 41.271760
+
+set s1seq1 = nat
+set s1seq2 = ala
+set s1seq3 = phe
+set s1seq4 = ile
+set s1seq5 = met
+set s1seq6 = val
+set segid = PROT
+set resid1 = 99
+
+read rtf card name prep/toppar/top_all36_msld.rtf
+read rtf card name "prep/toppar/top_all36_cgenff.rtf" append
+read param card name prep/toppar/par_all36_msld.prm
+read param card name "prep/toppar/par_all36_cgenff.prm" append
+! stream "LIG.str"
+
+stream prep/aa_stream/ca_ala.str
+stream prep/aa_stream/ca_arg.str
+stream prep/aa_stream/ca_asn.str
+stream prep/aa_stream/ca_asp.str
+stream prep/aa_stream/ca_cys.str
+stream prep/aa_stream/ca_gln.str
+stream prep/aa_stream/ca_glu.str
+stream prep/aa_stream/ca_hsd.str
+stream prep/aa_stream/ca_hse.str
+stream prep/aa_stream/ca_hsp.str
+stream prep/aa_stream/ca_ile.str
+stream prep/aa_stream/ca_leu.str
+stream prep/aa_stream/ca_lys.str
+stream prep/aa_stream/ca_met.str
+stream prep/aa_stream/ca_phe.str
+stream prep/aa_stream/ca_ser.str
+stream prep/aa_stream/ca_thr.str
+stream prep/aa_stream/ca_trp.str
+stream prep/aa_stream/ca_tyr.str
+stream prep/aa_stream/ca_val.str
+
+
+read sequ pdb name prep/protein.pdb
+generate PROT first ACE last CT2 setup
+
+! goto ph54
+
+! patch aspp PROT 10 setup
+! ic param
+! ic build
+! patch aspp PROT 20 setup
+! ic param
+! ic build
+! patch aspp PROT 61 setup
+! ic param
+! ic build
+! patch aspp PROT 70 setup
+! ic param
+! ic build
+! patch aspp PROT 72 setup
+! ic param
+! ic build
+! patch aspp PROT 127 setup
+! ic param
+! ic build
+! patch glup PROT 5 setup
+! ic param
+! ic build
+! patch glup PROT 11 setup
+! ic param
+! ic build
+! patch glup PROT 22 setup
+! ic param
+! ic build
+! patch glup PROT 45 setup
+! ic param
+! ic build
+! patch glup PROT 64 setup
+! ic param
+! ic build
+! patch glup PROT 108 setup
+! ic param
+! ic build
+! patch glup PROT 128 setup
+! ic param
+! ic build
+! auto angle dihe ! redundant
+
+label ph54
+
+read coor pdb resid name prep/protein.pdb
+! ic fill
+! ic param
+! ic build
+
+
+set ii = 1
+label patchsiteloop
+if @ii .le. @nsites then
+
+   set jj = 2
+   label patchloop
+   if @jj .le. @nsubs@@ii then
+
+      patch ca_@{s@@{ii}seq@@jj} @segid @resid@@ii setup
+      ! read coor pdb resid name pdb.pdb
+      ic param
+      ic build
+
+      calc jj = @jj + 1
+      goto patchloop
+   endif
+
+   calc ii = @ii + 1
+   goto patchsiteloop
+endif
+
+
+set ii = 1
+label selesiteloop
+if @ii .le. @nsites then
+   set resid = @resid@@ii
+   set site = @ii
+
+   define site@{resid}suball - 
+      select ( -
+      segid @segid .and. resid @resid ) show end
+
+   define site@{resid}subbb -
+      select ( -
+      site@{resid}suball .and. ( -
+      type N   .or. -
+      type HN  .or. -
+      type CA  .or. -
+      type HA  .or. -
+      type C   .or. -
+      type O   .or. -
+      type HT1 .or. -
+      type HT2 .or. -
+      type HT3 .or. -
+      type OXT .or. -
+      none ) ) show end
+
+   define site@{site}sub1 -
+      select ( -
+      site@{resid}suball .and. .not. site@{resid}subbb ) show end
+
+   set jj = 2
+   label seleloop
+   if @jj .le. @nsubs@@ii then
+
+      set sub = @jj
+      stream prep/aa_stream/sele_@{s@@{ii}seq@@jj}.str
+
+      define site@{site}sub1 -
+         select ( -
+         site@{site}sub1 .and. .not. site@{site}sub@{sub} ) show end
+
+      calc jj = @jj + 1
+      goto seleloop
+   endif
+
+   calc ii = @ii + 1
+   goto selesiteloop
+endif
+
+
+bomlev -2
+auto angle dihe
+bomlev -1
+
+
+set ii = 1
+label deletesiteloop
+if @ii .le. @nsites then
+   set resid = @resid@@ii
+
+   set jj = 1
+   label delete1loop
+   if @jj .le. @nsubs@@ii then
+
+      calc kk = @jj + 1
+      label delete2loop
+      if @kk .le. @nsubs@@ii then
+
+         dele angle sele ( site@{ii}sub@{jj} ) show end sele ( site@{ii}sub@{kk} ) show end
+         dele dihe  sele ( site@{ii}sub@{jj} ) show end sele ( site@{ii}sub@{kk} ) show end
+         dele impr  sele ( site@{ii}sub@{jj} ) show end sele ( site@{ii}sub@{kk} ) show end
+
+         calc kk = @kk + 1
+         goto delete2loop
+      endif
+
+      calc jj = @jj + 1
+      goto delete1loop
+   endif
+
+   calc ii = @ii + 1
+   goto deletesiteloop
+endif
+
+
+! read sequ pdb name "ligand00.pdb"
+! generate LI00 setup
+! read coor pdb resid name "ligand00.pdb"
+
+! read sequ pdb name "ligand01.pdb"
+! generate LI01 setup
+! read coor pdb resid name "ligand01.pdb"
+
+read sequ pdb name prep/solvent00.pdb
+generate WT00 first none last none setup noangl nodihe
+read coor pdb resid name prep/solvent00.pdb
+
+! read sequ pdb name prep/solvent01.pdb
+! generate WT01 first none last none setup noangl nodihe
+! read coor pdb resid name prep/solvent01.pdb
+
+read sequ pdb segid IONS name prep/ions.pdb
+generate IONS setup
+read coor pdb resid name prep/ions.pdb
+
+! Make sure all atoms have coordinates
+PRINt COORdinate SELEct .NOT. INITialized END
+
+
+! MODIFY to set up periodic images or SBC
+coor stat
+crystal define cubic @box @box @box 90. 90. 90.   !! Need to use CRYSTAL in repdstr
+crystal build cutoff 15 nope 0
+image byseg xcen 0 ycen 0 zcen 0 sele .not. ( resn TIP3 .or. segid IONS ) end
+image byres xcen 0 ycen 0 zcen 0 sele resn TIP3 .or. segid IONS end
+
+
+calc blockplusone = @nblocks + 1
+BLOCK @blockplusone
+   clear
+END
+
+if @nreps .eq. 1 then
+BLOCK @blockplusone
+else
+BLOCK @blockplusone NREP @nreps
+endif
+   ! Call 2 sele site@{resid1}sub@{s1seq1} end
+   ! Call 3 sele site@{resid1}sub@{s1seq2} end
+   ! Call 4 sele site@{resid1}sub@{s1seq3} end
+
+set prevblock = 0
+set ii = 1
+label callsiteloop
+if @ii .le. @nsites then
+   set jj = 1
+   label callloop
+   if @jj .le. @nsubs@@ii then
+      calc jp1 = @jj + 1 + @prevblock
+
+      Call @jp1 sele site@{ii}sub@{jj} end
+
+      calc jj = @jj + 1
+      goto callloop
+   endif
+   calc prevblock = @prevblock + @nsubs@@{ii}
+   calc ii = @ii + 1
+   goto callsiteloop
+endif
+   qldm theta
+   lang temp @temp
+if @nreps .eq. 1 then
+   ldin 1 1.0  0.0  5.0  0.0  5.0
+else
+   phmd 7.0
+   ldin 1 1.0  0.0  5.0  0.0  5.0  fix 7.0
+endif
+   ! ldin 2 0.995 0.0  5.0  @lams1s1 5.0  fix 7.0
+   ! ldin 3 0.001 0.0  5.0  @lams1s2 5.0  fix 7.0
+   ! ldin 4 0.001 0.0  5.0  @lams1s3 5.0  fix 7.0
+set blockassign = 0
+set nbiaspot = 0
+set prevblock = 0
+set ii = 1
+label ldinsiteloop
+if @ii .le. @nsites then
+   calc lambda0 = 1.001 - 0.001 * @nsubs@@{ii}
+   calc nbiaspot = @nbiaspot + 5 * ( @nsubs@@{ii} * ( @nsubs@@{ii} - 1 ) ) / 2
+   set jj = 1
+   label ldinloop
+   if @jj .le. @nsubs@@ii then
+      calc jp1 = @jj + 1 + @prevblock
+
+if @nreps .eq. 1 then
+      ldin @jp1 @lambda0 0.0  5.0  @lams@@{ii}s@@{jj} 5.0
+else
+      ldin @jp1 @lambda0 0.0  5.0  @lams@@{ii}s@@{jj} 5.0  fix 7.0
+endif
+
+      set lambda0 = 0.001
+      set blockassign = @blockassign @ii
+      calc jj = @jj + 1
+      goto ldinloop
+   endif
+   calc prevblock = @prevblock + @nsubs@@{ii}
+   calc ii = @ii + 1
+   goto ldinsiteloop
+endif
+   ! set excl1 = 2 3 2 4 3 4
+   ! excl @excl1
+   rmla bond thet impr 
+   ! msld 0  1  1  1  fnex @fnex
+   msld @blockassign fnex @fnex
+   msma
+
+   soft on
+   pmel ex
+
+   ! Check block.doc for functional form of these biasing potentials
+   ldbi @nbiaspot
+set ibias = 1
+set prevblock = 0
+set ii = 1
+label loop5
+if @ii .le. @nsites then
+   set jj = 1
+   label loop6
+   if @jj .le. @nsubs@@{ii} then
+      calc jp1 = @jj + 1 + @prevblock
+      calc kk = @jj + 1
+      label loop7
+      if @kk .le. @nsubs@@{ii} then
+         calc kp1 = @kk + 1 + @prevblock
+         adex @jp1 @kp1
+
+         ldbv @ibias @jp1 @kp1 6 0.0 @cs@@{ii}s@@{jj}s@@{ii}s@@{kk} 0
+         calc ibias = @ibias + 1
+         ldbv @ibias @jp1 @kp1 10 -5.56 @xs@@{ii}s@@{jj}s@@{ii}s@@{kk} 0
+         calc ibias = @ibias + 1
+         ldbv @ibias @jp1 @kp1 8 0.017 @ss@@{ii}s@@{jj}s@@{ii}s@@{kk} 0
+         calc ibias = @ibias + 1
+         ldbv @ibias @kp1 @jp1 10 -5.56 @xs@@{ii}s@@{kk}s@@{ii}s@@{jj} 0
+         calc ibias = @ibias + 1
+         ldbv @ibias @kp1 @jp1 8 0.017 @ss@@{ii}s@@{kk}s@@{ii}s@@{jj} 0
+         calc ibias = @ibias + 1
+         calc kk = @kk + 1
+         goto loop7
+      endif
+      calc jj = @jj + 1
+      goto loop6
+   endif
+   calc prevblock = @prevblock + @nsubs@@{ii}
+   calc ii = @ii + 1
+   goto loop5
+endif
+END
+

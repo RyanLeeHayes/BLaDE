@@ -1,0 +1,11 @@
+TER
+ATOM      1  SOD SOD     1      -0.857  18.421  12.497  0.00  0.00      IONS
+ATOM      2  SOD SOD     2     -14.561   6.577  12.341  0.00  0.00      IONS
+ATOM      3  SOD SOD     3     -16.481  11.180  -4.508  0.00  0.00      IONS
+ATOM      4  SOD SOD     4     -14.561   6.577  -6.321  0.00  0.00      IONS
+ATOM      5  CLA CLA     5      -4.096 -14.562   7.201  0.00  0.00      IONS
+ATOM      6  CLA CLA     6      -4.664   2.788  15.452  0.00  0.00      IONS
+ATOM      7  CLA CLA     7       0.172  14.747 -17.376  0.00  0.00      IONS
+ATOM      8  CLA CLA     8     -14.423   5.281  17.297  0.00  0.00      IONS
+TER
+END

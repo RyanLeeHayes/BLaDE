@@ -456,14 +456,16 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
     invSpace=cp.ngrid*(1/(2*((float) M_PI)));
     rPhi[0]*=invSpace;
     binPhi[0]=((int) floor(rPhi[0]));
+    rPhi[0]-=binPhi[0];
+    binPhi[0]+=cp.ngrid/2;
+    binPhi[0]+=(binPhi[0]>=cp.ngrid?-cp.ngrid:0);
     binPhi[0]+=(binPhi[0]<0?cp.ngrid:0);
-    rPhi[0]=fmod(rPhi[0],(float) cp.ngrid)-binPhi[0];
-    rPhi[0]+=(rPhi[0]<0?cp.ngrid:0);
     rPhi[1]*=invSpace;
     binPhi[1]=((int) floor(rPhi[1]));
+    rPhi[1]-=binPhi[1];
+    binPhi[1]+=cp.ngrid/2;
+    binPhi[1]+=(binPhi[1]>=cp.ngrid?-cp.ngrid:0);
     binPhi[1]+=(binPhi[1]<0?cp.ngrid:0);
-    rPhi[1]=fmod(rPhi[1],(float) cp.ngrid)-binPhi[1];
-    rPhi[1]+=(rPhi[1]<0?cp.ngrid:0);
     cmapBin=cp.ngrid*binPhi[0]+binPhi[1];
       // compute forces (and energy)
     fcmapPhiColumn[0]=3*cp.kcmapPtr[cmapBin][3][2+lastBit];

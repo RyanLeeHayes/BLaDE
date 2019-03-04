@@ -47,6 +47,10 @@ Msld::Msld() {
   gamma=1.0/PICOSECOND; // ps^-1
   fnex=5.5;
 
+  for (int i=0; i<6; i++) {
+    scaleTerms[i]=true;
+  }
+
   variableBias_tmp.clear();
   variableBias=NULL;
   variableBias_d=NULL;

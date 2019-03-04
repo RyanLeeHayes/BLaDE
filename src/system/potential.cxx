@@ -441,9 +441,10 @@ void Potential::initialize(System *system)
     }
     // Include each harmonic as a separate dihedral.
     for (j=0; j<dp.size(); j++) {
-      dihe.kdih=dp[0].kdih;
-      dihe.ndih=dp[0].ndih;
-      dihe.dih0=dp[0].dih0;
+      dihe.kdih=dp[j].kdih;
+      dihe.ndih=dp[j].ndih;
+      dihe.dih0=dp[j].dih0;
+      // fprintf(stdout,"DEBUG j=%d n0=%d nj=%d\n",j,dp[0].ndih,dp[j].ndih);
       dihes_tmp.emplace_back(dihe);
     }
   }
