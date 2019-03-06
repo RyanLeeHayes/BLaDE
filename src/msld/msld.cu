@@ -272,13 +272,16 @@ int merge_site_block(int site,int block)
 // NYI: soft bonds or constrained atom scaling
 void Msld::bonded_scaling(int *idx,int *siteBlock,int type,int Nat,int Nsc)
 {
+  bool scale;
   int i,j;
   int ab;
   int block[Nsc+2]={0}; // First term is blockCount, last term is for error checking
   block[0]=blockCount;
 
   // Sort into a descending list with no duplicates.
-  if (scaleTerms[type]) {
+  scale=true;
+  if (type>=0) scale=scaleTerms[type];
+  if (scale) {
     for (i=1; i<Nsc+2; i++) {
       for (j=0; j<Nat; j++) {
         ab=atomBlock[idx[j]];
@@ -288,10 +291,12 @@ void Msld::bonded_scaling(int *idx,int *siteBlock,int type,int Nat,int Nsc)
       }
     }
     // Check for errors
-    for (i=1; i<Nsc+1; i++) {
-      for (j=i+1; j<Nsc+1; j++) {
-        if (block[i]>0 && block[j]>0 && block[i]!=block[j] && lambdaSite[block[i]]==lambdaSite[block[j]]) {
-          fatal(__FILE__,__LINE__,"Illegal MSLD scaling between two atoms in the same site (%d) but different blocks (%d and %d)\n",lambdaSite[block[i]],block[i],block[j]);
+    if (type>=-1) {
+      for (i=1; i<Nsc+1; i++) {
+        for (j=i+1; j<Nsc+1; j++) {
+          if (block[i]>0 && block[j]>0 && block[i]!=block[j] && lambdaSite[block[i]]==lambdaSite[block[j]]) {
+            fatal(__FILE__,__LINE__,"Illegal MSLD scaling between two atoms in the same site (%d) but different blocks (%d and %d)\n",lambdaSite[block[i]],block[i],block[j]);
+          }
         }
       }
     }
@@ -335,12 +340,28 @@ void Msld::cmap_scaling(int idx[8],int siteBlock[3])
   bonded_scaling(idx,siteBlock,5,8,3);
 }
 
+void Msld::nb14_scaling(int idx[2],int siteBlock[2])
+{
+  bonded_scaling(idx,siteBlock,-1,2,2);
+}
+
+void Msld::nbex_scaling(int idx[2],int siteBlock[2])
+{
+  bonded_scaling(idx,siteBlock,-2,2,2);
+}
+
+bool Msld::interacting(int i,int j)
+{
+  return atomBlock[i]==atomBlock[j] || lambdaSite[atomBlock[i]]!=lambdaSite[atomBlock[j]];
+}
+
 // Initialize MSLD for a simulation
 void Msld::initialize(System *system)
 {
   int i;
 
-  for (i=1; i<blockCount; i++) {
+  thetaMass[0]=thetaMass[1]; // Avoid singularities in the kinetic energy
+  for (i=0; i<blockCount; i++) {
     thetaInvsqrtMass[i]=1/sqrt(thetaMass[i]);
   }
 

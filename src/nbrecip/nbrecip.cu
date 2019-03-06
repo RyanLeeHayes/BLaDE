@@ -12,7 +12,7 @@
 
 #include "main/real3.h"
 
-#include <assert.h> // DEBUG
+
 
 // getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,p->bondedStream>>>(N,p->charge_d,prefactor,m->atomBlock_d,m->lambda_d,m->lambdaForce_d,pEnergy);
 __global__ void getforce_ewaldself_kernel(int atomCount,real *charge,real prefactor,int *atomBlock,real *lambda,real *lambdaForce,real *energy)
@@ -204,9 +204,6 @@ __global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,cufftComplex *
     factor=(ijk==0?0:factor);
     fourierGridPME[ijk].x*=factor;
     fourierGridPME[ijk].y*=factor;
-// DEBUG
-    assert(fourierGridPME[ijk].x > -INFINITY);
-    assert(fourierGridPME[ijk].y > -INFINITY);
   }
 }
 
@@ -342,9 +339,6 @@ __global__ void getforce_ewald_gather_kernel(int atomCount,real *charge,int *ato
         index+=((u0.y+k)%gridDimPME.y);
         index*=gridDimPME.z;
         index+=((u0.z+threadIdx.x-masterThread)%gridDimPME.z);
-// DEBUG
-    assert(potentialGridPME[index] > -INFINITY);
-
         fi.x+=potentialGridPME[index]*dDIndex.x*dIndex.y*density.z;
         fi.y+=potentialGridPME[index]*dIndex.x*dDIndex.y*density.z;
         fi.z+=potentialGridPME[index]*dIndex.x*dIndex.y*dDensity.z;

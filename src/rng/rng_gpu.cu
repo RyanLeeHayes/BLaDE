@@ -25,16 +25,18 @@ void RngGPU::setup()
 __global__ void kernel_normal(curandStateMtgp32 *state,int n,real *p)
 {
   int i;
-  for (i=256*blockIdx.x+threadIdx.x; i<n; i+=200*256) {
-    p[i]=curand_normal(&state[blockIdx.x]);
+  for (i=256*blockIdx.x+threadIdx.x; i<((n+255)&0xFFFFFF00); i+=200*256) {
+    real result=curand_normal(&state[blockIdx.x]); // Whole block generates
+    if (i<n) p[i]=result; // Only requested threads store it
   }
 }
 
 __global__ void kernel_uniform(curandStateMtgp32 *state,int n,real *p)
 {
   int i;
-  for (i=256*blockIdx.x+threadIdx.x; i<n; i+=200*256) {
-    p[i]=curand_uniform(&state[blockIdx.x]);
+  for (i=256*blockIdx.x+threadIdx.x; i<((n+255)&0xFFFFFF00); i+=200*256) {
+    real result=curand_uniform(&state[blockIdx.x]); // Whole block generates
+    if (i<n) p[i]=result; // Only requested threads store it
   }
 }
 

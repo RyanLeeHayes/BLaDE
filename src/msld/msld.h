@@ -72,6 +72,10 @@ class Msld {
   void dihe_scaling(int idx[4],int siteBlock[2]);
   void impr_scaling(int idx[4],int siteBlock[2]);
   void cmap_scaling(int idx[8],int siteBlock[3]);
+  void nb14_scaling(int idx[2],int siteBlock[2]);
+  void nbex_scaling(int idx[2],int siteBlock[2]);
+
+  bool interacting(int i,int j);
 
   void initialize(System *system);
 

@@ -79,6 +79,7 @@ __global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,r
     if (b[0] || energy) {
       lEnergy=0.5*bp.kb*(r-bp.b0)*(r-bp.b0);
     }
+    fbond*=l[0]*l[1];
 
     // Lambda force
     if (b[0]) {
@@ -171,6 +172,7 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
     if (b[0] || energy) {
       lEnergy=0.5*ap.kangle*(t-ap.angle0)*(t-ap.angle0);
     }
+    fangle*=l[0]*l[1];
 
     // Lambda force
     if (b[0]) {
@@ -303,6 +305,7 @@ __global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsi
 
     // Interaction
     function_torsion(tp,phi,&ftorsion,&lEnergy, b[0] || energy);
+    ftorsion*=l[0]*l[1];
 
     // Lambda force
     if (b[0]) {
@@ -524,6 +527,7 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
       // Add own force
     fcmap+=fcmapPhi[lastBit];
     fcmap*=invSpace;
+    fcmap*=l[0]*l[1]*l[2];
 
     // Lambda force
     if (lastBit==0) { // First partner has full energy

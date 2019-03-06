@@ -7,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <set>
 
 #include "main/defines.h"
 
@@ -54,6 +55,20 @@ struct CmapPotential {
   real (*kcmapPtr)[4][4];
 };
 
+struct Nb14Potential {
+  int idx[2];
+  int siteBlock[2];
+  real qxq;
+  real c12;
+  real c6;
+};
+
+struct NbExPotential {
+  int idx[2];
+  int siteBlock[2];
+  real qxq;
+};
+
 class Potential {
   public:
   int atomCount;
@@ -80,6 +95,24 @@ class Potential {
   struct CmapPotential *cmaps_d;
 
   std::map<TypeName8O,real(*)[4][4]> cmapTypeToPtr;
+
+  int nb14Count;
+  std::vector<struct Nb14Potential> nb14s_tmp;
+  struct Nb14Potential *nb14s;
+  struct Nb14Potential *nb14s_d;
+  int nbexCount;
+  std::vector<struct NbExPotential> nbexs_tmp;
+  struct NbExPotential *nbexs;
+  struct NbExPotential *nbexs_d;
+
+  std::set<int> *bondExcl;
+  std::set<int> *angleExcl;
+  std::set<int> *diheExcl;
+  std::set<int> *msldExcl;
+  std::set<int> *allExcl;
+  // std::vector<Int2> excls_tmp;
+  // struct Int2 *excls;
+  // struct Int2 *excls_d;
 
   real *charge;
   real *charge_d;

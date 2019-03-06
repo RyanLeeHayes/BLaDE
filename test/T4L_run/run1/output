@@ -1,6 +1,6 @@
  Parameter: IFLAT <- "1"
  Parameter: NSTEPS <- "50000"
- Parameter: SEED <- "26024"
+ Parameter: SEED <- "11730"
 1
                  Chemistry at HARvard Macromolecular Mechanics
            (CHARMM) - Developmental Version 44a1     August 15, 2018            
@@ -8,7 +8,7 @@
        Copyright(c) 1984-2014  President and Fellows of Harvard College
                               All Rights Reserved
   Current operating system: Linux-3.10.0-862.14.4.el7.x86_64(x86_64)@gollum00   
-                 Created on  3/2/19 at  0:35:16 by user: rhaye       
+                 Created on  3/5/19 at 14:20:41 by user: rhaye       
 
             Maximum number of ATOMS:    360720, and RESidues:      120240
  RDTITL> * CHARMM INPUT FILE FOR MULTI-SITE LAMBDA-DYNAMICS
@@ -5927,12 +5927,14 @@ Warning, soft cores only work with domdec
 See Hayes et al JPC B (2017) for functional form
 
   
-  BLOCK>       pmel ex
+  BLOCK>       ! pmel ex
+  
+  BLOCK>       pmel on
 Enabling PME with MSLD
 Warning, only works with domdec
 See Huang, Chen, Wallace, and Shen, JCTC (2016) for a description
 
-Using second PME exclusions strategy.
+Using first PME exclusions strategy. Second strategy may give lower barriers
 
   
   BLOCK>     
@@ -8080,19 +8082,19 @@ ENER CROSS:           CMAPs        PMF1D        PMF2D        PRIMO
 ENER EXTERN:        VDWaals         ELEC       HBONds          ASP         USER
 ENER EWALD:          EWKSum       EWSElf       EWEXcl       EWQCor       EWUTil
  ----------       ---------    ---------    ---------    ---------    ---------
-ENER>        0 -27302.74762      0.00000      0.89153
+ENER>        0 -27301.27479      0.00000      0.89151
 ENER INTERN>      900.63494    613.44055      3.22040     25.51357      0.60531
 ENER CROSS>        -1.74619      0.00000      0.00000      0.00000
 ENER EXTERN>     3067.22111 -28909.79050      0.00000      0.00000      0.00000
-ENER EWALD>       143.57521-143539.38397 140393.96194      0.00000      0.00000
+ENER EWALD>       143.57521-143539.38397 140395.43478      0.00000      0.00000
  ----------       ---------    ---------    ---------    ---------    ---------
   
  CHARMM>    stop
       $$$$$$  New timer profile Local Direct node$$$$$
-   List time                       0.68 Other:            0.00
+   List time                       0.67 Other:            0.00
             Direct Ewald time               0.00 Other:            0.00
          Ewald time                      0.00 Other:            0.00
-      Nonbond force                   0.01 Other:            0.00
+      Nonbond force                   0.01 Other:            0.01
          Bond energy                     0.00 Other:            0.00
          Angle energy                    0.00 Other:            0.00
          Dihedral energy                 0.00 Other:            0.00
@@ -8102,12 +8104,12 @@ ENER EWALD>       143.57521-143539.38397 140393.96194      0.00000      0.00000
       Comm force                      0.00 Other:            0.00
       Recip Ewald time                0.00 Other:            0.00
    Energy time                     0.01 Other:            0.00
- Total time                      2.58 Other:            1.90
+ Total time                      2.56 Other:            1.88
          $$$$$$  Average   profile Direct $$$$$
-   List time                       0.68 Other:            0.00
+   List time                       0.67 Other:            0.00
             Direct Ewald time               0.00 Other:            0.00
          Ewald time                      0.00 Other:            0.00
-      Nonbond force                   0.01 Other:            0.00
+      Nonbond force                   0.01 Other:            0.01
          Bond energy                     0.00 Other:            0.00
          Angle energy                    0.00 Other:            0.00
          Dihedral energy                 0.00 Other:            0.00
@@ -8117,11 +8119,11 @@ ENER EWALD>       143.57521-143539.38397 140393.96194      0.00000      0.00000
       Comm force                      0.00 Other:            0.00
       Recip Ewald time                0.00 Other:            0.00
    Energy time                     0.01 Other:            0.00
- Total time                      2.58 Other:            1.90
+ Total time                      2.56 Other:            1.88
 
                     NORMAL TERMINATION BY NORMAL STOP
                     MOST SEVERE WARNING WAS AT LEVEL -1
 
                     $$$$$ JOB ACCOUNTING INFORMATION $$$$$
-                     ELAPSED TIME:     2.63  SECONDS 
-                         CPU TIME:     2.34  SECONDS 
+                     ELAPSED TIME:     2.61  SECONDS 
+                         CPU TIME:     2.33  SECONDS 

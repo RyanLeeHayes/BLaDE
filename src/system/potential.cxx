@@ -10,6 +10,7 @@
 #include "system/state.h"
 #include "run/run.h"
 #include "bonded/bonded.h"
+#include "bonded/pair.h"
 #include "nbrecip/nbrecip.h"
 
 
@@ -35,6 +36,19 @@ Potential::Potential() {
 
   charge=NULL;
   charge_d=NULL;
+
+  nb14Count=0;
+  nb14s=NULL;
+  nb14s_d=NULL;
+  nbexCount=0;
+  nbexs=NULL;
+  nbexs_d=NULL;
+
+  bondExcl=NULL;
+  angleExcl=NULL;
+  diheExcl=NULL;
+  msldExcl=NULL;
+  allExcl=NULL;
 
   chargeGridPME_d=NULL;
   fourierGridPME_d=NULL;
@@ -80,6 +94,18 @@ Potential::~Potential()
 
   if (charge) free(charge);
   if (charge_d) cudaFree(charge_d);
+
+  if (nb14s) free(nb14s);
+  if (nb14s_d) cudaFree(nb14s_d);
+  if (nbexs) free(nbexs);
+  if (nbexs_d) cudaFree(nbexs_d);
+
+  delete [] bondExcl;
+  delete [] angleExcl;
+  delete [] diheExcl;
+  delete [] msldExcl;
+  delete [] allExcl;
+
   if (chargeGridPME_d) cudaFree(chargeGridPME_d);
   if (fourierGridPME_d) cudaFree(fourierGridPME_d);
   if (potentialGridPME_d) cudaFree(potentialGridPME_d);
@@ -576,6 +602,142 @@ void Potential::initialize(System *system)
   }
   cudaMemcpy(charge_d,charge,atomCount*sizeof(real),cudaMemcpyHostToDevice);
 
+  // Set up exclusions
+  bondExcl=new std::set<int>[atomCount];
+  angleExcl=new std::set<int>[atomCount];
+  diheExcl=new std::set<int>[atomCount];
+  msldExcl=new std::set<int>[atomCount];
+  allExcl=new std::set<int>[atomCount];
+
+  for (i=0; i<struc->bondList.size(); i++) {
+    Int2 ij=struc->bondList[i];
+    for (j=0; j<2; j++) {
+      if (allExcl[ij.i[j]].count(ij.i[1-j]) == 0 && system->msld->interacting(ij.i[0],ij.i[1])) {
+        bondExcl[ij.i[j]].insert(ij.i[1-j]);
+        allExcl[ij.i[j]].insert(ij.i[1-j]);
+      }
+    }
+  }
+  for (i=0; i<struc->bondList.size(); i++) {
+    Int2 ij=struc->bondList[i];
+    for (j=0; j<2; j++) {
+      for (std::set<int>::iterator kk=bondExcl[ij.i[1-j]].begin(); kk!=bondExcl[ij.i[1-j]].end(); kk++) {
+        Int2 jk;
+        jk.i[0]=ij.i[j];
+        jk.i[1]=*kk;
+        if (jk.i[0]!=jk.i[1]) {
+          for (l=0; l<2; l++) {
+            if (allExcl[jk.i[l]].count(jk.i[1-l]) == 0 && system->msld->interacting(jk.i[0],jk.i[1])) {
+              angleExcl[jk.i[l]].insert(jk.i[1-l]);
+              allExcl[jk.i[l]].insert(jk.i[1-l]);
+            }
+          }
+        }
+      }
+    }
+  }
+  for (i=0; i<struc->bondList.size(); i++) {
+    Int2 ij=struc->bondList[i];
+    for (j=0; j<2; j++) {
+      for (std::set<int>::iterator kk=angleExcl[ij.i[1-j]].begin(); kk!=angleExcl[ij.i[1-j]].end(); kk++) {
+        Int2 jk;
+        jk.i[0]=ij.i[j];
+        jk.i[1]=*kk;
+        if (jk.i[0]!=jk.i[1]) {
+          for (l=0; l<2; l++) {
+            if (allExcl[jk.i[l]].count(jk.i[1-l]) == 0 && system->msld->interacting(jk.i[0],jk.i[1])) {
+              diheExcl[jk.i[l]].insert(jk.i[1-l]);
+              allExcl[jk.i[l]].insert(jk.i[1-l]);
+            }
+          }
+        }
+      }
+    }
+  }
+#warning "This is an N^2 algorithm, need to set up better data structures in Msld class to make it N"
+  for (i=0; i<atomCount; i++) {
+    for (j=0; j<atomCount; j++) {
+      if (!system->msld->interacting(i,j)) {
+        msldExcl[i].insert(j);
+        msldExcl[j].insert(i);
+        allExcl[i].insert(j);
+        allExcl[j].insert(i);
+      }
+    }
+  }
+
+  for (i=0; i<atomCount; i++) {
+    for (std::set<int>::iterator jj=diheExcl[i].begin(); jj!=diheExcl[i].end(); jj++) {
+      if (i<*jj) {
+        TypeName2 type;
+        Nb14Potential nb14;
+        struct NbondParameter np;
+        // Get participating atoms
+        nb14.idx[0]=i;
+        nb14.idx[1]=*jj;
+        for (k=0; k<2; k++) {
+          type.t[k]=struc->atomList[nb14.idx[k]].atomTypeName;
+        }
+        // Get their MSLD scaling
+        msld->nb14_scaling(nb14.idx,nb14.siteBlock);
+        // Get their parameters
+        nb14.qxq=charge[nb14.idx[0]]*charge[nb14.idx[1]];
+        if (param->nbfixParameter.count(type)==1) {
+          np=param->nbfixParameter[type];
+        } else {
+          struct NbondParameter npij[2];
+          for (k=0; k<2; k++) {
+            if (param->nbondParameter.count(type.t[k])==1) {
+              npij[k]=param->nbondParameter[type.t[k]];
+            } else {
+              fatal(__FILE__,__LINE__,"Nonbonded parameter for atom %d type %d not found\n",nb14.idx[k],type.t[k].c_str());
+            }
+          }
+          np.eps14=sqrt(npij[0].eps14*npij[1].eps14);
+          np.sig14=npij[0].sig14+npij[1].sig14;
+        }
+        real sig6=np.sig14*np.sig14;
+        sig6*=(sig6*sig6);
+        nb14.c12=np.eps14*sig6*sig6;
+        nb14.c6=2*np.eps14*sig6;
+        nb14s_tmp.emplace_back(nb14);
+      }
+    }
+  }
+
+  for (i=0; i<atomCount; i++) {
+    for (std::set<int>::iterator jj=allExcl[i].begin(); jj!=allExcl[i].end(); jj++) {
+      if (i<*jj && diheExcl[i].count(*jj)==0) {
+        NbExPotential nbex;
+        // Get participating atoms
+        nbex.idx[0]=i;
+        nbex.idx[1]=*jj;
+        // Get their MSLD scaling
+        msld->nbex_scaling(nbex.idx,nbex.siteBlock);
+        // Get their parameters
+        nbex.qxq=charge[nbex.idx[0]]*charge[nbex.idx[1]];
+        nbexs_tmp.emplace_back(nbex);
+      }
+    }
+  }
+
+  nb14Count=nb14s_tmp.size();
+  nb14s=(struct Nb14Potential*)calloc(nb14Count,sizeof(struct Nb14Potential));
+  cudaMalloc(&(nb14s_d),nb14Count*sizeof(struct Nb14Potential));
+  for (i=0; i<nb14Count; i++) {
+    nb14s[i]=nb14s_tmp[i];
+  }
+  cudaMemcpy(nb14s_d,nb14s,nb14Count*sizeof(struct Nb14Potential),cudaMemcpyHostToDevice);
+
+  nbexCount=nbexs_tmp.size();
+  nbexs=(struct NbExPotential*)calloc(nbexCount,sizeof(struct NbExPotential));
+  cudaMalloc(&(nbexs_d),nbexCount*sizeof(struct NbExPotential));
+  for (i=0; i<nbexCount; i++) {
+    nbexs[i]=nbexs_tmp[i];
+  }
+  cudaMemcpy(nbexs_d,nbexs,nbexCount*sizeof(struct NbExPotential),cudaMemcpyHostToDevice);
+
+
   // Choose PME grid sizes
   int goodSizes[]={32,27,24,20,18,16};
   fprintf(stdout,"NYI - need orthogonal box for automatic grid determination\n");
@@ -688,6 +850,8 @@ void Potential::calc_force(int step,System *system)
   getforce_dihe(system,calcEnergy);
   getforce_impr(system,calcEnergy);
   getforce_cmap(system,calcEnergy);
+  getforce_nb14(system,calcEnergy);
+  getforce_nbex(system,calcEnergy);
   cudaEventRecord(bondedComplete,bondedStream);
   cudaStreamWaitEvent(system->run->masterStream,bondedComplete,0);
 

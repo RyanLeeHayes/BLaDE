@@ -416,9 +416,9 @@ void Parameters::add_parameter_nbonds(char *line,FILE *fp)
       io_nextf(line,0);
       np.eps14=io_nextf(line,np.eps);
       np.sig14=io_nextf(line,np.sig);
-      np.eps*=KCAL_MOL;
+      np.eps*=-KCAL_MOL;
       np.sig*=ANGSTROM;
-      np.eps14*=KCAL_MOL;
+      np.eps14*=-KCAL_MOL;
       np.sig14*=ANGSTROM;
       nbondParameter[iname]=np;
     } else {
@@ -451,9 +451,9 @@ void Parameters::add_parameter_nbfixs(FILE *fp)
       np.sig=io_nextf(line);
       np.eps14=io_nextf(line,np.eps);
       np.sig14=io_nextf(line,np.sig);
-      np.eps*=KCAL_MOL;
+      np.eps*=-KCAL_MOL;
       np.sig*=ANGSTROM;
-      np.eps14*=KCAL_MOL;
+      np.eps14*=-KCAL_MOL;
       np.sig14*=ANGSTROM;
       nbfixParameter[name]=np;
     } else {

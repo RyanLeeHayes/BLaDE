@@ -10,6 +10,8 @@
 #include "system/potential.h"
 #include "rng/rng_gpu.h"
 
+#include "main/real3.h"
+
 
 
 // Class constructors
@@ -131,6 +133,9 @@ void Update::update(int step,System *system)
   // KERNEL
   update_VO<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState,*leapParms2);
   // grab velocity if you want it here, but apply bond constriants...
+  if (system->run->step%system->run->freqNRG==0) {
+    kinetic_energy_kernel<<<(leapState->N+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32,updateStream>>>(*leapState,system->state->energy_d+eekinetic);
+  }
   // equation 7a&b - after force calculation
   // KERNEL
   update_OV<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState,*leapParms2);
@@ -150,6 +155,9 @@ void Update::update(int step,System *system)
   system->state->rngGPU->rand_normal(2*lambdaLeapState->N,lambdaLeapState->random,updateLambdaStream);
   system->msld->calc_thetaForce_from_lambdaForce(updateLambdaStream);
   update_VO<<<(lambdaLeapState->N+BLUP-1)/BLUP,BLUP,0,updateLambdaStream>>>(*lambdaLeapState,*lambdaLeapParms2);
+  if (system->run->step%system->run->freqNRG==0) {
+    kinetic_energy_kernel<<<(lambdaLeapState->N+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32,updateLambdaStream>>>(*lambdaLeapState,system->state->energy_d+eekinetic);
+  }
   update_OV<<<(lambdaLeapState->N+BLUP-1)/BLUP,BLUP,0,updateLambdaStream>>>(*lambdaLeapState,*lambdaLeapParms2);
   update_R<<<(lambdaLeapState->N+BLUP-1)/BLUP,BLUP,0,updateLambdaStream>>>(*lambdaLeapState,*lambdaLeapParms2);
   system->msld->calc_lambda_from_theta(updateLambdaStream);
@@ -179,8 +187,29 @@ __global__ void update_VO(struct LeapState ls,struct LeapParms2 lp)
 
   if (i < ls.N) {
     // Force is dU/dx by convention in this program, not -dU/dx
-    ls.v[i]=ls.v[i]-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
-    ls.v[i]=lp.sqrta*ls.v[i]+lp.noise*ls.random[i];
+    // ls.v[i]=ls.v[i]-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    // ls.v[i]=lp.sqrta*ls.v[i]+lp.noise*ls.ism[i]*ls.random[i];
+    real v=ls.v[i]-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    ls.v[i]=lp.sqrta*v+lp.noise*ls.ism[i]*ls.random[i];
+  }
+}
+
+__global__ void kinetic_energy_kernel(struct LeapState ls,real *energy)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  real lEnergy=0;
+  extern __shared__ real sEnergy[];
+
+  if (i<ls.N) {
+    if (energy) {
+      lEnergy=ls.v[i]/ls.ism[i];
+      lEnergy*=0.5*lEnergy;
+    }
+  }
+
+  // Energy, if requested
+  if (energy) {
+    real_sum_reduce(lEnergy,sEnergy,energy);
   }
 }
 
@@ -190,8 +219,10 @@ __global__ void update_OV(struct LeapState ls,struct LeapParms2 lp)
 
   if (i < ls.N) {
     // Force is dU/dx by convention in this program, not -dU/dx
-    ls.v[i]=lp.sqrta*ls.v[i]+lp.noise*ls.random[ls.N+i];
-    ls.v[i]=ls.v[i]-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    // ls.v[i]=lp.sqrta*ls.v[i]+lp.noise*ls.ism[i]*ls.random[ls.N+i];
+    // ls.v[i]=ls.v[i]-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    real v=lp.sqrta*ls.v[i]+lp.noise*ls.ism[i]*ls.random[ls.N+i];
+    ls.v[i]=v-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
   }
 }
 

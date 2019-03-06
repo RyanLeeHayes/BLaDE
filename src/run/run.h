@@ -12,6 +12,12 @@
 // Forward delcaration
 class System;
 
+struct Cutoffs {
+  real betaEwald;
+  real rCut;
+  real rSwitch;
+};
+
 class Run {
   public:
   std::map<std::string,void(Run::*)(char*,char*,System*)> parseRun;
@@ -39,6 +45,7 @@ class Run {
   real rCut;
   real rSwitch;
   real gridSpace; // grid spacing for PME calculation
+  struct Cutoffs cutoffs;
 
   cudaStream_t masterStream;
   cudaEvent_t forceComplete;

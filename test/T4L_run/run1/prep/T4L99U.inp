@@ -311,7 +311,8 @@ endif
    msma
 
    soft on
-   pmel ex
+   ! pmel ex
+   pmel on
 
    ! Check block.doc for functional form of these biasing potentials
    ldbi @nbiaspot

@@ -70,6 +70,7 @@ class Update {
 };
 
 __global__ void update_VO(struct LeapState ls,struct LeapParms2 lp);
+__global__ void kinetic_energy_kernel(struct LeapState ls,real *energy);
 __global__ void update_OV(struct LeapState ls,struct LeapParms2 lp);
 __global__ void update_R(struct LeapState ls,struct LeapParms2 lp);
 __global__ void reset_F(struct LeapState ls);

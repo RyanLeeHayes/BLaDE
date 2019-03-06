@@ -31,6 +31,11 @@ Run::Run()
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
   gridSpace=1.0*ANGSTROM;
+
+  cutoffs.betaEwald=betaEwald;
+  cutoffs.rCut=rCut;
+  cutoffs.rSwitch=rSwitch;
+
 #ifdef PROFILESERIAL
   masterStream=0;
 #else
@@ -158,10 +163,13 @@ void Run::set_variable(char *line,char *token,System *system)
     gamma=io_nextf(line)/PICOSECOND;
   } else if (strcmp(token,"invbetaewald")==0) {
     betaEwald=1/(io_nextf(line)*ANGSTROM);
+    cutoffs.betaEwald=betaEwald;
   } else if (strcmp(token,"rcut")==0) {
     rCut=io_nextf(line)*ANGSTROM;
+    cutoffs.rCut=rCut;
   } else if (strcmp(token,"rswitch")==0) {
     rSwitch=io_nextf(line)*ANGSTROM;
+    cutoffs.rSwitch=rSwitch;
   } else if (strcmp(token,"gridspace")==0) {
     gridSpace=io_nextf(line)*ANGSTROM;
   } else {
@@ -181,6 +189,7 @@ void Run::dynamics(char *line,char *token,System *system)
     fprintf(stdout,"Step %d\n",step);
     system->potential->calc_force(step,system);
     system->update->update(step,system);
+#warning "Need to copy coordinates before update"
     print_dynamics_output(step,system);
 
     // NYI check gpu
