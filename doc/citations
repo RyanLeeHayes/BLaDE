@@ -1,0 +1,52 @@
+2019-02-18
+
+https://github.com/choderalab/openmmtools/blob/master/openmmtools/integrators.py
+Line 1012 - VRORV (BAOAB) integration?
+Line 1929 - points to http://arxiv.org/abs/1301.3800 for OVRVO integrator
+
+2019-02-27
+
+R691 - CMAP reference
+R360 - PME reference
+
+2019-03-09
+
+PME:
+R360 / DOI: 10.1063/1.470117
+DOMDEC:
+R471 
+
+Constraints:
+
+DOI: 10.1080/00268977700102571
+https://www.tandfonline.com/doi/pdf/10.1080/00268977700102571
+LINCS "LINCS: A linear constraint solver for molecular simulations"
+DOI: 10.1002/(SICI)1096-987X(199709)18:12<1463::AID-JCC4>3.0.CO;2-H
+https://onlinelibrary.wiley.com/doi/abs/10.1002/%28SICI%291096-987X%28199709%2918%3A12%3C1463%3A%3AAID-JCC4%3E3.0.CO%3B2-H
+Settle: analytical SHAKE and RATTLE for solvent "Settle: An analytical version of the SHAKE and RATTLE algorithm for rigid water models"
+DOI: 10.1002/jcc.540130805
+https://onlinelibrary.wiley.com/doi/abs/10.1002/jcc.540130805
+Fast SHAKE (for few atoms): "A fast SHAKE algorithm to solve distance constraint equations for small molecules in molecular dynamics simulations"
+DOI: 10.1002/1096-987X(20010415)22:5<501::AID-JCC1021>3.0.CO;2-V
+https://onlinelibrary.wiley.com/doi/full/10.1002/1096-987X%2820010415%2922%3A5%3C501%3A%3AAID-JCC1021%3E3.0.CO%3B2-V
+RATTLE (what CHARMM uses, also constrains velocities) "Rattle: A "velocity" version of the shake algorithm for molecular dynamics calculations"
+DOI: 10.1016/0021-9991(83)90014-1
+https://www.sciencedirect.com/science/article/pii/0021999183900141
+https://ac.els-cdn.com/0021999183900141/1-s2.0-0021999183900141-main.pdf
+
+Integrators:
+
+Circa line 1980:
+https://github.com/choderalab/openmmtools/blob/master/openmmtools/integrators.py
+https://openmmtools.readthedocs.io/en/latest/integrators.html
+
+Current integrator: "Time Step Rescaling Recovers Continuous-Time Dynamical Properties for Discrete-Time Langevin Integration of Nonequilibrium Systems"
+DOI: 10.1021/jp411770f
+https://pubs.acs.org/doi/10.1021/jp411770f
+SI for constants (Equation S14)
+https://pubs.acs.org/doi/suppl/10.1021/jp411770f/suppl_file/jp411770f_si_001.pdf
+Potential integrator with better thermo:
+DOI: 10.1021/jp411770f
+https://pubs.acs.org/doi/pdf/10.1021/jp411770f
+
+(Saved in notes up to this point)

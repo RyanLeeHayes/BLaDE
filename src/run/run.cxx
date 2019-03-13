@@ -6,6 +6,7 @@
 #include "msld/msld.h"
 #include "update/update.h"
 #include "system/potential.h"
+#include "domdec/domdec.h"
 
 
 
@@ -228,6 +229,11 @@ void Run::dynamics_initialize(System *system)
   system->potential->initialize(system);
 
   //NYI read checkpoint
+
+  // Set up domain decomposition
+  if (system->domdec) delete system->domdec;
+  system->domdec=new Domdec();
+  system->domdec->initialize(system);
 
   // NYI check gpu
   if (cudaPeekAtLastError() != cudaSuccess) {

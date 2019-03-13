@@ -350,6 +350,11 @@ void Msld::nbex_scaling(int idx[2],int siteBlock[2])
   bonded_scaling(idx,siteBlock,-2,2,2);
 }
 
+void Msld::nbond_scaling(int idx[1],int siteBlock[1])
+{
+  bonded_scaling(idx,siteBlock,-2,1,1);
+}
+
 bool Msld::interacting(int i,int j)
 {
   return atomBlock[i]==atomBlock[j] || lambdaSite[atomBlock[i]]!=lambdaSite[atomBlock[j]];

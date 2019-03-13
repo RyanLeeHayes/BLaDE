@@ -74,6 +74,7 @@ class Msld {
   void cmap_scaling(int idx[8],int siteBlock[3]);
   void nb14_scaling(int idx[2],int siteBlock[2]);
   void nbex_scaling(int idx[2],int siteBlock[2]);
+  void nbond_scaling(int idx[1],int siteBlock[1]);
 
   bool interacting(int i,int j);
 

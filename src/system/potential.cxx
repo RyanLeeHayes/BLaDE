@@ -1,5 +1,6 @@
 #include <cuda_runtime.h>
 #include <math.h>
+#include <mpi.h>
 
 #include "system/potential.h"
 #include "system/system.h"
@@ -9,11 +10,20 @@
 #include "msld/msld.h"
 #include "system/state.h"
 #include "run/run.h"
+#include "domdec/domdec.h"
 #include "bonded/bonded.h"
 #include "bonded/pair.h"
 #include "nbrecip/nbrecip.h"
+#include "nbdirect/nbdirect.h"
 
 
+
+// Utility functions
+bool operator<(const CountType& a,const CountType& b)
+{
+  // Sort in descending order type count, not ascending
+  return a.count>b.count || (a.count==b.count && a.type<b.type);
+}
 
 // Class constructors
 Potential::Potential() {
@@ -53,6 +63,12 @@ Potential::Potential() {
   chargeGridPME_d=NULL;
   fourierGridPME_d=NULL;
   potentialGridPME_d=NULL;
+
+  nbonds=NULL;
+  nbonds_d=NULL;
+  vdwParameterCount=0;
+  vdwParameters=NULL;
+  vdwParameters_d=NULL;
 
 #ifdef PROFILESERIAL
   bondedStream=0;
@@ -109,6 +125,11 @@ Potential::~Potential()
   if (chargeGridPME_d) cudaFree(chargeGridPME_d);
   if (fourierGridPME_d) cudaFree(fourierGridPME_d);
   if (potentialGridPME_d) cudaFree(potentialGridPME_d);
+
+  if (nbonds) free(nbonds);
+  if (nbonds_d) cudaFree(nbonds_d);
+  if (vdwParameters) free(vdwParameters);
+  if (vdwParameters_d) cudaFree(vdwParameters_d);
 
 #ifndef PROFILESERIAL
   cudaStreamDestroy(bondedStream);
@@ -690,7 +711,7 @@ void Potential::initialize(System *system)
             if (param->nbondParameter.count(type.t[k])==1) {
               npij[k]=param->nbondParameter[type.t[k]];
             } else {
-              fatal(__FILE__,__LINE__,"Nonbonded parameter for atom %d type %d not found\n",nb14.idx[k],type.t[k].c_str());
+              fatal(__FILE__,__LINE__,"Nonbonded parameter for atom %d type %s not found\n",nb14.idx[k],type.t[k].c_str());
             }
           }
           np.eps14=sqrt(npij[0].eps14*npij[1].eps14);
@@ -808,6 +829,79 @@ void Potential::initialize(System *system)
   cufftSetStream(planIFFTPME,nbrecipStream);
 
   // WORKING HERE
+  // Count each nonbonded type
+  typeCount.clear();
+  for (i=0; i<atomCount; i++) {
+    std::string type=struc->atomList[i].atomTypeName;
+    if (typeCount.count(type)==1) {
+      typeCount[type]++;
+    } else {
+      typeCount[type]=1;
+    }
+  }
+  // Sort by counts
+  typeSort.clear();
+  for (std::map<std::string,int>::iterator ii=typeCount.begin(); ii!=typeCount.end(); ii++) {
+    struct CountType entry;
+    entry.count=ii->second;
+    entry.type=ii->first;
+    typeSort.insert(entry);
+  }
+  // Get sorted lists of types
+  i=0;
+  typeList.clear(); // number to string
+  typeLookup.clear(); // string to number
+  for (std::set<struct CountType>::iterator ii=typeSort.begin(); ii!=typeSort.end(); ii++) {
+    typeList.emplace_back(ii->type);
+    typeLookup[ii->type]=i;
+    i++;
+  }
+  // Save nonbonded information
+  nbonds=(NbondPotential*)calloc(atomCount,sizeof(NbondPotential));
+  cudaMalloc(&nbonds_d,atomCount*sizeof(NbondPotential));
+  for (i=0; i<atomCount; i++) {
+    struct NbondPotential nbond;
+    std::string type;
+    type=struc->atomList[i].atomTypeName;
+    // Get their MSLD scaling
+    msld->nbond_scaling(&i,&nbond.siteBlock);
+    // Get their parameters
+    nbond.q=charge[i];
+    nbond.typeIdx=typeLookup[type];
+    nbonds[i]=nbond;
+  }
+  cudaMemcpy(nbonds_d,nbonds,atomCount*sizeof(NbondPotential),cudaMemcpyHostToDevice);
+  // Save van der Waals interaction parameters
+  vdwParameterCount=typeList.size();
+  vdwParameters=(VdwPotential*)calloc(vdwParameterCount*vdwParameterCount,sizeof(VdwPotential));
+  cudaMalloc(&vdwParameters_d,vdwParameterCount*vdwParameterCount*sizeof(VdwPotential));
+  for (i=0; i<vdwParameterCount; i++) {
+    TypeName2 type;
+    struct NbondParameter np;
+    type.t[0]=typeList[i];
+    for (j=0; j<vdwParameterCount; j++) {
+      type.t[1]=typeList[j];
+      if (param->nbfixParameter.count(type)==1) {
+        np=param->nbfixParameter[type];
+      } else {
+        struct NbondParameter npij[2];
+        for (k=0; k<2; k++) {
+          if (param->nbondParameter.count(type.t[k])==1) {
+            npij[k]=param->nbondParameter[type.t[k]];
+          } else {
+            fatal(__FILE__,__LINE__,"Nonbonded parameter for atom type %s not found\n",type.t[k].c_str());
+          }
+        }
+        np.eps=sqrt(npij[0].eps*npij[1].eps);
+        np.sig=npij[0].sig+npij[1].sig;
+        }
+      real sig6=np.sig14*np.sig14;
+      sig6*=(sig6*sig6);
+      vdwParameters[i*vdwParameterCount+j].c12=np.eps*sig6*sig6;
+      vdwParameters[i*vdwParameterCount+j].c6=2*np.eps*sig6;
+    }
+  }
+  cudaMemcpy(vdwParameters_d,vdwParameters,vdwParameterCount*vdwParameterCount*sizeof(VdwPotential),cudaMemcpyHostToDevice);
 // NYI #warning "Missing nonbonded terms"
 /*
   if (atomTypeIdx) free(atomTypeIdx);
@@ -844,28 +938,50 @@ void Potential::calc_force(int step,System *system)
     cudaMemset(system->state->energy_d,0,eeend*sizeof(real));
   }
 
-  cudaStreamWaitEvent(bondedStream,system->run->updateComplete,0);
-  getforce_bond(system,calcEnergy);
-  getforce_angle(system,calcEnergy);
-  getforce_dihe(system,calcEnergy);
-  getforce_impr(system,calcEnergy);
-  getforce_cmap(system,calcEnergy);
-  getforce_nb14(system,calcEnergy);
-  getforce_nbex(system,calcEnergy);
-  cudaEventRecord(bondedComplete,bondedStream);
-  cudaStreamWaitEvent(system->run->masterStream,bondedComplete,0);
+#warning "Heuristic domdain update every 10 steps"
+  if (step%10==0) {
+    system->domdec->reset_domdec(system);
+  } else if (system->idCount>1) {
+    // MPI_Bcast(system->state->position_d,3*system->state->atomCount,MPI_FLOAT,0,MPI_COMM_WORLD);
+    // MPI_Bcast(system->msld->lambda_d,system->msld->blockCount,MPI_REAL,0,MPI_COMM_WORLD);
+  }
+  if (system->id<2) {
+    MPI_Sendrecv(system->msld->lambda_d,1,MPI_FLOAT,1,101,system->msld->lambda_d,1,MPI_FLOAT,0,101,MPI_COMM_WORLD,NULL);
+  }
 
-  cudaStreamWaitEvent(nbrecipStream,system->run->updateComplete,0);
-  getforce_ewaldself(system,calcEnergy);
-  getforce_ewald(system,calcEnergy);
-  cudaEventRecord(nbrecipComplete,nbrecipStream);
-  cudaStreamWaitEvent(system->run->masterStream,nbrecipComplete,0);
+  if (system->id==0) {
+    cudaStreamWaitEvent(bondedStream,system->run->updateComplete,0);
+    getforce_bond(system,calcEnergy);
+    getforce_angle(system,calcEnergy);
+    getforce_dihe(system,calcEnergy);
+    getforce_impr(system,calcEnergy);
+    getforce_cmap(system,calcEnergy);
+    getforce_nb14(system,calcEnergy);
+    getforce_nbex(system,calcEnergy);
+    cudaEventRecord(bondedComplete,bondedStream);
+    cudaStreamWaitEvent(system->run->masterStream,bondedComplete,0);
 
-  cudaStreamWaitEvent(biaspotStream,system->run->updateComplete,0);
-  system->msld->calc_fixedBias(system,calcEnergy);
-  system->msld->calc_variableBias(system,calcEnergy);
-  cudaEventRecord(biaspotComplete,biaspotStream);
-  cudaStreamWaitEvent(system->run->masterStream,biaspotComplete,0);
+    cudaStreamWaitEvent(nbrecipStream,system->run->updateComplete,0);
+    getforce_ewaldself(system,calcEnergy);
+    getforce_ewald(system,calcEnergy);
+    cudaEventRecord(nbrecipComplete,nbrecipStream);
+    cudaStreamWaitEvent(system->run->masterStream,nbrecipComplete,0);
+
+    cudaStreamWaitEvent(biaspotStream,system->run->updateComplete,0);
+    system->msld->calc_fixedBias(system,calcEnergy);
+    system->msld->calc_variableBias(system,calcEnergy);
+    cudaEventRecord(biaspotComplete,biaspotStream);
+    cudaStreamWaitEvent(system->run->masterStream,biaspotComplete,0);
+  }
+
+  // if (system->id>0 || system->idCount==1) {
+  //   cudaStreamWaitEvent(nbdirectStream,system->run->updateComplete,0);
+  //   getforce_nbdirect(system,calcEnergy);
+  //   cudaEventRecord(nbdirectComplete,nbdirectStream);
+  //   cudaStreamWaitEvent(system->run->masterStream,nbdirectComplete,0);
+  // }
+
+#warning "Still need to gather forces"
 
   cudaEventRecord(system->run->forceComplete,system->run->masterStream);
   // cudaDeviceSynchronize();

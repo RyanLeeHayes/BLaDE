@@ -47,6 +47,16 @@ real3 real3_subpbc(real3 a,real3 b,real3 box)
 }
 
 __host__ __device__ static inline
+real3 real3_sub(real3 a,real3 b)
+{
+  real3 c;
+  c.x=a.x-b.x;
+  c.y=a.y-b.y;
+  c.z=a.z-b.z;
+  return c;
+}
+
+__host__ __device__ static inline
 real3 real3_add(real3 a,real3 b)
 {
   real3 c;
@@ -112,6 +122,19 @@ void real3_dec(real3 *a,real3 x)
   a[0].x-=x.x;
   a[0].y-=x.y;
   a[0].z-=x.z;
+}
+
+__host__ __device__ static inline
+real3 real3_modulus(real3 a,real3 b)
+{
+  real3 c;
+  c.x=fmod(a.x,b.x);
+  c.y=fmod(a.y,b.y);
+  c.z=fmod(a.z,b.z);
+  c.x+=(c.x<0?b.x:0);
+  c.y+=(c.y<0?b.y:0);
+  c.z+=(c.z<0?b.z:0);
+  return c;
 }
 
 

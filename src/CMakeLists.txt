@@ -4,6 +4,7 @@ project(lady LANGUAGES CXX CUDA)
 file(GLOB_RECURSE sources *.cxx *.cu *.h)
 
 find_package(CUDA 10.0)
+find_package(MPI REQUIRED)
 
 option(UNITS "AKMA (CHARMM) or NMPS (GROMACS)" "NMPS")
 if (UNITS STREQUAL "AKMA")
@@ -16,11 +17,11 @@ endif()
 ## Use for debugging kernels
 set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
 set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "--use_fast_math")
-set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -lcufft")
+set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} -lcufft")
 
 # message("${sources}")
 cuda_add_executable(lady ${sources})
-target_include_directories(lady PUBLIC .)
+target_include_directories(lady PUBLIC ${MPI_CXX_INCLUDE_PATH} .)
 # target_compile_options(md PUBLIC -DNOMPI -g -O3 -arch=sm_20)
 
 # Stuff that didn't work:

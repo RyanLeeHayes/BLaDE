@@ -17,6 +17,12 @@ class TypeName8O;
 bool operator==(const TypeName8O& a,const TypeName8O& b);
 bool operator<(const TypeName8O& a,const TypeName8O& b);
 
+struct CountType {
+  int count;
+  std::string type;
+};
+bool operator<(const CountType& a,const CountType& b);
+
 struct BondPotential {
   int idx[2];
   int siteBlock[2];
@@ -67,6 +73,16 @@ struct NbExPotential {
   int idx[2];
   int siteBlock[2];
   real qxq;
+};
+
+struct NbondPotential {
+  int siteBlock;
+  real q;
+  int typeIdx;
+};
+
+struct VdwPotential {
+  real c12,c6;
 };
 
 class Potential {
@@ -124,6 +140,17 @@ class Potential {
   real *bGridPME, *bGridPME_d;
   cufftHandle planFFTPME, planIFFTPME;
   size_t bufferSizeFFTPME,bufferSizeIFFTPME;
+
+  std::map<std::string,int> typeCount;
+  std::set<struct CountType> typeSort;
+  std::vector<std::string> typeList;
+  std::map<std::string,int> typeLookup;
+
+  struct NbondPotential *nbonds;
+  struct NbondPotential *nbonds_d;
+  int vdwParameterCount;
+  struct VdwPotential *vdwParameters;
+  struct VdwPotential *vdwParameters_d;
 
   cudaStream_t bondedStream;
   cudaStream_t biaspotStream;

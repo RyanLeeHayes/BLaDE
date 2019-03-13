@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <mpi.h>
 
 #include "main/defines.h"
 #include "system/system.h"
@@ -28,6 +29,7 @@ void fatal(const char* fnm,int i,const char* format, ...)
   vfprintf(stdout,format,args);
   va_end(args);
 
+  MPI_Finalize();
   exit(1);
 }
 

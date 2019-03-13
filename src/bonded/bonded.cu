@@ -36,6 +36,8 @@ void upload_bonded_d(
 
 
 
+// NYI - Try inlining the fdihe, fimp, fnb14, fnbex potentials...
+
 // getforce_bond_kernel<<<(N+BLBO-1)/BLBO,BLBO,0,p->bondedStream>>>(N,p->bonds,s->position_d,s->force_d,s->box,m->lambda_d,m->lambdaForce_d,NULL);
 __global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 {

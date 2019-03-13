@@ -11,6 +11,7 @@
 #include "run/run.h"
 #include "system/potential.h"
 #include "update/update.h"
+#include "domdec/domdec.h"
 
 
 
@@ -24,6 +25,7 @@ System::System() {
   run=NULL;
   potential=NULL;
   update=NULL;
+  domdec=NULL;
   setup_parse_system();
 }
 
@@ -36,6 +38,7 @@ System::~System() {
   if (run) delete(run);
   if (potential) delete(potential);
   if (update) delete(update);
+  if (domdec) delete(domdec);
 }
 
 

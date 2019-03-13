@@ -18,9 +18,11 @@ class State;
 class Run;
 class Potential;
 class Update;
+class Domdec;
 
 class System {
   public:
+  int id,idCount;
 // Have command parsing
   Parameters *parameters;
   Structure *structure;
@@ -31,6 +33,7 @@ class System {
 // No command parsing
   Potential *potential;
   Update *update;
+  Domdec *domdec;
 
   std::map<std::string,void (System::*)(char*,char*,System*,Control*)> parseSystem;
   std::map<std::string,std::string> helpSystem;

@@ -14,4 +14,4 @@ cd build
 cmake -DUNITS=AKMA -DCMAKE_BUILD_TYPE=Release ../src
 # cmake -DUNITS=NMPS -DCMAKE_BUILD_TYPE=Release ../src
 
-make $1 msld
+make $1 lady
