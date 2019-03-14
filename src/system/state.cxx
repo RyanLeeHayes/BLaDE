@@ -1,9 +1,11 @@
 #include <string.h>
 #include <math.h>
+#include <mpi.h>
 
 #include "system/state.h"
 #include "io/io.h"
 #include "system/system.h"
+#include "msld/msld.h"
 #include "system/structure.h"
 #include "rng/rng_cpu.h"
 #include "rng/rng_gpu.h"
@@ -13,6 +15,7 @@
 // Class constructors
 State::State(int n,System *system) {
   int i,j;
+  int nL=system->msld->blockCount;
 
   atomCount=n;
   box=(real(*)[3])calloc(3,sizeof(real[3]));
@@ -29,13 +32,32 @@ State::State(int n,System *system) {
   invsqrtMass=(real(*)[3])calloc(n,sizeof(real[3]));
   energy=(real*)calloc(eeend,sizeof(real));
 
+  int rootFactor=(system->id==0?system->idCount:1);
+  positionBuffer=(real*)calloc((2*nL+3*n),sizeof(real));
+  forceBuffer=(real*)calloc(rootFactor*(2*nL+3*n),sizeof(real));
+  cudaMalloc(&(positionBuffer_d),(2*nL+3*n)*sizeof(real));
+  cudaMalloc(&(forceBuffer_d),rootFactor*(2*nL+3*n)*sizeof(real));
+
+#warning "PRIORITY: Fix this"
+// NYI - move box size and other state information to run? Have them responsible for CPU side, and make state responsible for GPU side.
   cudaMalloc(&(box_d),3*sizeof(real[3]));
-  cudaMalloc(&(position_d),n*sizeof(real[3]));
-  cudaMalloc(&(velocity_d),n*sizeof(real[3]));
-  cudaMalloc(&(force_d),n*sizeof(real[3]));
-  cudaMalloc(&(mass_d),n*sizeof(real[3]));
-  cudaMalloc(&(invsqrtMass_d),n*sizeof(real[3]));
-  cudaMalloc(&(random_d),2*n*sizeof(real[3]));
+  // cudaMalloc(&(position_d),(3*n+nL)*sizeof(real));
+  system->msld->lambda_d=positionBuffer_d;
+  position_d=positionBuffer_d+nL;
+  system->msld->theta_d=position_d+3*n;
+  cudaMalloc(&(velocity_d),(3*n+nL)*sizeof(real));
+  system->msld->thetaVelocity_d=velocity_d+3*n;
+  // cudaMalloc(&(force_d),(3*n+nL)*sizeof(real));
+  system->msld->lambdaForce_d=forceBuffer_d;
+  force_d=forceBuffer_d+nL;
+  system->msld->thetaForce_d=force_d+3*n;
+  cudaMalloc(&(mass_d),(3*n+nL)*sizeof(real));
+  system->msld->thetaMass_d=mass_d+3*n;
+  cudaMalloc(&(invsqrtMass_d),(3*n+nL)*sizeof(real));
+  system->msld->thetaInvsqrtMass_d=invsqrtMass_d+3*n;
+  cudaMalloc(&(random_d),2*(3*n+nL)*sizeof(real));
+  system->msld->thetaRandom_d=random_d+2*3*n;
+
   cudaMalloc(&(energy_d),eeend*sizeof(real));
 
   for (i=0; i<n; i++) {
@@ -61,9 +83,14 @@ State::~State() {
   if (mass) free(mass);
   if (invsqrtMass) free(invsqrtMass);
 
-  if (position_d) cudaFree(position_d);
+  if (positionBuffer) free(positionBuffer);
+  if (forceBuffer) free(forceBuffer);
+  if (positionBuffer_d) cudaFree(positionBuffer_d);
+  if (forceBuffer_d) cudaFree(forceBuffer_d);
+
+  // if (position_d) cudaFree(position_d);
   if (velocity_d) cudaFree(velocity_d);
-  if (force_d) cudaFree(force_d);
+  // if (force_d) cudaFree(force_d);
   if (mass_d) cudaFree(mass_d);
   if (invsqrtMass_d) cudaFree(invsqrtMass_d);
   if (random_d) cudaFree(random_d);
@@ -296,3 +323,31 @@ void State::send_energy() {
 void State::recv_energy() {
   cudaMemcpy(energy,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToHost);
 }
+
+void State::broadcast_position(System *system)
+{
+  int N=3*atomCount+system->msld->blockCount;
+  if (system->id==0) {
+    cudaMemcpy(positionBuffer,positionBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
+  }
+  MPI_Bcast(positionBuffer,N,MPI_FLOAT,0,MPI_COMM_WORLD);
+  if (system->id!=0) {
+    cudaMemcpy(positionBuffer_d,positionBuffer,N*sizeof(real),cudaMemcpyHostToDevice);
+  }
+}
+
+void State::gather_force(System *system)
+{
+#warning "Transfering extra data (don't need thetas)"
+  int N=3*atomCount+2*system->msld->blockCount;
+  if (system->id!=0) {
+    cudaMemcpy(forceBuffer,forceBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
+  }
+  MPI_Gather(forceBuffer,N,MPI_FLOAT,forceBuffer,N,MPI_FLOAT,0,MPI_COMM_WORLD);
+  if (system->id==0) {
+    cudaMemcpy(forceBuffer_d+N,forceBuffer+N,(system->idCount-1)*N*sizeof(real),cudaMemcpyHostToDevice);
+  }
+}
+
+//   if (system->id<2) {
+//     MPI_Sendrecv(system->msld->lambda_d,1,MPI_FLOAT,1,101,system->msld->lambda_d,1,MPI_FLOAT,0,101,MPI_COMM_WORLD,NULL);

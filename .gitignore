@@ -5,3 +5,4 @@ run/*.xtc
 run/*.lmd
 run/*.nrg
 run/*.profile
+run/slurm-*

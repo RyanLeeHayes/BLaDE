@@ -73,15 +73,15 @@ Msld::~Msld() {
 
   if (atomBlock_d) cudaFree(atomBlock_d);
   if (lambdaSite_d) cudaFree(lambdaSite_d);
-  if (lambda_d) cudaFree(lambda_d);
-  if (lambdaForce_d) cudaFree(lambdaForce_d);
+  // if (lambda_d) cudaFree(lambda_d);
+  // if (lambdaForce_d) cudaFree(lambdaForce_d);
   if (lambdaBias_d) cudaFree(lambdaBias_d);
-  if (theta_d) cudaFree(theta_d);
-  if (thetaVelocity_d) cudaFree(thetaVelocity_d);
-  if (thetaForce_d) cudaFree(thetaForce_d);
-  if (thetaMass_d) cudaFree(thetaMass_d);
-  if (thetaInvsqrtMass_d) cudaFree(thetaInvsqrtMass_d);
-  if (thetaRandom_d) cudaFree(thetaRandom_d);
+  // if (theta_d) cudaFree(theta_d);
+  // if (thetaVelocity_d) cudaFree(thetaVelocity_d);
+  // if (thetaForce_d) cudaFree(thetaForce_d);
+  // if (thetaMass_d) cudaFree(thetaMass_d);
+  // if (thetaInvsqrtMass_d) cudaFree(thetaInvsqrtMass_d);
+  // if (thetaRandom_d) cudaFree(thetaRandom_d);
 
   if (blocksPerSite) free(blocksPerSite);
   if (blocksPerSite_d) cudaFree(blocksPerSite_d);
@@ -130,15 +130,15 @@ void parse_msld(char *line,System *system)
 
     cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
     cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
-    cudaMalloc(&(system->msld->lambda_d),system->msld->blockCount*sizeof(real));
-    cudaMalloc(&(system->msld->lambdaForce_d),system->msld->blockCount*sizeof(real));
+    // cudaMalloc(&(system->msld->lambda_d),system->msld->blockCount*sizeof(real));
+    // cudaMalloc(&(system->msld->lambdaForce_d),system->msld->blockCount*sizeof(real));
     cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
-    cudaMalloc(&(system->msld->theta_d),system->msld->blockCount*sizeof(real));
-    cudaMalloc(&(system->msld->thetaVelocity_d),system->msld->blockCount*sizeof(real));
-    cudaMalloc(&(system->msld->thetaForce_d),system->msld->blockCount*sizeof(real));
-    cudaMalloc(&(system->msld->thetaMass_d),system->msld->blockCount*sizeof(real));
-    cudaMalloc(&(system->msld->thetaInvsqrtMass_d),system->msld->blockCount*sizeof(real));
-    cudaMalloc(&(system->msld->thetaRandom_d),2*system->msld->blockCount*sizeof(real));
+    // cudaMalloc(&(system->msld->theta_d),system->msld->blockCount*sizeof(real));
+    // cudaMalloc(&(system->msld->thetaVelocity_d),system->msld->blockCount*sizeof(real));
+    // cudaMalloc(&(system->msld->thetaForce_d),system->msld->blockCount*sizeof(real));
+    // cudaMalloc(&(system->msld->thetaMass_d),system->msld->blockCount*sizeof(real));
+    // cudaMalloc(&(system->msld->thetaInvsqrtMass_d),system->msld->blockCount*sizeof(real));
+    // cudaMalloc(&(system->msld->thetaRandom_d),2*system->msld->blockCount*sizeof(real));
 
     // NYI - this would be a lot easier to read if these were split in to parsing functions.
     fprintf(stdout,"NYI - Initialize all blocks in first site %s:%d\n",__FILE__,__LINE__);

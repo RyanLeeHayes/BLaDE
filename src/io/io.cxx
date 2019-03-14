@@ -3,6 +3,9 @@
 #include <string.h>
 #include <stdarg.h>
 #include <mpi.h>
+// For arrested_development
+#include <signal.h>
+#include <unistd.h>
 
 #include "main/defines.h"
 #include "system/system.h"
@@ -31,6 +34,21 @@ void fatal(const char* fnm,int i,const char* format, ...)
 
   MPI_Finalize();
   exit(1);
+}
+
+void arrested_development(System *system,int howLong) {
+  int i, id=0, nid=1;
+  char hostname[MAXLENGTHSTRING];
+  for (i=0; i<system->idCount; i++) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (i==system->id) {
+      gethostname(hostname,MAXLENGTHSTRING);
+      fprintf(stderr,"PID %d rank %d host %s\n",getpid(),i,hostname);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  // raise(SIGSTOP); // Identical behavior, uncatchable.
+  sleep(howLong);
 }
 
 FILE* fpopen(const char* fnm,const char* type)

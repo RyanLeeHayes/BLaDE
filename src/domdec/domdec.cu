@@ -10,6 +10,7 @@
 
 Domdec::Domdec()
 {
+  domain=NULL;
   domain_d=NULL;
   localToGlobal_d=NULL;
   globalToLocal_d=NULL;
@@ -19,6 +20,7 @@ Domdec::Domdec()
   blockSort_d=NULL;
   blockToken_d=NULL;
   blockBounds_d=NULL;
+  blockCount=NULL;
   blockCount_d=NULL;
   blockVolume_d=NULL;
   blockPartnerCount_d=NULL;
@@ -27,6 +29,8 @@ Domdec::Domdec()
 
 Domdec::~Domdec()
 {
+#warning "No free test"
+  free(domain);
   cudaFree(domain_d);
   cudaFree(localToGlobal_d);
   cudaFree(globalToLocal_d);
@@ -36,6 +40,7 @@ Domdec::~Domdec()
   cudaFree(blockSort_d);
   cudaFree(blockToken_d);
   cudaFree(blockBounds_d);
+  free(blockCount);
   cudaFree(blockCount_d);
   cudaFree(blockVolume_d);
   cudaFree(blockPartnerCount_d);
@@ -55,7 +60,9 @@ void Domdec::initialize(System *system)
     }
   }
 
-  localCount=0;
+  int color=(system->idCount==1 || system->id!=0)?0:MPI_UNDEFINED;
+  MPI_Comm_split(MPI_COMM_WORLD,color,0,&MPI_COMM_NBOND);
+
   globalCount=system->state->atomCount;
 
   // Assume blocks are on average at least 1/3 full, and add some extra blocks for small systems.
@@ -69,6 +76,7 @@ void Domdec::initialize(System *system)
   fprintf(stdout,"maxBlocks=%d\n",maxBlocks);
   fprintf(stdout,"maxPartnersPerBlock=%d\n",maxPartnersPerBlock);
 
+  domain=(int*)calloc(globalCount,sizeof(int));
   cudaMalloc(&domain_d,globalCount*sizeof(int));
   cudaMalloc(&localToGlobal_d,globalCount*sizeof(int));
   cudaMalloc(&globalToLocal_d,globalCount*sizeof(int));
@@ -78,7 +86,8 @@ void Domdec::initialize(System *system)
   cudaMalloc(&blockSort_d,(globalCount+1)*sizeof(struct DomdecBlockSort));
   cudaMalloc(&blockToken_d,(globalCount+1)*sizeof(struct DomdecBlockToken));
   cudaMalloc(&blockBounds_d,maxBlocks*sizeof(int));
-  cudaMalloc(&blockCount_d,sizeof(int));
+  blockCount=(int*)calloc(gridDomdec.x*gridDomdec.y*gridDomdec.z+1,sizeof(int));
+  cudaMalloc(&blockCount_d,(gridDomdec.x*gridDomdec.y*gridDomdec.z+1)*sizeof(int));
   cudaMalloc(&blockVolume_d,maxBlocks*sizeof(struct DomdecBlockVolume));
   cudaMalloc(&blockPartnerCount_d,maxBlocks*sizeof(int));
   cudaMalloc(&blockPartners_d,maxBlocks*maxPartnersPerBlock*sizeof(struct DomdecBlockPartners));
@@ -91,5 +100,5 @@ void Domdec::reset_domdec(System *system)
   // Puts each atom in a specific domain/box controlled by one GPU
   assign_domain(system);
   // Splits domains into blocks, or groups of up to 32 nearby atoms
-  // DEBUG assign_blocks(system);
+  assign_blocks(system);
 }

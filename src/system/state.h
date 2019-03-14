@@ -60,12 +60,18 @@ class State {
   real *energy;
 // Device versions
   real (*box_d)[3];
-  real (*position_d)[3];
-  real (*velocity_d)[3];
-  real (*force_d)[3];
-  real (*mass_d)[3];
-  real (*invsqrtMass_d)[3];
-  real (*random_d)[3];
+  real *position_d;
+  real *velocity_d;
+  real *force_d;
+  real *mass_d;
+  real *invsqrtMass_d;
+  real *random_d;
+
+  real *positionBuffer;
+  real *forceBuffer;
+  real *positionBuffer_d;
+  real *forceBuffer_d;
+
   real *energy_d;
 
   real3 orthBox;
@@ -95,6 +101,9 @@ class State {
   void recv_invsqrtMass();
   void send_energy();
   void recv_energy();
+
+  void broadcast_position(System *system);
+  void gather_force(System *system);
 };
 
 void parse_state(char *line,System *system);

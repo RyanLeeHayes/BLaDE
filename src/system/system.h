@@ -55,6 +55,7 @@ class System {
   void parse_system_state(char *line,char *token,System *system,Control *control);
   void parse_system_run(char *line,char *token,System *system,Control *control);
   void parse_system_stream(char *line,char *token,System *system,Control *control);
+  void parse_system_arrest(char *line,char *token,System *system,Control *control);
   void parse_system_set(char *line,char *token,System *system,Control *control);
 };
 

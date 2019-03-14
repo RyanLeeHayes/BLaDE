@@ -7,28 +7,35 @@
 #include "system/state.h"
 #include "system/potential.h"
 #include "update/update.h"
+#include "main/real3.h"
 
 
 
 __host__ __device__ static inline
 bool operator<(const DomdecBlockToken& a,const DomdecBlockToken& b)
 {
-  return (a.ix<b.ix || (a.ix==b.ix &&
+  return (a.domain<b.domain || (a.domain==b.domain &&
+         (a.ix<b.ix || (a.ix==b.ix &&
          (a.iy<b.iy || (a.iy==b.iy &&
-         (a.z<b.z)))));
+         (a.z<b.z)))))));
 }
 
 // assign_blocks_get_tokens_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,idDomdec,gridDomdec,domainDiv,domain_d,system->state->position_d,system->state->orthBox,blockToken_d);
-__global__ void assign_blocks_get_tokens_kernel(int globalCount,int3 idDomdec,int3 gridDomdec,int2 domainDiv,int *domain,real3 *position,real3 box,struct DomdecBlockToken *tokens)
+__global__ void assign_blocks_get_tokens_kernel(int globalCount,int3 gridDomdec,int2 domainDiv,int *domain,real3 *position,real3 box,struct DomdecBlockToken *tokens)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int idDomain=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
+  int3 idDomdec;
   real3 xi;
   real posInDomain;
   struct DomdecBlockToken token;
 
   if (i<globalCount+1) {
-    if (i<globalCount && domain[i]==idDomain) {
+    if (i==globalCount) {
+      token.domain=-1;
+    } else {
+      token.domain=domain[i];
+      idDomdec.x=token.domain/(gridDomdec.y*gridDomdec.z);
+      idDomdec.y=token.domain/gridDomdec.z-idDomdec.x*gridDomdec.y;
       xi=position[i];
       posInDomain=xi.x*gridDomdec.x/box.x-idDomdec.x;
       token.ix=(int)floor(posInDomain*domainDiv.x);
@@ -39,8 +46,6 @@ __global__ void assign_blocks_get_tokens_kernel(int globalCount,int3 idDomdec,in
       token.iy-=(token.iy>=domainDiv.y?domainDiv.y:0);
       token.iy+=(token.iy<0?domainDiv.y:0);
       token.z=xi.z;
-    } else { // Label it as a different domain
-      token.ix=-1;
     }
     tokens[i]=token;
   }
@@ -135,7 +140,7 @@ __global__ void assign_blocks_count_tree_kernel(int globalCount,struct DomdecBlo
   }
 }
 
-__global__ void assign_blocks_start_local_kernel(int localCount,int globalCount,struct DomdecBlockSort *sort,int *localToGlobal)
+__global__ void assign_blocks_localToGlobal_kernel(int globalCount,struct DomdecBlockSort *sort,int *localToGlobal)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int leafPos=globalCount;
@@ -143,7 +148,7 @@ __global__ void assign_blocks_start_local_kernel(int localCount,int globalCount,
   int nextCount;
   bool finished=false;
 
-  if (i<localCount) {
+  if (i<globalCount) {
     // Move past root, which doesn't represent an actual atom
     leafPos=sort[leafPos].upper;
     while (!finished) {
@@ -161,6 +166,7 @@ __global__ void assign_blocks_start_local_kernel(int localCount,int globalCount,
   }
 }
 
+// assign_blocks_blockBounds_kernel<<<1,idCount*domainDiv.x*domainDiv.y+1,2*(idCount*domainDiv.x*domainDiv.y+1)*sizeof(int),system->update->updateStream>>>(domainDiv,globalCount,localToGlobal_d,blockToken_d,blockCount_d,blockBounds_d);
 // Input
 // domainDiv - how many blocks a domain is divided into in the x and y directions
 // localCount - entries in localToGlobal
@@ -169,78 +175,89 @@ __global__ void assign_blocks_start_local_kernel(int localCount,int globalCount,
 // Output
 // blockCount - pointer to a single int for the total number of blocks
 // blockBounds - indices (in the local indexing) of first atom in each block
-__global__ void assign_blocks_binary_search_kernel(int2 domainDiv,int localCount,int *localToGlobal,struct DomdecBlockToken *tokens,int *blockCount,int *blockBounds)
+__global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,int globalCount,int *localToGlobal,struct DomdecBlockToken *tokens,int *blockCount,int *blockBounds)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int ix=i/domainDiv.x;
-  int iy=i-domainDiv.x*ix;
+  int domain;
+  int ix=i/domainDiv.y;
+  int iy=i-ix*domainDiv.y;
   int lowerPos=-1;
-  int upperPos=localCount;
+  int upperPos=globalCount;
   int probePos,hwidth,j;
   int blocksInColumn;
   extern __shared__ int columnBounds[]; // Two shared arrays of size blockDim.x
   int *cumBlocks=columnBounds+blockDim.x; // Two shared arrays of size blockDim.x
   struct DomdecBlockToken token,probeToken;
-  token.ix=ix;
-  token.iy=iy;
-  token.z=-INFINITY;
 
-  // Find half of next highest power of 2 above localCount+1
-  hwidth=localCount; // (localCount+1)-1
-  hwidth|=hwidth>>1;
-  hwidth|=hwidth>>2;
-  hwidth|=hwidth>>4;
-  hwidth|=hwidth>>8;
-  hwidth|=hwidth>>16;
-  hwidth++;
-  hwidth=hwidth>>1;
+  if (i==0) {
+    blockCount[0]=0;
+  }
 
-  for (; hwidth>0; hwidth=hwidth>>1) {
-    probePos=lowerPos+hwidth;
-    if (probePos<upperPos) {
-      probeToken=tokens[localToGlobal[probePos]];
-      if (probeToken<token) {
-        lowerPos=probePos;
-      } else {
-        upperPos=probePos;
+  __syncthreads();
+
+  for (domain=0; domain<domainCount; domain++) {
+    token.domain=domain;
+    token.ix=ix;
+    token.iy=iy;
+    token.z=-INFINITY;
+
+    // Find half of next highest power of 2 above localCount+1
+    hwidth=globalCount; // (localCount+1)-1
+    hwidth|=hwidth>>1;
+    hwidth|=hwidth>>2;
+    hwidth|=hwidth>>4;
+    hwidth|=hwidth>>8;
+    hwidth|=hwidth>>16;
+    hwidth++;
+    hwidth=hwidth>>1;
+
+    for (; hwidth>0; hwidth=hwidth>>1) {
+      probePos=lowerPos+hwidth;
+      if (probePos<upperPos) {
+        probeToken=tokens[localToGlobal[probePos]];
+        if (probeToken<token) {
+          lowerPos=probePos;
+        } else {
+          upperPos=probePos;
+        }
       }
     }
-  }
 
-  columnBounds[i]=upperPos;
+    columnBounds[i]=upperPos;
 
-  __syncthreads();
-
-  if (i<domainDiv.x*domainDiv.y) {
-    blocksInColumn=columnBounds[i+1]-columnBounds[i];
-    blocksInColumn=(blocksInColumn+31)/32;
-    cumBlocks[i+1]=blocksInColumn;
-  } else { // if (i==domainDiv.x*domainDiv.y)
-    cumBlocks[0]=0; // Someone needs to zero the first entry
-    blocksInColumn=1; // Add an entry at the end of block bounds below
-  }
-
-  // Requires shared memory because the number of columns is unrelated to warp size
-  for (hwidth=1; 2*hwidth<localCount+1; hwidth*=2) {
     __syncthreads();
-    if (hwidth&i) {
-      cumBlocks[i]+=cumBlocks[(i|(hwidth-1))-hwidth];
+
+    if (i<domainDiv.x*domainDiv.y) {
+      blocksInColumn=columnBounds[i+1]-columnBounds[i];
+      blocksInColumn=(blocksInColumn+31)/32;
+      cumBlocks[i+1]=blocksInColumn;
+    } else { // if (i==domainDiv.x*domainDiv.y)
+      cumBlocks[0]=0; // Someone needs to zero the first entry
+      blocksInColumn=1; // Add an entry at the end of block bounds below
     }
-  }
 
-  __syncthreads();
+    // Requires shared memory because the number of columns is unrelated to warp size
+    for (hwidth=1; 2*hwidth<globalCount+1; hwidth*=2) {
+      __syncthreads();
+      if (hwidth&i) {
+        cumBlocks[i]+=cumBlocks[(i|(hwidth-1))-hwidth];
+      }
+    }
 
-  int j0=cumBlocks[i];
-  for (j=0; j<blocksInColumn; j++) {
-    blockBounds[j+j0]=upperPos+32*j;
-  }
+    __syncthreads();
 
-  if (i==domainDiv.x*domainDiv.y) {
-    blockCount[0]=cumBlocks[domainDiv.x*domainDiv.y];
+    int j0=blockCount[domain]+cumBlocks[i];
+    for (j=0; j<blocksInColumn; j++) {
+      blockBounds[j+j0]=upperPos+32*j;
+    }
+
+    if (i==domainDiv.x*domainDiv.y) {
+      blockCount[domain+1]=cumBlocks[domainDiv.x*domainDiv.y];
+    }
   }
 }
 
-__global__ void assign_blocks_continue_local_kernel(int globalCount,int *localToGlobal,int *globalToLocal,NbondPotential *nbonds,NbondPotential *localNbonds)
+__global__ void assign_blocks_localNbonds_kernel(int globalCount,int *localToGlobal,int *globalToLocal,NbondPotential *nbonds,NbondPotential *localNbonds)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   if (i<globalCount) {
@@ -260,7 +277,7 @@ __global__ void assign_blocks_continue_local_kernel(int globalCount,int *localTo
 }*/
 
 //    assign_blocks_finish_local_kernel<<<(32*blockCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(blockCount,blockBounds_d,localToGlobal_d,(real3*)system->state->position_d,localPosition_d,blockVolume_d);
-__global__ void assign_blocks_finish_local_kernel(int blockCount,int *blockBounds,int *localToGlobal,real3 *position,real3 *localPosition,struct DomdecBlockVolume *blockVolume)
+__global__ void assign_blocks_localPosition_kernel(int blockCount,int *blockBounds,int *localToGlobal,real3 *position,real3 *localPosition,struct DomdecBlockVolume *blockVolume)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int iBlock=i/32;
@@ -306,7 +323,12 @@ __global__ void assign_blocks_finish_local_kernel(int blockCount,int *blockBound
 
 void Domdec::assign_blocks(System *system)
 {
-  if (system->idCount==1 || system->id!=0) {
+  int id=system->id-1;
+  int idCount=system->idCount-1;
+  id+=(system->idCount==1);
+  idCount+=(system->idCount==1);
+
+  if (id>=0) { 
 
     // Get the tokens for sorting
 
@@ -317,7 +339,7 @@ void Domdec::assign_blocks(System *system)
     domainDiv.x=(int)ceil(box.x/(dr*gridDomdec.x));
     domainDiv.y=(int)ceil(box.y/(dr*gridDomdec.y));
 
-    assign_blocks_get_tokens_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,idDomdec,gridDomdec,domainDiv,domain_d,(real3*)system->state->position_d,box,blockToken_d);
+    assign_blocks_get_tokens_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,gridDomdec,domainDiv,domain_d,(real3*)system->state->position_d,box,blockToken_d);
 
     // Make the tree structure
 
@@ -328,30 +350,14 @@ void Domdec::assign_blocks(System *system)
 
     // Create sorted structures
 
-    cudaMemcpy(&localCount,&blockSort_d[globalCount].upperCount,sizeof(int),cudaMemcpyDeviceToHost);
-    assign_blocks_start_local_kernel<<<(localCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(localCount,globalCount,blockSort_d,localToGlobal_d);
+    assign_blocks_localToGlobal_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,blockSort_d,localToGlobal_d);
 
-    assign_blocks_binary_search_kernel<<<1,domainDiv.x*domainDiv.y+1,2*(domainDiv.x*domainDiv.y+1)*sizeof(int),system->update->updateStream>>>(domainDiv,localCount,localToGlobal_d,blockToken_d,blockCount_d,blockBounds_d);
-#warning "Not multidomain compatible"
-    cudaMemcpy(&blockCount,blockCount_d,sizeof(int),cudaMemcpyDeviceToHost);
-  }
+    if (domainDiv.x*domainDiv.y>1024) fatal(__FILE__,__LINE__,"Need to rethink domain decomposition, that's nearing the boundary of what this decomposition can do. assign_blocks_blockBounds_kernel is probably going to fail.\n");
+    assign_blocks_blockBounds_kernel<<<1,domainDiv.x*domainDiv.y+1,2*(domainDiv.x*domainDiv.y+1)*sizeof(int),system->update->updateStream>>>(idCount,domainDiv,globalCount,localToGlobal_d,blockToken_d,blockCount_d,blockBounds_d);
 
-  if (system->idCount>2) {
-    int additionalLocalCount;
-    int cumulativeLocalCount=localCount;
-    int i;
+    cudaMemcpy(blockCount,blockCount_d,(idCount+1)*sizeof(int),cudaMemcpyDeviceToHost);
 
-    for (i=0; i<system->idCount-1; i++) {
-      additionalLocalCount=localCount;
-      MPI_Bcast(&additionalLocalCount,1,MPI_INT,i+1,MPI_COMM_WORLD);
-      fatal(__FILE__,__LINE__,"Data is going to all th wrong places on the next line\n");
-      MPI_Bcast(&localToGlobal_d[cumulativeLocalCount],additionalLocalCount,MPI_INT,i+1,MPI_COMM_WORLD);
-      cumulativeLocalCount+=additionalLocalCount;
-    }
-  }
-
-  if (system->idCount==1 || system->id!=0) {
-    assign_blocks_continue_local_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,localToGlobal_d,globalToLocal_d,system->potential->nbonds_d,localNbonds_d);
+    assign_blocks_localNbonds_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,localToGlobal_d,globalToLocal_d,system->potential->nbonds_d,localNbonds_d);
     // OLD assign_blocks_finish_local_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,localToGlobal_d,(real3*)system->state->position_d,localPosition_d);
 
     // Use pack_positions instead.
@@ -361,7 +367,23 @@ void Domdec::assign_blocks(System *system)
 
 void Domdec::pack_positions(System *system)
 {
+  int N=blockCount[gridDomdec.x*gridDomdec.y*gridDomdec.z];
   if (system->idCount==1 || system->id!=0) {
-    assign_blocks_finish_local_kernel<<<(32*blockCount+BLUP-1)/BLUP,BLUP,0,system->potential->nbdirectStream>>>(blockCount,blockBounds_d,localToGlobal_d,(real3*)system->state->position_d,localPosition_d,blockVolume_d);
+    assign_blocks_localPosition_kernel<<<(32*N+BLUP-1)/BLUP,BLUP,0,system->potential->nbdirectStream>>>(N,blockBounds_d,localToGlobal_d,(real3*)system->state->position_d,localPosition_d,blockVolume_d);
+  }
+}
+
+__global__ void unpack_forces_kernel(int atomCount,int *localToGlobal,real3 *force,real3 *localForce)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  if (i<atomCount) {
+    at_real3_inc(&force[localToGlobal[i]],localForce[i]);
+  }
+}
+
+void Domdec::unpack_forces(System *system)
+{
+  if (system->idCount==1 || system->id!=0) {
+    unpack_forces_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->potential->nbdirectStream>>>(globalCount,localToGlobal_d,(real3*)system->state->force_d,localForce_d);
   }
 }

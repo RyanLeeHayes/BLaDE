@@ -933,7 +933,9 @@ void Potential::calc_force(int step,System *system)
   bool calcEnergy=(step%system->run->freqNRG==0);
   // fprintf(stdout,"Force calculation placeholder (step %d)\n",step);
 
-
+  cudaMemset(system->state->force_d,0,3*system->state->atomCount*sizeof(real));
+  cudaMemset(system->msld->lambdaForce_d,0,system->msld->blockCount*sizeof(real));
+  cudaMemset(system->domdec->localForce_d,0,3*system->domdec->globalCount*sizeof(real));
   if (calcEnergy) {
     cudaMemset(system->state->energy_d,0,eeend*sizeof(real));
   }
@@ -942,11 +944,7 @@ void Potential::calc_force(int step,System *system)
   if (step%10==0) {
     system->domdec->reset_domdec(system);
   } else if (system->idCount>1) {
-    // MPI_Bcast(system->state->position_d,3*system->state->atomCount,MPI_FLOAT,0,MPI_COMM_WORLD);
-    // MPI_Bcast(system->msld->lambda_d,system->msld->blockCount,MPI_REAL,0,MPI_COMM_WORLD);
-  }
-  if (system->id<2) {
-    MPI_Sendrecv(system->msld->lambda_d,1,MPI_FLOAT,1,101,system->msld->lambda_d,1,MPI_FLOAT,0,101,MPI_COMM_WORLD,NULL);
+    system->state->broadcast_position(system);
   }
 
   if (system->id==0) {
@@ -974,14 +972,17 @@ void Potential::calc_force(int step,System *system)
     cudaStreamWaitEvent(system->run->masterStream,biaspotComplete,0);
   }
 
-  // if (system->id>0 || system->idCount==1) {
-  //   cudaStreamWaitEvent(nbdirectStream,system->run->updateComplete,0);
-  //   getforce_nbdirect(system,calcEnergy);
-  //   cudaEventRecord(nbdirectComplete,nbdirectStream);
-  //   cudaStreamWaitEvent(system->run->masterStream,nbdirectComplete,0);
-  // }
-
-#warning "Still need to gather forces"
+  cudaStreamWaitEvent(nbdirectStream,system->run->updateComplete,0);
+  if (system->id>0 || system->idCount==1) {
+    getforce_nbdirect(system,calcEnergy);
+  }
+#warning "No energy reduction"
+  system->state->gather_force(system);
+  if (system->idCount>1 && system->id==0) {
+    getforce_nbdirect_reduce(system,calcEnergy);
+  }
+  cudaEventRecord(nbdirectComplete,nbdirectStream);
+  cudaStreamWaitEvent(system->run->masterStream,nbdirectComplete,0);
 
   cudaEventRecord(system->run->forceComplete,system->run->masterStream);
   // cudaDeviceSynchronize();

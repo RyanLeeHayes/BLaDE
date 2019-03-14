@@ -11,11 +11,11 @@
 
 
 
-__global__ void getforce_nbdirect_kernel(int blockCount,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,struct Cutoffs cutoffs,real3 *position,real3 *force,real *lambda,real *lambdaForce,real *energy)
+__global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,struct Cutoffs cutoffs,real3 *position,real3 *force,real *lambda,real *lambdaForce,real *energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int iBlock=i/32;
+  int iBlock=i/32+startBlock;
   int jBlock;
   int iCount,jCount;
   int ii,jj;
@@ -36,7 +36,7 @@ __global__ void getforce_nbdirect_kernel(int blockCount,int *blockBounds,int *bl
   real li,lj,ljtmp,lixljtmp;
   bool testSelf;
 
-  if (iBlock<blockCount) {
+  if (iBlock<endBlock) {
     ii=blockBounds[iBlock];
     iCount=blockBounds[iBlock+1]-ii;
     ii+=(i&31);
@@ -51,10 +51,11 @@ __global__ void getforce_nbdirect_kernel(int blockCount,int *blockBounds,int *bl
     fi=make_float3(0,0,0);
     fli=0;
 
-    jmax=blockPartnerCount[iBlock];
+    // used i/32 instead of iBlock to shift to beginning of array
+    jmax=blockPartnerCount[i/32];
     for (j=0; j<jmax; j++) {
-      jBlock=blockPartners[j].jBlock;
-      shift=blockPartners[j].shift;
+      jBlock=blockPartners[maxPartnersPerBlock*(i/32)+j].jBlock;
+      shift=blockPartners[maxPartnersPerBlock*(i/32)+j].shift;
       jj=blockBounds[jBlock];
       jCount=blockBounds[jBlock+1]-jj;
       jj+=(i&31);
@@ -203,7 +204,10 @@ void getforce_nbdirect(System *system,bool calcEnergy)
   State *s=system->state;
   Msld *m=system->msld;
   Domdec *d=system->domdec;
-  int N=d->blockCount;
+  int id=system->id-1+(system->idCount==1);
+  int startBlock=d->blockCount[id];
+  int endBlock=d->blockCount[id+1];
+  int N=endBlock-startBlock;
   int shMem=0;
   real *pEnergy=NULL;
 
@@ -212,6 +216,32 @@ void getforce_nbdirect(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenbdirect;
   }
 
-  getforce_nbdirect_kernel<<<(32*N+BLNB-1)/BLNB,BLNB,shMem,p->nbdirectStream>>>(N,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_nbdirect_kernel<<<(32*N+BLNB-1)/BLNB,BLNB,shMem,p->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,m->lambda_d,m->lambdaForce_d,pEnergy);
+
+  system->domdec->unpack_forces(system);
 }
 
+__global__ void getforce_nbdirect_reduce_kernel(int atomCount,int idCount,real *force)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  int j;
+  real f=0;
+
+  if (i<atomCount) {
+    for (j=1; j<idCount; j++) {
+      f+=force[j*atomCount+i];
+    }
+    realAtomicAdd(&force[i],f);
+  }
+}
+
+void getforce_nbdirect_reduce(System *system,bool calcEnergy)
+{
+#warning "No energy reduction"
+  Potential *p=system->potential;
+  State *s=system->state;
+  Msld *m=system->msld;
+  int N=3*s->atomCount+2*m->blockCount;
+
+  getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,p->nbdirectStream>>>(N,system->idCount,s->forceBuffer_d);
+}

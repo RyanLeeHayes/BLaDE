@@ -32,6 +32,18 @@ __global__ void assign_domain_kernel(int atomCount,real3 *position,real3 box,int
   }
 }
 
+void Domdec::broadcast_domain(System *system)
+{
+  int N=globalCount;
+  if (system->id==0) {
+    cudaMemcpy(domain,domain_d,N*sizeof(int),cudaMemcpyDeviceToHost);
+  }
+  MPI_Bcast(domain,N,MPI_INT,0,MPI_COMM_WORLD);
+  if (system->id!=0) {
+    cudaMemcpy(domain_d,domain,N*sizeof(int),cudaMemcpyHostToDevice);
+  }
+}
+
 void Domdec::assign_domain(System *system)
 {
   if (system->id==0) {
@@ -39,7 +51,7 @@ void Domdec::assign_domain(System *system)
   }
 return;
   if (system->idCount!=1) {
-    MPI_Bcast(domain_d,system->state->atomCount,MPI_INT,0,MPI_COMM_WORLD);
-    MPI_Bcast(system->state->position_d,3*system->state->atomCount,MPI_FLOAT,0,MPI_COMM_WORLD);
+    broadcast_domain(system);
+    system->state->broadcast_position(system);
   }
 }

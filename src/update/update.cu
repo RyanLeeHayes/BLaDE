@@ -18,6 +18,8 @@
 // Molecular dynamics simulations of water and biomolecules with a Monte Carlo constant pressure algorithm
 // Johan A...vist *, Petra Wennerstro...m, Martin Nervall, Sinisa Bjelic, Bj...rn O. Brandsdal
 
+// NYI - use only one update stream instead of two.
+
 // Class constructors
 Update::Update()
 {
@@ -127,6 +129,7 @@ void Update::update(int step,System *system)
 {
   cudaStreamWaitEvent(updateStream,system->run->forceComplete,0);
   cudaStreamWaitEvent(updateLambdaStream,system->run->forceComplete,0);
+  if (system->id==0) {
 #ifndef CUDAGRAPH
   // https://pubs.acs.org/doi/10.1021/jp411770f equation 7
 
@@ -148,13 +151,14 @@ void Update::update(int step,System *system)
   // equation 7c&e
   update_R<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState,*leapParms2);
 
-  reset_F<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState);
 #else
   cudaGraphLaunch(updateGraphExec,updateStream);
 #endif
+  }
   cudaEventRecord(updateComplete,updateStream);
   cudaStreamWaitEvent(system->run->masterStream,updateComplete,0);
 
+  if (system->id==0) {
 #ifndef CUDAGRAPH
   system->state->rngGPU->rand_normal(2*lambdaLeapState->N,lambdaLeapState->random,updateLambdaStream);
   system->msld->calc_thetaForce_from_lambdaForce(updateLambdaStream);
@@ -166,10 +170,10 @@ void Update::update(int step,System *system)
   update_R<<<(lambdaLeapState->N+BLUP-1)/BLUP,BLUP,0,updateLambdaStream>>>(*lambdaLeapState,*lambdaLeapParms2);
   system->msld->calc_lambda_from_theta(updateLambdaStream);
 
-  reset_F<<<(lambdaLeapState->N+BLUP-1)/BLUP,BLUP,0,updateLambdaStream>>>(*lambdaLeapState);
 #else
   cudaGraphLaunch(updateLambdaGraphExec,updateLambdaStream);
 #endif
+  }
 
   cudaEventRecord(updateLambdaComplete,updateLambdaStream);
   cudaStreamWaitEvent(system->run->masterStream,updateLambdaComplete,0);

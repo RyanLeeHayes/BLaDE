@@ -38,6 +38,7 @@ class Control {
 };
 
 void fatal(const char* fnm,int i,const char* format, ...);
+void arrested_development(System *system,int howLong);
 FILE* fpopen(const char* fnm,const char* type);
 
 void io_nexta(char *line,char *token);

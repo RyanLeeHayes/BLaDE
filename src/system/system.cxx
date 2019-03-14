@@ -79,6 +79,8 @@ void System::setup_parse_system()
   helpSystem["run"]="?run> Run a calculation, such as a dynamics simulation, on the system. Must have parameters, structure, msld, and state set up first.\n";
   parseSystem["stream"]=&System::parse_system_stream;
   helpSystem["stream"]="?stream [filename]> Read commands from filename until they are finished, and then return to this point in this script.\n";
+  parseSystem["arrest"]=&System::parse_system_arrest;
+  helpSystem["arrest"]="?arrest [int]> Hang the process for int seconds so a debugger like gdb can be attached. Defaults to 30 seconds if no argument is given. For code development only\n";
   parseSystem["set"]=&System::parse_system_set;
   helpSystem["set"]="?set [token] [value]> Set token to value, for later use in parsing commands. Access the value by surrounding the token name in {}. For example:\nset token1 help set\n{token1}\nwill print this help message.\n";
 }
@@ -123,6 +125,11 @@ void System::parse_system_stream(char *line,char *token,System *system,Control *
 {
   io_nexta(line,token);
   interpretter(token,system,control->level+1);
+}
+
+void System::parse_system_arrest(char *line,char *token,System *system,Control *control)
+{
+  arrested_development(system,io_nexti(line,30));
 }
 
 void System::parse_system_set(char *line,char *token,System *system,Control *control)

@@ -39,15 +39,14 @@ bool check_proximity(DomdecBlockVolume a,DomdecBlockVolume b,real c2)
 __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount,int maxPartnersPerBlock,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,real3 box,real rc2)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int iBlock=i/32; // 32 threads tag teaming per block
   int domainIdx=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
+  int iBlock=i/32+blockCount[domainIdx]; // 32 threads tag teaming per block
   int partnerDomainIdx;
   int3 idPartnerDomain, idShift;
   real3 shift;
   int s;
-  int partnerBlockCount;
   struct DomdecBlockVolume volume, partnerVolume;
-  int j,startBlock;
+  int j,startBlock,endBlock;
   bool hit;
   int cumHit, passHit;
   int partnerPos;
@@ -70,10 +69,10 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
 // (1,1,0) domain with (0,0,1) - needs self, X, Y, and Z
 // For the small number of domains here, the naive approach below might be more efficient.
 
-  if (iBlock<blockCount[domainIdx]) {
+  if (iBlock<blockCount[domainIdx+1]) {
     // (0,0,0) interacts with (1,x,x), (0,1,x), (0,0,1), and (0,0,0), x={-1,0,1}
     partnerPos=0;
-    startBlock=iBlock; // For first (0,0,0) domain only
+    startBlock=i/32; // For first (0,0,0) domain only
     for (idShift.x=0; idShift.x<2; idShift.x++) {
       idPartnerDomain.x=idDomdec.x+idShift.x;
       s=(idPartnerDomain.x==gridDomdec.x?1:0);
@@ -94,16 +93,17 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
           shift.z=s*box.z;
 
           partnerDomainIdx=(idPartnerDomain.x*gridDomdec.y+idPartnerDomain.y)*gridDomdec.z+idPartnerDomain.z;
-          partnerBlockCount=blockCount[domainIdx];
+          startBlock+=blockCount[partnerDomainIdx];
+          endBlock=blockCount[partnerDomainIdx+1];
           volume=blockVolume[iBlock];
           real3_dec(&volume.max,shift);
           real3_dec(&volume.min,shift);
 
           // Check potential partner blocks in groups of 32.
-          for (j=startBlock; j<partnerBlockCount; j+=32) {
+          for (j=startBlock; j<endBlock; j+=32) {
             // Check if this block is interacting
             hit=false;
-            if (j+(i&31)<partnerBlockCount) {
+            if (j+(i&31)<endBlock) {
               partnerVolume=blockVolume[j+(i&31)];
               hit=check_proximity(volume,partnerVolume,rc2);
             }
@@ -126,7 +126,8 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
 #warning "Doesn't account for multiple domains"
               blockPartner.jBlock=j+(i&31);
               blockPartner.shift=shift;
-              blockPartners[maxPartnersPerBlock*iBlock+partnerPos+cumHit-1]=blockPartner;
+              // Use i/32 instead of iblock so it's at start of array.
+              blockPartners[maxPartnersPerBlock*(i/32)+partnerPos+cumHit-1]=blockPartner;
             }
 
             // Update partner pos
@@ -140,13 +141,17 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
     }
 
     if ((i&31)==0) {
-      blockPartnerCount[iBlock]=partnerPos;
+      // use i/32 instead of iblock so it's at the start of the array
+      blockPartnerCount[i/32]=partnerPos;
     }
   }
 }
 
 void Domdec::cull_blocks(System *system)
 {
+  int id=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
+  int localBlockCount=blockCount[id+1]-blockCount[id];
   real rc2=system->run->cutoffs.rCut*system->run->cutoffs.rCut;
-  cull_blocks_kernel<<<(32*blockCount+BLUP-1)/BLUP,BLUP,0,system->potential->nbdirectStream>>>(idDomdec,gridDomdec,blockCount_d,maxPartnersPerBlock,blockPartnerCount_d,blockPartners_d,blockVolume_d,system->state->orthBox,rc2);
+
+  cull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,system->potential->nbdirectStream>>>(idDomdec,gridDomdec,blockCount_d,maxPartnersPerBlock,blockPartnerCount_d,blockPartners_d,blockVolume_d,system->state->orthBox,rc2);
 }
