@@ -11,7 +11,7 @@
 
 
 
-__global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,struct Cutoffs cutoffs,real3 *position,real3 *force,real *lambda,real *lambdaForce,real *energy)
+__global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real *lambda,real *lambdaForce,real *energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -35,6 +35,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   int bi,bj,bjtmp;
   real li,lj,ljtmp,lixljtmp;
   bool testSelf;
+  int exclMask;
 
   if (iBlock<endBlock) {
     ii=blockBounds[iBlock];
@@ -56,6 +57,12 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
     for (j=0; j<jmax; j++) {
       jBlock=blockPartners[maxPartnersPerBlock*(i/32)+j].jBlock;
       shift=blockPartners[maxPartnersPerBlock*(i/32)+j].shift;
+      int exclAddress=blockPartners[maxPartnersPerBlock*(i/32)+j].exclAddress;
+      if (exclAddress==-1) {
+        exclMask=0xFFFFFFFF;
+      } else {
+        exclMask=blockExcls[32*exclAddress+(i&31)];
+      }
       jj=blockBounds[jBlock];
       jCount=blockBounds[jBlock+1]-jj;
       jj+=(i&31);
@@ -94,7 +101,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
           // NOTE #warning "Unprotected sqrt"
           r=real3_mag(dr);
 
-          if (r<cutoffs.rCut) {
+          if (r<cutoffs.rCut && ((1<<(jtmp&31))&exclMask)) {
             rinv=1/r;
 
             // Scaling
@@ -198,7 +205,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
 void getforce_nbdirect(System *system,bool calcEnergy)
 {
   system->domdec->pack_positions(system);
-  system->domdec->cull_blocks(system);
+  system->domdec->recull_blocks(system);
 
   Potential *p=system->potential;
   State *s=system->state;
@@ -216,7 +223,7 @@ void getforce_nbdirect(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenbdirect;
   }
 
-  getforce_nbdirect_kernel<<<(32*N+BLNB-1)/BLNB,BLNB,shMem,p->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_nbdirect_kernel<<<(32*N+BLNB-1)/BLNB,BLNB,shMem,p->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,m->lambda_d,m->lambdaForce_d,pEnergy);
 
   system->domdec->unpack_forces(system);
 }

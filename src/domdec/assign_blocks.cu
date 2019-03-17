@@ -181,8 +181,6 @@ __global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,
   int domain;
   int ix=i/domainDiv.y;
   int iy=i-ix*domainDiv.y;
-  int lowerPos=-1;
-  int upperPos=globalCount;
   int probePos,hwidth,j;
   int blocksInColumn;
   extern __shared__ int columnBounds[]; // Two shared arrays of size blockDim.x
@@ -200,6 +198,9 @@ __global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,
     token.ix=ix;
     token.iy=iy;
     token.z=-INFINITY;
+
+    int lowerPos=-1;
+    int upperPos=globalCount;
 
     // Find half of next highest power of 2 above localCount+1
     hwidth=globalCount; // (localCount+1)-1
@@ -237,7 +238,7 @@ __global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,
     }
 
     // Requires shared memory because the number of columns is unrelated to warp size
-    for (hwidth=1; 2*hwidth<globalCount+1; hwidth*=2) {
+    for (hwidth=1; hwidth<domainDiv.x*domainDiv.y+1; hwidth*=2) {
       __syncthreads();
       if (hwidth&i) {
         cumBlocks[i]+=cumBlocks[(i|(hwidth-1))-hwidth];
@@ -252,7 +253,7 @@ __global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,
     }
 
     if (i==domainDiv.x*domainDiv.y) {
-      blockCount[domain+1]=cumBlocks[domainDiv.x*domainDiv.y];
+      blockCount[domain+1]=blockCount[domain]+cumBlocks[domainDiv.x*domainDiv.y];
     }
   }
 }
@@ -339,7 +340,7 @@ void Domdec::assign_blocks(System *system)
     domainDiv.x=(int)ceil(box.x/(dr*gridDomdec.x));
     domainDiv.y=(int)ceil(box.y/(dr*gridDomdec.y));
 
-    assign_blocks_get_tokens_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,gridDomdec,domainDiv,domain_d,(real3*)system->state->position_d,box,blockToken_d);
+    assign_blocks_get_tokens_kernel<<<(globalCount+1+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,gridDomdec,domainDiv,domain_d,(real3*)system->state->position_d,box,blockToken_d);
 
     // Make the tree structure
 

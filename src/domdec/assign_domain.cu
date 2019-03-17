@@ -49,7 +49,7 @@ void Domdec::assign_domain(System *system)
   if (system->id==0) {
     assign_domain_kernel<<<(system->state->atomCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(system->state->atomCount,(real3*)system->state->position_d,system->state->orthBox,gridDomdec,domain_d);
   }
-return;
+
   if (system->idCount!=1) {
     broadcast_domain(system);
     system->state->broadcast_position(system);

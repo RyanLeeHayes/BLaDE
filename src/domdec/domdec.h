@@ -7,6 +7,7 @@
 // Forward declarations
 class System;
 struct NbondPotential; // system/potential.h
+struct ExclPotential; // system/potential.h
 
 // Data structure used for sorting, sort by ix, then iy, then z.
 struct DomdecBlockToken {
@@ -35,6 +36,7 @@ struct DomdecBlockVolume {
 struct DomdecBlockPartners {
   int jBlock;
   real3 shift;
+  int exclAddress; // Tells where to look up exclusions
 };
 
 class Domdec {
@@ -44,6 +46,9 @@ class Domdec {
   MPI_Comm MPI_COMM_NBOND;
 // Heuristic settings
   int maxBlocks, maxPartnersPerBlock;
+  int freqDomdec;
+  real cullPad;
+  int maxBlockExclCount;
 // Assign atoms to domains
   int *domain;
   int *domain_d;
@@ -61,8 +66,17 @@ class Domdec {
   int *blockCount, *blockCount_d;
 // For deciding what's interacting
   struct DomdecBlockVolume *blockVolume_d;
-  int *blockPartnerCount_d;
+  int *blockCandidateCount_d; // Candidates might interact and are defined each search
+  struct DomdecBlockPartners *blockCandidates_d;
+  int *blockPartnerCount_d; // Partners do interact and are defined each step
   struct DomdecBlockPartners *blockPartners_d;
+// For exclusions
+  struct ExclPotential *localExcls_d;
+  struct DomdecBlockSort *exclSort_d;
+  struct ExclPotential *sortedExcls_d;
+  int sortedExclCount;
+  int *blockExcls_d;
+  int *blockExclCount_d;
 
   Domdec();
   ~Domdec();
@@ -79,4 +93,8 @@ class Domdec {
   void unpack_forces(System *system);
   // From domdec/cull.cu
   void cull_blocks(System *system);
+  // From domdec/assign_excl.cu
+  void setup_exclusions(System *system);
+  // From domdec/recull.cu
+  void recull_blocks(System *system);
 };

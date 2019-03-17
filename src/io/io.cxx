@@ -300,16 +300,18 @@ void print_nrg(int step,System *system)
 
 void print_dynamics_output(int step,System *system)
 {
-  if (step % system->run->freqXTC == 0) {
-    system->state->recv_position();
-    print_xtc(step,system);
-  }
-  if (step % system->run->freqLMD == 0) {
-    system->msld->recv_real(system->msld->lambda,system->msld->lambda_d);
-    print_lmd(step,system);
-  }
-  if (step % system->run->freqNRG == 0) {
-    system->state->recv_energy();
-    print_nrg(step,system);
+  if (system->id==0) {
+    if (step % system->run->freqXTC == 0) {
+      system->state->recv_position();
+      print_xtc(step,system);
+    }
+    if (step % system->run->freqLMD == 0) {
+      system->msld->recv_real(system->msld->lambda,system->msld->lambda_d);
+      print_lmd(step,system);
+    }
+    if (step % system->run->freqNRG == 0) {
+      system->state->recv_energy();
+      print_nrg(step,system);
+    }
   }
 }

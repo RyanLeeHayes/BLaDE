@@ -123,9 +123,9 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
             cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|15)-16);
 
             if (hit) {
-#warning "Doesn't account for multiple domains"
               blockPartner.jBlock=j+(i&31);
               blockPartner.shift=shift;
+              blockPartner.exclAddress=-1; // No exclusions yet
               // Use i/32 instead of iblock so it's at start of array.
               blockPartners[maxPartnersPerBlock*(i/32)+partnerPos+cumHit-1]=blockPartner;
             }
@@ -149,9 +149,13 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
 
 void Domdec::cull_blocks(System *system)
 {
-  int id=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
-  int localBlockCount=blockCount[id+1]-blockCount[id];
-  real rc2=system->run->cutoffs.rCut*system->run->cutoffs.rCut;
+  int id=system->id-1+(system->idCount==1);
+  // int id=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
+  if (id>=0) {
+    int localBlockCount=blockCount[id+1]-blockCount[id];
+    real rc2=system->run->cutoffs.rCut+cullPad;
+    rc2*=rc2;
 
-  cull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,system->potential->nbdirectStream>>>(idDomdec,gridDomdec,blockCount_d,maxPartnersPerBlock,blockPartnerCount_d,blockPartners_d,blockVolume_d,system->state->orthBox,rc2);
+    cull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,system->potential->nbdirectStream>>>(idDomdec,gridDomdec,blockCount_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,blockVolume_d,system->state->orthBox,rc2);
+  }
 }

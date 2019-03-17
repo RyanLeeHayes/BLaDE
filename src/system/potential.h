@@ -85,6 +85,10 @@ struct VdwPotential {
   real c12,c6;
 };
 
+struct ExclPotential {
+  int idx[2];
+};
+
 class Potential {
   public:
   int atomCount;
@@ -129,6 +133,11 @@ class Potential {
   // std::vector<Int2> excls_tmp;
   // struct Int2 *excls;
   // struct Int2 *excls_d;
+
+  int exclCount;
+  std::vector<struct ExclPotential> excls_tmp;
+  struct ExclPotential *excls;
+  struct ExclPotential *excls_d;
 
   real *charge;
   real *charge_d;

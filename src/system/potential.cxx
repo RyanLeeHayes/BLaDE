@@ -60,6 +60,10 @@ Potential::Potential() {
   msldExcl=NULL;
   allExcl=NULL;
 
+  exclCount=0;
+  excls=NULL;
+  excls_d=NULL;
+
   chargeGridPME_d=NULL;
   fourierGridPME_d=NULL;
   potentialGridPME_d=NULL;
@@ -121,6 +125,9 @@ Potential::~Potential()
   delete [] diheExcl;
   delete [] msldExcl;
   delete [] allExcl;
+
+  if (excls) free(excls);
+  if (excls_d) cudaFree(excls_d);
 
   if (chargeGridPME_d) cudaFree(chargeGridPME_d);
   if (fourierGridPME_d) cudaFree(fourierGridPME_d);
@@ -742,6 +749,15 @@ void Potential::initialize(System *system)
     }
   }
 
+  for (i=0; i<atomCount; i++) {
+    for (std::set<int>::iterator jj=allExcl[i].begin(); jj!=allExcl[i].end(); jj++) {
+      ExclPotential excl;
+      excl.idx[0]=i;
+      excl.idx[1]=*jj;
+      excls_tmp.emplace_back(excl);
+    }
+  }
+
   nb14Count=nb14s_tmp.size();
   nb14s=(struct Nb14Potential*)calloc(nb14Count,sizeof(struct Nb14Potential));
   cudaMalloc(&(nb14s_d),nb14Count*sizeof(struct Nb14Potential));
@@ -758,6 +774,13 @@ void Potential::initialize(System *system)
   }
   cudaMemcpy(nbexs_d,nbexs,nbexCount*sizeof(struct NbExPotential),cudaMemcpyHostToDevice);
 
+  exclCount=excls_tmp.size();
+  excls=(struct ExclPotential*)calloc(exclCount,sizeof(struct ExclPotential));
+  cudaMalloc(&(excls_d),exclCount*sizeof(struct ExclPotential));
+  for (i=0; i<exclCount; i++) {
+    excls[i]=excls_tmp[i];
+  }
+  cudaMemcpy(excls_d,excls,exclCount*sizeof(struct ExclPotential),cudaMemcpyHostToDevice);
 
   // Choose PME grid sizes
   int goodSizes[]={32,27,24,20,18,16};
@@ -979,7 +1002,8 @@ void Potential::calc_force(int step,System *system)
 #warning "No energy reduction"
   system->state->gather_force(system);
   if (system->idCount>1 && system->id==0) {
-    getforce_nbdirect_reduce(system,calcEnergy);
+fprintf(stdout,"Warning, not reducing in nbdirect energy\n");
+    // getforce_nbdirect_reduce(system,calcEnergy);
   }
   cudaEventRecord(nbdirectComplete,nbdirectStream);
   cudaStreamWaitEvent(system->run->masterStream,nbdirectComplete,0);

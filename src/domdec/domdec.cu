@@ -23,8 +23,15 @@ Domdec::Domdec()
   blockCount=NULL;
   blockCount_d=NULL;
   blockVolume_d=NULL;
+  blockCandidateCount_d=NULL;
+  blockCandidates_d=NULL;
   blockPartnerCount_d=NULL;
   blockPartners_d=NULL;
+  localExcls_d=NULL;
+  exclSort_d=NULL;
+  sortedExcls_d=NULL;
+  blockExcls_d=NULL;
+  blockExclCount_d=NULL;
 }
 
 Domdec::~Domdec()
@@ -43,8 +50,15 @@ Domdec::~Domdec()
   free(blockCount);
   cudaFree(blockCount_d);
   cudaFree(blockVolume_d);
+  cudaFree(blockCandidateCount_d);
+  cudaFree(blockCandidates_d);
   cudaFree(blockPartnerCount_d);
   cudaFree(blockPartners_d);
+  cudaFree(localExcls_d);
+  cudaFree(exclSort_d);
+  cudaFree(sortedExcls_d);
+  cudaFree(blockExcls_d);
+  cudaFree(blockExclCount_d);
 }
 
 void Domdec::initialize(System *system)
@@ -76,6 +90,14 @@ void Domdec::initialize(System *system)
   fprintf(stdout,"maxBlocks=%d\n",maxBlocks);
   fprintf(stdout,"maxPartnersPerBlock=%d\n",maxPartnersPerBlock);
 
+  freqDomdec=10;
+  // How far two particles, each with hydrogen/unit mass can get in freqDomdec timesteps, if each has 30 kT of kinetic energy. Incredibly rare to violate this.
+  cullPad=2*sqrt(30*kB*system->run->T/1)*freqDomdec*system->run->dt;
+  maxBlockExclCount=4*system->potential->exclCount+1024; // only 32*exclCount is guaranteed
+  fprintf(stdout,"freqDomdec=%d (how many steps before domain reset)\n",freqDomdec);
+  fprintf(stdout,"cullPad=%g (spatial padding for considering which blocks could interact\n",cullPad);
+  fprintf(stdout,"maxBlockExclCount=%d\n",maxBlockExclCount);
+
   domain=(int*)calloc(globalCount,sizeof(int));
   cudaMalloc(&domain_d,globalCount*sizeof(int));
   cudaMalloc(&localToGlobal_d,globalCount*sizeof(int));
@@ -89,8 +111,16 @@ void Domdec::initialize(System *system)
   blockCount=(int*)calloc(gridDomdec.x*gridDomdec.y*gridDomdec.z+1,sizeof(int));
   cudaMalloc(&blockCount_d,(gridDomdec.x*gridDomdec.y*gridDomdec.z+1)*sizeof(int));
   cudaMalloc(&blockVolume_d,maxBlocks*sizeof(struct DomdecBlockVolume));
+  cudaMalloc(&blockCandidateCount_d,maxBlocks*sizeof(int));
+  cudaMalloc(&blockCandidates_d,maxBlocks*maxPartnersPerBlock*sizeof(struct DomdecBlockPartners));
   cudaMalloc(&blockPartnerCount_d,maxBlocks*sizeof(int));
   cudaMalloc(&blockPartners_d,maxBlocks*maxPartnersPerBlock*sizeof(struct DomdecBlockPartners));
+
+  cudaMalloc(&localExcls_d,(system->potential->exclCount+1)*sizeof(struct ExclPotential));
+  cudaMalloc(&exclSort_d,(system->potential->exclCount+1)*sizeof(struct DomdecBlockSort));
+  cudaMalloc(&sortedExcls_d,system->potential->exclCount*sizeof(struct ExclPotential));
+  cudaMalloc(&blockExcls_d,maxBlockExclCount*sizeof(int));
+  cudaMalloc(&blockExclCount_d,sizeof(int));
 
   reset_domdec(system);
 }
@@ -101,4 +131,8 @@ void Domdec::reset_domdec(System *system)
   assign_domain(system);
   // Splits domains into blocks, or groups of up to 32 nearby atoms
   assign_blocks(system);
+  // Cull blocks to get a candidate list
+  cull_blocks(system);
+  // Sets up exclusion data structures
+  setup_exclusions(system);
 }
