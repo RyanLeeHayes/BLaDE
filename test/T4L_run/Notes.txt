@@ -1,2 +1,0 @@
-From https://docs.nvidia.com/cuda/cufft/index.html#oned-real-to-complex-transforms
-

@@ -172,7 +172,7 @@ __global__ void assign_excl_blockExcls_kernel(
   int b,j,jmax;
   int exclPos;
   int mask;
-  bool hit;
+  int hit;
   int exclAddress;
 
   if (iBlock<endBlock) {
@@ -216,19 +216,19 @@ __global__ void assign_excl_blockExcls_kernel(
       mask=0xFFFFFFFF;
 
       jBlock=blockCandidates[maxPartnersPerBlock*(i/32)+j].jBlock;
-      jExclBounds[0]=iExclBounds[0];
-      jExclBounds[1]=iExclBounds[1];
+      jExclBounds[0]=0;
+      jExclBounds[1]=0;
       if (iAtom<iEndAtom) {
         for (b=0; b<2; b++) {
           jBlockAtomBounds[b]=blockBounds[jBlock+b];
 
           // Binary search for this atom
 
-          int lowerPos=jExclBounds[0]-1;
-          int upperPos=jExclBounds[1];
+          int lowerPos=iExclBounds[0]-1;
+          int upperPos=iExclBounds[1];
 
           // Find half of next highest power of 2 above localCount+1
-          hwidth=jExclBounds[1]-jExclBounds[0]; // (localCount+1)-1
+          hwidth=upperPos-lowerPos; // (localCount+1)-1
           hwidth|=hwidth>>1;
           hwidth|=hwidth>>2;
           hwidth|=hwidth>>4;
@@ -240,7 +240,7 @@ __global__ void assign_excl_blockExcls_kernel(
           for (; hwidth>0; hwidth=hwidth>>1) {
             probePos=lowerPos+hwidth;
             if (probePos<upperPos) {
-              probeAtom=sortedExcls[probePos].idx[0];
+              probeAtom=sortedExcls[probePos].idx[1];
               if (probeAtom<jBlockAtomBounds[b]) {
                 lowerPos=probePos;
               } else {
@@ -259,11 +259,12 @@ __global__ void assign_excl_blockExcls_kernel(
 
       // See if any atoms got hit after that mess of binary searches.
       hit=(mask!=0xFFFFFFFF);
-      hit=(hit || __shfl_xor_sync(0xFFFFFFFF,hit,1));
-      hit=(hit || __shfl_xor_sync(0xFFFFFFFF,hit,2));
-      hit=(hit || __shfl_xor_sync(0xFFFFFFFF,hit,4));
-      hit=(hit || __shfl_xor_sync(0xFFFFFFFF,hit,8));
-      hit=(hit || __shfl_xor_sync(0xFFFFFFFF,hit,16));
+      // Need to put shfl before ||, otherwise short circuit || prevents some shfls from calling which has undefined results.
+      hit=(__shfl_xor_sync(0xFFFFFFFF,hit,1) || hit);
+      hit=(__shfl_xor_sync(0xFFFFFFFF,hit,2) || hit);
+      hit=(__shfl_xor_sync(0xFFFFFFFF,hit,4) || hit);
+      hit=(__shfl_xor_sync(0xFFFFFFFF,hit,8) || hit);
+      hit=(__shfl_xor_sync(0xFFFFFFFF,hit,16) || hit);
 
       // If so, try to save exclusions
       if (hit) {
@@ -282,6 +283,8 @@ __global__ void assign_excl_blockExcls_kernel(
 
 void Domdec::setup_exclusions(System *system)
 {
+  if (system->potential->exclCount==0) return;
+
   int id=system->id-1+(system->idCount==1);
 
   if (id>=0) {

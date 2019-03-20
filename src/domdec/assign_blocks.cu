@@ -359,10 +359,9 @@ void Domdec::assign_blocks(System *system)
     cudaMemcpy(blockCount,blockCount_d,(idCount+1)*sizeof(int),cudaMemcpyDeviceToHost);
 
     assign_blocks_localNbonds_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,localToGlobal_d,globalToLocal_d,system->potential->nbonds_d,localNbonds_d);
-    // OLD assign_blocks_finish_local_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,localToGlobal_d,(real3*)system->state->position_d,localPosition_d);
 
-    // Use pack_positions instead.
-    // assign_blocks_finish_local_kernel<<<(32*blockCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(blockCount,blockBounds_d,localToGlobal_d,(real3*)system->state->position_d,localPosition_d,blockVolume_d);
+    // Redundant with pack_positions, needed for call to cull
+    assign_blocks_localPosition_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,(real3*)system->state->position_d,localPosition_d,blockVolume_d);
   }
 }
 

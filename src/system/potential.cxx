@@ -10,6 +10,7 @@
 #include "msld/msld.h"
 #include "system/state.h"
 #include "run/run.h"
+#include "update/update.h"
 #include "domdec/domdec.h"
 #include "bonded/bonded.h"
 #include "bonded/pair.h"
@@ -918,7 +919,7 @@ void Potential::initialize(System *system)
         np.eps=sqrt(npij[0].eps*npij[1].eps);
         np.sig=npij[0].sig+npij[1].sig;
         }
-      real sig6=np.sig14*np.sig14;
+      real sig6=np.sig*np.sig;
       sig6*=(sig6*sig6);
       vdwParameters[i*vdwParameterCount+j].c12=np.eps*sig6*sig6;
       vdwParameters[i*vdwParameterCount+j].c6=2*np.eps*sig6;
@@ -964,14 +965,16 @@ void Potential::calc_force(int step,System *system)
   }
 
 #warning "Heuristic domdain update every 10 steps"
+  cudaStreamWaitEvent(system->update->updateStream,system->run->updateComplete,0);
   if (step%10==0) {
     system->domdec->reset_domdec(system);
   } else if (system->idCount>1) {
     system->state->broadcast_position(system);
   }
+  cudaEventRecord(system->run->forceBegin,system->update->updateStream);
 
   if (system->id==0) {
-    cudaStreamWaitEvent(bondedStream,system->run->updateComplete,0);
+    cudaStreamWaitEvent(bondedStream,system->run->forceBegin,0);
     getforce_bond(system,calcEnergy);
     getforce_angle(system,calcEnergy);
     getforce_dihe(system,calcEnergy);
@@ -982,28 +985,26 @@ void Potential::calc_force(int step,System *system)
     cudaEventRecord(bondedComplete,bondedStream);
     cudaStreamWaitEvent(system->run->masterStream,bondedComplete,0);
 
-    cudaStreamWaitEvent(nbrecipStream,system->run->updateComplete,0);
+    cudaStreamWaitEvent(nbrecipStream,system->run->forceBegin,0);
     getforce_ewaldself(system,calcEnergy);
     getforce_ewald(system,calcEnergy);
     cudaEventRecord(nbrecipComplete,nbrecipStream);
     cudaStreamWaitEvent(system->run->masterStream,nbrecipComplete,0);
 
-    cudaStreamWaitEvent(biaspotStream,system->run->updateComplete,0);
+    cudaStreamWaitEvent(biaspotStream,system->run->forceBegin,0);
     system->msld->calc_fixedBias(system,calcEnergy);
     system->msld->calc_variableBias(system,calcEnergy);
     cudaEventRecord(biaspotComplete,biaspotStream);
     cudaStreamWaitEvent(system->run->masterStream,biaspotComplete,0);
   }
 
-  cudaStreamWaitEvent(nbdirectStream,system->run->updateComplete,0);
+  cudaStreamWaitEvent(nbdirectStream,system->run->forceBegin,0);
   if (system->id>0 || system->idCount==1) {
     getforce_nbdirect(system,calcEnergy);
   }
-#warning "No energy reduction"
-  system->state->gather_force(system);
+  system->state->gather_force(system,calcEnergy);
   if (system->idCount>1 && system->id==0) {
-fprintf(stdout,"Warning, not reducing in nbdirect energy\n");
-    // getforce_nbdirect_reduce(system,calcEnergy);
+    getforce_nbdirect_reduce(system,calcEnergy);
   }
   cudaEventRecord(nbdirectComplete,nbdirectStream);
   cudaStreamWaitEvent(system->run->masterStream,nbdirectComplete,0);

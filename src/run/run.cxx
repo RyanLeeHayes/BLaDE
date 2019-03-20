@@ -28,7 +28,7 @@ Run::Run()
   freqLMD=10;
   freqNRG=10;
 // Nonbonded options
-  betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANSTROM, erfc(betaEwald*rCut)=1e-5
+  betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
   gridSpace=1.0*ANGSTROM;
@@ -42,6 +42,7 @@ Run::Run()
 #else
   cudaStreamCreate(&masterStream);
 #endif
+  cudaEventCreate(&forceBegin);
   cudaEventCreate(&forceComplete);
   cudaEventCreate(&updateComplete);
   setup_parse_run();
@@ -55,6 +56,7 @@ Run::~Run()
 #ifndef PROFILESERIAL
   cudaStreamDestroy(masterStream);
 #endif
+  cudaEventDestroy(forceBegin);
   cudaEventDestroy(forceComplete);
   cudaEventDestroy(updateComplete);
 }

@@ -15,7 +15,9 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int iBlock=i/32+startBlock;
+  int iWarp=i>>5; // i/32
+  int iThread=i-32*iWarp;
+  int iBlock=iWarp+startBlock;
   int jBlock;
   int iCount,jCount;
   int ii,jj;
@@ -40,8 +42,8 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   if (iBlock<endBlock) {
     ii=blockBounds[iBlock];
     iCount=blockBounds[iBlock+1]-ii;
-    ii+=(i&31);
-    if ((i&31)<iCount) {
+    ii+=(iThread);
+    if ((iThread)<iCount) {
       inp=nbonds[ii];
       xi=position[ii];
       bi=inp.siteBlock;
@@ -53,20 +55,20 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
     fli=0;
 
     // used i/32 instead of iBlock to shift to beginning of array
-    jmax=blockPartnerCount[i/32];
+    jmax=blockPartnerCount[iWarp];
     for (j=0; j<jmax; j++) {
-      jBlock=blockPartners[maxPartnersPerBlock*(i/32)+j].jBlock;
-      shift=blockPartners[maxPartnersPerBlock*(i/32)+j].shift;
-      int exclAddress=blockPartners[maxPartnersPerBlock*(i/32)+j].exclAddress;
+      jBlock=blockPartners[maxPartnersPerBlock*(iWarp)+j].jBlock;
+      shift=blockPartners[maxPartnersPerBlock*(iWarp)+j].shift;
+      int exclAddress=blockPartners[maxPartnersPerBlock*(iWarp)+j].exclAddress;
       if (exclAddress==-1) {
         exclMask=0xFFFFFFFF;
       } else {
-        exclMask=blockExcls[32*exclAddress+(i&31)];
+        exclMask=blockExcls[32*exclAddress+(iThread)];
       }
       jj=blockBounds[jBlock];
       jCount=blockBounds[jBlock+1]-jj;
-      jj+=(i&31);
-      if ((i&31)<jCount) {
+      jj+=(iThread);
+      if ((iThread)<jCount) {
         jnp=nbonds[jj];
         xj=position[jj];
         real3_inc(&xj,shift);
@@ -80,7 +82,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
       flj=0;
 
       for (ij=testSelf; ij<32; ij++) {
-        jtmp=i+ij;
+        jtmp=(iThread)+ij;
         jtmpnp_q=__shfl_sync(0xFFFFFFFF,jnp.q,jtmp);
         int jtmpnp_typeIdx=__shfl_sync(0xFFFFFFFF,jnp.typeIdx,jtmp);
         xjtmp.x=__shfl_sync(0xFFFFFFFF,xj.x,jtmp);
@@ -93,7 +95,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
         fljtmp=0;
         // if ((i&31)<iCount && (jtmp&31)<jCount)
         jtmp=(testSelf?jtmp:(jtmp&31));
-        if ((i&31)<iCount && jtmp<jCount) {
+        if ((iThread)<iCount && jtmp<jCount) {
           struct VdwPotential vdwp=vdwParameters[inp.typeIdx*vdwParameterCount+jtmpnp_typeIdx];
 
           // Geometry
@@ -119,34 +121,32 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
               // Electrostatics
             real br=cutoffs.betaEwald*r;
             real erfcrinv=erfcf(br)*rinv;
-            fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv-(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
-            if (bi || bj || energy) {
+            fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
+            if (bi || bjtmp || energy) {
               eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
             }
               // Van der Waals
             real rinv3=rinv*rinv*rinv;
             real rinv6=rinv3*rinv3;
-            // fij+=-(12*(vdwp.c12*rinv6)-6*(vdwp.c6))*rinv6*rinv;
-            // if (bi || bj || energy) {
-            //   eij+=(vdwp.c12*rinv6-vdwp.c6)*rinv6;
-            // }
-            // fij*=lixljtmp;
+            /*fij+=-(12*(vdwp.c12*rinv6)-6*(vdwp.c6))*rinv6*rinv;
+            if (bi || bjtmp || energy) {
+              eij+=(vdwp.c12*rinv6-vdwp.c6)*rinv6;
+            }*/
             // See charmm/source/domdec/enbxfast.F90, functions calc_vdw_constants, vdw_attraction, vdw_repulsion
             real rCut3=cutoffs.rCut*cutoffs.rCut*cutoffs.rCut;
             real rSwitch3=cutoffs.rSwitch*cutoffs.rSwitch*cutoffs.rSwitch;
             if (r<cutoffs.rSwitch) {
               fij+=(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv;
-              if (bi || bj || energy) {
-                real dv6=-1/(rCut3*rSwitch3);
-                real dv12=-dv6*dv6;
-                eij+=vdwp.c12*(rinv6*rinv6-dv12)-vdwp.c6*(rinv6-dv6);
+              if (bi || bjtmp || energy) {
+                real dv6=1/(rCut3*rSwitch3);
+                eij+=vdwp.c12*(rinv6*rinv6-dv6*dv6)-vdwp.c6*(rinv6-dv6);
               }
             } else {
               real k6=rCut3/(rCut3-rSwitch3);
               real k12=rCut3*rCut3/(rCut3*rCut3-rSwitch3*rSwitch3);
               real rCutinv3=1/rCut3;
               fij+=(6*vdwp.c6*k6*(rinv3-rCutinv3)*rinv3-12*vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*rinv6)*rinv;
-              if (bi || bj || energy) {
+              if (bi || bjtmp || energy) {
                 eij+=vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*(rinv6-rCutinv3*rCutinv3)-vdwp.c6*k6*(rinv3-rCutinv3)*(rinv3-rCutinv3);
               }
             }
@@ -163,6 +163,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
             }
         
             // Spatial force
+            fij*=lixljtmp;
             real3_scaleinc(&fi, fij*rinv,dr);
             fjtmp=real3_scale(-fij*rinv,dr);
 
@@ -180,7 +181,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
         flj+=__shfl_sync(0xFFFFFFFF,fljtmp,jtmp);
       }
       __syncwarp();
-      if ((i&31)<jCount) {
+      if ((iThread)<jCount) {
         if (bj) {
           realAtomicAdd(&lambdaForce[0xFFFF & bj],flj);
         }
@@ -188,7 +189,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
       }
     }
     __syncwarp();
-    if ((i&31)<iCount) {
+    if ((iThread)<iCount) {
       if (bi) {
         realAtomicAdd(&lambdaForce[0xFFFF & bi],fli);
       }
@@ -244,11 +245,15 @@ __global__ void getforce_nbdirect_reduce_kernel(int atomCount,int idCount,real *
 
 void getforce_nbdirect_reduce(System *system,bool calcEnergy)
 {
-#warning "No energy reduction"
   Potential *p=system->potential;
   State *s=system->state;
   Msld *m=system->msld;
   int N=3*s->atomCount+2*m->blockCount;
 
   getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,p->nbdirectStream>>>(N,system->idCount,s->forceBuffer_d);
+
+  if (calcEnergy) {
+    N=eeend;
+    getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,p->nbdirectStream>>>(N,system->idCount,s->energy_d);
+  }
 }

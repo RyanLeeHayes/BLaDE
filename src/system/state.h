@@ -103,7 +103,7 @@ class State {
   void recv_energy();
 
   void broadcast_position(System *system);
-  void gather_force(System *system);
+  void gather_force(System *system,bool calcEnergy);
 };
 
 void parse_state(char *line,System *system);

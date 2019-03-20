@@ -30,9 +30,10 @@ State::State(int n,System *system) {
   force=(real(*)[3])calloc(n,sizeof(real[3]));
   mass=(real(*)[3])calloc(n,sizeof(real[3]));
   invsqrtMass=(real(*)[3])calloc(n,sizeof(real[3]));
-  energy=(real*)calloc(eeend,sizeof(real));
 
   int rootFactor=(system->id==0?system->idCount:1);
+  energy=(real*)calloc(rootFactor*eeend,sizeof(real));
+
   positionBuffer=(real*)calloc((2*nL+3*n),sizeof(real));
   forceBuffer=(real*)calloc(rootFactor*(2*nL+3*n),sizeof(real));
   cudaMalloc(&(positionBuffer_d),(2*nL+3*n)*sizeof(real));
@@ -58,7 +59,7 @@ State::State(int n,System *system) {
   cudaMalloc(&(random_d),2*(3*n+nL)*sizeof(real));
   system->msld->thetaRandom_d=random_d+2*3*n;
 
-  cudaMalloc(&(energy_d),eeend*sizeof(real));
+  cudaMalloc(&(energy_d),rootFactor*eeend*sizeof(real));
 
   for (i=0; i<n; i++) {
     for (j=0; j<3; j++) {
@@ -336,16 +337,25 @@ void State::broadcast_position(System *system)
   }
 }
 
-void State::gather_force(System *system)
+void State::gather_force(System *system,bool calcEnergy)
 {
 #warning "Transfering extra data (don't need thetas)"
   int N=3*atomCount+2*system->msld->blockCount;
   if (system->id!=0) {
     cudaMemcpy(forceBuffer,forceBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
+    if (calcEnergy) {
+      cudaMemcpy(energy,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToHost);
+    }
   }
   MPI_Gather(forceBuffer,N,MPI_FLOAT,forceBuffer,N,MPI_FLOAT,0,MPI_COMM_WORLD);
+  if (calcEnergy) {
+    MPI_Gather(energy,eeend,MPI_FLOAT,energy,eeend,MPI_FLOAT,0,MPI_COMM_WORLD);
+  }
   if (system->id==0) {
     cudaMemcpy(forceBuffer_d+N,forceBuffer+N,(system->idCount-1)*N*sizeof(real),cudaMemcpyHostToDevice);
+    if (calcEnergy) {
+      cudaMemcpy(energy_d+eeend,energy+eeend,(system->idCount-1)*eeend*sizeof(real),cudaMemcpyHostToDevice);
+    }
   }
 }
 

@@ -113,6 +113,7 @@ void getforce_bond(System *system,bool calcEnergy)
   int shMem=0;
   real *pEnergy=NULL;
 
+  if (N==0) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
@@ -212,6 +213,8 @@ void getforce_angle(System *system,bool calcEnergy)
   int N=p->angleCount;
   int shMem=0;
   real *pEnergy=NULL;
+
+  if (N==0) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
@@ -357,6 +360,8 @@ void getforce_dihe(System *system,bool calcEnergy)
   int shMem=0;
   real *pEnergy=NULL;
 
+  if (N==0) return;
+
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eedihe;
@@ -373,6 +378,8 @@ void getforce_impr(System *system,bool calcEnergy)
   int N=p->imprCount;
   int shMem=0;
   real *pEnergy=NULL;
+
+  if (N==0) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
@@ -583,6 +590,8 @@ void getforce_cmap(System *system,bool calcEnergy)
   int N=p->cmapCount;
   int shMem=0;
   real *pEnergy=NULL;
+
+  if (N==0) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;

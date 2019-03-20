@@ -48,6 +48,7 @@ class Run {
   struct Cutoffs cutoffs;
 
   cudaStream_t masterStream;
+  cudaEvent_t forceBegin;
   cudaEvent_t forceComplete;
   cudaEvent_t updateComplete;
 

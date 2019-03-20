@@ -144,6 +144,8 @@ void getforce_nb14(System *system,bool calcEnergy)
   int shMem=0;
   real *pEnergy=NULL;
 
+  if (N==0) return;
+
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eenb14;
@@ -160,6 +162,8 @@ void getforce_nbex(System *system,bool calcEnergy)
   int N=p->nbexCount;
   int shMem=0;
   real *pEnergy=NULL;
+
+  if (N==0) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
