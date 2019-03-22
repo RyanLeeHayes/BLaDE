@@ -5,7 +5,6 @@
 #include "main/defines.h"
 #include "system/system.h"
 #include "system/state.h"
-#include "msld/msld.h"
 #include "run/run.h"
 #include "system/potential.h"
 
@@ -139,7 +138,7 @@ void getforce_nb14(System *system,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
-  Msld *m=system->msld;
+  Run *r=system->run;
   int N=p->nb14Count;
   int shMem=0;
   real *pEnergy=NULL;
@@ -151,14 +150,14 @@ void getforce_nb14(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenb14;
   }
 
-  getforce_pair_kernel <Nb14Potential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_pair_kernel <Nb14Potential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
 }
 
 void getforce_nbex(System *system,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
-  Msld *m=system->msld;
+  Run *r=system->run;
   int N=p->nbexCount;
   int shMem=0;
   real *pEnergy=NULL;
@@ -170,5 +169,5 @@ void getforce_nbex(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenbrecipexcl;
   }
 
-  getforce_pair_kernel <NbExPotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_pair_kernel <NbExPotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
 }

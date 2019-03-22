@@ -5,7 +5,6 @@
 #include "main/defines.h"
 #include "system/system.h"
 #include "system/state.h"
-#include "msld/msld.h"
 #include "run/run.h"
 #include "system/potential.h"
 
@@ -108,7 +107,7 @@ void getforce_bond(System *system,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
-  Msld *m=system->msld;
+  Run *r=system->run;
   int N=p->bondCount;
   int shMem=0;
   real *pEnergy=NULL;
@@ -120,7 +119,7 @@ void getforce_bond(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eebond;
   }
 
-  getforce_bond_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->bonds_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_bond_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->bonds_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
 }
 
 
@@ -209,7 +208,7 @@ void getforce_angle(System *system,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
-  Msld *m=system->msld;
+  Run *r=system->run;
   int N=p->angleCount;
   int shMem=0;
   real *pEnergy=NULL;
@@ -221,7 +220,7 @@ void getforce_angle(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eeangle;
   }
 
-  getforce_angle_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->angles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_angle_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->angles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
 }
 
 
@@ -355,7 +354,7 @@ void getforce_dihe(System *system,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
-  Msld *m=system->msld;
+  Run *r=system->run;
   int N=p->diheCount;
   int shMem=0;
   real *pEnergy=NULL;
@@ -367,14 +366,14 @@ void getforce_dihe(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eedihe;
   }
 
-  getforce_torsion_kernel <DihePotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->dihes_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_torsion_kernel <DihePotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->dihes_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
 }
 
 void getforce_impr(System *system,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
-  Msld *m=system->msld;
+  Run *r=system->run;
   int N=p->imprCount;
   int shMem=0;
   real *pEnergy=NULL;
@@ -386,7 +385,7 @@ void getforce_impr(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eeimpr;
   }
 
-  getforce_torsion_kernel <ImprPotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->imprs_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_torsion_kernel <ImprPotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->imprs_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
 }
 
 
@@ -586,7 +585,7 @@ void getforce_cmap(System *system,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
-  Msld *m=system->msld;
+  Run *r=system->run;
   int N=p->cmapCount;
   int shMem=0;
   real *pEnergy=NULL;
@@ -598,5 +597,5 @@ void getforce_cmap(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eecmap;
   }
 
-  getforce_cmap_kernel<<<(2*N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->cmaps_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_cmap_kernel<<<(2*N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->cmaps_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
 }

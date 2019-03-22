@@ -14,98 +14,104 @@ class System;
 class RngCPU;
 class RngGPU;
 
-typedef enum eeterm {
-  eebond,
-  eeangle,
-  eedihe,
-  eeimpr,
-  eecmap,
-  eenb14,
-  eenbdirect,
-  eenbrecip,
-  eenbrecipself,
-  eenbrecipexcl,
-  eelambda,
-  eepotential,
-  eekinetic,
-  eetotal,
-  eeend} EETerm;
-
-struct AtomState {
-  std::string segName;
-  int resIdx;
-  std::string atomName;
+struct LeapParms1
+{
+  real dt;
+  real gamma;
+  real kT;
 };
-bool operator<(const struct AtomState& a,const struct AtomState& b);
-bool operator==(const struct AtomState& a,const struct AtomState& b);
+
+struct LeapParms2
+{
+  real sqrta; // a=exp(-gamma*dt)
+  real noise; // sqrt((1-a)*kT) - still need to divide by sqrt(m)
+  real fscale; // 0.5*b*dt; b=sqrt(tanh(0.5*gamma*dt)/(0.5*gamma*dt));
+};
+
+struct LeapState
+{
+  int N1; // spatial dof
+  int N; // spatial dof + alchemical dof
+  real *x;
+  real *v;
+  real *f;
+  real *ism; // 1/sqrt(m)
+  real *random;
+};
 
 class State {
   public:
-  std::map<std::string,void(State::*)(char*,char*,System*)> parseState;
-  std::map<std::string,std::string> helpState;
-
-  std::map<struct AtomState,Real3> fileData;
-
-  RngCPU *rngCPU;
-  RngGPU *rngGPU;
-
   int atomCount;
-  real (*box)[3]; // [3][3]
-  real (*position)[3];
-  float (*fposition)[3]; // Intentional float
-  real (*velocity)[3];
-  real (*force)[3];
-  real (*mass)[3];
-  real (*invsqrtMass)[3];
-  real *energy;
-// Device versions
-  real (*box_d)[3];
-  real *position_d;
-  real *velocity_d;
-  real *force_d;
-  real *mass_d;
-  real *invsqrtMass_d;
-  real *random_d;
+  int lambdaCount;
 
+  // Lambda-Spatial-Theta buffers
   real *positionBuffer;
-  real *forceBuffer;
   real *positionBuffer_d;
+  real *forceBuffer;
   real *forceBuffer_d;
 
+  // Other buffers
+  real *energy;
   real *energy_d;
 
+  // Spatial-Theta buffers
+  real *velocityBuffer;
+  real *velocityBuffer_d;
+  real *invsqrtMassBuffer;
+  real *invsqrtMassBuffer_d;
+
+  // The box
   real3 orthBox;
 
-  State(int n,System *system);
+  // Labels (do not free)
+  real *lambda;
+  real *lambda_d;
+  real (*position)[3];
+  real (*position_d)[3];
+  real *theta;
+  real *theta_d;
+  real (*velocity)[3];
+  real (*velocity_d)[3];
+  real *thetaVelocity;
+  real *thetaVelocity_d;
+  real *lambdaForce;
+  real *lambdaForce_d;
+  real (*force)[3];
+  real (*force_d)[3];
+  real *thetaForce;
+  real *thetaForce_d;
+  real (*invsqrtMass)[3];
+  real (*invsqrtMass_d)[3];
+  real *thetaInvsqrtMass;
+  real *thetaInvsqrtMass_d;
+
+  // Leapfrog structures
+  struct LeapParms1 *leapParms1;
+  struct LeapParms2 *leapParms2;
+  struct LeapParms1 *lambdaLeapParms1;
+  struct LeapParms2 *lambdaLeapParms2;
+  struct LeapState *leapState;
+
+  State(System *system);
   ~State();
 
-  void setup_parse_state();
+  // From system/state.cxx
+  void initialize(System *system);
 
-  void help(char *line,char *token,System *system);
-  void error(char *line,char *token,System *system);
-  void reset(char *line,char *token,System *system);
-  void file(char *line,char *token,System *system);
-  void parse_box(char *line,char *token,System *system);
-  void parse_velocity(char *line,char *token,System *system);
-  void dump(char *line,char *token,System *system);
+  struct LeapParms1* alloc_leapparms1(real dt,real gamma,real T);
+  struct LeapParms2* alloc_leapparms2(real dt,real gamma,real T);
+  struct LeapState* alloc_leapstate(int N1,int N2,real *x,real *v,real *f,real *ism);
+  void free_leapstate(struct LeapState *ls);
 
-  void file_pdb(FILE *fp,System *system);
-
-  void send_box();
-  void recv_box();
-  void send_position();
   void recv_position();
-  void send_velocity();
-  void recv_velocity();
-  void send_invsqrtMass();
-  void recv_invsqrtMass();
-  void send_energy();
+  void recv_lambda();
   void recv_energy();
 
   void broadcast_position(System *system);
   void gather_force(System *system,bool calcEnergy);
-};
 
-void parse_state(char *line,System *system);
+  // From update/update.cu
+  void update(int step,System *system);
+};
 
 #endif

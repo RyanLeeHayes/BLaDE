@@ -12,10 +12,6 @@
 Structure::Structure() {
   atomCount=0;
 
-  atomTypeIdx=NULL;
-  charge=NULL;
-  mass=NULL; // DEPRECATED
-
   bondCount=0;
   angleCount=0;
   diheCount=0;
@@ -28,9 +24,6 @@ Structure::Structure() {
 }
 
 Structure::~Structure() {
-  if (atomTypeIdx) free(atomTypeIdx);
-  if (charge) free(charge);
-  if (mass) free(mass);
 }
 
 

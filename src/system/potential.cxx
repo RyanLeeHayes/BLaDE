@@ -10,7 +10,6 @@
 #include "msld/msld.h"
 #include "system/state.h"
 #include "run/run.h"
-#include "update/update.h"
 #include "domdec/domdec.h"
 #include "bonded/bonded.h"
 #include "bonded/pair.h"
@@ -68,31 +67,14 @@ Potential::Potential() {
   chargeGridPME_d=NULL;
   fourierGridPME_d=NULL;
   potentialGridPME_d=NULL;
+  planFFTPME=0;
+  planIFFTPME=0;
 
   nbonds=NULL;
   nbonds_d=NULL;
   vdwParameterCount=0;
   vdwParameters=NULL;
   vdwParameters_d=NULL;
-
-#ifdef PROFILESERIAL
-  bondedStream=0;
-#else
-  cudaStreamCreate(&bondedStream);
-#endif
-  cudaEventCreate(&bondedComplete);
-#ifdef PROFILESERIAL
-  biaspotStream=0;
-  nbdirectStream=0;
-  nbrecipStream=0;
-#else
-  cudaStreamCreate(&biaspotStream);
-  cudaStreamCreate(&nbdirectStream);
-  cudaStreamCreate(&nbrecipStream);
-#endif
-  cudaEventCreate(&biaspotComplete);
-  cudaEventCreate(&nbdirectComplete);
-  cudaEventCreate(&nbrecipComplete);
 }
 
 Potential::~Potential()
@@ -139,18 +121,8 @@ Potential::~Potential()
   if (vdwParameters) free(vdwParameters);
   if (vdwParameters_d) cudaFree(vdwParameters_d);
 
-#ifndef PROFILESERIAL
-  cudaStreamDestroy(bondedStream);
-#endif
-  cudaEventDestroy(bondedComplete);
-#ifndef PROFILESERIAL
-  cudaStreamDestroy(biaspotStream);
-  cudaStreamDestroy(nbdirectStream);
-  cudaStreamDestroy(nbrecipStream);
-#endif
-  cudaEventDestroy(biaspotComplete);
-  cudaEventDestroy(nbdirectComplete);
-  cudaEventDestroy(nbrecipComplete);
+  if (planFFTPME) cufftDestroy(planFFTPME);
+  if (planIFFTPME) cufftDestroy(planIFFTPME);
 }
 
 
@@ -786,8 +758,10 @@ void Potential::initialize(System *system)
   // Choose PME grid sizes
   int goodSizes[]={32,27,24,20,18,16};
   fprintf(stdout,"NYI - need orthogonal box for automatic grid determination\n");
+  real boxtmp[3][3]={{system->state->orthBox.x,0,0},{0,system->state->orthBox.y,0},{0,0,system->state->orthBox.z}};
   for (i=0; i<3; i++) {
-    real minDim=system->state->box[i][i]/system->run->gridSpace;
+    // real minDim=system->state->box[i][i]/system->run->gridSpace;
+    real minDim=boxtmp[i][i]/system->run->gridSpace;
     for (j=1; minDim>=32*j; j*=2) {
       ;
     }
@@ -847,10 +821,10 @@ void Potential::initialize(System *system)
 
   cufftCreate(&planFFTPME);
   cufftMakePlan3d(planFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],CUFFT_R2C,&bufferSizeFFTPME);
-  cufftSetStream(planFFTPME,nbrecipStream);
+  cufftSetStream(planFFTPME,system->run->nbrecipStream);
   cufftCreate(&planIFFTPME);
   cufftMakePlan3d(planIFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],CUFFT_C2R,&bufferSizeIFFTPME);
-  cufftSetStream(planIFFTPME,nbrecipStream);
+  cufftSetStream(planIFFTPME,system->run->nbrecipStream);
 
   // WORKING HERE
   // Count each nonbonded type
@@ -946,35 +920,29 @@ void Potential::initialize(System *system)
 */
 }
 
-void Potential::finalize(System *system)
-{
-  cufftDestroy(planFFTPME);
-  cufftDestroy(planIFFTPME);
-}
-
 void Potential::calc_force(int step,System *system)
 {
   bool calcEnergy=(step%system->run->freqNRG==0);
+  Run *r=system->run;
   // fprintf(stdout,"Force calculation placeholder (step %d)\n",step);
 
-  cudaMemset(system->state->force_d,0,3*system->state->atomCount*sizeof(real));
-  cudaMemset(system->msld->lambdaForce_d,0,system->msld->blockCount*sizeof(real));
+  cudaMemset(system->state->forceBuffer_d,0,(2*system->state->lambdaCount+3*system->state->atomCount)*sizeof(real));
   cudaMemset(system->domdec->localForce_d,0,3*system->domdec->globalCount*sizeof(real));
   if (calcEnergy) {
     cudaMemset(system->state->energy_d,0,eeend*sizeof(real));
   }
 
 #warning "Heuristic domdain update every 10 steps"
-  cudaStreamWaitEvent(system->update->updateStream,system->run->updateComplete,0);
+  cudaStreamWaitEvent(r->updateStream,r->updateComplete,0);
   if (step%10==0) {
     system->domdec->reset_domdec(system);
   } else if (system->idCount>1) {
     system->state->broadcast_position(system);
   }
-  cudaEventRecord(system->run->forceBegin,system->update->updateStream);
+  cudaEventRecord(r->forceBegin,r->updateStream);
 
   if (system->id==0) {
-    cudaStreamWaitEvent(bondedStream,system->run->forceBegin,0);
+    cudaStreamWaitEvent(r->bondedStream,r->forceBegin,0);
     getforce_bond(system,calcEnergy);
     getforce_angle(system,calcEnergy);
     getforce_dihe(system,calcEnergy);
@@ -982,23 +950,23 @@ void Potential::calc_force(int step,System *system)
     getforce_cmap(system,calcEnergy);
     getforce_nb14(system,calcEnergy);
     getforce_nbex(system,calcEnergy);
-    cudaEventRecord(bondedComplete,bondedStream);
-    cudaStreamWaitEvent(system->run->masterStream,bondedComplete,0);
+    cudaEventRecord(r->bondedComplete,r->bondedStream);
+    cudaStreamWaitEvent(r->updateStream,r->bondedComplete,0);
 
-    cudaStreamWaitEvent(nbrecipStream,system->run->forceBegin,0);
+    cudaStreamWaitEvent(r->nbrecipStream,r->forceBegin,0);
     getforce_ewaldself(system,calcEnergy);
     getforce_ewald(system,calcEnergy);
-    cudaEventRecord(nbrecipComplete,nbrecipStream);
-    cudaStreamWaitEvent(system->run->masterStream,nbrecipComplete,0);
+    cudaEventRecord(r->nbrecipComplete,r->nbrecipStream);
+    cudaStreamWaitEvent(r->updateStream,r->nbrecipComplete,0);
 
-    cudaStreamWaitEvent(biaspotStream,system->run->forceBegin,0);
+    cudaStreamWaitEvent(r->biaspotStream,r->forceBegin,0);
     system->msld->calc_fixedBias(system,calcEnergy);
     system->msld->calc_variableBias(system,calcEnergy);
-    cudaEventRecord(biaspotComplete,biaspotStream);
-    cudaStreamWaitEvent(system->run->masterStream,biaspotComplete,0);
+    cudaEventRecord(r->biaspotComplete,r->biaspotStream);
+    cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }
 
-  cudaStreamWaitEvent(nbdirectStream,system->run->forceBegin,0);
+  cudaStreamWaitEvent(r->nbdirectStream,r->forceBegin,0);
   if (system->id>0 || system->idCount==1) {
     getforce_nbdirect(system,calcEnergy);
   }
@@ -1006,10 +974,10 @@ void Potential::calc_force(int step,System *system)
   if (system->idCount>1 && system->id==0) {
     getforce_nbdirect_reduce(system,calcEnergy);
   }
-  cudaEventRecord(nbdirectComplete,nbdirectStream);
-  cudaStreamWaitEvent(system->run->masterStream,nbdirectComplete,0);
+  cudaEventRecord(r->nbdirectComplete,r->nbdirectStream);
+  cudaStreamWaitEvent(r->updateStream,r->nbdirectComplete,0);
 
-  cudaEventRecord(system->run->forceComplete,system->run->masterStream);
+  cudaEventRecord(r->forceComplete,r->updateStream);
   // cudaDeviceSynchronize();
 }
 

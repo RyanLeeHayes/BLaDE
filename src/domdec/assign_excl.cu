@@ -1,6 +1,6 @@
 #include "domdec/domdec.h"
 #include "system/potential.h"
-#include "update/update.h"
+#include "run/run.h"
 #include "system/system.h"
 
 
@@ -284,34 +284,35 @@ __global__ void assign_excl_blockExcls_kernel(
 void Domdec::setup_exclusions(System *system)
 {
   if (system->potential->exclCount==0) return;
+  Run *r=system->run;
 
   int id=system->id-1+(system->idCount==1);
 
   if (id>=0) {
     // Create localExcls_d (the sort tokens)
 
-    global_to_local_excl_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,system->update->updateStream>>>(system->potential->exclCount,system->potential->excls_d,globalToLocal_d,id,domain_d,localExcls_d);
+    global_to_local_excl_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,system->potential->excls_d,globalToLocal_d,id,domain_d,localExcls_d);
 
     // Create exclSort (the sort tree)
-    cudaMemsetAsync(exclSort_d,-1,(system->potential->exclCount+1)*sizeof(struct DomdecBlockSort),system->update->updateStream);
+    cudaMemsetAsync(exclSort_d,-1,(system->potential->exclCount+1)*sizeof(struct DomdecBlockSort),r->updateStream);
 
-    assign_excl_grow_tree_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,system->update->updateStream>>>(system->potential->exclCount,localExcls_d,exclSort_d);
-    assign_excl_count_tree_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,system->update->updateStream>>>(system->potential->exclCount,localExcls_d,exclSort_d);
+    assign_excl_grow_tree_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,localExcls_d,exclSort_d);
+    assign_excl_count_tree_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,localExcls_d,exclSort_d);
 
     // Copy back the sortedExclCount
 
-    cudaMemcpyAsync(&sortedExclCount,&exclSort_d[system->potential->exclCount].upperCount,sizeof(int),cudaMemcpyDeviceToHost,system->update->updateStream);
+    cudaMemcpyAsync(&sortedExclCount,&exclSort_d[system->potential->exclCount].upperCount,sizeof(int),cudaMemcpyDeviceToHost,r->updateStream);
 
     // Create sortedExcl_d (self explanatory, enables binary search for exclusions)
 
-    assign_excl_sortedExcls_kernel<<<(sortedExclCount+BLNB-1)/BLNB,BLNB,0,system->update->updateStream>>>(sortedExclCount,system->potential->exclCount,exclSort_d,localExcls_d,sortedExcls_d);
+    assign_excl_sortedExcls_kernel<<<(sortedExclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(sortedExclCount,system->potential->exclCount,exclSort_d,localExcls_d,sortedExcls_d);
 
     // Use binary search to identify exclusions and load them into the candidate structure
 
-    cudaMemsetAsync(blockExclCount_d,0,sizeof(int),system->update->updateStream);
+    cudaMemsetAsync(blockExclCount_d,0,sizeof(int),r->updateStream);
     int beginBlock=blockCount[id];
     int endBlock=blockCount[id+1];
     int localBlockCount=endBlock-beginBlock;
-    assign_excl_blockExcls_kernel<<<(32*localBlockCount+BLNB-1)/BLNB,BLNB,0,system->update->updateStream>>>(beginBlock,endBlock,blockBounds_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,sortedExclCount,sortedExcls_d,blockExclCount_d,blockExcls_d);
+    assign_excl_blockExcls_kernel<<<(32*localBlockCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(beginBlock,endBlock,blockBounds_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,sortedExclCount,sortedExcls_d,blockExclCount_d,blockExcls_d);
   }
 }

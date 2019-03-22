@@ -4,7 +4,7 @@
 #include "domdec/domdec.h"
 #include "system/system.h"
 #include "system/state.h"
-#include "update/update.h"
+#include "run/run.h"
 #include "main/defines.h"
 #include "main/real3.h"
 
@@ -46,8 +46,9 @@ void Domdec::broadcast_domain(System *system)
 
 void Domdec::assign_domain(System *system)
 {
+  Run *r=system->run;
   if (system->id==0) {
-    assign_domain_kernel<<<(system->state->atomCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(system->state->atomCount,(real3*)system->state->position_d,system->state->orthBox,gridDomdec,domain_d);
+    assign_domain_kernel<<<(system->state->atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(system->state->atomCount,(real3*)system->state->position_d,system->state->orthBox,gridDomdec,domain_d);
   }
 
   if (system->idCount!=1) {

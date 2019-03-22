@@ -4,7 +4,7 @@
 #include "system/system.h"
 #include "io/io.h"
 #include "msld/msld.h"
-#include "update/update.h"
+#include "system/state.h"
 #include "system/potential.h"
 #include "domdec/domdec.h"
 
@@ -38,14 +38,30 @@ Run::Run()
   cutoffs.rSwitch=rSwitch;
 
 #ifdef PROFILESERIAL
-  masterStream=0;
+  updateStream=0;
 #else
-  cudaStreamCreate(&masterStream);
+  cudaStreamCreate(&updateStream);
 #endif
   cudaEventCreate(&forceBegin);
   cudaEventCreate(&forceComplete);
   cudaEventCreate(&updateComplete);
   setup_parse_run();
+
+#ifdef PROFILESERIAL
+  bondedStream=0;
+  biaspotStream=0;
+  nbdirectStream=0;
+  nbrecipStream=0;
+#else
+  cudaStreamCreate(&bondedStream);
+  cudaStreamCreate(&biaspotStream);
+  cudaStreamCreate(&nbdirectStream);
+  cudaStreamCreate(&nbrecipStream);
+#endif
+  cudaEventCreate(&bondedComplete);
+  cudaEventCreate(&biaspotComplete);
+  cudaEventCreate(&nbdirectComplete);
+  cudaEventCreate(&nbrecipComplete);
 }
 
 Run::~Run()
@@ -54,11 +70,22 @@ Run::~Run()
   if (fpLMD) fclose(fpLMD);
   if (fpNRG) fclose(fpNRG);
 #ifndef PROFILESERIAL
-  cudaStreamDestroy(masterStream);
+  cudaStreamDestroy(updateStream);
 #endif
   cudaEventDestroy(forceBegin);
   cudaEventDestroy(forceComplete);
   cudaEventDestroy(updateComplete);
+
+#ifndef PROFILESERIAL
+  cudaStreamDestroy(bondedStream);
+  cudaStreamDestroy(biaspotStream);
+  cudaStreamDestroy(nbdirectStream);
+  cudaStreamDestroy(nbrecipStream);
+#endif
+  cudaEventDestroy(bondedComplete);
+  cudaEventDestroy(biaspotComplete);
+  cudaEventDestroy(nbdirectComplete);
+  cudaEventDestroy(nbrecipComplete);
 }
 
 
@@ -191,7 +218,7 @@ void Run::dynamics(char *line,char *token,System *system)
   for (step=step0; step<step0+nsteps; step++) {
     fprintf(stdout,"Step %d\n",step);
     system->potential->calc_force(step,system);
-    system->update->update(step,system);
+    system->state->update(step,system);
 #warning "Need to copy coordinates before update"
     print_dynamics_output(step,system);
 
@@ -221,9 +248,9 @@ void Run::dynamics_initialize(System *system)
   system->msld->initialize(system); 
 
   // Set up update structures
-  if (system->update) delete system->update;
-  system->update=new Update();
-  system->update->initialize(system);
+  if (system->state) delete system->state;
+  system->state=new State(system);
+  system->state->initialize(system);
 
   // Set up potential structures
   if (system->potential) delete system->potential;
@@ -243,14 +270,11 @@ void Run::dynamics_initialize(System *system)
     fatal(__FILE__,__LINE__,"GPU error code %d during run initialization of MPI rank %d\n%s\n",err,system->id,cudaGetErrorString(err));
   }
 
-  cudaEventRecord(updateComplete,masterStream);
+  cudaEventRecord(updateComplete,updateStream);
 }
 
 void Run::dynamics_finalize(System *system)
 {
-  system->update->finalize();
-  system->potential->finalize(system);
-
   //NYI write checkpoint
   step0=step;
 }

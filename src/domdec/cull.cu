@@ -5,7 +5,6 @@
 #include "system/state.h"
 #include "run/run.h"
 #include "system/potential.h"
-#include "update/update.h"
 #include "main/defines.h"
 #include "main/real3.h"
 
@@ -150,6 +149,7 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
 
 void Domdec::cull_blocks(System *system)
 {
+  Run *r=system->run;
   int id=system->id-1+(system->idCount==1);
   // int id=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
   if (id>=0) {
@@ -157,6 +157,6 @@ void Domdec::cull_blocks(System *system)
     real rc2=system->run->cutoffs.rCut+cullPad;
     rc2*=rc2;
 
-    cull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(idDomdec,gridDomdec,blockCount_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,blockVolume_d,system->state->orthBox,rc2);
+    cull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(idDomdec,gridDomdec,blockCount_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,blockVolume_d,system->state->orthBox,rc2);
   }
 }

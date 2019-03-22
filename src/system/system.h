@@ -14,10 +14,12 @@ class Parameters;
 class Structure;
 class Selections;
 class Msld;
-class State;
+class Coordinates;
 class Run;
+class RngCPU;
+class RngGPU;
 class Potential;
-class Update;
+class State;
 class Domdec;
 
 class System {
@@ -28,11 +30,13 @@ class System {
   Structure *structure;
   Selections *selections;
   Msld *msld;
-  State *state;
+  Coordinates *coordinates;
   Run *run;
 // No command parsing
+  RngCPU *rngCPU;
+  RngGPU *rngGPU;
+  State *state;
   Potential *potential;
-  Update *update;
   Domdec *domdec;
 
   std::map<std::string,void (System::*)(char*,char*,System*,Control*)> parseSystem;
@@ -52,7 +56,7 @@ class System {
   void parse_system_structure(char *line,char *token,System *system,Control *control);
   void parse_system_selection(char *line,char *token,System *system,Control *control);
   void parse_system_msld(char *line,char *token,System *system,Control *control);
-  void parse_system_state(char *line,char *token,System *system,Control *control);
+  void parse_system_coordinates(char *line,char *token,System *system,Control *control);
   void parse_system_run(char *line,char *token,System *system,Control *control);
   void parse_system_stream(char *line,char *token,System *system,Control *control);
   void parse_system_arrest(char *line,char *token,System *system,Control *control);

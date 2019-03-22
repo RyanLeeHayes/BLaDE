@@ -47,10 +47,22 @@ class Run {
   real gridSpace; // grid spacing for PME calculation
   struct Cutoffs cutoffs;
 
-  cudaStream_t masterStream;
+  cudaStream_t updateStream;
+
   cudaEvent_t forceBegin;
   cudaEvent_t forceComplete;
   cudaEvent_t updateComplete;
+
+  cudaStream_t bondedStream;
+  cudaStream_t biaspotStream;
+  cudaStream_t nbdirectStream;
+  cudaStream_t nbrecipStream;
+
+  cudaEvent_t bondedComplete;
+  cudaEvent_t biaspotComplete;
+  cudaEvent_t nbdirectComplete;
+  cudaEvent_t nbrecipComplete;
+  
 
   Run();
   ~Run();

@@ -7,10 +7,12 @@
 #include "system/structure.h"
 #include "system/selections.h"
 #include "msld/msld.h"
-#include "system/state.h"
+#include "system/coordinates.h"
 #include "run/run.h"
+#include "rng/rng_cpu.h"
+#include "rng/rng_gpu.h"
 #include "system/potential.h"
-#include "update/update.h"
+#include "system/state.h"
 #include "domdec/domdec.h"
 
 
@@ -21,10 +23,12 @@ System::System() {
   structure=NULL;
   selections=NULL;
   msld=NULL;
-  state=NULL;
+  coordinates=NULL;
   run=NULL;
+  rngCPU=new RngCPU;
+  rngGPU=new RngGPU;
   potential=NULL;
-  update=NULL;
+  state=NULL;
   domdec=NULL;
   setup_parse_system();
 }
@@ -34,10 +38,12 @@ System::~System() {
   if (structure) delete(structure);
   if (selections) delete(selections);
   if (msld) delete(msld);
-  if (state) delete(state);
+  if (coordinates) delete(coordinates);
   if (run) delete(run);
+  if (rngCPU) delete(rngCPU);
+  if (rngGPU) delete(rngGPU);
   if (potential) delete(potential);
-  if (update) delete(update);
+  if (state) delete(state);
   if (domdec) delete(domdec);
 }
 
@@ -73,10 +79,10 @@ void System::setup_parse_system()
   helpSystem["selection"]="?selection> Sets selections of atoms for use in various other commands, including structure (you may want to delete a selection of atoms) and msld (you need to indicate which atoms are in which groups).\n";
   parseSystem["msld"]=&System::parse_system_msld;
   helpSystem["msld"]="?msld> Set up MSLD data structures. Determines which atoms are in which groups, how to scale their interactions, and so on. Should be done after calls of structure, because if the indices of atoms change after calls to msld, an error will occur.\n";
-  parseSystem["state"]=&System::parse_system_state;
-  helpSystem["state"]="?state> Sets the current state of the system, including starting spatial coordinates. Must be called after structure is complete, must be called before run.\n";
+  parseSystem["coordinates"]=&System::parse_system_coordinates;
+  helpSystem["coordinates"]="?coordinates> Sets the initial conditions of the system, including starting spatial coordinates. Must be called after structure is complete, must be called before run.\n";
   parseSystem["run"]=&System::parse_system_run;
-  helpSystem["run"]="?run> Run a calculation, such as a dynamics simulation, on the system. Must have parameters, structure, msld, and state set up first.\n";
+  helpSystem["run"]="?run> Run a calculation, such as a dynamics simulation, on the system. Must have parameters, structure, msld, and coordinates set up first.\n";
   parseSystem["stream"]=&System::parse_system_stream;
   helpSystem["stream"]="?stream [filename]> Read commands from filename until they are finished, and then return to this point in this script.\n";
   parseSystem["arrest"]=&System::parse_system_arrest;
@@ -111,9 +117,9 @@ void System::parse_system_msld(char *line,char *token,System *system,Control *co
   parse_msld(line,system);
 }
 
-void System::parse_system_state(char *line,char *token,System *system,Control *control)
+void System::parse_system_coordinates(char *line,char *token,System *system,Control *control)
 {
-  parse_state(line,system);
+  parse_coordinates(line,system);
 }
 
 void System::parse_system_run(char *line,char *token,System *system,Control *control)

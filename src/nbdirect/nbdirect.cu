@@ -1,7 +1,6 @@
 #include <cuda_runtime.h>
 
 #include "system/system.h"
-#include "msld/msld.h"
 #include "system/state.h"
 #include "run/run.h"
 #include "system/potential.h"
@@ -210,7 +209,7 @@ void getforce_nbdirect(System *system,bool calcEnergy)
 
   Potential *p=system->potential;
   State *s=system->state;
-  Msld *m=system->msld;
+  Run *r=system->run;
   Domdec *d=system->domdec;
   int id=system->id-1+(system->idCount==1);
   int startBlock=d->blockCount[id];
@@ -224,7 +223,7 @@ void getforce_nbdirect(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenbdirect;
   }
 
-  getforce_nbdirect_kernel<<<(32*N+BLNB-1)/BLNB,BLNB,shMem,p->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_nbdirect_kernel<<<(32*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->lambda_d,s->lambdaForce_d,pEnergy);
 
   system->domdec->unpack_forces(system);
 }
@@ -245,15 +244,14 @@ __global__ void getforce_nbdirect_reduce_kernel(int atomCount,int idCount,real *
 
 void getforce_nbdirect_reduce(System *system,bool calcEnergy)
 {
-  Potential *p=system->potential;
   State *s=system->state;
-  Msld *m=system->msld;
-  int N=3*s->atomCount+2*m->blockCount;
+  Run *r=system->run;
+  int N=3*s->atomCount+2*s->lambdaCount;
 
-  getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,p->nbdirectStream>>>(N,system->idCount,s->forceBuffer_d);
+  getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,r->nbdirectStream>>>(N,system->idCount,s->forceBuffer_d);
 
   if (calcEnergy) {
     N=eeend;
-    getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,p->nbdirectStream>>>(N,system->idCount,s->energy_d);
+    getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,r->nbdirectStream>>>(N,system->idCount,s->energy_d);
   }
 }

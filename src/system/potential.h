@@ -17,6 +17,23 @@ class TypeName8O;
 bool operator==(const TypeName8O& a,const TypeName8O& b);
 bool operator<(const TypeName8O& a,const TypeName8O& b);
 
+typedef enum eeterm {
+  eebond,
+  eeangle,
+  eedihe,
+  eeimpr,
+  eecmap,
+  eenb14,
+  eenbdirect,
+  eenbrecip,
+  eenbrecipself,
+  eenbrecipexcl,
+  eelambda,
+  eepotential,
+  eekinetic,
+  eetotal,
+  eeend} EETerm;
+
 struct CountType {
   int count;
   std::string type;
@@ -161,21 +178,10 @@ class Potential {
   struct VdwPotential *vdwParameters;
   struct VdwPotential *vdwParameters_d;
 
-  cudaStream_t bondedStream;
-  cudaStream_t biaspotStream;
-  cudaStream_t nbdirectStream;
-  cudaStream_t nbrecipStream;
-
-  cudaEvent_t bondedComplete;
-  cudaEvent_t biaspotComplete;
-  cudaEvent_t nbdirectComplete;
-  cudaEvent_t nbrecipComplete;
-  
   Potential();
   ~Potential();
 
   void initialize(System *system);
-  void finalize(System *system);
 
   void calc_force(int step,System *system);
 };

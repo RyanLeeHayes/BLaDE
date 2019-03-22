@@ -31,10 +31,6 @@ class Structure {
   int atomCount;
   std::vector<struct AtomStructure> atomList;
 
-  int *atomTypeIdx;
-  real *charge;
-  real *mass;
-
   int bondCount;
   std::vector<struct Int2> bondList;
 

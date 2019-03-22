@@ -5,325 +5,198 @@
 #include "system/state.h"
 #include "io/io.h"
 #include "system/system.h"
-#include "msld/msld.h"
 #include "system/structure.h"
+#include "msld/msld.h"
+#include "system/coordinates.h"
+#include "run/run.h"
+#include "system/potential.h"
 #include "rng/rng_cpu.h"
 #include "rng/rng_gpu.h"
 
 
 
 // Class constructors
-State::State(int n,System *system) {
+State::State(System *system) {
   int i,j;
-  int nL=system->msld->blockCount;
 
-  atomCount=n;
-  box=(real(*)[3])calloc(3,sizeof(real[3]));
-  box[0][0]=NAN;
-  position=(real(*)[3])calloc(n,sizeof(real[3]));
-#ifdef DOUBLE
-  fposition=(float(*)[3])calloc(n,sizoef(float[3]));
-#else
-  fposition=position;
-#endif
-  velocity=(real(*)[3])calloc(n,sizeof(real[3]));
-  force=(real(*)[3])calloc(n,sizeof(real[3]));
-  mass=(real(*)[3])calloc(n,sizeof(real[3]));
-  invsqrtMass=(real(*)[3])calloc(n,sizeof(real[3]));
+  atomCount=system->coordinates->atomCount;
+  lambdaCount=system->msld->blockCount;
 
+  int n=atomCount;
+  int nL=lambdaCount;
   int rootFactor=(system->id==0?system->idCount:1);
-  energy=(real*)calloc(rootFactor*eeend,sizeof(real));
 
+  // Buffers for transfer and reduction
+
+  // Lambda-Spatial-Theta buffers
   positionBuffer=(real*)calloc((2*nL+3*n),sizeof(real));
-  forceBuffer=(real*)calloc(rootFactor*(2*nL+3*n),sizeof(real));
   cudaMalloc(&(positionBuffer_d),(2*nL+3*n)*sizeof(real));
+  forceBuffer=(real*)calloc(rootFactor*(2*nL+3*n),sizeof(real));
   cudaMalloc(&(forceBuffer_d),rootFactor*(2*nL+3*n)*sizeof(real));
 
-#warning "PRIORITY: Fix this"
-// NYI - move box size and other state information to run? Have them responsible for CPU side, and make state responsible for GPU side.
-  cudaMalloc(&(box_d),3*sizeof(real[3]));
-  // cudaMalloc(&(position_d),(3*n+nL)*sizeof(real));
-  system->msld->lambda_d=positionBuffer_d;
-  position_d=positionBuffer_d+nL;
-  system->msld->theta_d=position_d+3*n;
-  cudaMalloc(&(velocity_d),(3*n+nL)*sizeof(real));
-  system->msld->thetaVelocity_d=velocity_d+3*n;
-  // cudaMalloc(&(force_d),(3*n+nL)*sizeof(real));
-  system->msld->lambdaForce_d=forceBuffer_d;
-  force_d=forceBuffer_d+nL;
-  system->msld->thetaForce_d=force_d+3*n;
-  cudaMalloc(&(mass_d),(3*n+nL)*sizeof(real));
-  system->msld->thetaMass_d=mass_d+3*n;
-  cudaMalloc(&(invsqrtMass_d),(3*n+nL)*sizeof(real));
-  system->msld->thetaInvsqrtMass_d=invsqrtMass_d+3*n;
-  cudaMalloc(&(random_d),2*(3*n+nL)*sizeof(real));
-  system->msld->thetaRandom_d=random_d+2*3*n;
-
+  // Other buffers
+  energy=(real*)calloc(rootFactor*eeend,sizeof(real));
   cudaMalloc(&(energy_d),rootFactor*eeend*sizeof(real));
 
-  for (i=0; i<n; i++) {
-    for (j=0; j<3; j++) {
-      mass[i][j]=system->structure->atomList[i].mass;
-      invsqrtMass[i][j]=1.0/sqrt(mass[i][j]);
-    }
-  }
+  // Spatial-Theta buffers
+  velocityBuffer=(real*)calloc((nL+3*n),sizeof(real));
+  cudaMalloc(&(velocityBuffer_d),(nL+3*n)*sizeof(real));
+  invsqrtMassBuffer=(real*)calloc((nL+3*n),sizeof(real));
+  cudaMalloc(&(invsqrtMassBuffer_d),(nL+3*n)*sizeof(real));
 
-  rngCPU=new RngCPU;
-  rngGPU=new RngGPU;
+  // The box
+  orthBox=system->coordinates->particleOrthBox;
 
-  setup_parse_state();
+  // Labels (do not free)
+  lambda=positionBuffer;
+  lambda_d=positionBuffer_d;
+  position=(real(*)[3])(positionBuffer+nL);
+  position_d=(real(*)[3])(positionBuffer_d+nL);
+  theta=positionBuffer+nL+3*n;
+  theta_d=positionBuffer_d+nL+3*n;
+  velocity=(real(*)[3])velocityBuffer;
+  velocity_d=(real(*)[3])velocityBuffer_d;
+  thetaVelocity=velocityBuffer+3*n;
+  thetaVelocity_d=velocityBuffer_d+3*n;
+  lambdaForce=forceBuffer;
+  lambdaForce_d=forceBuffer_d;
+  force=(real(*)[3])(forceBuffer+nL);
+  force_d=(real(*)[3])(forceBuffer_d+nL);
+  thetaForce=forceBuffer+nL+3*n;
+  thetaForce_d=forceBuffer_d+nL+3*n;
+  invsqrtMass=(real(*)[3])invsqrtMassBuffer;
+  invsqrtMass_d=(real(*)[3])invsqrtMassBuffer_d;
+  thetaInvsqrtMass=invsqrtMassBuffer+3*n;
+  thetaInvsqrtMass_d=invsqrtMassBuffer_d+3*n;
+
+  // Leapfrog structures
+  leapParms1=alloc_leapparms1(system->run->dt,system->run->gamma,system->run->T);
+  leapParms2=alloc_leapparms2(system->run->dt,system->run->gamma,system->run->T);
+  lambdaLeapParms1=alloc_leapparms1(system->run->dt,system->msld->gamma,system->run->T);
+  lambdaLeapParms2=alloc_leapparms2(system->run->dt,system->msld->gamma,system->run->T);
+  leapState=alloc_leapstate(3*atomCount,lambdaCount,(real*)position_d,velocityBuffer_d,(real*)force_d,invsqrtMassBuffer_d);
 }
 
 State::~State() {
-  if (position) free(position);
-#ifdef DOUBLE
-  if (fposition) free(fposition);
-#endif
-  if (velocity) free(velocity);
-  if (force) free(force);
-  if (mass) free(mass);
-  if (invsqrtMass) free(invsqrtMass);
-
+  // Lambda-Spatial-Theta buffers
   if (positionBuffer) free(positionBuffer);
-  if (forceBuffer) free(forceBuffer);
   if (positionBuffer_d) cudaFree(positionBuffer_d);
+  if (forceBuffer) free(forceBuffer);
   if (forceBuffer_d) cudaFree(forceBuffer_d);
+  // Other buffers
+  if (energy) free(energy);
+  if (energy_d) cudaFree(energy_d);
+  // Spatial-Theta buffers
+  if (velocityBuffer) free(velocityBuffer);
+  if (velocityBuffer_d) cudaFree(velocityBuffer_d);
+  if (invsqrtMassBuffer) free(invsqrtMassBuffer);
+  if (invsqrtMassBuffer_d) cudaFree(invsqrtMassBuffer_d);
 
-  // if (position_d) cudaFree(position_d);
-  if (velocity_d) cudaFree(velocity_d);
-  // if (force_d) cudaFree(force_d);
-  if (mass_d) cudaFree(mass_d);
-  if (invsqrtMass_d) cudaFree(invsqrtMass_d);
-  if (random_d) cudaFree(random_d);
-
-  delete rngCPU;
-  delete rngGPU;
+  if (leapParms1) free(leapParms1);
+  if (leapParms2) free(leapParms2);
+  if (lambdaLeapParms1) free(lambdaLeapParms1);
+  if (lambdaLeapParms2) free(lambdaLeapParms2);
+  if (leapState) free_leapstate(leapState);
 }
 
-
-
-// Utility functions
-bool operator<(const struct AtomState& a,const struct AtomState& b)
-{
-  return (a.segName<b.segName   || (a.segName==b.segName   && 
-         (a.resIdx<b.resIdx     || (a.resIdx==b.resIdx     &&
-         (a.atomName<b.atomName)))));
-}
-
-bool operator==(const struct AtomState& a,const struct AtomState& b)
-{
-  return a.segName==b.segName && a.resIdx==b.resIdx && a.atomName==b.atomName;
-}
-
-
-
-// Parsing functions
-void parse_state(char *line,System *system)
-{
-  char token[MAXLENGTHSTRING];
-  std::string name;
-
-  if (!system->state) {
-    if (system->structure && system->structure->atomCount>0) {
-      system->state=new State(system->structure->atomCount,system);
-    } else {
-      fatal(__FILE__,__LINE__,"Must finish creating atoms (use \"structure\" commands) before loading in positions with \"state file\".\n");
-    }
-  }
-
-  io_nexta(line,token);
-  name=token;
-  if (system->state->parseState.count(name)==0) name="";
-  // So much for function pointers being elegant.
-  // call the function pointed to by: system->state->parseState[name]
-  // within the object: system->state
-  // with arguments: (line,token,system)
-  (system->state->*(system->state->parseState[name]))(line,token,system);
-}
-
-void State::setup_parse_state()
-{
-  parseState[""]=&State::error;
-  helpState[""]="?> How did we get here?\n";
-  parseState["reset"]=&State::reset;
-  helpState["reset"]="?state reset> This deletes the state data structure.\n";
-  parseState["file"]=&State::file;
-  helpState["file"]="?state file [filename]> This loads particle positions from the pdb filename\n";
-  parseState["box"]=&State::parse_box;
-  helpState["box"]="?state box [x1 y1 z1, x2 y2 z2, x3 y3 z3]> This loads the x y z cooridinates for the first, second, and third box vectors. Input in Angstroms.\n";
-  parseState["velocity"]=&State::parse_velocity;
-  helpState["velocity"]="?state velocity [temperature]> This sets the velocities to a distribution centered on the specified temperature (in Kelvin)\n";
-  parseState["print"]=&State::dump;
-  helpState["print"]="?state print> This prints selected contents of the state data structure to standard out\n";
-  parseState["help"]=&State::help;
-  helpState["help"]="?state help [directive]> Prints help on state directive, including a list of subdirectives. If a subdirective is listed, this prints help on that specific subdirective.\n";
-}
-
-void State::help(char *line,char *token,System *system)
-{
-  std::string name=io_nexts(line);
-  if (name=="") {
-    fprintf(stdout,"?state > Available directives are:\n");
-    for (std::map<std::string,std::string>::iterator ii=helpState.begin(); ii!=helpState.end(); ii++) {
-      fprintf(stdout," %s",ii->first.c_str());
-    }
-    fprintf(stdout,"\n");
-  } else if (helpState.count(token)==1) {
-    fprintf(stdout,helpState[name].c_str());
-  } else {
-    error(line,token,system);
-  }
-}
-
-void State::error(char *line,char *token,System *system)
-{
-  fatal(__FILE__,__LINE__,"Unrecognized token after state: %s\n",token);
-}
-
-void State::reset(char *line,char *token,System *system)
-{
-  delete system->state;
-  system->state=NULL;
-}
-
-void State::file(char *line,char *token,System *system)
-{
-  FILE *fp;
-
-  io_nexta(line,token);
-  fp=fpopen(token,"r");
-  file_pdb(fp,system);
-  fclose(fp);
-}
-
-void State::dump(char *line,char *token,System *system)
-{
-  fprintf(stdout,"state print is not yet implemented (NYI)\n");
-}
-
-// ftp://ftp.wwpdb.org/pub/pdb/doc/format_descriptions/Format_v33_Letter.pdf
-// 1-6 ATOM  /HETATM
-// 7-11 atomIdx
-// 13-16 atomName
-// 17 ?
-// 18-20 resName
-// 22 chain
-// 23-26 resIdx
-// 27?
-// 31-38 X 39-46 Y 47-54 Z
-// 55-60 occupancy
-// 61-66 temperature factor
-// 77-78 element
-// 79-80 charge
-// CHARMM "PDB" format 73-76 segID
-void State::file_pdb(FILE *fp,System *system)
-{
-  char line[MAXLENGTHSTRING];
-  char token1[MAXLENGTHSTRING];
-  char token2[MAXLENGTHSTRING];
-  int i;
-  struct AtomState as;
-  double x; // Intentional double
-  struct Real3 xyz;
-
-  fileData.clear();
-  while (fgets(line, MAXLENGTHSTRING, fp)!=NULL) {
-    if (strncmp(line,"ATOM  ",6)==0 || strncmp(line,"HETATM",6)==0) {
-      io_strncpy(token1,line+12,4);
-      if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
-      as.atomName=token2;
-      if (sscanf(line+21,"%d",&i)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
-      as.resIdx=i;
-      io_strncpy(token1,line+72,4);
-      if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
-      as.segName=token2;
-      io_strncpy(token1,line+30,8);
-      if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
-      xyz.i[0]=ANGSTROM*x;
-      io_strncpy(token1,line+38,8);
-      if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
-      xyz.i[1]=ANGSTROM*x;
-      io_strncpy(token1,line+46,8);
-      if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"PDBerror\n");
-      xyz.i[2]=ANGSTROM*x;
-      if (fileData.count(as)==0) {
-        fileData[as]=xyz;
-      }
-    }
-  }
-
-  // for (std::vector<struct AtomStructure>::iterator ii=system->structure->atomList.begin(); ii!=system->structure->atomList.end(); ii++)
-  for (i=0; i<system->structure->atomList.size(); i++) { 
-    as.segName=system->structure->atomList[i].segName;
-    as.resIdx=system->structure->atomList[i].resIdx;
-    as.atomName=system->structure->atomList[i].atomName;
-    if (fileData.count(as)==1) {
-      xyz=fileData[as];
-      position[i][0]=xyz.i[0];
-      position[i][1]=xyz.i[1];
-      position[i][2]=xyz.i[2];
-    }
-  }
-}
-
-void State::parse_box(char *line,char *token,System *system)
+void State::initialize(System *system)
 {
   int i,j;
-  for (i=0; i<3; i++) {
-    for (j=0; j<3; j++) {
-      box[i][j]=ANGSTROM*io_nextf(line);
-      if (i!=j && box[i][j]!=0) {
-        fatal(__FILE__,__LINE__,"Non-orthogonal boxes are not yet implemented NYI\n");
-      }
-    }
-  }
-  send_box();
-  orthBox.x=box[0][0];
-  orthBox.y=box[1][1];
-  orthBox.z=box[2][2];
-}
+  int n=atomCount;
+  int nL=lambdaCount;
 
-void State::parse_velocity(char *line,char *token,System *system)
-{
-  int i,j;
-  real T=io_nextf(line);
   for (i=0; i<atomCount; i++) {
     for (j=0; j<3; j++) {
-      velocity[i][j]=sqrt(kB*T/mass[i][j])*rngCPU->rand_normal();
+       position[i][j]=system->coordinates->particlePosition[i][j];
+       velocity[i][j]=system->coordinates->particleVelocity[i][j];
+       invsqrtMass[i][j]=1/sqrt(system->structure->atomList[i].mass);
     }
   }
+  for (i=0; i<lambdaCount; i++) {
+    theta[i]=system->msld->theta[i];
+    thetaVelocity[i]=system->msld->thetaVelocity[i];
+    thetaInvsqrtMass[i]=1/sqrt(system->msld->thetaMass[i]);
+  }
+
+  cudaMemcpy(positionBuffer_d,positionBuffer,(2*nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
+  cudaMemcpy(velocityBuffer_d,velocityBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
+  cudaMemset(forceBuffer_d,0,(nL+3*n)*sizeof(real));
+  cudaMemcpy(invsqrtMassBuffer_d,invsqrtMassBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
+  system->msld->calc_lambda_from_theta(0,system);
 }
 
-void State::send_box() {
-  cudaMemcpy(box_d,box,3*sizeof(real[3]),cudaMemcpyHostToDevice);
+
+
+struct LeapParms1* State::alloc_leapparms1(real dt,real gamma,real T)
+{
+  struct LeapParms1 *lp;
+  real kT=kB*T;
+
+  lp=(struct LeapParms1*) malloc(sizeof(struct LeapParms1));
+
+  // Integrator from https://pubs.acs.org/doi/10.1021/jp411770f
+  lp->dt=dt;
+  lp->gamma=gamma;
+  lp->kT=kT;
+
+  return lp;
 }
-void State::recv_box() {
-  cudaMemcpy(box,box_d,3*sizeof(real[3]),cudaMemcpyDeviceToHost);
+
+struct LeapParms2* State::alloc_leapparms2(real dt,real gamma,real T)
+{
+  struct LeapParms2 *lp;
+  real kT=kB*T;
+  real a=exp(-gamma*dt);
+  real b=sqrt(tanh(0.5*gamma*dt)/(0.5*gamma*dt));
+
+  lp=(struct LeapParms2*) malloc(sizeof(struct LeapParms2));
+
+  // Integrator from https://pubs.acs.org/doi/10.1021/jp411770f
+  lp->sqrta=sqrt(a);
+  lp->noise=sqrt((1-a)*kT);
+  lp->fscale=0.5*b*dt;
+
+  return lp;
 }
-void State::send_position() {
-  cudaMemcpy(position_d,position,atomCount*sizeof(real[3]),cudaMemcpyHostToDevice);
+
+struct LeapState* State::alloc_leapstate(int N1,int N2,real *x,real *v,real *f,real *ism)
+{
+  struct LeapState *ls;
+
+  ls=(struct LeapState*) malloc(sizeof(struct LeapState));
+  real *random;
+  cudaMalloc(&random,2*(N1+N2)*sizeof(real));
+
+  ls->N1=N1;
+  ls->N=N1+N2;
+  ls->x=x;
+  ls->v=v;
+  ls->f=f;
+  ls->ism=ism;
+  ls->random=random;
+  return ls;
 }
-void State::recv_position() {
-  cudaMemcpy(position,position_d,atomCount*sizeof(real[3]),cudaMemcpyDeviceToHost);
+
+void State::free_leapstate(struct LeapState* ls)
+{
+  cudaFree(ls->random);
 }
-void State::send_velocity() {
-  cudaMemcpy(velocity_d,velocity,atomCount*sizeof(real[3]),cudaMemcpyHostToDevice);
+
+void State::recv_position()
+{
+  cudaMemcpy(position,position_d,3*atomCount*sizeof(real),cudaMemcpyDeviceToHost);
 }
-void State::recv_velocity() {
-  cudaMemcpy(velocity,velocity_d,atomCount*sizeof(real[3]),cudaMemcpyDeviceToHost);
+
+void State::recv_lambda()
+{
+  cudaMemcpy(lambda,lambda_d,lambdaCount*sizeof(real),cudaMemcpyDeviceToHost);
 }
-void State::send_invsqrtMass() {
-  cudaMemcpy(invsqrtMass_d,invsqrtMass,atomCount*sizeof(real[3]),cudaMemcpyHostToDevice);
-}
-void State::recv_invsqrtMass() {
-  cudaMemcpy(invsqrtMass,invsqrtMass_d,atomCount*sizeof(real[3]),cudaMemcpyDeviceToHost);
-}
-void State::send_energy() {
-  cudaMemcpy(energy_d,energy,eeend*sizeof(real),cudaMemcpyHostToDevice);
-}
-void State::recv_energy() {
+
+void State::recv_energy()
+{
   cudaMemcpy(energy,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToHost);
 }
+
 
 void State::broadcast_position(System *system)
 {
@@ -339,7 +212,6 @@ void State::broadcast_position(System *system)
 
 void State::gather_force(System *system,bool calcEnergy)
 {
-#warning "Transfering extra data (don't need thetas)"
   int N=3*atomCount+2*system->msld->blockCount;
   if (system->id!=0) {
     cudaMemcpy(forceBuffer,forceBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
@@ -358,6 +230,3 @@ void State::gather_force(System *system,bool calcEnergy)
     }
   }
 }
-
-//   if (system->id<2) {
-//     MPI_Sendrecv(system->msld->lambda_d,1,MPI_FLOAT,1,101,system->msld->lambda_d,1,MPI_FLOAT,0,101,MPI_COMM_WORLD,NULL);

@@ -242,39 +242,32 @@ void print_xtc(int step,System *system)
 {
   XDRFILE *fp=system->run->fpXTC;
   real (*x)[3]=system->state->position;
-  float (*fx)[3]=system->state->fposition;
-  float fbox[3][3];
+  real box[3][3]={{0,0,0},{0,0,0},{0,0,0}};
   int i,j,N;
   char fnm[100];
 
   N=system->state->atomCount;
-  if (fx != x) {
-    for (i=0; i<N; i++) {
-      for (j=0; j<3; j++) {
-        fx[i][j]=x[i][j];
-      }
-    }
-  }
-  for (i=0; i<3; i++) {
-    for (j=0; j<3; j++) {
-      fbox[i][j]=system->state->box[i][j];
-    }
-  }
+  box[0][0]=system->state->orthBox.x;
+  box[1][1]=system->state->orthBox.y;
+  box[2][2]=system->state->orthBox.z;
 
+#ifdef DOUBLE
+#error "xtc doesn't take double precision input"
+#endif
 //  extern int write_xtc(XDRFILE *xd,
 //                       int natoms,int step,real time,
 //                       matrix box,rvec *x,real prec);
-  write_xtc(fp,N,step,(float) (step*system->run->dt),fbox,fx,1000.0);
+  write_xtc(fp,N,step,(float) (step*system->run->dt),box,x,1000.0);
 }
 
 void print_lmd(int step,System *system)
 {
   FILE *fp=system->run->fpLMD;
-  real *l=system->msld->lambda;
+  real *l=system->state->lambda;
   int i;
 
   fprintf(fp,"%10d",step);
-  for (i=1; i<system->msld->blockCount; i++) {
+  for (i=1; i<system->state->lambdaCount; i++) {
     fprintf(fp," %8.6f",l[i]);
   }
   fprintf(fp,"\n");
@@ -306,7 +299,7 @@ void print_dynamics_output(int step,System *system)
       print_xtc(step,system);
     }
     if (step % system->run->freqLMD == 0) {
-      system->msld->recv_real(system->msld->lambda,system->msld->lambda_d);
+      system->state->recv_lambda();
       print_lmd(step,system);
     }
     if (step % system->run->freqNRG == 0) {

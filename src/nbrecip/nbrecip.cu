@@ -57,6 +57,7 @@ void getforce_ewaldself(System *system,bool calcEnergy)
   Potential *p=system->potential;
   State *s=system->state;
   Msld *m=system->msld;
+  Run *r=system->run;
   int N=p->atomCount;
   int shMem=0;
   real *pEnergy=NULL;
@@ -67,7 +68,7 @@ void getforce_ewaldself(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenbrecipself;
   }
 
-  getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,p->nbrecipStream>>>(N,p->charge_d,prefactor,m->atomBlock_d,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,prefactor,m->atomBlock_d,s->lambda_d,s->lambdaForce_d,pEnergy);
 }
 
 
@@ -89,7 +90,7 @@ __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *ato
   real2 dIndex;
   int j,k;
   int index;
-  int masterThread=threadIdx.x&(-4);
+  int masterThread=threadIdx.x&(-4u);
 
   if (i/order<atomCount) {
     q=charge[i/order];
@@ -253,7 +254,7 @@ __global__ void getforce_ewald_gather_kernel(int atomCount,real *charge,int *ato
   real2 dIndex, dDIndex;
   int j,k;
   int index;
-  int masterThread=threadIdx.x&(-4);
+  int masterThread=threadIdx.x&(-4u);
   real lEnergy=0;
   extern __shared__ real sEnergy[];
 
@@ -384,6 +385,7 @@ void getforce_ewald(System *system,bool calcEnergy)
   Potential *p=system->potential;
   State *s=system->state;
   Msld *m=system->msld;
+  Run *r=system->run;
   int N=p->atomCount;
   int shMem=0;
   real *pEnergy=NULL;
@@ -393,17 +395,17 @@ void getforce_ewald(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenbrecip;
   }
 
-  cudaMemsetAsync(p->chargeGridPME_d,0,p->gridDimPME[0]*p->gridDimPME[1]*p->gridDimPME[2]*sizeof(cufftReal),p->nbrecipStream);
+  cudaMemsetAsync(p->chargeGridPME_d,0,p->gridDimPME[0]*p->gridDimPME[1]*p->gridDimPME[2]*sizeof(cufftReal),r->nbrecipStream);
 
   // Spread kernel
-  getforce_ewald_spread_kernel<<<(4*N+BLNB-1)/BLNB,BLNB,0,p->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,m->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
+  getforce_ewald_spread_kernel<<<(4*N+BLNB-1)/BLNB,BLNB,0,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,s->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
 
   cufftExecR2C(p->planFFTPME,p->chargeGridPME_d,p->fourierGridPME_d);
 
   // Convolution kernel
   dim3 blockCount((p->gridDimPME[0]+8-1)/8,(p->gridDimPME[1]+8-1)/8,(p->gridDimPME[2]/2+1+8-1)/8);
   dim3 blockSize(8,8,8);
-  getforce_ewald_convolution_kernel<<<blockCount,blockSize,0,p->nbrecipStream>>>(((int3*)p->gridDimPME)[0],p->fourierGridPME_d,p->bGridPME_d,system->run->betaEwald,s->orthBox);
+  getforce_ewald_convolution_kernel<<<blockCount,blockSize,0,r->nbrecipStream>>>(((int3*)p->gridDimPME)[0],p->fourierGridPME_d,p->bGridPME_d,system->run->betaEwald,s->orthBox);
 /*
   dim3 blockCount2((p->gridDimPME[0]+16-1)/16,(p->gridDimPME[1]/2+1+16-1)/16,1);
   dim3 blockSize2(16,16,2-(p->gridDimPME[2]&1)); // if third grid dim is even, we need two z threads, one for 0 plane and one for mid plane in k space
@@ -413,5 +415,5 @@ void getforce_ewald(System *system,bool calcEnergy)
   cufftExecC2R(p->planIFFTPME,p->fourierGridPME_d,p->potentialGridPME_d);
 
   // Gather kernel
-  getforce_ewald_gather_kernel<<<(4*N+BLNB-1)/BLNB,BLNB,shMem,p->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,((int3*)p->gridDimPME)[0],p->potentialGridPME_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
+  getforce_ewald_gather_kernel<<<(4*N+BLNB-1)/BLNB,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,((int3*)p->gridDimPME)[0],p->potentialGridPME_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
 }

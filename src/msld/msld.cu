@@ -8,6 +8,7 @@
 #include "system/structure.h"
 #include "system/state.h"
 #include "system/potential.h"
+#include "run/run.h"
 
 #include "main/real3.h"
 
@@ -18,26 +19,15 @@ Msld::Msld() {
   blockCount=1;
   atomBlock=NULL;
   lambdaSite=NULL;
-  lambda=NULL;
-  lambdaForce=NULL;
   lambdaBias=NULL;
   theta=NULL;
   thetaVelocity=NULL;
   thetaMass=NULL;
-  thetaInvsqrtMass=NULL;
   lambdaCharge=NULL;
 
   atomBlock_d=NULL;
   lambdaSite_d=NULL;
-  lambda_d=NULL;
-  lambdaForce_d=NULL;
   lambdaBias_d=NULL;
-  theta_d=NULL;
-  thetaVelocity_d=NULL;
-  thetaForce_d=NULL;
-  thetaMass_d=NULL;
-  thetaInvsqrtMass_d=NULL;
-  thetaRandom_d=NULL;
 
   blocksPerSite=NULL;
   blocksPerSite_d=NULL;
@@ -62,26 +52,15 @@ Msld::Msld() {
 Msld::~Msld() {
   if (atomBlock) free(atomBlock);
   if (lambdaSite) free(lambdaSite);
-  if (lambda) free(lambda);
-  if (lambdaForce) free(lambdaForce);
   if (lambdaBias) free(lambdaBias);
   if (theta) free(theta);
   if (thetaVelocity) free(thetaVelocity);
   if (thetaMass) free(thetaMass);
-  if (thetaInvsqrtMass) free(thetaInvsqrtMass);
   if (lambdaCharge) free(lambdaCharge);
 
   if (atomBlock_d) cudaFree(atomBlock_d);
   if (lambdaSite_d) cudaFree(lambdaSite_d);
-  // if (lambda_d) cudaFree(lambda_d);
-  // if (lambdaForce_d) cudaFree(lambdaForce_d);
   if (lambdaBias_d) cudaFree(lambdaBias_d);
-  // if (theta_d) cudaFree(theta_d);
-  // if (thetaVelocity_d) cudaFree(thetaVelocity_d);
-  // if (thetaForce_d) cudaFree(thetaForce_d);
-  // if (thetaMass_d) cudaFree(thetaMass_d);
-  // if (thetaInvsqrtMass_d) cudaFree(thetaInvsqrtMass_d);
-  // if (thetaRandom_d) cudaFree(thetaRandom_d);
 
   if (blocksPerSite) free(blocksPerSite);
   if (blocksPerSite_d) cudaFree(blocksPerSite_d);
@@ -119,26 +98,16 @@ void parse_msld(char *line,System *system)
     system->msld->blockCount=io_nexti(line)+1;
     system->msld->atomBlock=(int*)calloc(system->structure->atomList.size(),sizeof(int));
     system->msld->lambdaSite=(int*)calloc(system->msld->blockCount,sizeof(int));
-    system->msld->lambda=(real*)calloc(system->msld->blockCount,sizeof(real));
-    system->msld->lambdaForce=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->lambdaBias=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->theta=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaVelocity=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
-    system->msld->thetaInvsqrtMass=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->thetaMass[0]=1;
     system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
 
     cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
     cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
-    // cudaMalloc(&(system->msld->lambda_d),system->msld->blockCount*sizeof(real));
-    // cudaMalloc(&(system->msld->lambdaForce_d),system->msld->blockCount*sizeof(real));
     cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
-    // cudaMalloc(&(system->msld->theta_d),system->msld->blockCount*sizeof(real));
-    // cudaMalloc(&(system->msld->thetaVelocity_d),system->msld->blockCount*sizeof(real));
-    // cudaMalloc(&(system->msld->thetaForce_d),system->msld->blockCount*sizeof(real));
-    // cudaMalloc(&(system->msld->thetaMass_d),system->msld->blockCount*sizeof(real));
-    // cudaMalloc(&(system->msld->thetaInvsqrtMass_d),system->msld->blockCount*sizeof(real));
-    // cudaMalloc(&(system->msld->thetaRandom_d),2*system->msld->blockCount*sizeof(real));
 
     // NYI - this would be a lot easier to read if these were split in to parsing functions.
     fprintf(stdout,"NYI - Initialize all blocks in first site %s:%d\n",__FILE__,__LINE__);
@@ -365,14 +334,9 @@ void Msld::initialize(System *system)
 {
   int i;
 
-  thetaMass[0]=thetaMass[1]; // Avoid singularities in the kinetic energy
-  for (i=0; i<blockCount; i++) {
-    thetaInvsqrtMass[i]=1/sqrt(thetaMass[i]);
-  }
-
   // Send the biases over
   cudaMemcpy(atomBlock_d,atomBlock,system->structure->atomCount*sizeof(int),cudaMemcpyHostToDevice);
-  send_real(lambdaBias_d,lambdaBias);
+  cudaMemcpy(lambdaBias_d,lambdaBias,blockCount*sizeof(real),cudaMemcpyHostToDevice);
   variableBiasCount=variableBias_tmp.size();
   variableBias=(struct VariableBias*)calloc(variableBiasCount,sizeof(struct VariableBias));
   cudaMalloc(&variableBias_d,variableBiasCount*sizeof(struct VariableBias));
@@ -405,22 +369,6 @@ void Msld::initialize(System *system)
   cudaMemcpy(blocksPerSite_d,blocksPerSite,siteCount*sizeof(int),cudaMemcpyHostToDevice);
   cudaMemcpy(siteBound_d,siteBound,(siteCount+1)*sizeof(int),cudaMemcpyHostToDevice);
   cudaMemcpy(lambdaSite_d,lambdaSite,blockCount*sizeof(int),cudaMemcpyHostToDevice);
-
-  // Get lambda on remote node
-  send_real(theta_d,theta);
-  calc_lambda_from_theta(0); // NYI - pick a stream...
-  
-//  send_real(system->msld->lambda_d,system->msld->lambda);
-}
-
-void Msld::send_real(real *p_d,real *p)
-{
-  cudaMemcpy(p_d,p,blockCount*sizeof(real),cudaMemcpyHostToDevice);
-}
-
-void Msld::recv_real(real *p,real *p_d)
-{
-  cudaMemcpy(p,p_d,blockCount*sizeof(real),cudaMemcpyDeviceToHost);
 }
 
 __global__ void calc_lambda_from_theta_kernel(real *lambda,real *theta,int siteCount,int *siteBound,real fnex)
@@ -446,9 +394,10 @@ __global__ void calc_lambda_from_theta_kernel(real *lambda,real *theta,int siteC
   }
 }
 
-void Msld::calc_lambda_from_theta(cudaStream_t s)
+void Msld::calc_lambda_from_theta(cudaStream_t stream,System *system)
 {
-  calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,s>>>(lambda_d,theta_d,siteCount,siteBound_d,fnex);
+  State *s=system->state;
+  calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex);
 }
 
 __global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta,real *lambdaForce,real *thetaForce,int blockCount,int *lambdaSite,int *siteBound,real fnex)
@@ -470,9 +419,10 @@ __global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta
   }
 }
 
-void Msld::calc_thetaForce_from_lambdaForce(cudaStream_t s)
+void Msld::calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system)
 {
-  calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,s>>>(lambda_d,theta_d,lambdaForce_d,thetaForce_d,blockCount,lambdaSite_d,siteBound_d,fnex);
+  State *s=system->state;
+  calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,s->lambdaForce_d,s->thetaForce_d,blockCount,lambdaSite_d,siteBound_d,fnex);
 }
 
 __global__ void calc_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambdaForce,real *energy,int blockCount)
@@ -497,19 +447,20 @@ __global__ void calc_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambda
 
 void Msld::calc_fixedBias(System *system,bool calcEnergy)
 {
-  cudaStream_t s=0;
+  cudaStream_t stream=0;
+  State *s=system->state;
   real *pEnergy=NULL;
   int shMem=0;
 
   if (calcEnergy) {
     shMem=BLMS*sizeof(real)/32;
-    pEnergy=system->state->energy_d+eelambda;
+    pEnergy=s->energy_d+eelambda;
   }
-  if (system->potential) {
-    s=system->potential->biaspotStream;
+  if (system->run) {
+    stream=system->run->biaspotStream;
   }
 
-  calc_fixedBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,s>>>(lambda_d,lambdaBias_d,lambdaForce_d,pEnergy,blockCount);
+  calc_fixedBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,lambdaBias_d,s->lambdaForce_d,pEnergy,blockCount);
 }
 
 __global__ void calc_variableBias_kernel(real *lambda,real *lambdaForce,real *energy,int variableBiasCount,struct VariableBias *variableBias)
@@ -555,17 +506,18 @@ __global__ void calc_variableBias_kernel(real *lambda,real *lambdaForce,real *en
 
 void Msld::calc_variableBias(System *system,bool calcEnergy)
 {
-  cudaStream_t s=0;
+  cudaStream_t stream=0;
+  State *s=system->state;
   real *pEnergy=NULL;
   int shMem=0;
 
   if (calcEnergy) {
     shMem=BLMS*sizeof(real)/32;
-    pEnergy=system->state->energy_d+eelambda;
+    pEnergy=s->energy_d+eelambda;
   }
-  if (system->potential) {
-    s=system->potential->biaspotStream;
+  if (system->run) {
+    stream=system->run->biaspotStream;
   }
 
-  calc_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,s>>>(lambda_d,lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
+  calc_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
 }
