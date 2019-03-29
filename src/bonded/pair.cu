@@ -54,7 +54,7 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
     real br=rc.betaEwald*r;
     real kqq=kELECTRIC*pp.qxq;
 
-    fpair[0]+=kqq*(-erfcf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))/rinv;
+    fpair[0]+=kqq*(-erfcf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
     if (calcEnergy) {
       lE[0]+=kqq*erfcf(br)*rinv;
     }
