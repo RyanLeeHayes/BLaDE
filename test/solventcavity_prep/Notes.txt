@@ -1,0 +1,2 @@
+~/46_ProteinMutation/pme/3_99_pH3/run/2_run_5cap/prep/
+Then just removed the protein so it's just water and ions.

@@ -241,23 +241,26 @@ void interpretter(const char *fnm,System *system,int level)
 void print_xtc(int step,System *system)
 {
   XDRFILE *fp=system->run->fpXTC;
-  real (*x)[3]=system->state->position;
-  real box[3][3]={{0,0,0},{0,0,0},{0,0,0}};
+  float box[3][3]={{0,0,0},{0,0,0},{0,0,0}};
   int i,j,N;
   char fnm[100];
 
   N=system->state->atomCount;
-  box[0][0]=system->state->orthBox.x;
-  box[1][1]=system->state->orthBox.y;
-  box[2][2]=system->state->orthBox.z;
+  box[0][0]=system->state->orthBox.x/(10*ANGSTROM);
+  box[1][1]=system->state->orthBox.y/(10*ANGSTROM);
+  box[2][2]=system->state->orthBox.z/(10*ANGSTROM);
 
-#ifdef DOUBLE
-#error "xtc doesn't take double precision input"
-#endif
+  real (*x)[3]=system->state->position;
+  float (*xXTC)[3]=system->state->positionXTC;
+  for (i=0; i<N; i++) {
+    for (j=0; j<3; j++) {
+      xXTC[i][j]=x[i][j]/(10*ANGSTROM);
+    }
+  }
 //  extern int write_xtc(XDRFILE *xd,
 //                       int natoms,int step,real time,
 //                       matrix box,rvec *x,real prec);
-  write_xtc(fp,N,step,(float) (step*system->run->dt),box,x,1000.0);
+  write_xtc(fp,N,step,(float) (step*system->run->dt),box,xXTC,1000.0);
 }
 
 void print_lmd(int step,System *system)

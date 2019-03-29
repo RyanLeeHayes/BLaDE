@@ -10,13 +10,25 @@ option(UNITS "AKMA (CHARMM) or NMPS (GROMACS)" "NMPS")
 if (UNITS STREQUAL "AKMA")
   add_definitions(-DCHARMM_UNITS)
 endif()
+
+## Not working?
+# option(PRECISION "FLOAT OR DOUBLE" "FLOAT")
+# if (UNITS STREQUAL "DOUBLE")
+#   add_definitions(-DDOUBLE)
+# endif()
+
 ## Add compiler definition flags here
 # add_definitions(-DCUDAGRAPH)
 # add_definitions(-DPROFILESERIAL)
 
 ## Use for debugging kernels
 set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
-set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "--use_fast_math")
+# set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "--use_fast_math")
+
+# # Use for double atomicAdd - only works on GTX1080, not on GTX980
+# set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-gencode=arch=compute_60,code=sm_60")
+# set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "-gencode=arch=compute_60,code=sm_60")
+
 set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} -lcufft")
 
 # message("${sources}")

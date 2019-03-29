@@ -60,8 +60,14 @@ class State {
   real *invsqrtMassBuffer;
   real *invsqrtMassBuffer_d;
 
+  // Constraint stuff
+  real *positionCons_d;
+
   // The box
   real3 orthBox;
+
+  // Buffer for floating point output
+  float (*positionXTC)[3]; // intentional float
 
   // Labels (do not free)
   real *lambda;

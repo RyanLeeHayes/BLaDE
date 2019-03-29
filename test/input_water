@@ -6,8 +6,8 @@ parameters file ../test/toppar/par_all36_prot.prm
 parameters file ../test/toppar_water_ions/par_water_ions.prm
 ! parameters print
 
-structure file psf ../test/T4L_prep/minimized.psf
-! structure file psf ../test/solventcavity_prep/minimized.psf
+! structure file psf ../test/T4L_prep/minimized.psf
+structure file psf ../test/solventcavity_prep/minimized.psf
 ! structure print
 ! structure shake none
 structure shake hbond
@@ -53,15 +53,15 @@ msld removescaling bond angle ! scale urey dihe impr and cmap
 !        s1s2 t  l0   k n
 msld bias 1 2 6 0.0 0.0 0
 
-coordinates file ../test/T4L_prep/minimized.pdb
-! coordinates file ../test/solventcavity_prep/minimized.pdb
+! coordinates file ../test/T4L_prep/minimized.pdb
+coordinates file ../test/solventcavity_prep/minimized.pdb
 coordinates box 41.271760 0 0   0 41.271760 0   0 0 41.271760
 coordinates velocity 300
 
-run setvariable nsteps 1000
-run setvariable dt 0.002 ! 0.003125
+run setvariable nsteps 2000
+run setvariable dt 0.003125
 run setvariable T 300
-run setvariable gamma 1
+run setvariable gamma 0.1
 run setvariable invbetaewald 3.125
 run setvariable fnmxtc test.xtc
 run setvariable fnmlmd test.lmd

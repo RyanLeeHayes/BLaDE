@@ -75,6 +75,19 @@ Potential::Potential() {
   vdwParameterCount=0;
   vdwParameters=NULL;
   vdwParameters_d=NULL;
+
+  triangleConsCount=0;
+  triangleCons=NULL;
+  triangleCons_d=NULL;
+  branch1ConsCount=0;
+  branch1Cons=NULL;
+  branch1Cons_d=NULL;
+  branch2ConsCount=0;
+  branch2Cons=NULL;
+  branch2Cons_d=NULL;
+  branch3ConsCount=0;
+  branch3Cons=NULL;
+  branch3Cons_d=NULL;
 }
 
 Potential::~Potential()
@@ -120,6 +133,15 @@ Potential::~Potential()
   if (nbonds_d) cudaFree(nbonds_d);
   if (vdwParameters) free(vdwParameters);
   if (vdwParameters_d) cudaFree(vdwParameters_d);
+
+  if (triangleCons) free(triangleCons);
+  if (triangleCons_d) cudaFree(triangleCons_d);
+  if (branch1Cons) free(branch1Cons);
+  if (branch1Cons_d) cudaFree(branch1Cons_d);
+  if (branch2Cons) free(branch2Cons);
+  if (branch2Cons_d) cudaFree(branch2Cons_d);
+  if (branch3Cons) free(branch3Cons);
+  if (branch3Cons_d) cudaFree(branch3Cons_d);
 
   if (planFFTPME) cufftDestroy(planFFTPME);
   if (planIFFTPME) cufftDestroy(planIFFTPME);
@@ -384,6 +406,7 @@ void Potential::initialize(System *system)
   dihes_tmp.clear();
   imprs_tmp.clear();
   cmaps_tmp.clear();
+  cons_tmp.clear();
 
   for (i=0; i<struc->bondList.size(); i++) {
     TypeName2 type;
@@ -394,20 +417,28 @@ void Potential::initialize(System *system)
       bond.idx[j]=struc->bondList[i].i[j];
       type.t[j]=struc->atomList[bond.idx[j]].atomTypeName;
     }
-    // Get their MSLD scaling
-    msld->bond_scaling(bond.idx,bond.siteBlock);
-    // Get their parameters
-    if (param->bondParameter.count(type)==0) {
-      fatal(__FILE__,__LINE__,"No bond parameter for %6d(%6s) %6d(%6s)\n",bond.idx[0],type.t[0].c_str(),bond.idx[1],type.t[1].c_str());
-    }
-    bp=param->bondParameter[type];
-    bond.kb=bp.kb;
-    bond.b0=bp.b0;
-    // Separate out the constrained bonds
-    if (system->structure->shakeHbond && (type.t[0][0]=='H' || type.t[1][0]=='H')) {
-      fatal(__FILE__,__LINE__,"hbond constraints not yet implemented (NYI)\n");
+    if (struc->shakeHbond && (type.t[0][0]=='H' || type.t[1][0]=='H')) {
+      // Add to constraints
+      for (j=0; j<2; j++) {
+        cons_tmp[bond.idx[j]].insert(bond.idx[1-j]);
+      }
     } else {
-      bonds_tmp.emplace_back(bond);
+      // Add to bonds
+      // Get their MSLD scaling
+      msld->bond_scaling(bond.idx,bond.siteBlock);
+      // Get their parameters
+      if (param->bondParameter.count(type)==0) {
+        fatal(__FILE__,__LINE__,"No bond parameter for %6d(%6s) %6d(%6s)\n",bond.idx[0],type.t[0].c_str(),bond.idx[1],type.t[1].c_str());
+      }
+      bp=param->bondParameter[type];
+      bond.kb=bp.kb;
+      bond.b0=bp.b0;
+      // Separate out the constrained bonds
+      if (system->structure->shakeHbond && (type.t[0][0]=='H' || type.t[1][0]=='H')) {
+        fatal(__FILE__,__LINE__,"hbond constraints not yet implemented (NYI)\n");
+      } else {
+        bonds_tmp.emplace_back(bond);
+      }
     }
   }
 
@@ -772,9 +803,9 @@ void Potential::initialize(System *system)
     fprintf(stdout,"PME grid(%d) size: %d\n",i,gridDimPME[i]);
   }
 
-  cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(cufftReal));
-  cudaMalloc(&fourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(cufftComplex));
-  cudaMalloc(&potentialGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(cufftReal));
+  cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal));
+  cudaMalloc(&fourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(myCufftComplex));
+  cudaMalloc(&potentialGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal));
 
   bGridPME=(real*)calloc(gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1),sizeof(real));
   cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real));
@@ -784,7 +815,7 @@ void Potential::initialize(System *system)
   int order=4;
   real M4[4]={0,1.0/6,4.0/6,1.0/6};
   for (i=0; i<gridDimPME[0]; i++) {
-    cufftComplex bx;
+    myCufftComplex bx;
     real invbx2;
     bx.x=0;
     bx.y=0;
@@ -794,7 +825,7 @@ void Potential::initialize(System *system)
     }
     invbx2=1.0/(bx.x*bx.x+bx.y*bx.y);
     for (j=0; j<gridDimPME[1]; j++) {
-      cufftComplex by;
+      myCufftComplex by;
       real invby2;
       by.x=0;
       by.y=0;
@@ -804,7 +835,7 @@ void Potential::initialize(System *system)
       }
       invby2=1.0/(by.x*by.x+by.y*by.y);
       for (k=0; k<(gridDimPME[2]/2+1); k++) {
-        cufftComplex bz;
+        myCufftComplex bz;
         real invbz2;
         bz.x=0;
         bz.y=0;
@@ -826,7 +857,6 @@ void Potential::initialize(System *system)
   cufftMakePlan3d(planIFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],CUFFT_C2R,&bufferSizeIFFTPME);
   cufftSetStream(planIFFTPME,system->run->nbrecipStream);
 
-  // WORKING HERE
   // Count each nonbonded type
   typeCount.clear();
   for (i=0; i<atomCount; i++) {
@@ -900,24 +930,203 @@ void Potential::initialize(System *system)
     }
   }
   cudaMemcpy(vdwParameters_d,vdwParameters,vdwParameterCount*vdwParameterCount*sizeof(VdwPotential),cudaMemcpyHostToDevice);
-// NYI #warning "Missing nonbonded terms"
-/*
-  if (atomTypeIdx) free(atomTypeIdx);
-  atomTypeIdx=(int*)calloc(atomCount,sizeof(int));
-  if (charge) free(charge);
-  charge=(real*)calloc(atomCount,sizeof(real));
-  if (mass) free(mass);
-  mass=(real*)calloc(atomCount,sizeof(real));
 
-
-  for (i=0; i<atomCount; i++) {
-    struct AtomStructure at=atomList[i];
-    param->require_type_name(at.atomTypeName,"searching for atom types in structure setup");
-    atomTypeIdx[i]=param->atomTypeMap[at.atomTypeName];
-    charge[i]=at.charge;
-    mass[i]=param->atomMass[at.atomTypeName];
+  // Sort out these constraints
+  triangleCons_tmp.clear();
+  branch1Cons_tmp.clear();
+  branch2Cons_tmp.clear();
+  branch3Cons_tmp.clear();
+  for (std::map<int,std::set<int>>::iterator ii=cons_tmp.begin(); ii!=cons_tmp.end(); ii++) {
+    std::vector<int> consIdx;
+    std::vector<std::string> consType;
+    std::vector<bool> consH;
+    bool consBad=false;
+    consIdx.clear();
+    consIdx.emplace_back(ii->first);
+    for (std::set<int>::iterator jj=ii->second.begin(); jj!=ii->second.end(); jj++) {
+      consIdx.emplace_back(*jj);
+    }
+    consType.clear();
+    consH.clear();
+    for (i=0; i<consIdx.size(); i++) {
+      consType.emplace_back(struc->atomList[consIdx[i]].atomTypeName);
+      consH.emplace_back(consType[i][0]=='H');
+    }
+    // // Print it out for debugging purposes
+    // fprintf(stdout,"CONS:");
+    // for (i=0; i<consIdx.size(); i++) {
+    //   fprintf(stdout," %5d",consIdx[i]);
+    // }
+    // fprintf(stdout,"\n");
+    if (consIdx.size()==3) {
+      // Check for triangle
+      if (cons_tmp[consIdx[1]].size()==2 && cons_tmp[consIdx[2]].size()==2) {
+        if (cons_tmp[consIdx[1]].count(consIdx[2])==1 && cons_tmp[consIdx[2]].count(consIdx[1])==1) {
+          if (consH[0]<consH[1] || (consH[0]==consH[1]&&consIdx[0]<consIdx[1])) {
+            if (consH[0]<consH[2] || (consH[0]==consH[2]&&consIdx[0]<consIdx[2])) {
+              // Found properly oriented triange
+              TypeName2 type;
+              struct TriangleCons tc;
+              k=0;
+              for (i=0; i<3; i++) {
+                tc.idx[i]=consIdx[i];
+                type.t[0]=consType[i];
+                for (j=i+1; j<3; j++) {
+                  type.t[1]=consType[j];
+                  if (param->bondParameter.count(type)==0) {
+                    fatal(__FILE__,__LINE__,"No bond parameter for %6d(%6s) %6d(%6s)\n",consIdx[i],type.t[0].c_str(),consIdx[j],type.t[1].c_str());
+                  }
+                  tc.b0[k]=param->bondParameter[type].b0;
+                  k++;
+                }
+              }
+              // // Print it out for debugging purposes
+              // fprintf(stdout,"Triangle:");
+              // for (i=0; i<consIdx.size(); i++) {
+              //   fprintf(stdout," %5d",consIdx[i]);
+              // }
+              // fprintf(stdout,"\n");
+              triangleCons_tmp.emplace_back(tc);
+            } // else consIdx[2] should be in 0 position
+          } // else consIdx[1] should be in 0 posiiton
+        } else {
+          consBad=true;
+        }
+      // Check for branch2
+      } else if (cons_tmp[consIdx[1]].size()==1 && cons_tmp[consIdx[2]].size()==1) {
+        // Found properly oriented branch2
+        TypeName2 type;
+        struct Branch2Cons bc;
+        k=0;
+        for (i=0; i<3; i++) {
+          bc.idx[i]=consIdx[i];
+          type.t[0]=consType[i];
+          if (i==0) {
+            for (j=i+1; j<3; j++) {
+              type.t[1]=consType[j];
+              if (param->bondParameter.count(type)==0) {
+                fatal(__FILE__,__LINE__,"No bond parameter for %6d(%6s) %6d(%6s)\n",consIdx[i],type.t[0].c_str(),consIdx[j],type.t[1].c_str());
+              }
+              bc.b0[k]=param->bondParameter[type].b0;
+              k++;
+            }
+          }
+        }
+        // // Print it out for debugging purposes
+        // fprintf(stdout,"Branch2:");
+        // for (i=0; i<consIdx.size(); i++) {
+        //   fprintf(stdout," %5d",consIdx[i]);
+        // }
+        // fprintf(stdout,"\n");
+        branch2Cons_tmp.emplace_back(bc);
+      } else {
+        consBad=true;
+      }
+    // check for branch3
+    } else if (consIdx.size()==4) {
+      if (cons_tmp[consIdx[1]].size()==1 && cons_tmp[consIdx[2]].size()==1 && cons_tmp[consIdx[3]].size()==1) {
+        // Found properly oriented branch3
+        TypeName2 type;
+        struct Branch3Cons bc;
+        k=0;
+        for (i=0; i<4; i++) {
+          bc.idx[i]=consIdx[i];
+          type.t[0]=consType[i];
+          if (i==0) {
+            for (j=i+1; j<4; j++) {
+              type.t[1]=consType[j];
+              if (param->bondParameter.count(type)==0) {
+                fatal(__FILE__,__LINE__,"No bond parameter for %6d(%6s) %6d(%6s)\n",consIdx[i],type.t[0].c_str(),consIdx[j],type.t[1].c_str());
+              }
+              bc.b0[k]=param->bondParameter[type].b0;
+              k++;
+            }
+          }
+        }
+        // // Print it out for debugging purposes
+        // fprintf(stdout,"Branch3:");
+        // for (i=0; i<consIdx.size(); i++) {
+        //   fprintf(stdout," %5d",consIdx[i]);
+        // }
+        // fprintf(stdout,"\n");
+        branch3Cons_tmp.emplace_back(bc);
+      } else {
+        consBad=true;
+      }
+    // check for branch1
+    } else if (consIdx.size()==2) {
+      if (cons_tmp[consIdx[1]].size()==1) {
+        if (consH[0]<consH[1] || (consH[0]==consH[1]&&consIdx[0]<consIdx[1])) {
+          // Found properly oriented branch1
+          TypeName2 type;
+          struct Branch1Cons bc;
+          k=0;
+          for (i=0; i<2; i++) {
+            bc.idx[i]=consIdx[i];
+            type.t[0]=consType[i];
+            if (i==0) {
+              for (j=i+1; j<2; j++) {
+                type.t[1]=consType[j];
+                if (param->bondParameter.count(type)==0) {
+                  fatal(__FILE__,__LINE__,"No bond parameter for %6d(%6s) %6d(%6s)\n",consIdx[i],type.t[0].c_str(),consIdx[j],type.t[1].c_str());
+                }
+                bc.b0[k]=param->bondParameter[type].b0;
+                k++;
+              }
+            }
+          }
+          // // Print it out for debugging purposes
+          // fprintf(stdout,"Branch1:");
+          // for (i=0; i<consIdx.size(); i++) {
+          //   fprintf(stdout," %5d",consIdx[i]);
+          // }
+          // fprintf(stdout,"\n");
+          branch1Cons_tmp.emplace_back(bc);
+        } // else consIdx[1] should be in position 0
+      } // else consIdx[0] should be in position 0 because it has more partners
+    } else {
+      consBad=true;
+    }
+    if (consBad) {
+      fatal(__FILE__,__LINE__,"Unrecognized constraint. %d constrained to %d atoms starting with %d\n",consIdx[0],consIdx.size(),consIdx[1]);
+    }
   }
-*/
+
+  // Triange constraints (solvent, use SETTLE)
+  triangleConsCount=triangleCons_tmp.size();
+  triangleCons=(struct TriangleCons*)calloc(triangleConsCount,sizeof(struct TriangleCons));
+  cudaMalloc(&triangleCons_d,triangleConsCount*sizeof(struct TriangleCons));
+  for (i=0; i<triangleConsCount; i++) {
+    triangleCons[i]=triangleCons_tmp[i];
+  }
+  cudaMemcpy(triangleCons_d,triangleCons,triangleConsCount*sizeof(struct TriangleCons),cudaMemcpyHostToDevice);
+
+  // Branch1 constraints
+  branch1ConsCount=branch1Cons_tmp.size();
+  branch1Cons=(struct Branch1Cons*)calloc(branch1ConsCount,sizeof(struct Branch1Cons));
+  cudaMalloc(&branch1Cons_d,branch1ConsCount*sizeof(struct Branch1Cons));
+  for (i=0; i<branch1ConsCount; i++) {
+    branch1Cons[i]=branch1Cons_tmp[i];
+  }
+  cudaMemcpy(branch1Cons_d,branch1Cons,branch1ConsCount*sizeof(struct Branch1Cons),cudaMemcpyHostToDevice);
+
+  // Branch2 constraints
+  branch2ConsCount=branch2Cons_tmp.size();
+  branch2Cons=(struct Branch2Cons*)calloc(branch2ConsCount,sizeof(struct Branch2Cons));
+  cudaMalloc(&branch2Cons_d,branch2ConsCount*sizeof(struct Branch2Cons));
+  for (i=0; i<branch2ConsCount; i++) {
+    branch2Cons[i]=branch2Cons_tmp[i];
+  }
+  cudaMemcpy(branch2Cons_d,branch2Cons,branch2ConsCount*sizeof(struct Branch2Cons),cudaMemcpyHostToDevice);
+
+  // Branch3 constraints
+  branch3ConsCount=branch3Cons_tmp.size();
+  branch3Cons=(struct Branch3Cons*)calloc(branch3ConsCount,sizeof(struct Branch3Cons));
+  cudaMalloc(&branch3Cons_d,branch3ConsCount*sizeof(struct Branch3Cons));
+  for (i=0; i<branch3ConsCount; i++) {
+    branch3Cons[i]=branch3Cons_tmp[i];
+  }
+  cudaMemcpy(branch3Cons_d,branch3Cons,branch3ConsCount*sizeof(struct Branch3Cons),cudaMemcpyHostToDevice);
 }
 
 void Potential::calc_force(int step,System *system)

@@ -106,6 +106,26 @@ struct ExclPotential {
   int idx[2];
 };
 
+struct TriangleCons {
+  int idx[3];
+  real b0[3];
+};
+
+struct Branch1Cons {
+  int idx[2];
+  real b0[1];
+};
+
+struct Branch2Cons {
+  int idx[3];
+  real b0[2];
+};
+
+struct Branch3Cons {
+  int idx[4];
+  real b0[3];
+};
+
 class Potential {
   public:
   int atomCount;
@@ -160,9 +180,9 @@ class Potential {
   real *charge_d;
 
   int gridDimPME[3];
-  cufftReal *chargeGridPME_d;
-  cufftComplex *fourierGridPME_d;
-  cufftReal *potentialGridPME_d;
+  myCufftReal *chargeGridPME_d;
+  myCufftComplex *fourierGridPME_d;
+  myCufftReal *potentialGridPME_d;
   real *bGridPME, *bGridPME_d;
   cufftHandle planFFTPME, planIFFTPME;
   size_t bufferSizeFFTPME,bufferSizeIFFTPME;
@@ -177,6 +197,24 @@ class Potential {
   int vdwParameterCount;
   struct VdwPotential *vdwParameters;
   struct VdwPotential *vdwParameters_d;
+
+  std::map<int,std::set<int>> cons_tmp;
+  int triangleConsCount;
+  std::vector<struct TriangleCons> triangleCons_tmp;
+  struct TriangleCons *triangleCons;
+  struct TriangleCons *triangleCons_d;
+  int branch1ConsCount;
+  std::vector<struct Branch1Cons> branch1Cons_tmp;
+  struct Branch1Cons *branch1Cons;
+  struct Branch1Cons *branch1Cons_d;
+  int branch2ConsCount;
+  std::vector<struct Branch2Cons> branch2Cons_tmp;
+  struct Branch2Cons *branch2Cons;
+  struct Branch2Cons *branch2Cons_d;
+  int branch3ConsCount;
+  std::vector<struct Branch3Cons> branch3Cons_tmp;
+  struct Branch3Cons *branch3Cons;
+  struct Branch3Cons *branch3Cons_d;
 
   Potential();
   ~Potential();

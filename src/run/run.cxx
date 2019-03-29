@@ -37,6 +37,8 @@ Run::Run()
   cutoffs.rCut=rCut;
   cutoffs.rSwitch=rSwitch;
 
+  shakeTolerance=2e-7; // floating point precision is only 1.2e-7
+
 #ifdef PROFILESERIAL
   updateStream=0;
 #else
@@ -160,6 +162,7 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut);
   fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch);
   fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace);
+  fprintf(stdout,"RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n",shakeTolerance);
 }
 
 void Run::reset(char *line,char *token,System *system)
@@ -202,6 +205,8 @@ void Run::set_variable(char *line,char *token,System *system)
     cutoffs.rSwitch=rSwitch;
   } else if (strcmp(token,"gridspace")==0) {
     gridSpace=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"shaketolerance")==0) {
+    shakeTolerance=io_nextf(line);
   } else {
     fatal(__FILE__,__LINE__,"Unrecognized token %s in run setvariable command\n",token);
   }
@@ -209,8 +214,6 @@ void Run::set_variable(char *line,char *token,System *system)
 
 void Run::dynamics(char *line,char *token,System *system)
 {
-  int step;
-
   // Initialize data structures
   dynamics_initialize(system);
 

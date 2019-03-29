@@ -432,7 +432,7 @@ __global__ void calc_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambda
   real lEnergy=0;
 
   if (i<blockCount) {
-    realAtomicAdd(&lambdaForce[i],lambdaBias[i]);
+    atomicAdd(&lambdaForce[i],lambdaBias[i]);
     if (energy) {
       lEnergy=lambdaBias[i]*lambda[i];
     }
@@ -493,8 +493,8 @@ __global__ void calc_variableBias_kernel(real *lambda,real *lambdaForce,real *en
       fi=0;
       fj=0;
     }
-    realAtomicAdd(&lambdaForce[vb.i],fi);
-    realAtomicAdd(&lambdaForce[vb.j],fj);
+    atomicAdd(&lambdaForce[vb.i],fi);
+    atomicAdd(&lambdaForce[vb.j],fj);
   }
 
   // Energy, if requested

@@ -116,9 +116,9 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
 
     // Lambda force
     if (b[0]) {
-      realAtomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
+      atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
       if (b[1]) {
-        realAtomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
+        atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
       }
     }
 

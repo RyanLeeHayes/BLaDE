@@ -2,6 +2,7 @@
 #define MAIN_DEFINES_H
 
 #include <cuda_runtime.h>
+#include <cufft.h>
 
 #define MAXLENGTHSTRING 1024
 
@@ -57,12 +58,18 @@
 typedef double real;
 typedef double3 real3;
 typedef double2 real2;
-#define realAtomicAdd doubleAtomicAdd
+typedef cufftDoubleReal myCufftReal;
+typedef cufftDoubleComplex myCufftComplex;
+#define myCufftExecR2C cufftExecD2Z
+#define myCufftExecC2R cufftExecZ2D
 #else
 typedef float real;
 typedef float3 real3;
 typedef float2 real2;
-#define realAtomicAdd atomicAdd
+typedef cufftReal myCufftReal;
+typedef cufftComplex myCufftComplex;
+#define myCufftExecR2C cufftExecR2C
+#define myCufftExecC2R cufftExecC2R
 #endif
 
 struct Int2 {

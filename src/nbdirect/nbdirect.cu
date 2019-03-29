@@ -50,7 +50,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
       if (bi) li=lambda[0xFFFF & bi];
     }
 
-    fi=make_float3(0,0,0);
+    fi=real3_reset();
     fli=0;
 
     // used i/32 instead of iBlock to shift to beginning of array
@@ -77,7 +77,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
       }
       testSelf=(iBlock==jBlock && shift.x==0 && shift.y==0 && shift.z==0);
 
-      fj=make_float3(0,0,0);
+      fj=real3_reset();
       flj=0;
 
       for (ij=testSelf; ij<32; ij++) {
@@ -90,7 +90,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
         bjtmp=__shfl_sync(0xFFFFFFFF,bj,jtmp);
         ljtmp=__shfl_sync(0xFFFFFFFF,lj,jtmp);
 
-        fjtmp=make_float3(0,0,0);
+        fjtmp=real3_reset();
         fljtmp=0;
         // if ((i&31)<iCount && (jtmp&31)<jCount)
         jtmp=(testSelf?jtmp:(jtmp&31));
@@ -182,7 +182,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
       __syncwarp();
       if ((iThread)<jCount) {
         if (bj) {
-          realAtomicAdd(&lambdaForce[0xFFFF & bj],flj);
+          atomicAdd(&lambdaForce[0xFFFF & bj],flj);
         }
         at_real3_inc(&force[jj],fj);
       }
@@ -190,7 +190,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
     __syncwarp();
     if ((iThread)<iCount) {
       if (bi) {
-        realAtomicAdd(&lambdaForce[0xFFFF & bi],fli);
+        atomicAdd(&lambdaForce[0xFFFF & bi],fli);
       }
       at_real3_inc(&force[ii],fi);
     }
@@ -238,7 +238,7 @@ __global__ void getforce_nbdirect_reduce_kernel(int atomCount,int idCount,real *
     for (j=1; j<idCount; j++) {
       f+=force[j*atomCount+i];
     }
-    realAtomicAdd(&force[i],f);
+    atomicAdd(&force[i],f);
   }
 }
 

@@ -84,9 +84,9 @@ __global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,r
 
     // Lambda force
     if (b[0]) {
-      realAtomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
+      atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
       if (b[1]) {
-        realAtomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
+        atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
       }
     }
 
@@ -178,9 +178,9 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
 
     // Lambda force
     if (b[0]) {
-      realAtomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
+      atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
       if (b[1]) {
-        realAtomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
+        atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
       }
     }
 
@@ -313,9 +313,9 @@ __global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsi
 
     // Lambda force
     if (b[0]) {
-      realAtomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
+      atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
       if (b[1]) {
-        realAtomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
+        atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
       }
     }
 
@@ -464,7 +464,7 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
     rPhi[lastBit]=phi;
     rPhi[1-lastBit]=__shfl_xor_sync(0xFFFFFFFF,phi,1);
       // Get the remainders within each box
-    invSpace=cp.ngrid*(1/(2*((float) M_PI)));
+    invSpace=cp.ngrid*(1/(2*((real) M_PI)));
     rPhi[0]*=invSpace;
     binPhi[0]=((int) floor(rPhi[0]));
     rPhi[0]-=binPhi[0];
@@ -540,11 +540,11 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
     // Lambda force
     if (lastBit==0) { // First partner has full energy
       if (b[0]) {
-        realAtomicAdd(&lambdaForce[b[0]],l[1]*l[2]*lEnergy);
+        atomicAdd(&lambdaForce[b[0]],l[1]*l[2]*lEnergy);
         if (b[1]) {
-          realAtomicAdd(&lambdaForce[b[1]],l[0]*l[2]*lEnergy);
+          atomicAdd(&lambdaForce[b[1]],l[0]*l[2]*lEnergy);
           if (b[2]) {
-            realAtomicAdd(&lambdaForce[b[2]],l[0]*l[1]*lEnergy);
+            atomicAdd(&lambdaForce[b[2]],l[0]*l[1]*lEnergy);
           }
         }
       }

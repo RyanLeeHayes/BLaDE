@@ -44,8 +44,17 @@ State::State(System *system) {
   invsqrtMassBuffer=(real*)calloc((nL+3*n),sizeof(real));
   cudaMalloc(&(invsqrtMassBuffer_d),(nL+3*n)*sizeof(real));
 
+  // Constraint stuff
+  positionCons_d=NULL;
+  if (system->structure->shakeHbond) {
+    cudaMalloc(&(positionCons_d),(nL+3*n)*sizeof(real));
+  }
+
   // The box
   orthBox=system->coordinates->particleOrthBox;
+
+  // Buffer for floating point output
+  positionXTC=(float(*)[3])calloc(n,sizeof(float[3])); // intentional float
 
   // Labels (do not free)
   lambda=positionBuffer;
@@ -91,6 +100,10 @@ State::~State() {
   if (velocityBuffer_d) cudaFree(velocityBuffer_d);
   if (invsqrtMassBuffer) free(invsqrtMassBuffer);
   if (invsqrtMassBuffer_d) cudaFree(invsqrtMassBuffer_d);
+  // Constraint stuff
+  if (positionCons_d) cudaFree(positionCons_d);
+  // Buffer for floating point output
+  if (positionXTC) free(positionXTC);
 
   if (leapParms1) free(leapParms1);
   if (leapParms2) free(leapParms2);

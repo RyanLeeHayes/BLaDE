@@ -46,6 +46,7 @@ class Run {
   real rSwitch;
   real gridSpace; // grid spacing for PME calculation
   struct Cutoffs cutoffs;
+  real shakeTolerance;
 
   cudaStream_t updateStream;
 
