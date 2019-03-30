@@ -2,6 +2,7 @@
 
 #include "system/system.h"
 #include "system/state.h"
+#include "msld/msld.h"
 #include "run/run.h"
 #include "system/potential.h"
 #include "domdec/domdec.h"
@@ -10,6 +11,7 @@
 
 
 
+template <bool useSoftCore>
 __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 {
 // NYI - maybe energy should be a double
@@ -35,6 +37,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   real fli,flj,fljtmp;
   int bi,bj,bjtmp;
   real li,lj,ljtmp,lixljtmp;
+  real rEff,dredr,dredll; // Soft core stuff
   bool testSelf;
   int exclMask;
 
@@ -106,8 +109,6 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
           r=real3_mag(dr);
 
           if (r<cutoffs.rCut && ((1<<(jtmp&31))&exclMask)) {
-            rinv=1/r;
-
             // Scaling
             if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
               if (bi==bjtmp) {
@@ -119,9 +120,29 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
               lixljtmp=li*ljtmp;
             }
 
+            rEff=r;
+            if (useSoftCore) {
+              dredr=1.0; // d(rEff) / d(r)
+              dredll=0.0; // d(rEff) / d(lixljtmp)
+              if (bi || bjtmp) {
+                real rSoft=(2.0*ANGSTROM*sqrt(4.0))*(1.0-lixljtmp);
+                if (r<rSoft) {
+                  real rdivrs=r/rSoft;
+                  rEff=1.0-0.5*rdivrs;
+                  rEff=rEff*rdivrs*rdivrs*rdivrs+0.5;
+                  dredr=3.0-2.0*rdivrs;
+                  dredr*=rdivrs*rdivrs;
+                  dredll=rEff-dredr*rdivrs;
+                  dredll*=-(2.0*ANGSTROM*sqrt(4.0));
+                  rEff*=rSoft;
+                }
+              }
+            }
+            rinv=1/rEff;
+
             // interaction
               // Electrostatics
-            real br=cutoffs.betaEwald*r;
+            real br=cutoffs.betaEwald*rEff;
             real erfcrinv=erfcf(br)*rinv;
             fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
             if (bi || bjtmp || energy) {
@@ -137,7 +158,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
             // See charmm/source/domdec/enbxfast.F90, functions calc_vdw_constants, vdw_attraction, vdw_repulsion
             real rCut3=cutoffs.rCut*cutoffs.rCut*cutoffs.rCut;
             real rSwitch3=cutoffs.rSwitch*cutoffs.rSwitch*cutoffs.rSwitch;
-            if (r<cutoffs.rSwitch) {
+            if (rEff<cutoffs.rSwitch) {
               fij+=(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv;
               if (bi || bjtmp || energy) {
                 real dv6=1/(rCut3*rSwitch3);
@@ -154,18 +175,31 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
             }
 
             // Lambda force
-            if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
-              if (bi==bjtmp) {
-                fli+=eij;
+            if (bi || bjtmp) {
+              if (useSoftCore) {
+                fljtmp=eij+lixljtmp*fij*dredll;
+              } else {
                 fljtmp=eij;
-              } // No else
-            } else {
-              fli+=ljtmp*eij;
-              fljtmp=li*eij;
+              }
+              if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
+                if (bi==bjtmp) {
+                  fli+=fljtmp;
+                } else {
+                  fljtmp=0;
+                }
+              } else {
+                fli+=ljtmp*fljtmp;
+                fljtmp*=li;
+              }
             }
         
             // Spatial force
-            fij*=lixljtmp;
+            if (useSoftCore) {
+              rinv=1/r;
+              fij*=lixljtmp*dredr;
+            } else {
+              fij*=lixljtmp;
+            }
             real3_scaleinc(&fi, fij*rinv,dr);
             fjtmp=real3_scale(-fij*rinv,dr);
 
@@ -226,7 +260,11 @@ void getforce_nbdirect(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenbdirect;
   }
 
-  getforce_nbdirect_kernel<<<(32*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  if (system->msld->useSoftCore) {
+    getforce_nbdirect_kernel<true><<<(32*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  } else {
+    getforce_nbdirect_kernel<false><<<(32*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  }
 
   system->domdec->unpack_forces(system);
 }

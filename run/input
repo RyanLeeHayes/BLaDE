@@ -52,13 +52,14 @@ msld initialize 6 1 -0.343367415452651 0.0 5.0 0.0 1.0
 msld removescaling bond angle ! scale urey dihe impr and cmap
 !        s1s2 t  l0   k n
 msld bias 1 2 6 0.0 0.0 0
+msld softcore on
 
 coordinates file ../test/T4L_prep/minimized.pdb
 ! coordinates file ../test/solventcavity_prep/minimized.pdb
 coordinates box 41.271760 0 0   0 41.271760 0   0 0 41.271760
 coordinates velocity 300
 
-run setvariable nsteps 50000
+run setvariable nsteps 500
 run setvariable dt 0.002 ! 0.003125
 run setvariable T 300
 run setvariable gamma 1

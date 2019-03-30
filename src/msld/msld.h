@@ -51,6 +51,9 @@ class Msld {
   std::vector<Int2> softBonds;
   std::vector<std::vector<int>> atomRestraints;
 
+  bool useSoftCore;
+  bool useSoftCore14;
+
   Msld();
   ~Msld();
 

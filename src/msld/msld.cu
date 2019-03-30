@@ -47,6 +47,9 @@ Msld::Msld() {
 
   softBonds.clear();
   atomRestraints.clear();
+
+  useSoftCore=false;
+  useSoftCore14=false;
 }
 
 Msld::~Msld() {
@@ -180,6 +183,20 @@ void parse_msld(char *line,System *system)
       } else {
         fatal(__FILE__,__LINE__,"Unrecognized token %s. Valid options are bond, urey, angle, dihe, impr, or cmap.\n",name.c_str());
       }
+    }
+  } else if (strcmp(token,"softcore")==0) {
+    if ("on"==io_nexts(line)) {
+      system->msld->useSoftCore=true;
+    } else {
+      system->msld->useSoftCore=false;
+    }
+  } else if (strcmp(token,"softcore14")==0) {
+    if ("on"==io_nexts(line)) {
+// NYI
+      fatal(__FILE__,__LINE__,"Oops, not implemented yet\n");
+      system->msld->useSoftCore14=true;
+    } else {
+      system->msld->useSoftCore14=false;
     }
 // NYI - restorescaling option to complement remove scaling
   } else if (strcmp(token,"softbond")==0) {
