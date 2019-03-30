@@ -58,14 +58,14 @@ coordinates file ../test/T4L_prep/minimized.pdb
 coordinates box 41.271760 0 0   0 41.271760 0   0 0 41.271760
 coordinates velocity 300
 
-run setvariable nsteps 1000
+run setvariable nsteps 50000
 run setvariable dt 0.002 ! 0.003125
 run setvariable T 300
 run setvariable gamma 1
 run setvariable invbetaewald 3.125
 run setvariable fnmxtc test.xtc
 run setvariable fnmlmd test.lmd
-run setvariable freqxtc 10
+run setvariable freqxtc 100
 run setvariable freqnrg 10
 run print
 run dynamics

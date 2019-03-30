@@ -39,6 +39,10 @@ Run::Run()
 
   shakeTolerance=2e-7; // floating point precision is only 1.2e-7
 
+  freqNPT=50;
+  volumeFluctuation=100*ANGSTROM*ANGSTROM*ANGSTROM;
+  pressure=1*ATMOSPHERE;
+
 #ifdef PROFILESERIAL
   updateStream=0;
 #else
@@ -46,7 +50,6 @@ Run::Run()
 #endif
   cudaEventCreate(&forceBegin);
   cudaEventCreate(&forceComplete);
-  cudaEventCreate(&updateComplete);
   setup_parse_run();
 
 #ifdef PROFILESERIAL
@@ -76,7 +79,6 @@ Run::~Run()
 #endif
   cudaEventDestroy(forceBegin);
   cudaEventDestroy(forceComplete);
-  cudaEventDestroy(updateComplete);
 
 #ifndef PROFILESERIAL
   cudaStreamDestroy(bondedStream);
@@ -163,6 +165,9 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch);
   fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace);
   fprintf(stdout,"RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n",shakeTolerance);
+  fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
+  fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation);
+  fprintf(stdout,"RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure);
 }
 
 void Run::reset(char *line,char *token,System *system)
@@ -207,6 +212,12 @@ void Run::set_variable(char *line,char *token,System *system)
     gridSpace=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"shaketolerance")==0) {
     shakeTolerance=io_nextf(line);
+  } else if (strcmp(token,"freqnpt")==0) {
+    freqNPT=io_nexti(line);
+  } else if (strcmp(token,"volumefluctuation")==0) {
+    volumeFluctuation=io_nextf(line)*ANGSTROM*ANGSTROM*ANGSTROM;
+  } else if (strcmp(token,"pressure")==0) {
+    pressure=io_nextf(line)*ATMOSPHERE;
   } else {
     fatal(__FILE__,__LINE__,"Unrecognized token %s in run setvariable command\n",token);
   }
@@ -220,6 +231,7 @@ void Run::dynamics(char *line,char *token,System *system)
   // Run dynamics
   for (step=step0; step<step0+nsteps; step++) {
     fprintf(stdout,"Step %d\n",step);
+    system->domdec->update_domdec(system,(step%system->domdec->freqDomdec)==0);
     system->potential->calc_force(step,system);
     system->state->update(step,system);
 #warning "Need to copy coordinates before update"
@@ -272,8 +284,6 @@ void Run::dynamics_initialize(System *system)
     cudaError_t err=cudaPeekAtLastError();
     fatal(__FILE__,__LINE__,"GPU error code %d during run initialization of MPI rank %d\n%s\n",err,system->id,cudaGetErrorString(err));
   }
-
-  cudaEventRecord(updateComplete,updateStream);
 }
 
 void Run::dynamics_finalize(System *system)

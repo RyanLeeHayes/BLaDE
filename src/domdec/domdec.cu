@@ -136,3 +136,12 @@ void Domdec::reset_domdec(System *system)
   // Sets up exclusion data structures
   setup_exclusions(system);
 }
+
+void Domdec::update_domdec(System *system,bool resetFlag)
+{
+  if (resetFlag) {
+    system->domdec->reset_domdec(system);
+  } else if (system->idCount>1) {
+    system->state->broadcast_position(system);
+  }
+}

@@ -24,6 +24,9 @@
 // Charmm CCELEC0 value
 #define kELECTRIC 332.0716
 
+// from gromacs values
+#define ATMOSPHERE 0.000014584319218586
+
 // NOTE kB and KCAL_MOL disagree by 3.01E-5 in 1 over temperature scale
 // That's 0.01 K at T=300 K
 
@@ -35,6 +38,7 @@
 // eps0 8.85418782E-12 J*m/C^2
 // e 1.60217662E-19 C
 // NA 6.02214076E23
+// ATM 101325 bar
 
 #define ANGSTROM 0.1
 // 4.184 according to CHARMM, this number is from kELECTRIC conversion
@@ -42,6 +46,9 @@
 #define PICOSECOND 1.0
 #define kB 0.0083144598
 #define kELECTRIC 138.935455103336
+
+// atm -> bar -> kJ/mol/nm^3
+#define ATMOSPHERE 0.0610193412507
 
 // NOTE kB and KCAL_MOL disagree by 3.01E-5 in 1 over temperature scale
 // That's 0.01 K at T=300 K
@@ -62,6 +69,8 @@ typedef cufftDoubleReal myCufftReal;
 typedef cufftDoubleComplex myCufftComplex;
 #define myCufftExecR2C cufftExecD2Z
 #define myCufftExecC2R cufftExecZ2D
+#define MYCUFFT_R2C CUFFT_D2Z
+#define MYCUFFT_C2R CUFFT_Z2D
 #else
 typedef float real;
 typedef float3 real3;
@@ -70,6 +79,8 @@ typedef cufftReal myCufftReal;
 typedef cufftComplex myCufftComplex;
 #define myCufftExecR2C cufftExecR2C
 #define myCufftExecC2R cufftExecC2R
+#define MYCUFFT_R2C CUFFT_R2C
+#define MYCUFFT_C2R CUFFT_C2R
 #endif
 
 struct Int2 {

@@ -851,10 +851,10 @@ void Potential::initialize(System *system)
   cudaMemcpy(bGridPME_d,bGridPME,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real),cudaMemcpyHostToDevice);
 
   cufftCreate(&planFFTPME);
-  cufftMakePlan3d(planFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],CUFFT_R2C,&bufferSizeFFTPME);
+  cufftMakePlan3d(planFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],MYCUFFT_R2C,&bufferSizeFFTPME);
   cufftSetStream(planFFTPME,system->run->nbrecipStream);
   cufftCreate(&planIFFTPME);
-  cufftMakePlan3d(planIFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],CUFFT_C2R,&bufferSizeIFFTPME);
+  cufftMakePlan3d(planIFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],MYCUFFT_C2R,&bufferSizeIFFTPME);
   cufftSetStream(planIFFTPME,system->run->nbrecipStream);
 
   // Count each nonbonded type
@@ -1129,25 +1129,22 @@ void Potential::initialize(System *system)
   cudaMemcpy(branch3Cons_d,branch3Cons,branch3ConsCount*sizeof(struct Branch3Cons),cudaMemcpyHostToDevice);
 }
 
-void Potential::calc_force(int step,System *system)
+void Potential::reset_force(System *system,bool calcEnergy)
 {
-  bool calcEnergy=(step%system->run->freqNRG==0);
-  Run *r=system->run;
-  // fprintf(stdout,"Force calculation placeholder (step %d)\n",step);
-
   cudaMemset(system->state->forceBuffer_d,0,(2*system->state->lambdaCount+3*system->state->atomCount)*sizeof(real));
   cudaMemset(system->domdec->localForce_d,0,3*system->domdec->globalCount*sizeof(real));
   if (calcEnergy) {
     cudaMemset(system->state->energy_d,0,eeend*sizeof(real));
   }
+}
 
-#warning "Heuristic domdain update every 10 steps"
-  cudaStreamWaitEvent(r->updateStream,r->updateComplete,0);
-  if (step%10==0) {
-    system->domdec->reset_domdec(system);
-  } else if (system->idCount>1) {
-    system->state->broadcast_position(system);
-  }
+void Potential::calc_force(int step,System *system)
+{
+  bool calcEnergy=(step%system->run->freqNRG==0)||(step%system->run->freqNPT==0);
+  Run *r=system->run;
+
+  reset_force(system,calcEnergy);
+
   cudaEventRecord(r->forceBegin,r->updateStream);
 
   if (system->id==0) {
@@ -1187,6 +1184,5 @@ void Potential::calc_force(int step,System *system)
   cudaStreamWaitEvent(r->updateStream,r->nbdirectComplete,0);
 
   cudaEventRecord(r->forceComplete,r->updateStream);
-  // cudaDeviceSynchronize();
 }
 

@@ -10,7 +10,7 @@
 
 
 
-__global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real *lambda,real *lambdaForce,real *energy)
+__global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -23,7 +23,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   int j,jmax;
   int ij,jtmp;
   real r,rinv;
-  real3 shift;
+  real3 boxShift;
   real3 dr;
   NbondPotential inp,jnp;
   real jtmpnp_q;
@@ -57,7 +57,10 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
     jmax=blockPartnerCount[iWarp];
     for (j=0; j<jmax; j++) {
       jBlock=blockPartners[maxPartnersPerBlock*(iWarp)+j].jBlock;
-      shift=blockPartners[maxPartnersPerBlock*(iWarp)+j].shift;
+      boxShift=blockPartners[maxPartnersPerBlock*(iWarp)+j].shift;
+      boxShift.x*=box.x;
+      boxShift.y*=box.y;
+      boxShift.z*=box.z;
       int exclAddress=blockPartners[maxPartnersPerBlock*(iWarp)+j].exclAddress;
       if (exclAddress==-1) {
         exclMask=0xFFFFFFFF;
@@ -70,12 +73,12 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
       if ((iThread)<jCount) {
         jnp=nbonds[jj];
         xj=position[jj];
-        real3_inc(&xj,shift);
+        real3_inc(&xj,boxShift);
         bj=jnp.siteBlock;
         lj=1;
         if (bj) lj=lambda[0xFFFF & bj];
       }
-      testSelf=(iBlock==jBlock && shift.x==0 && shift.y==0 && shift.z==0);
+      testSelf=(iBlock==jBlock && boxShift.x==0 && boxShift.y==0 && boxShift.z==0);
 
       fj=real3_reset();
       flj=0;
@@ -223,7 +226,7 @@ void getforce_nbdirect(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenbdirect;
   }
 
-  getforce_nbdirect_kernel<<<(32*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->lambda_d,s->lambdaForce_d,pEnergy);
+  getforce_nbdirect_kernel<<<(32*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
 
   system->domdec->unpack_forces(system);
 }

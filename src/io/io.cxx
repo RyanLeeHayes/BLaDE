@@ -282,11 +282,6 @@ void print_nrg(int step,System *system)
   real *e=system->state->energy;
   int i;
 
-  for (i=0; i<eepotential; i++) {
-    e[eepotential]+=e[i];
-  }
-  e[eetotal]=e[eepotential]+e[eekinetic];
-
   fprintf(fp,"%10d",step);
   for (i=0; i<eeend; i++) {
     fprintf(fp," %12.4f",e[i]);

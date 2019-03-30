@@ -31,12 +31,15 @@ State::State(System *system) {
   // Lambda-Spatial-Theta buffers
   positionBuffer=(real*)calloc((2*nL+3*n),sizeof(real));
   cudaMalloc(&(positionBuffer_d),(2*nL+3*n)*sizeof(real));
+  cudaMalloc(&(positionBackup_d),(2*nL+3*n)*sizeof(real));
   forceBuffer=(real*)calloc(rootFactor*(2*nL+3*n),sizeof(real));
   cudaMalloc(&(forceBuffer_d),rootFactor*(2*nL+3*n)*sizeof(real));
+  cudaMalloc(&(forceBackup_d),(2*nL+3*n)*sizeof(real));
 
   // Other buffers
   energy=(real*)calloc(rootFactor*eeend,sizeof(real));
   cudaMalloc(&(energy_d),rootFactor*eeend*sizeof(real));
+  cudaMalloc(&(energyBackup_d),eeend*sizeof(real));
 
   // Spatial-Theta buffers
   velocityBuffer=(real*)calloc((nL+3*n),sizeof(real));
@@ -90,11 +93,14 @@ State::~State() {
   // Lambda-Spatial-Theta buffers
   if (positionBuffer) free(positionBuffer);
   if (positionBuffer_d) cudaFree(positionBuffer_d);
+  if (positionBackup_d) cudaFree(positionBackup_d);
   if (forceBuffer) free(forceBuffer);
   if (forceBuffer_d) cudaFree(forceBuffer_d);
+  if (forceBackup_d) cudaFree(forceBackup_d);
   // Other buffers
   if (energy) free(energy);
   if (energy_d) cudaFree(energy_d);
+  if (energyBackup_d) cudaFree(energyBackup_d);
   // Spatial-Theta buffers
   if (velocityBuffer) free(velocityBuffer);
   if (velocityBuffer_d) cudaFree(velocityBuffer_d);
@@ -207,13 +213,36 @@ void State::recv_lambda()
 
 void State::recv_energy()
 {
+  int i;
+
   cudaMemcpy(energy,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToHost);
+
+  for (i=0; i<eepotential; i++) {
+    energy[eepotential]+=energy[i];
+  }
+  energy[eetotal]=energy[eepotential]+energy[eekinetic];
 }
 
 
+void State::backup_position()
+{
+  cudaMemcpy(positionBackup_d,positionBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
+  cudaMemcpy(forceBackup_d,forceBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
+  cudaMemcpy(energyBackup_d,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToDevice);
+  orthBoxBackup=orthBox;
+}
+
+void State::restore_position()
+{
+  cudaMemcpy(positionBuffer_d,positionBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
+  cudaMemcpy(forceBuffer_d,forceBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
+  cudaMemcpy(energy_d,energyBackup_d,eeend*sizeof(real),cudaMemcpyDeviceToDevice);
+  orthBox=orthBoxBackup;
+}
+
 void State::broadcast_position(System *system)
 {
-  int N=3*atomCount+system->msld->blockCount;
+  int N=3*atomCount+lambdaCount;
   if (system->id==0) {
     cudaMemcpy(positionBuffer,positionBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
   }

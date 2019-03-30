@@ -64,8 +64,12 @@ __global__ void recull_blocks_kernel(
       if ((j+(i&31))<jmax) {
         blockPartner=blockCandidates[maxPartnersPerBlock*(i/32)+(j+(i&31))];
         partnerVolume=blockVolume[blockPartner.jBlock];
-        real3_inc(&partnerVolume.max,blockPartner.shift);
-        real3_inc(&partnerVolume.min,blockPartner.shift);
+        real3 boxShift=blockPartner.shift;
+        boxShift.x*=box.x;
+        boxShift.y*=box.y;
+        boxShift.z*=box.z;
+        real3_inc(&partnerVolume.max,boxShift);
+        real3_inc(&partnerVolume.min,boxShift);
         hit=check_proximity(volume,partnerVolume,rc2);
       }
 

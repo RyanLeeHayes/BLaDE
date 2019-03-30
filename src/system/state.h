@@ -47,12 +47,15 @@ class State {
   // Lambda-Spatial-Theta buffers
   real *positionBuffer;
   real *positionBuffer_d;
+  real *positionBackup_d; // For NPT
   real *forceBuffer;
   real *forceBuffer_d;
+  real *forceBackup_d; // For NPT
 
   // Other buffers
   real *energy;
   real *energy_d;
+  real *energyBackup_d;
 
   // Spatial-Theta buffers
   real *velocityBuffer;
@@ -65,6 +68,7 @@ class State {
 
   // The box
   real3 orthBox;
+  real3 orthBoxBackup;
 
   // Buffer for floating point output
   float (*positionXTC)[3]; // intentional float
@@ -112,6 +116,9 @@ class State {
   void recv_position();
   void recv_lambda();
   void recv_energy();
+
+  void backup_position();
+  void restore_position();
 
   void broadcast_position(System *system);
   void gather_force(System *system,bool calcEnergy);

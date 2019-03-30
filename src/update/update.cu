@@ -9,6 +9,7 @@
 #include "system/potential.h"
 #include "rng/rng_gpu.h"
 #include "holonomic/holonomic.h"
+#include "update/pressure.h"
 
 #include "main/real3.h"
 
@@ -158,6 +159,10 @@ void State::update(int step,System *system)
 {
   Run *r=system->run;
 
+  if (system->run->freqNPT>0 && (system->run->step%system->run->freqNPT)==0) {
+    pressure_coupling(system);
+  }
+
   cudaStreamWaitEvent(r->updateStream,r->forceComplete,0);
   if (system->id==0) {
   // https://pubs.acs.org/doi/10.1021/jp411770f equation 7
@@ -202,6 +207,4 @@ void State::update(int step,System *system)
   // Project lambdas
   system->msld->calc_lambda_from_theta(r->updateStream,system);
   }
-
-  cudaEventRecord(r->updateComplete,r->updateStream);
 }

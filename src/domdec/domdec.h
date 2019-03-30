@@ -83,6 +83,7 @@ class Domdec {
 
   void initialize(System *system);
   void reset_domdec(System *system);
+  void update_domdec(System *system,bool resetFlag);
 
   // From domdec/assign_domain.cu
   void broadcast_domain(System *system);

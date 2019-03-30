@@ -43,7 +43,7 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
   int iBlock=i/32+blockCount[domainIdx]; // 32 threads tag teaming per block
   int partnerDomainIdx;
   int3 idPartnerDomain, idShift;
-  real3 shift;
+  real3 shift,boxShift;
   int s;
   struct DomdecBlockVolume volume, partnerVolume;
   int j,startBlock,endBlock;
@@ -78,26 +78,29 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
       s=(idPartnerDomain.x==gridDomdec.x?1:0);
       s=(idPartnerDomain.x==-1?-1:s);
       idPartnerDomain.x-=s*gridDomdec.x;
-      shift.x=s*box.x;
+      shift.x=s;
+      boxShift.x=s*box.x;
       for (idShift.y=-idShift.x; idShift.y<2; idShift.y++) {
         idPartnerDomain.y=idDomdec.y+idShift.y;
         s=(idPartnerDomain.y==gridDomdec.y?1:0);
         s=(idPartnerDomain.y==-1?-1:s);
         idPartnerDomain.y-=s*gridDomdec.y;
-        shift.y=s*box.y;
+        shift.y=s;
+        boxShift.y=s*box.y;
         for (idShift.z=-((idShift.x!=0)|(idShift.y!=0)); idShift.z<2; idShift.z++) {
           idPartnerDomain.z=idDomdec.z+idShift.z;
           s=(idPartnerDomain.z==gridDomdec.z?1:0);
           s=(idPartnerDomain.z==-1?-1:s);
           idPartnerDomain.z-=s*gridDomdec.z;
-          shift.z=s*box.z;
+          shift.z=s;
+          boxShift.z=s*box.z;
 
           partnerDomainIdx=(idPartnerDomain.x*gridDomdec.y+idPartnerDomain.y)*gridDomdec.z+idPartnerDomain.z;
           startBlock+=blockCount[partnerDomainIdx];
           endBlock=blockCount[partnerDomainIdx+1];
           volume=blockVolume[iBlock];
-          real3_dec(&volume.max,shift);
-          real3_dec(&volume.min,shift);
+          real3_dec(&volume.max,boxShift);
+          real3_dec(&volume.min,boxShift);
 
           // Check potential partner blocks in groups of 32.
           for (j=startBlock; j<endBlock; j+=32) {

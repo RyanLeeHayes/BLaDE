@@ -48,11 +48,14 @@ class Run {
   struct Cutoffs cutoffs;
   real shakeTolerance;
 
+  int freqNPT;
+  real volumeFluctuation;
+  real pressure;
+
   cudaStream_t updateStream;
 
   cudaEvent_t forceBegin;
   cudaEvent_t forceComplete;
-  cudaEvent_t updateComplete;
 
   cudaStream_t bondedStream;
   cudaStream_t biaspotStream;
