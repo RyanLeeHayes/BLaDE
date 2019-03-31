@@ -173,11 +173,12 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
                 eij+=vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*(rinv6-rCutinv3*rCutinv3)-vdwp.c6*k6*(rinv3-rCutinv3)*(rinv3-rCutinv3);
               }
             }
+            fij*=lixljtmp;
 
             // Lambda force
             if (bi || bjtmp) {
               if (useSoftCore) {
-                fljtmp=eij+lixljtmp*fij*dredll;
+                fljtmp=eij+fij*dredll;
               } else {
                 fljtmp=eij;
               }
@@ -196,9 +197,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
             // Spatial force
             if (useSoftCore) {
               rinv=1/r;
-              fij*=lixljtmp*dredr;
-            } else {
-              fij*=lixljtmp;
+              fij*=dredr;
             }
             real3_scaleinc(&fi, fij*rinv,dr);
             fjtmp=real3_scale(-fij*rinv,dr);

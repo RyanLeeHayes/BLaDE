@@ -45,6 +45,7 @@ class Run {
   real rCut;
   real rSwitch;
   real gridSpace; // grid spacing for PME calculation
+  int orderEwald; // interpolation order (4, 6, or 8 typically)
   struct Cutoffs cutoffs;
   real shakeTolerance;
 

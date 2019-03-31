@@ -809,42 +809,55 @@ void Potential::initialize(System *system)
 
   bGridPME=(real*)calloc(gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1),sizeof(real));
   cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real));
-  // Not efficient, but functional
-  // Not general to other orders
-#warning "Not general to other interpolation orders"
-  int order=4;
-  real M4[4]={0,1.0/6,4.0/6,1.0/6};
+  int order=system->run->orderEwald;
+  // Only have to support orders 4, 6, 8, and 10
+  real Meven[11]={0,1,0,0,0,0,0,0,0,0,0};
+  real Modd[11]={0,0,0,0,0,0,0,0,0,0,0};
+  for (i=2; i<order; i+=2) {
+    for (l=0; l<i+1; l++) {
+      Modd[l]=l*Meven[l]/i+(i+1-l)*Meven[i+1-l]/i;
+    }
+    for (l=0; l<i+2; l++) {
+      Meven[l]=l*Modd[l]/(i+1)+(i+2-l)*Modd[i+2-l]/(i+1);
+    }
+  }
+  real invbx2[gridDimPME[0]];
   for (i=0; i<gridDimPME[0]; i++) {
     myCufftComplex bx;
-    real invbx2;
     bx.x=0;
     bx.y=0;
     for (l=1; l<order; l++) {
-      bx.x+=M4[l]*cos((2*M_PI*i*l)/gridDimPME[0]);
-      bx.y+=M4[l]*sin((2*M_PI*i*l)/gridDimPME[0]);
+      bx.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[0]);
+      bx.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[0]);
     }
-    invbx2=1.0/(bx.x*bx.x+bx.y*bx.y);
+    invbx2[i]=1.0/(bx.x*bx.x+bx.y*bx.y);
+  }
+  real invby2[gridDimPME[1]];
+  for (i=0; i<gridDimPME[1]; i++) {
+    myCufftComplex by;
+    by.x=0;
+    by.y=0;
+    for (l=1; l<order; l++) {
+      by.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[1]);
+      by.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[1]);
+    }
+    invby2[i]=1.0/(by.x*by.x+by.y*by.y);
+  }
+  real invbz2[gridDimPME[2]/2+1];
+  for (i=0; i<(gridDimPME[2]/2+1); i++) {
+    myCufftComplex bz;
+    bz.x=0;
+    bz.y=0;
+    for (l=1; l<order; l++) {
+      bz.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[2]);
+      bz.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[2]);
+    }
+    invbz2[i]=1.0/(bz.x*bz.x+bz.y*bz.y);
+  }
+  for (i=0; i<gridDimPME[0]; i++) {
     for (j=0; j<gridDimPME[1]; j++) {
-      myCufftComplex by;
-      real invby2;
-      by.x=0;
-      by.y=0;
-      for (l=1; l<order; l++) {
-        by.x+=M4[l]*cos((2*M_PI*j*l)/gridDimPME[1]);
-        by.y+=M4[l]*sin((2*M_PI*j*l)/gridDimPME[1]);
-      }
-      invby2=1.0/(by.x*by.x+by.y*by.y);
       for (k=0; k<(gridDimPME[2]/2+1); k++) {
-        myCufftComplex bz;
-        real invbz2;
-        bz.x=0;
-        bz.y=0;
-        for (l=1; l<order; l++) {
-          bz.x+=M4[l]*cos((2*M_PI*k*l)/gridDimPME[2]);
-          bz.y+=M4[l]*sin((2*M_PI*k*l)/gridDimPME[2]);
-        }
-        invbz2=1.0/(bz.x*bz.x+bz.y*bz.y);
-        bGridPME[(i*gridDimPME[1]+j)*(gridDimPME[2]/2+1)+k]=invbx2*invby2*invbz2;
+        bGridPME[(i*gridDimPME[1]+j)*(gridDimPME[2]/2+1)+k]=invbx2[i]*invby2[j]*invbz2[k];
       }
     }
   }

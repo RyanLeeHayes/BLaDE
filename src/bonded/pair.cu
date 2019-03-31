@@ -4,6 +4,7 @@
 #include "bonded.h"
 #include "main/defines.h"
 #include "system/system.h"
+#include "msld/msld.h"
 #include "system/state.h"
 #include "run/run.h"
 #include "system/potential.h"
@@ -75,7 +76,7 @@ __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,rea
 }
 
 
-template <class PairPotential>
+template <class PairPotential,bool useSoftCore>
 __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -89,6 +90,7 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
   real3 xi,xj;
   int b[2];
   real l[2]={1,1};
+  real rEff,dredr,dredll; // Soft core stuff
 
   if (i<pairCount) {
     // Geometry
@@ -110,19 +112,50 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
       }
     }
 
+    rEff=r;
+    if (useSoftCore) {
+      dredr=1.0; // d(rEff) / d(r)
+      dredll=0.0; // d(rEff) / d(lixljtmp)
+      if (b[0]) {
+        real rSoft=(2.0*ANGSTROM*sqrt(4.0))*(1.0-l[0]*l[1]);
+        if (r<rSoft) {
+          real rdivrs=r/rSoft;
+          rEff=1.0-0.5*rdivrs;
+          rEff=rEff*rdivrs*rdivrs*rdivrs+0.5;
+          dredr=3.0-2.0*rdivrs;
+          dredr*=rdivrs*rdivrs;
+          dredll=rEff-dredr*rdivrs;
+          dredll*=-(2.0*ANGSTROM*sqrt(4.0));
+          rEff*=rSoft;
+        }
+      }
+    }
+
     // Interaction
-    function_pair(pp,cutoffs,r,&fpair,&lEnergy, b[0] || energy);
+    function_pair(pp,cutoffs,rEff,&fpair,&lEnergy, b[0] || energy);
     fpair*=l[0]*l[1];
 
     // Lambda force
-    if (b[0]) {
-      atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
-      if (b[1]) {
-        atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
+    if (useSoftCore) {
+      if (b[0]) {
+        atomicAdd(&lambdaForce[b[0]],l[1]*(lEnergy+fpair*dredll));
+        if (b[1]) {
+          atomicAdd(&lambdaForce[b[1]],l[0]*(lEnergy+fpair*dredll));
+        }
+      }
+    } else {
+      if (b[0]) {
+        atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
+        if (b[1]) {
+          atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
+        }
       }
     }
 
     // Spatial force
+    if (useSoftCore) {
+      fpair*=dredr;
+    }
     at_real3_scaleinc(&force[ii], fpair/r,dr);
     at_real3_scaleinc(&force[jj],-fpair/r,dr);
   }
@@ -150,7 +183,11 @@ void getforce_nb14(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenb14;
   }
 
-  getforce_pair_kernel <Nb14Potential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  if (system->msld->useSoftCore14) {
+    getforce_pair_kernel <Nb14Potential,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  } else {
+    getforce_pair_kernel <Nb14Potential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  }
 }
 
 void getforce_nbex(System *system,bool calcEnergy)
@@ -169,5 +206,6 @@ void getforce_nbex(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenbrecipexcl;
   }
 
-  getforce_pair_kernel <NbExPotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  // Never use soft cores for nbex, they're already soft.
+  getforce_pair_kernel <NbExPotential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
 }

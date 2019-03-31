@@ -10,6 +10,8 @@
 
 
 
+#define PROFILESERIAL
+
 // Class constructors
 Run::Run()
 {
@@ -32,6 +34,7 @@ Run::Run()
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
   gridSpace=1.0*ANGSTROM;
+  orderEwald=6;
 
   cutoffs.betaEwald=betaEwald;
   cutoffs.rCut=rCut;
@@ -164,6 +167,7 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut);
   fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch);
   fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace);
+  fprintf(stdout,"RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwald);
   fprintf(stdout,"RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n",shakeTolerance);
   fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
   fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation);
@@ -210,6 +214,10 @@ void Run::set_variable(char *line,char *token,System *system)
     cutoffs.rSwitch=rSwitch;
   } else if (strcmp(token,"gridspace")==0) {
     gridSpace=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"orderewald")==0) {
+    orderEwald=io_nexti(line);
+    if ((orderEwald/2)*2!=orderEwald) fatal(__FILE__,__LINE__,"orderEwald (%d) must be even\n",orderEwald);
+    if (orderEwald<4 || orderEwald>10) fatal(__FILE__,__LINE__,"orderEwald (%d) must be 4, 6, 8, or 10\n",orderEwald);
   } else if (strcmp(token,"shaketolerance")==0) {
     shakeTolerance=io_nextf(line);
   } else if (strcmp(token,"freqnpt")==0) {

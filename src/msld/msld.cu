@@ -192,8 +192,6 @@ void parse_msld(char *line,System *system)
     }
   } else if (strcmp(token,"softcore14")==0) {
     if ("on"==io_nexts(line)) {
-// NYI
-      fatal(__FILE__,__LINE__,"Oops, not implemented yet\n");
       system->msld->useSoftCore14=true;
     } else {
       system->msld->useSoftCore14=false;

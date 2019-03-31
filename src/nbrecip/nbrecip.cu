@@ -14,6 +14,16 @@
 
 
 
+// Necessary because CUDA can't take modulus correctly reliably
+__device__ static inline
+int rectify_modulus(int a,int b)
+{
+  int c=a%b;
+  c-=(c>=b?b:0);
+  c+=(c<0?b:0);
+  return c;
+}
+
 // getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,p->bondedStream>>>(N,p->charge_d,prefactor,m->atomBlock_d,m->lambda_d,m->lambdaForce_d,pEnergy);
 __global__ void getforce_ewaldself_kernel(int atomCount,real *charge,real prefactor,int *atomBlock,real *lambda,real *lambdaForce,real *energy)
 {
@@ -74,101 +84,116 @@ void getforce_ewaldself(System *system,bool calcEnergy)
 
 
 // getforce_ewald_spread_kernel<<<>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,m->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
+template <int order>
 __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *atomBlock,real3* position,real3 box,real *lambda,int3 gridDimPME,real *chargeGridPME)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real q;
   int b;
   real l=1;
-  int order=4;
   real3 xi; // position
   real u; // fractional coordinate remainder
   int3 u0; // index of grid point
-  real M2,M3,M4; // 2nd and 4th order B splines
+  real Meven,Modd; // even and odd order B splines
   real3 density;
   // real3 dDensity;
   real2 dIndex;
   int j,k;
   int index;
-  int masterThread=threadIdx.x&(-4u);
+  int atomsPerWarp=32/order;
+  int iWarp=threadIdx.x/32;
+  int iThread=rectify_modulus(threadIdx.x,32); // threadIdx.x&31; // within warp
+  int iAtom=(BLNB/32)*atomsPerWarp*blockIdx.x+atomsPerWarp*iWarp+iThread/order;
+  int threadOfAtom=rectify_modulus(iThread,order); // iThread%order;
 
-  if (i/order<atomCount) {
-    q=charge[i/order];
+  if (iAtom<atomCount && iThread<atomsPerWarp*order) {
+    q=charge[iAtom];
 
     // Scaling
-    b=atomBlock[i/order];
+    b=atomBlock[iAtom];
     if (b) {
       l=lambda[b];
     }
     q*=l;
 
-    xi=position[i/order];
+    xi=position[iAtom];
 
     // Get grid position
     u=xi.x*gridDimPME.x/box.x;
     u0.x=(int)floor(u);
     u-=u0.x;
-    // u0.x=(u0.x-3)%gridDimPME.x;
-    u0.x=u0.x%gridDimPME.x;
-    u0.x+=(u0.x<0?gridDimPME.x:0);
-// Required due to modulus error
-    u0.x-=(u0.x>=gridDimPME.x?gridDimPME.x:0);
-    u+=(masterThread+3-threadIdx.x); // very important 
+    u0.x=rectify_modulus(u0.x,gridDimPME.x);
+    u+=(order-1-threadOfAtom); // very important 
+  } else {
+    u=0;
+  }
 
-    M2=((i&3)==3)?u:0;
-    M2=((i&3)==2)?2-u:M2; // Second order B spline
-    M3=u*M2+(3-u)*__shfl_sync(0xFFFFFFFF,M2,i+1,order);
-    M3*=0.5f; // 1/(n-1)
-    M4=u*M3+(4-u)*__shfl_sync(0xFFFFFFFF,M3,i+1,order);
-    M4*=0.333333333333333333f; // 1/(n-1)
-    density.x=M4;
-    // dDensity.x=M3-__shfl_sync(0xFFFFFFFF,M3,i+1,order);
+  Modd=0;
+  Meven=(threadOfAtom==(order-1))?u:0;
+  Meven=(threadOfAtom==(order-2))?2-u:Meven; // Second order B spline
+  for (j=2; j<order; j+=2) {
+    Modd=u*Meven+(j+1-u)*__shfl_sync(0xFFFFFFFF,Meven,iThread+1);
+    Modd*=1.0f/j; // 1/(n-1)
+    Meven=u*Modd+(j+2-u)*__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
+    Meven*=1.0f/(j+1); // 1/(n-1)
+  }
+  density.x=Meven;
+  // dDensity.x=Modd-__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
 
+  if (iAtom<atomCount && iThread<atomsPerWarp*order) {
     u=xi.y*gridDimPME.y/box.y;
     u0.y=(int)floor(u);
     u-=u0.y;
-    // u0.y=(u0.y-3)%gridDimPME.y;
-    u0.y=u0.y%gridDimPME.y;
-    u0.y+=(u0.y<0?gridDimPME.y:0);
-    u0.y-=(u0.y>=gridDimPME.y?gridDimPME.y:0);
-    u+=(masterThread+3-threadIdx.x); // very important 
+    u0.y=rectify_modulus(u0.y,gridDimPME.y);
+    u+=(order-1-threadOfAtom); // very important 
+  } else {
+    u=0;
+  }
 
-    M2=((i&3)==3)?u:0;
-    M2=((i&3)==2)?2-u:M2; // Second order B spline
-    M3=u*M2+(3-u)*__shfl_sync(0xFFFFFFFF,M2,i+1,order);
-    M3*=0.5f; // 1/(n-1)
-    M4=u*M3+(4-u)*__shfl_sync(0xFFFFFFFF,M3,i+1,order);
-    M4*=0.333333333333333333f; // 1/(n-1)
-    density.y=M4;
-    // dDensity.y=M3-__shfl_sync(0xFFFFFFFF,M3,i+1,order);
+  Modd=0;
+  Meven=(threadOfAtom==(order-1))?u:0;
+  Meven=(threadOfAtom==(order-2))?2-u:Meven; // Second order B spline
+  for (j=2; j<order; j+=2) {
+    Modd=u*Meven+(j+1-u)*__shfl_sync(0xFFFFFFFF,Meven,iThread+1);
+    Modd*=1.0f/j; // 1/(n-1)
+    Meven=u*Modd+(j+2-u)*__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
+    Meven*=1.0f/(j+1); // 1/(n-1)
+  }
+  density.y=Meven;
+  // dDensity.y=Modd-__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
 
+  if (iAtom<atomCount && iThread<atomsPerWarp*order) {
     u=xi.z*gridDimPME.z/box.z;
     u0.z=(int)floor(u);
     u-=u0.z;
-    // u0.z=(u0.z-3)%gridDimPME.z;
-    u0.z=u0.z%gridDimPME.z;
-    u0.z+=(u0.z<0?gridDimPME.z:0);
-    u0.z-=(u0.z>=gridDimPME.z?gridDimPME.z:0);
-    u+=(masterThread+3-threadIdx.x); // very important 
+    u0.z=rectify_modulus(u0.z,gridDimPME.z);
+    u+=(order-1-threadOfAtom); // very important 
+  } else {
+    u=0;
+  }
 
-    M2=((i&3)==3)?u:0;
-    M2=((i&3)==2)?2-u:M2; // Second order B spline
-    M3=u*M2+(3-u)*__shfl_sync(0xFFFFFFFF,M2,i+1,order);
-    M3*=0.5f; // 1/(n-1)
-    M4=u*M3+(4-u)*__shfl_sync(0xFFFFFFFF,M3,i+1,order);
-    M4*=0.333333333333333333f; // 1/(n-1)
-    density.z=M4;
-    // dDensity.z=M3-__shfl_sync(0xFFFFFFFF,M3,i+1,order);
+  Modd=0;
+  Meven=(threadOfAtom==(order-1))?u:0;
+  Meven=(threadOfAtom==(order-2))?2-u:Meven; // Second order B spline
+  for (j=2; j<order; j+=2) {
+    Modd=u*Meven+(j+1-u)*__shfl_sync(0xFFFFFFFF,Meven,iThread+1);
+    Modd*=1.0f/j; // 1/(n-1)
+    Meven=u*Modd+(j+2-u)*__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
+    Meven*=1.0f/(j+1); // 1/(n-1)
+  }
+  density.z=Meven;
+  // dDensity.z=Modd-__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
 
-    for (j=0; j<order; j++) {
-      dIndex.x=__shfl_sync(0xFFFFFFFF,density.x,masterThread+j);
-      for (k=0; k<order; k++) {
-        dIndex.y=__shfl_sync(0xFFFFFFFF,density.y,masterThread+k);
-        index=((u0.x+j)%gridDimPME.x);
+  for (j=0; j<order; j++) {
+    dIndex.x=__shfl_sync(0xFFFFFFFF,density.x,iThread-threadOfAtom+j);
+    for (k=0; k<order; k++) {
+      dIndex.y=__shfl_sync(0xFFFFFFFF,density.y,iThread-threadOfAtom+k);
+      if (iAtom<atomCount && iThread<atomsPerWarp*order) {
+        index=rectify_modulus(u0.x+j,gridDimPME.x); // ((u0.x+j)%gridDimPME.x);
         index*=gridDimPME.y;
-        index+=((u0.y+k)%gridDimPME.y);
+        index+=rectify_modulus(u0.y+k,gridDimPME.y); // ((u0.y+k)%gridDimPME.y);
         index*=gridDimPME.z;
-        index+=((u0.z+threadIdx.x-masterThread)%gridDimPME.z);
+        index+=rectify_modulus(u0.z+threadOfAtom,gridDimPME.z); // ((u0.z+threadOfAtom)%gridDimPME.z);
         atomicAdd(&chargeGridPME[index],q*dIndex.x*dIndex.y*density.z);
       }
     }
@@ -208,138 +233,127 @@ __global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,myCufftComplex
   }
 }
 
-/*
-__global__ void getforce_ewald_regularize_kernel(int3 gridDimPME,myCufftComplex *fourierGridPME)
-{
-  int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int j=blockIdx.y*blockDim.y+threadIdx.y;
-  int k=(gridDimPME.z/2)*threadIdx.z;
-  int nmi,nmj;
-  myCufftComplex mean;
-
-  nmi=gridDimPME.x-i;
-  nmi-=(nmi>=gridDimPME.x?gridDimPME.x:0); // modulus
-  nmj=gridDimPME.y-j;
-  nmj-=(nmj>=gridDimPME.y?gridDimPME.y:0); // modulus
-  if (i<gridDimPME.x && j<(gridDimPME.x/2+1)) {
-    mean.x=fourierGridPME[(i*gridDimPME.y+j)*(gridDimPME.z/2+1)+k].x;
-    mean.y=fourierGridPME[(i*gridDimPME.y+j)*(gridDimPME.z/2+1)+k].y;
-    mean.x+=fourierGridPME[(nmi*gridDimPME.y+nmj)*(gridDimPME.z/2+1)+k].x;
-    mean.y-=fourierGridPME[(nmi*gridDimPME.y+nmj)*(gridDimPME.z/2+1)+k].y;
-    mean.x*=0.5f;
-    mean.y*=0.5f;
-    fourierGridPME[(i*gridDimPME.y+j)*(gridDimPME.z/2+1)+k].x=mean.x;
-    fourierGridPME[(i*gridDimPME.y+j)*(gridDimPME.z/2+1)+k].y=mean.y;
-    fourierGridPME[(nmi*gridDimPME.y+nmj)*(gridDimPME.z/2+1)+k].x=mean.x;
-    fourierGridPME[(nmi*gridDimPME.y+nmj)*(gridDimPME.z/2+1)+k].y=-mean.y;
-  }
-}
-*/
-
 // getforce_ewald_gather_kernel<<<>>>(N,p->charge_d,prefactor,m->atomBlock_d,((int3*)p->gridDimPME)[0],p->potentialGridPME_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
+template <int order>
 __global__ void getforce_ewald_gather_kernel(int atomCount,real *charge,int *atomBlock,int3 gridDimPME,real *potentialGridPME,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real q;
   int b;
   real l=1;
-  int order=4;
   real3 xi; // position
   real3 fi;
   real u; // fractional coordinate remainder
   int3 u0; // index of grid point
-  real M2,M3,M4; // 2nd and 4th order B splines
+  real Meven,Modd; // even and odd order B splines
   real3 density;
   real3 dDensity;
   real2 dIndex, dDIndex;
   int j,k;
   int index;
-  int masterThread=threadIdx.x&(-4u);
+  int atomsPerWarp=32/order;
+  int iWarp=threadIdx.x/32;
+  int iThread=rectify_modulus(threadIdx.x,32); // threadIdx.x&31; // within warp
+  int iAtom=(BLNB/32)*atomsPerWarp*blockIdx.x+atomsPerWarp*iWarp+iThread/order;
+  int threadOfAtom=rectify_modulus(iThread,order); // iThread%order;
+  real passValue;
   real lEnergy=0;
   extern __shared__ real sEnergy[];
 
-  if (i/order<atomCount) {
-    q=charge[i/order];
+  if (iAtom<atomCount && iThread<atomsPerWarp*order) {
+    q=charge[iAtom];
 
     // Scaling
-    b=atomBlock[i/order];
+    b=atomBlock[iAtom];
     if (b) {
       l=lambda[b];
     }
     // q*=l; // do this scaling later in the kernel
 
-    xi=position[i/order];
+    xi=position[iAtom];
 
     // Get grid position
     u=xi.x*gridDimPME.x/box.x;
     u0.x=(int)floor(u);
     u-=u0.x;
-    // u0.x=(u0.x-3)%gridDimPME.x;
-    u0.x=u0.x%gridDimPME.x;
-    u0.x+=(u0.x<0?gridDimPME.x:0);
-    u0.x-=(u0.x>=gridDimPME.x?gridDimPME.x:0);
-    u+=(masterThread+3-threadIdx.x); // very important 
+    u0.x=rectify_modulus(u0.x,gridDimPME.x);
+    u+=(order-1-threadOfAtom); // very important 
+  } else {
+    u=0;
+  }
 
-    M2=((i&3)==3)?u:0;
-    M2=((i&3)==2)?2-u:M2; // Second order B spline
-    M3=u*M2+(3-u)*__shfl_sync(0xFFFFFFFF,M2,i+1,order);
-    M3*=0.5f; // 1/(n-1)
-    M4=u*M3+(4-u)*__shfl_sync(0xFFFFFFFF,M3,i+1,order);
-    M4*=0.333333333333333333f; // 1/(n-1)
-    density.x=M4;
-    dDensity.x=M3-__shfl_sync(0xFFFFFFFF,M3,i+1,order);
+  Modd=0;
+  Meven=(threadOfAtom==(order-1))?u:0;
+  Meven=(threadOfAtom==(order-2))?2-u:Meven; // Second order B spline
+  for (j=2; j<order; j+=2) {
+    Modd=u*Meven+(j+1-u)*__shfl_sync(0xFFFFFFFF,Meven,iThread+1);
+    Modd*=1.0f/j; // 1/(n-1)
+    Meven=u*Modd+(j+2-u)*__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
+    Meven*=1.0f/(j+1); // 1/(n-1)
+  }
+  density.x=Meven;
+  dDensity.x=Modd-__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
 
+  if (iAtom<atomCount && iThread<atomsPerWarp*order) {
     u=xi.y*gridDimPME.y/box.y;
     u0.y=(int)floor(u);
     u-=u0.y;
-    // u0.y=(u0.y-3)%gridDimPME.y;
-    u0.y=u0.y%gridDimPME.y;
-    u0.y+=(u0.y<0?gridDimPME.y:0);
-    u0.y-=(u0.y>=gridDimPME.y?gridDimPME.y:0);
-    u+=(masterThread+3-threadIdx.x); // very important 
+    u0.y=rectify_modulus(u0.y,gridDimPME.y);
+    u+=(order-1-threadOfAtom); // very important 
+  } else {
+    u=0;
+  }
 
-    M2=((i&3)==3)?u:0;
-    M2=((i&3)==2)?2-u:M2; // Second order B spline
-    M3=u*M2+(3-u)*__shfl_sync(0xFFFFFFFF,M2,i+1,order);
-    M3*=0.5f; // 1/(n-1)
-    M4=u*M3+(4-u)*__shfl_sync(0xFFFFFFFF,M3,i+1,order);
-    M4*=0.333333333333333333f; // 1/(n-1)
-    density.y=M4;
-    dDensity.y=M3-__shfl_sync(0xFFFFFFFF,M3,i+1,order);
+  Modd=0;
+  Meven=(threadOfAtom==(order-1))?u:0;
+  Meven=(threadOfAtom==(order-2))?2-u:Meven; // Second order B spline
+  for (j=2; j<order; j+=2) {
+    Modd=u*Meven+(j+1-u)*__shfl_sync(0xFFFFFFFF,Meven,iThread+1);
+    Modd*=1.0f/j; // 1/(n-1)
+    Meven=u*Modd+(j+2-u)*__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
+    Meven*=1.0f/(j+1); // 1/(n-1)
+  }
+  density.y=Meven;
+  dDensity.y=Modd-__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
 
+  if (iAtom<atomCount && iThread<atomsPerWarp*order) {
     u=xi.z*gridDimPME.z/box.z;
     u0.z=(int)floor(u);
     u-=u0.z;
-    // u0.z=(u0.z-3)%gridDimPME.z;
-    u0.z=u0.z%gridDimPME.z;
-    u0.z+=(u0.z<0?gridDimPME.z:0);
-    u0.z-=(u0.z>=gridDimPME.z?gridDimPME.z:0);
-    u+=(masterThread+3-threadIdx.x); // very important 
+    u0.z=rectify_modulus(u0.z,gridDimPME.z);
+    u+=(order-1-threadOfAtom); // very important 
+  } else {
+    u=0;
+  }
 
-    M2=((i&3)==3)?u:0;
-    M2=((i&3)==2)?2-u:M2; // Second order B spline
-    M3=u*M2+(3-u)*__shfl_sync(0xFFFFFFFF,M2,i+1,order);
-    M3*=0.5f; // 1/(n-1)
-    M4=u*M3+(4-u)*__shfl_sync(0xFFFFFFFF,M3,i+1,order);
-    M4*=0.333333333333333333f; // 1/(n-1)
-    density.z=M4;
-    dDensity.z=M3-__shfl_sync(0xFFFFFFFF,M3,i+1,order);
+  Modd=0;
+  Meven=(threadOfAtom==(order-1))?u:0;
+  Meven=(threadOfAtom==(order-2))?2-u:Meven; // Second order B spline
+  for (j=2; j<order; j+=2) {
+    Modd=u*Meven+(j+1-u)*__shfl_sync(0xFFFFFFFF,Meven,iThread+1);
+    Modd*=1.0f/j; // 1/(n-1)
+    Meven=u*Modd+(j+2-u)*__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
+    Meven*=1.0f/(j+1); // 1/(n-1)
+  }
+  density.z=Meven;
+  dDensity.z=Modd-__shfl_sync(0xFFFFFFFF,Modd,iThread+1);
 
-    // Everything is the same as the spread kernel up to this point
-    fi.x=0;
-    fi.y=0;
-    fi.z=0;
-    for (j=0; j<order; j++) {
-      dIndex.x=__shfl_sync(0xFFFFFFFF,density.x,masterThread+j);
-      dDIndex.x=__shfl_sync(0xFFFFFFFF,dDensity.x,masterThread+j);
-      for (k=0; k<order; k++) {
-        dIndex.y=__shfl_sync(0xFFFFFFFF,density.y,masterThread+k);
-        dDIndex.y=__shfl_sync(0xFFFFFFFF,dDensity.y,masterThread+k);
-        index=((u0.x+j)%gridDimPME.x);
+  // Everything is the same as the spread kernel up to this point
+  fi.x=0;
+  fi.y=0;
+  fi.z=0;
+  for (j=0; j<order; j++) {
+    dIndex.x=__shfl_sync(0xFFFFFFFF,density.x,iThread-threadOfAtom+j);
+    dDIndex.x=__shfl_sync(0xFFFFFFFF,dDensity.x,iThread-threadOfAtom+j);
+    for (k=0; k<order; k++) {
+      dIndex.y=__shfl_sync(0xFFFFFFFF,density.y,iThread-threadOfAtom+k);
+      dDIndex.y=__shfl_sync(0xFFFFFFFF,dDensity.y,iThread-threadOfAtom+k);
+      if (iAtom<atomCount && iThread<atomsPerWarp*order) {
+        index=rectify_modulus(u0.x+j,gridDimPME.x); // ((u0.x+j)%gridDimPME.x);
         index*=gridDimPME.y;
-        index+=((u0.y+k)%gridDimPME.y);
+        index+=rectify_modulus(u0.y+k,gridDimPME.y); // ((u0.y+k)%gridDimPME.y);
         index*=gridDimPME.z;
-        index+=((u0.z+threadIdx.x-masterThread)%gridDimPME.z);
+        index+=rectify_modulus(u0.z+threadOfAtom,gridDimPME.z); // ((u0.z+threadOfAtom)%gridDimPME.z);
         fi.x+=potentialGridPME[index]*dDIndex.x*dIndex.y*density.z;
         fi.y+=potentialGridPME[index]*dIndex.x*dDIndex.y*density.z;
         fi.z+=potentialGridPME[index]*dIndex.x*dIndex.y*dDensity.z;
@@ -348,25 +362,41 @@ __global__ void getforce_ewald_gather_kernel(int atomCount,real *charge,int *ato
         }
       }
     }
+  }
 
-    // Lambda force
-    if (b) {
-#warning "4 threads trying together"
+  // Reductions
+#warning "Lost 40% performance due to this reduction in this kernel."
+  for (j=1; j<order; j*=2) {
+    passValue=((threadOfAtom>=j)?fi.x:0);
+    fi.x+=__shfl_sync(0xFFFFFFFF,passValue,iThread+j); // plain __shfl_down_sync will cause error for order=10
+    passValue=((threadOfAtom>=j)?fi.y:0);
+    fi.y+=__shfl_sync(0xFFFFFFFF,passValue,iThread+j);
+    passValue=((threadOfAtom>=j)?fi.z:0);
+    fi.z+=__shfl_sync(0xFFFFFFFF,passValue,iThread+j);
+    passValue=((threadOfAtom>=j)?lEnergy:0);
+    lEnergy+=__shfl_sync(0xFFFFFFFF,passValue,iThread+j);
+  }
+  if (threadOfAtom!=0 || iThread>=atomsPerWarp*order) {
+    fi.x=0;
+    fi.y=0;
+    fi.z=0;
+    lEnergy=0;
+  }
+
+  // Lambda force
+  if (iAtom<atomCount && iThread<atomsPerWarp*order) {
+    if (b && threadOfAtom==0) {
       atomicAdd(&lambdaForce[b],q*lEnergy);
     }
+  }
 
-    // Spatial force
+  // Spatial force
+  if (iAtom<atomCount && iThread<atomsPerWarp*order) {
     fi.x*=l*q*gridDimPME.x/box.x;
     fi.y*=l*q*gridDimPME.y/box.y;
     fi.z*=l*q*gridDimPME.z/box.z;
-    fi.x+=__shfl_down_sync(0xFFFFFFFF,fi.x,1);
-    fi.x+=__shfl_down_sync(0xFFFFFFFF,fi.x,2);
-    fi.y+=__shfl_down_sync(0xFFFFFFFF,fi.y,1);
-    fi.y+=__shfl_down_sync(0xFFFFFFFF,fi.y,2);
-    fi.z+=__shfl_down_sync(0xFFFFFFFF,fi.z,1);
-    fi.z+=__shfl_down_sync(0xFFFFFFFF,fi.z,2);
-    if ((i&3)==0) {
-      at_real3_inc(&force[i/order], fi);
+    if (threadOfAtom==0) {
+      at_real3_inc(&force[iAtom], fi);
     }
   }
 
@@ -376,9 +406,6 @@ __global__ void getforce_ewald_gather_kernel(int atomCount,real *charge,int *ato
     real_sum_reduce(lEnergy,sEnergy,energy);
   }
 }
-// NYI - not sure if I need this comment for a template
-// getforce_angle_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->angles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
-// __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angles,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 
 void getforce_ewald(System *system,bool calcEnergy)
 {
@@ -397,8 +424,22 @@ void getforce_ewald(System *system,bool calcEnergy)
 
   cudaMemsetAsync(p->chargeGridPME_d,0,p->gridDimPME[0]*p->gridDimPME[1]*p->gridDimPME[2]*sizeof(myCufftReal),r->nbrecipStream);
 
+  // Setup for spread and gather
+  int order=r->orderEwald;
+  int atomsPerWarp=32/order;
+  int spreadGatherBlocks=((N+atomsPerWarp-1)/atomsPerWarp + BLNB/32 - 1)/(BLNB/32);
+
   // Spread kernel
-  getforce_ewald_spread_kernel<<<(4*N+BLNB-1)/BLNB,BLNB,0,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,s->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
+  // getforce_ewald_spread_kernel<<<(4*N+BLNB-1)/BLNB,BLNB,0,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,s->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
+  if (order==4) {
+    getforce_ewald_spread_kernel<4><<<spreadGatherBlocks,BLNB,0,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,s->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
+  } else if (order==6) {
+    getforce_ewald_spread_kernel<6><<<spreadGatherBlocks,BLNB,0,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,s->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
+  } else if (order==8) {
+    getforce_ewald_spread_kernel<8><<<spreadGatherBlocks,BLNB,0,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,s->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
+  } else if (order==10) {
+    getforce_ewald_spread_kernel<10><<<spreadGatherBlocks,BLNB,0,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,s->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
+  }
 
   myCufftExecR2C(p->planFFTPME,p->chargeGridPME_d,p->fourierGridPME_d);
 
@@ -415,5 +456,14 @@ void getforce_ewald(System *system,bool calcEnergy)
   myCufftExecC2R(p->planIFFTPME,p->fourierGridPME_d,p->potentialGridPME_d);
 
   // Gather kernel
-  getforce_ewald_gather_kernel<<<(4*N+BLNB-1)/BLNB,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,((int3*)p->gridDimPME)[0],p->potentialGridPME_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  // getforce_ewald_gather_kernel<<<(4*N+BLNB-1)/BLNB,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,((int3*)p->gridDimPME)[0],p->potentialGridPME_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  if (order==4) {
+    getforce_ewald_gather_kernel<4><<<spreadGatherBlocks,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,((int3*)p->gridDimPME)[0],p->potentialGridPME_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  } else if (order==6) {
+    getforce_ewald_gather_kernel<6><<<spreadGatherBlocks,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,((int3*)p->gridDimPME)[0],p->potentialGridPME_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  } else if (order==8) {
+    getforce_ewald_gather_kernel<8><<<spreadGatherBlocks,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,((int3*)p->gridDimPME)[0],p->potentialGridPME_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  } else if (order==10) {
+    getforce_ewald_gather_kernel<10><<<spreadGatherBlocks,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,((int3*)p->gridDimPME)[0],p->potentialGridPME_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  }
 }
