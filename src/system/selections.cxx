@@ -8,6 +8,7 @@
 #include "main/defines.h"
 #include "io/io.h"
 #include "system/system.h"
+#include "io/variables.h"
 #include "system/selections.h"
 #include "system/structure.h"
 
@@ -28,12 +29,37 @@ void Selections::insert(char *line,char *token,Structure *structure)
   name=token;
   if (selectionMap.size()>=limit) {
     fatal(__FILE__,__LINE__,"Cannot define new selection because limit is exceeded. Use selection limit [int] to raise limit or selection delete [name] to delete selections\n");
-  } else if (selectionMap.count(name)==1) {
-    fatal(__FILE__,__LINE__,"Cannot define selection with name %s, one already exists. Use selection delete [name] to remove it.\n",token);
+  // } else if (selectionMap.count(name)==1) {
+  //   fatal(__FILE__,__LINE__,"Cannot define selection with name %s, one already exists. Use selection delete [name] to remove it.\n",token);
   } else {
     fprintf(stdout,"SELECTION> add %s to selections after parsing %s\n",name.c_str(),line);
     selectionMap[name]=parse_selection_string(line,structure);
   }
+}
+
+void Selections::count(char *line,char *token,System *system)
+{
+  Selection s1;
+  std::string name,key;
+  char value[MAXLENGTHSTRING];
+  int i,N;
+
+  name=token;
+  if (selectionMap.count(name)==1) {
+    s1=selectionMap[name];
+    N=0;
+    for (i=0; i<s1.boolCount; i++) {
+      if (s1.boolSelection[i]) {
+        N++;
+      }
+    }
+  } else {
+    fatal(__FILE__,__LINE__,"Selection %d does not exist\n",token);
+  }
+
+  key=io_nexts(line);
+  sprintf(value,"%d",N);
+  system->variables->data[key]=value;
 }
 
 Selection Selections::parse_selection_string(char *line,Structure *structure)
@@ -103,6 +129,13 @@ Selection Selections::parse_selection_string(char *line,Structure *structure)
     for (i=0; i<N; i++) {
       s1.boolSelection[i]=(structure->atomList[i].resIdx==resid);
     }
+  } else if (strcmp(token,"residrange")==0) {
+    int resid1=io_nexti(line);
+    int resid2=io_nexti(line);
+    for (i=0; i<N; i++) {
+      int resid=structure->atomList[i].resIdx;
+      s1.boolSelection[i]=(resid>=resid1 && resid<=resid2);
+    }
   } else if (strcmp(token,"resname")==0) {
     std::string resname=io_nexts(line);
     for (i=0; i<N; i++) {
@@ -122,7 +155,7 @@ Selection Selections::parse_selection_string(char *line,Structure *structure)
     for (i=0; i<N; i++) {
       s1.boolSelection[i]=(atomnames.count(structure->atomList[i].atomName));
     }
-  } else if (strcmp(token,"atomname")==0) {
+  } else if (strcmp(token,"atom")==0) {
     std::string segid=io_nexts(line);
     int resid=io_nexti(line);
     std::string atomname=io_nexts(line);
@@ -191,6 +224,9 @@ void parse_selection(char *line,System *system)
   } else if (strcmp(token,"define")==0) {
     io_nexta(line,token);
     system->selections->insert(line,token,system->structure);
+  } else if (strcmp(token,"count")==0) {
+    io_nexta(line,token);
+    system->selections->count(line,token,system);
   } else if (strcmp(token,"limit")==0) {
     system->selections->limit=io_nexti(line);
     fprintf(stdout,"New selection limit set to %d (be careful, selections can take up a lot of memory. Use selection delete [name] when done with a selection.)\n",system->selections->limit);

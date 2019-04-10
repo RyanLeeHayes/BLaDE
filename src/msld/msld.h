@@ -54,6 +54,11 @@ class Msld {
   bool useSoftCore;
   bool useSoftCore14;
 
+  real kRestraint;
+  real softBondRadius;
+  real softBondExponent;
+  real softNotBondExponent;
+
   Msld();
   ~Msld();
 

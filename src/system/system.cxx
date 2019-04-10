@@ -3,6 +3,8 @@
 
 #include "system/system.h"
 #include "io/io.h"
+#include "io/variables.h"
+#include "io/control.h"
 #include "system/parameters.h"
 #include "system/structure.h"
 #include "system/selections.h"
@@ -19,6 +21,7 @@
 
 // Class constructors
 System::System() {
+  variables=new Variables;
   parameters=NULL;
   structure=NULL;
   selections=NULL;
@@ -34,6 +37,7 @@ System::System() {
 }
 
 System::~System() {
+  if (variables) delete(variables);
   if (parameters) delete(parameters);
   if (structure) delete(structure);
   if (selections) delete(selections);
@@ -50,19 +54,19 @@ System::~System() {
 
 
 // Parsing functions
-void System::parse_system(char *line,char *token,System *system,Control *control)
+void System::parse_system(char *line,char *token,System *system)
 {
   std::string name;
 
   // System already exists.
 
   name=token;
-  if (system->parseSystem.count(name)==0) system->error(line,token,system,control);
+  if (system->parseSystem.count(name)==0) system->error(line,token,system);
   // So much for function pointers being elegant.
   // call the function pointed to by: system->parseSystem[name]
   // within the object: system
-  // with arguments: (line,token,system,control)
-  (system->*(system->parseSystem[name]))(line,token,system,control);
+  // with arguments: (line,token,system)
+  (system->*(system->parseSystem[name]))(line,token,system);
 }
 
 void System::setup_parse_system()
@@ -87,66 +91,108 @@ void System::setup_parse_system()
   helpSystem["stream"]="?stream [filename]> Read commands from filename until they are finished, and then return to this point in this script.\n";
   parseSystem["arrest"]=&System::parse_system_arrest;
   helpSystem["arrest"]="?arrest [int]> Hang the process for int seconds so a debugger like gdb can be attached. Defaults to 30 seconds if no argument is given. For code development only\n";
-  parseSystem["set"]=&System::parse_system_set;
-  helpSystem["set"]="?set [token] [value]> Set token to value, for later use in parsing commands. Access the value by surrounding the token name in {}. For example:\nset token1 help set\n{token1}\nwill print this help message.\n";
+  parseSystem["variables"]=&System::parse_system_variables;
+  helpSystem["variables"]="?variables> Used for storing tokens and their values, for later use in parsing commands. Access the value by surrounding the token name in {}. For example:\nvariables set token1 help variables\n{token1}\nwill print this help message.\n";
+  parseSystem["if"]=&System::parse_system_if;
+  helpSystem["if"]="?if [conditional]\nelseif [conditional]\nelse\nendif> Used for conditional execution in script\n";
+  parseSystem["elseif"]=&System::parse_system_elseif;
+  helpSystem["elseif"]="?if [conditional]\nelseif [conditional]\nelse\nendif> Used for conditional execution in script\n";
+  parseSystem["else"]=&System::parse_system_else;
+  helpSystem["else"]="?if [conditional]\nelse\nendif> Used for conditional execution in script\n";
+  parseSystem["endif"]=&System::parse_system_endif;
+  helpSystem["endif"]="?if [conditional]\nelseif [conditional]\nelse\nendif> Used for conditional execution in script\n";
+  parseSystem["while"]=&System::parse_system_while;
+  helpSystem["while"]="?while [conditional]\nendwhile> Used for loops within script. To use a for loop, place initialization before while and increment operation before endwhile.\n";
+  parseSystem["endwhile"]=&System::parse_system_endwhile;
+  helpSystem["endwhile"]="?while [conditional]\nendwhile> Used for loops within script. To use a for loop, place initialization before while and increment operation before endwhile.\n";
 }
 
 // MOVE
-void System::pass(char *line,char *token,System *system,Control *control)
+void System::pass(char *line,char *token,System *system)
 {
   ;
 }
 
-void System::parse_system_parameters(char *line,char *token,System *system,Control *control)
+void System::parse_system_parameters(char *line,char *token,System *system)
 {
   parse_parameters(line,system);
 }
 
-void System::parse_system_structure(char *line,char *token,System *system,Control *control)
+void System::parse_system_structure(char *line,char *token,System *system)
 {
   parse_structure(line,system);
 }
 
-void System::parse_system_selection(char *line,char *token,System *system,Control *control)
+void System::parse_system_selection(char *line,char *token,System *system)
 {
   parse_selection(line,system);
 }
 
-void System::parse_system_msld(char *line,char *token,System *system,Control *control)
+void System::parse_system_msld(char *line,char *token,System *system)
 {
   parse_msld(line,system);
 }
 
-void System::parse_system_coordinates(char *line,char *token,System *system,Control *control)
+void System::parse_system_coordinates(char *line,char *token,System *system)
 {
   parse_coordinates(line,system);
 }
 
-void System::parse_system_run(char *line,char *token,System *system,Control *control)
+void System::parse_system_run(char *line,char *token,System *system)
 {
   parse_run(line,system);
 }
 
-void System::parse_system_stream(char *line,char *token,System *system,Control *control)
+void System::parse_system_stream(char *line,char *token,System *system)
 {
   io_nexta(line,token);
-  interpretter(token,system,control->level+1);
+  interpretter(token,system);
 }
 
-void System::parse_system_arrest(char *line,char *token,System *system,Control *control)
+void System::parse_system_arrest(char *line,char *token,System *system)
 {
   arrested_development(system,io_nexti(line,30));
 }
 
-void System::parse_system_set(char *line,char *token,System *system,Control *control)
+void System::parse_system_variables(char *line,char *token,System *system)
 {
-  fatal(__FILE__,__LINE__,"set is not yet implemented\n"); // NYI
+  parse_variables(line,system);
+}
+
+void System::parse_system_if(char *line,char *token,System *system)
+{
+  parse_if(line,system);
+}
+
+void System::parse_system_elseif(char *line,char *token,System *system)
+{
+  parse_elseif(line,system);
+}
+
+void System::parse_system_else(char *line,char *token,System *system)
+{
+  parse_else(line,system);
+}
+
+void System::parse_system_endif(char *line,char *token,System *system)
+{
+  parse_endif(line,system);
+}
+
+void System::parse_system_while(char *line,char *token,System *system)
+{
+  parse_while(line,system);
+}
+
+void System::parse_system_endwhile(char *line,char *token,System *system)
+{
+  parse_endwhile(line,system);
 }
 
 // NYI also define, if, for, {} parsing, etc...
 // MOVE
 
-void System::help(char *line,char *token,System *system,Control *control)
+void System::help(char *line,char *token,System *system)
 {
   std::string name=io_nexts(line);
   if (name=="") {
@@ -158,11 +204,11 @@ void System::help(char *line,char *token,System *system,Control *control)
   } else if (helpSystem.count(token)==1) {
     fprintf(stdout,helpSystem[name].c_str());
   } else {
-    error(line,token,system,control);
+    error(line,token,system);
   }
 }
 
-void System::error(char *line,char *token,System *system,Control *control)
+void System::error(char *line,char *token,System *system)
 {
   fatal(__FILE__,__LINE__,"Unrecognized token: %s\n",token);
 }

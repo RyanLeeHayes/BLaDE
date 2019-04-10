@@ -18,16 +18,14 @@ struct Frame {
 
 class Control {
   public:
-  int level;
-  int controlLevel;
-  std::map<std::string,fpos_t> functions;
+  FILE *fp;
+  fpos_t fp_pos;
+  // std::map<std::string,fpos_t> functions;
   std::vector<struct Frame> backtrace;
 
   Control()
   {
-    level=0;
-    controlLevel=0;
-    functions.clear();
+    // functions.clear();
     backtrace.clear();
   }
 
@@ -41,6 +39,7 @@ void fatal(const char* fnm,int i,const char* format, ...);
 void arrested_development(System *system,int howLong);
 FILE* fpopen(const char* fnm,const char* type);
 
+void io_shift(char *line,int i);
 void io_nexta(char *line,char *token);
 std::string io_peeks(char *line);
 std::string io_nexts(char *line);
@@ -53,7 +52,7 @@ real io_nextf(char *line,FILE *fp,const char *tag);
 
 void io_strncpy(char *targ,char *dest,int n);
 
-void interpretter(const char *fnm,System *system,int level);
+void interpretter(const char *fnm,System *system);
 
 void print_dynamics_output(int step,System *system);
 

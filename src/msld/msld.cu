@@ -50,6 +50,11 @@ Msld::Msld() {
 
   useSoftCore=false;
   useSoftCore14=false;
+
+  kRestraint=59.2*KCAL_MOL/(ANGSTROM*ANGSTROM);
+  softBondRadius=1.0*ANGSTROM;
+  softBondExponent=2.0;
+  softNotBondExponent=1.0;
 }
 
 Msld::~Msld() {
@@ -195,6 +200,36 @@ void parse_msld(char *line,System *system)
       system->msld->useSoftCore14=true;
     } else {
       system->msld->useSoftCore14=false;
+    }
+  } else if (strcmp(token,"parameter")==0) {
+    std::string parameterToken=io_nexts(line);
+    if (parameterToken=="krestraint") {
+      system->msld->kRestraint=io_nextf(line)*KCAL_MOL/(ANGSTROM*ANGSTROM);
+    } else if (parameterToken=="softbondradius") {
+      system->msld->softBondRadius=io_nextf(line)*ANGSTROM;
+    } else if (parameterToken=="softbondexponent") {
+      system->msld->softBondExponent=io_nextf(line);
+    } else if (parameterToken=="softnotbondexponent") {
+      system->msld->softNotBondExponent=io_nextf(line);
+    } else {
+      fatal(__FILE__,__LINE__,"Unrecognized parameter name %s for msld parameter\n",parameterToken.c_str());
+    }
+  } else if (strcmp(token,"restrain")==0) {
+    std::string name=io_nexts(line);
+    int i;
+    if (name=="reset") {
+      system->msld->atomRestraints.clear();
+    } else if (system->selections->selectionMap.count(name)==1) {
+      std::vector<int> atoms;
+      atoms.clear();
+      for (i=0; i<system->selections->selectionMap[name].boolCount; i++) {
+        if (system->selections->selectionMap[name].boolSelection[i]) {
+          atoms.emplace_back(i);
+        }
+      }
+      system->msld->atomRestraints.emplace_back(atoms);
+    } else {
+      fatal(__FILE__,__LINE__,"Selection %s not found for msld atom restraints\n");
     }
 // NYI - restorescaling option to complement remove scaling
   } else if (strcmp(token,"softbond")==0) {
@@ -384,6 +419,16 @@ void Msld::initialize(System *system)
   cudaMemcpy(blocksPerSite_d,blocksPerSite,siteCount*sizeof(int),cudaMemcpyHostToDevice);
   cudaMemcpy(siteBound_d,siteBound,(siteCount+1)*sizeof(int),cudaMemcpyHostToDevice);
   cudaMemcpy(lambdaSite_d,lambdaSite,blockCount*sizeof(int),cudaMemcpyHostToDevice);
+
+  // Soft bonds
+  if (softBonds.size()>0) {
+    fatal(__FILE__,__LINE__,"Soft bonds NYI\n");
+  }
+
+  // Atom restraints
+  if (atomRestraints.size()>0) {
+    fatal(__FILE__,__LINE__,"Atom restraints NYI\n");
+  }
 }
 
 __global__ void calc_lambda_from_theta_kernel(real *lambda,real *theta,int siteCount,int *siteBound,real fnex)

@@ -5,6 +5,7 @@
 #include <map>
 
 // Forward declarations
+class System;
 class Structure;
 
 class Selection {
@@ -77,6 +78,7 @@ class Selections {
   }
 
   void insert(char *line,char *token,Structure *structure);
+  void count(char *line,char *token,System *system);
   void erase(const char *token);
   Selection parse_selection_string(char *line,Structure *structure);
   void dump();

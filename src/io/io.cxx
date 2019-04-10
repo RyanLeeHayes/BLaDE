@@ -12,6 +12,7 @@
 
 // parse_whatever
 #include "io/io.h"
+#include "io/variables.h"
 #include "system/parameters.h"
 #include "system/structure.h"
 #include "system/selections.h"
@@ -67,7 +68,11 @@ FILE* fpopen(const char* fnm,const char* type)
 // for positive i, deletes i characters from beginning of line
 void io_shift(char *line,int i)
 {
-  memmove(line,line+i,strlen(line+i)+1);
+  if (i>0) {
+    memmove(line,line+i,strlen(line+i)+1);
+  } else {
+    memmove(line-i,line,strlen(line)+1);
+  }
 }
 
 // Read the next string in the line to token, and shift line to after string
@@ -214,28 +219,30 @@ void io_strncpy(char *targ,char *dest,int n)
   targ[n]='\0';
 }
 
-void interpretter(const char *fnm,System *system,int level)
+void interpretter(const char *fnm,System *system)
 {
   FILE *fp;
-  fpos_t fp_pos;
   char line[MAXLENGTHSTRING];
   char token[MAXLENGTHSTRING];
-  Control control;
-  control.level=level;
+  system->control.emplace_back(Control());
+  int level=system->control.size();
 
   fp=fpopen(fnm,"r");
+  system->control[level-1].fp=fp;
 
-  fgetpos(fp,&fp_pos);
+  fgetpos(fp,&system->control[level-1].fp_pos);
   // fsetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     fprintf(stdout,"IN%d> %s",level,line);
+    system->variables->substitute(line);
     io_nexta(line,token);
-    system->parse_system(line,token,system,&control);
-    fgetpos(fp,&fp_pos);
+    system->parse_system(line,token,system);
+    fgetpos(fp,&system->control[level-1].fp_pos);
     // fsetpos(fp,&fp_pos);
   }
 
   fclose(fp);
+  system->control.pop_back();
 }
 
 void print_xtc(int step,System *system)

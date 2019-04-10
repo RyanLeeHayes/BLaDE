@@ -5,11 +5,13 @@
 
 #include <string>
 #include <map>
+#include <vector>
 
 
 
 // Forward declarations - not allowed when calling delete on objects
 class Control; // io/io.h
+class Variables;
 class Parameters;
 class Structure;
 class Selections;
@@ -26,6 +28,8 @@ class System {
   public:
   int id,idCount;
 // Have command parsing
+  std::vector<Control> control;
+  Variables *variables;
   Parameters *parameters;
   Structure *structure;
   Selections *selections;
@@ -39,28 +43,35 @@ class System {
   Potential *potential;
   Domdec *domdec;
 
-  std::map<std::string,void (System::*)(char*,char*,System*,Control*)> parseSystem;
+  std::map<std::string,void (System::*)(char*,char*,System*)> parseSystem;
   std::map<std::string,std::string> helpSystem;
 
   System();
   ~System();
 
   void setup_parse_system();
-  void parse_system(char *line,char *token,System *system,Control *control);
+  void parse_system(char *line,char *token,System *system);
 
-  void help(char *line,char *token,System *system,Control *control);
-  void error(char *line,char *token,System *system,Control *control);
+  void help(char *line,char *token,System *system);
+  void error(char *line,char *token,System *system);
 
-  void pass(char *line,char *token,System *system,Control *control);
-  void parse_system_parameters(char *line,char *token,System *system,Control *control);
-  void parse_system_structure(char *line,char *token,System *system,Control *control);
-  void parse_system_selection(char *line,char *token,System *system,Control *control);
-  void parse_system_msld(char *line,char *token,System *system,Control *control);
-  void parse_system_coordinates(char *line,char *token,System *system,Control *control);
-  void parse_system_run(char *line,char *token,System *system,Control *control);
-  void parse_system_stream(char *line,char *token,System *system,Control *control);
-  void parse_system_arrest(char *line,char *token,System *system,Control *control);
-  void parse_system_set(char *line,char *token,System *system,Control *control);
+  void pass(char *line,char *token,System *system);
+  void parse_system_parameters(char *line,char *token,System *system);
+  void parse_system_structure(char *line,char *token,System *system);
+  void parse_system_selection(char *line,char *token,System *system);
+  void parse_system_msld(char *line,char *token,System *system);
+  void parse_system_coordinates(char *line,char *token,System *system);
+  void parse_system_run(char *line,char *token,System *system);
+  void parse_system_stream(char *line,char *token,System *system);
+  void parse_system_arrest(char *line,char *token,System *system);
+  void parse_system_variables(char *line,char *token,System *system);
+
+  void parse_system_if(char *line,char *token,System *system);
+  void parse_system_elseif(char *line,char *token,System *system);
+  void parse_system_else(char *line,char *token,System *system);
+  void parse_system_endif(char *line,char *token,System *system);
+  void parse_system_while(char *line,char *token,System *system);
+  void parse_system_endwhile(char *line,char *token,System *system);
 };
 
 #endif

@@ -48,5 +48,29 @@ https://pubs.acs.org/doi/suppl/10.1021/jp411770f/suppl_file/jp411770f_si_001.pdf
 Potential integrator with better thermo:
 DOI: 10.1021/jp411770f
 https://pubs.acs.org/doi/pdf/10.1021/jp411770f
+ 
+2019-03-28
+
+I deleted the file "npt" from my repository, but could still see it with
+git log -p -- npt
+
+Molecular dynamics simulations of water and biomolecules with a Monte Carlo constant pressure algorithm
+https://www.sciencedirect.com/science/article/pii/S0009261403021687
+DOI: 10.1016/j.cplett.2003.12.039
+
+I might already have a printed copy of this, it looks semi familiar.
+
+2019-03-30
+
+An older Monte Carlo NPT paper
+Isothermal-isobaric molecular dynamics simulations with Monte Carlo volume sampling
+https://www.sciencedirect.com/science/article/pii/001046559500059O
+DOI:10.1016/0010-4655(95)00059-O
+
+gBAOAB paper
+https://royalsocietypublishing.org/doi/10.1098/rspa.2016.0138
+
+OpenMM4 paper - good inspiration
+https://pubs.acs.org/doi/10.1021/ct300857j
 
 (Saved in notes up to this point)

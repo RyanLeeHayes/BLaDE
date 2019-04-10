@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
   if (argc < 2) {
     fatal(__FILE__,__LINE__,"Need input file\n");
   }
-  interpretter(argv[1],system,1);
+  interpretter(argv[1],system);
 
   delete(system);
 

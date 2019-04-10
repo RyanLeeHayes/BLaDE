@@ -66,17 +66,18 @@ void parse_structure(char *line,System *system)
 
 void Structure::help(char *line,char *token,System *system)
 {
-  std::string name=io_nexts(line);
+  char name[MAXLENGTHSTRING];
+  io_nexta(line,name);
   if (name=="") {
     fprintf(stdout,"?structure > Available directives are:\n");
     for (std::map<std::string,std::string>::iterator ii=helpStructure.begin(); ii!=helpStructure.end(); ii++) {
       fprintf(stdout," %s",ii->first.c_str());
     }
     fprintf(stdout,"\n");
-  } else if (helpStructure.count(token)==1) {
+  } else if (helpStructure.count(name)==1) {
     fprintf(stdout,helpStructure[name].c_str());
   } else {
-    error(line,token,system);
+    error(line,name,system);
   }
 }
 
