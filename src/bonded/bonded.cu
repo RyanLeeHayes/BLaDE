@@ -4,6 +4,7 @@
 #include "bonded.h"
 #include "main/defines.h"
 #include "system/system.h"
+#include "msld/msld.h"
 #include "system/state.h"
 #include "run/run.h"
 #include "system/potential.h"
@@ -38,7 +39,8 @@ void upload_bonded_d(
 // NYI - Try inlining the fdihe, fimp, fnb14, fnbex potentials...
 
 // getforce_bond_kernel<<<(N+BLBO-1)/BLBO,BLBO,0,p->bondedStream>>>(N,p->bonds,s->position_d,s->force_d,s->box,m->lambda_d,m->lambdaForce_d,NULL);
-__global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
+template <bool soft>
+__global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softAlpha,real softExp,real *energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -75,25 +77,54 @@ __global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,r
       }
     }
 
-    // interaction
-    fbond=bp.kb*(r-bp.b0);
-    if (b[0] || energy) {
-      lEnergy=0.5*bp.kb*(r-bp.b0)*(r-bp.b0);
-    }
-    fbond*=l[0]*l[1];
-
-    // Lambda force
-    if (b[0]) {
-      atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
-      if (b[1]) {
-        atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
+    if (soft) {
+      // interaction
+      fbond=bp.kb*(r-bp.b0);
+      real lambdaExpM1=pow(l[0]*l[1],softExp-1);
+      real lambdaExp=lambdaExpM1*l[0]*l[1];
+      real softFactor=1/(1+(1-lambdaExp)*softAlpha*(r-bp.b0)*(r-bp.b0));
+      real dsfdle=softFactor*softFactor*softAlpha*(r-bp.b0)*(r-bp.b0);
+      real dsfdr=-2*softFactor*softFactor*(1-lambdaExp)*softAlpha*(r-bp.b0);
+      if (b[0] || energy) {
+        lEnergy=0.5*bp.kb*(r-bp.b0)*(r-bp.b0);
       }
-    }
+      fbond=lambdaExp*(fbond*softFactor+lEnergy*dsfdr);
+      real flambda=lEnergy*softExp*lambdaExpM1*(softFactor+lambdaExp*dsfdle);
+      lEnergy*=lambdaExpM1*softFactor; // last factor of l[0]*l[1] shows up later
 
-    // Spatial force
+      // Lambda force
+      if (b[0]) {
+        atomicAdd(&lambdaForce[b[0]],l[1]*flambda);
+        if (b[1]) {
+          atomicAdd(&lambdaForce[b[1]],l[0]*flambda);
+        }
+      }
+
+      // Spatial force
 // NOTE #warning "division in kernel"
-    at_real3_scaleinc(&force[ii], fbond/r,dr);
-    at_real3_scaleinc(&force[jj],-fbond/r,dr);
+      at_real3_scaleinc(&force[ii], fbond/r,dr);
+      at_real3_scaleinc(&force[jj],-fbond/r,dr);
+    } else {
+      // interaction
+      fbond=bp.kb*(r-bp.b0);
+      if (b[0] || energy) {
+        lEnergy=0.5*bp.kb*(r-bp.b0)*(r-bp.b0);
+      }
+      fbond*=l[0]*l[1];
+
+      // Lambda force
+      if (b[0]) {
+        atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
+        if (b[1]) {
+          atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
+        }
+      }
+
+      // Spatial force
+// NOTE #warning "division in kernel"
+      at_real3_scaleinc(&force[ii], fbond/r,dr);
+      at_real3_scaleinc(&force[jj],-fbond/r,dr);
+    }
   }
 
   // Energy, if requested
@@ -108,24 +139,28 @@ void getforce_bond(System *system,bool calcEnergy)
   Potential *p=system->potential;
   State *s=system->state;
   Run *r=system->run;
-  int N=p->bondCount;
+  real softAlpha=1/(system->msld->softBondRadius*system->msld->softBondRadius);
+  real softExp=system->msld->softBondExponent;
+  int N;
   int shMem=0;
   real *pEnergy=NULL;
-
-  if (N==0) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eebond;
   }
 
-  getforce_bond_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->bonds_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  N=p->bondCount;
+  if (N>0) getforce_bond_kernel<false><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->bonds_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,0,1,pEnergy);
+  N=p->softBondCount;
+  if (N>0) getforce_bond_kernel<true><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softBonds_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,softAlpha,softExp,pEnergy);
 }
 
 
 
 // getforce_angle_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->angles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
-__global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angles,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
+template <bool soft>
+__global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angles,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softExp,real *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj,kk;
@@ -174,14 +209,24 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
     if (b[0] || energy) {
       lEnergy=0.5*ap.kangle*(t-ap.angle0)*(t-ap.angle0);
     }
-    fangle*=l[0]*l[1];
+    if (soft) {
+      fangle*=pow(l[0]*l[1],softExp);
+    } else {
+      fangle*=l[0]*l[1];
+    }
 
     // Lambda force
+    if (soft) {
+      lEnergy*=softExp*pow(l[0]*l[1],softExp-1);
+    }
     if (b[0]) {
       atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
       if (b[1]) {
         atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
       }
+    }
+    if (soft) {
+      lEnergy/=softExp;
     }
 
     // Spatial force
@@ -209,18 +254,20 @@ void getforce_angle(System *system,bool calcEnergy)
   Potential *p=system->potential;
   State *s=system->state;
   Run *r=system->run;
-  int N=p->angleCount;
+  real softExp=system->msld->softNotBondExponent;
+  int N;
   int shMem=0;
   real *pEnergy=NULL;
-
-  if (N==0) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eeangle;
   }
 
-  getforce_angle_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->angles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  N=p->angleCount;
+  if (N>0) getforce_angle_kernel<false><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->angles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,1,pEnergy);
+  N=p->softAngleCount;
+  if (N>0) getforce_angle_kernel<true><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softAngles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,softExp,pEnergy);
 }
 
 
@@ -250,8 +297,8 @@ __device__ void function_torsion(ImprPotential ip,real phi,real *fphi,real *lE,b
 
 
 // getforce_dihe_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->dihes_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
-template <class TorsionPotential>
-__global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsions,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
+template <class TorsionPotential,bool soft>
+__global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsions,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softExp,real *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj,kk,ll;
@@ -309,14 +356,24 @@ __global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsi
 
     // Interaction
     function_torsion(tp,phi,&ftorsion,&lEnergy, b[0] || energy);
-    ftorsion*=l[0]*l[1];
+    if (soft) {
+      ftorsion*=pow(l[0]*l[1],softExp);
+    } else {
+      ftorsion*=l[0]*l[1];
+    }
 
     // Lambda force
+    if (soft) {
+      lEnergy*=softExp*pow(l[0]*l[1],softExp-1);
+    }
     if (b[0]) {
       atomicAdd(&lambdaForce[b[0]],l[1]*lEnergy);
       if (b[1]) {
         atomicAdd(&lambdaForce[b[1]],l[0]*lEnergy);
       }
+    }
+    if (soft) {
+      lEnergy/=softExp;
     }
 
     // Spatial force
@@ -355,18 +412,20 @@ void getforce_dihe(System *system,bool calcEnergy)
   Potential *p=system->potential;
   State *s=system->state;
   Run *r=system->run;
-  int N=p->diheCount;
+  real softExp=system->msld->softNotBondExponent;
+  int N;
   int shMem=0;
   real *pEnergy=NULL;
-
-  if (N==0) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eedihe;
   }
 
-  getforce_torsion_kernel <DihePotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->dihes_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  N=p->diheCount;
+  if (N>0) getforce_torsion_kernel <DihePotential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->dihes_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,1,pEnergy);
+  N=p->softDiheCount;
+  if (N>0) getforce_torsion_kernel <DihePotential,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softDihes_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,softExp,pEnergy);
 }
 
 void getforce_impr(System *system,bool calcEnergy)
@@ -374,24 +433,27 @@ void getforce_impr(System *system,bool calcEnergy)
   Potential *p=system->potential;
   State *s=system->state;
   Run *r=system->run;
-  int N=p->imprCount;
+  real softExp=system->msld->softNotBondExponent;
+  int N;
   int shMem=0;
   real *pEnergy=NULL;
-
-  if (N==0) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eeimpr;
   }
 
-  getforce_torsion_kernel <ImprPotential> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->imprs_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  N=p->imprCount;
+  if (N>0) getforce_torsion_kernel <ImprPotential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->imprs_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,1,pEnergy);
+  N=p->softImprCount;
+  if (N>0) getforce_torsion_kernel <ImprPotential,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softImprs_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,softExp,pEnergy);
 }
 
 
 
 // getforce_cmap_kernel<<<(2*N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->cmaps_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
-__global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
+template <bool soft>
+__global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softExp,real *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj,kk,ll;
@@ -535,9 +597,16 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
       // Add own force
     fcmap+=fcmapPhi[lastBit];
     fcmap*=invSpace;
-    fcmap*=l[0]*l[1]*l[2];
+    if (soft) {
+      fcmap*=pow(l[0]*l[1]*l[2],softExp);
+    } else {
+      fcmap*=l[0]*l[1]*l[2];
+    }
 
     // Lambda force
+    if (soft) {
+      lEnergy*=softExp*pow(l[0]*l[1]*l[2],softExp-1);
+    }
     if (lastBit==0) { // First partner has full energy
       if (b[0]) {
         atomicAdd(&lambdaForce[b[0]],l[1]*l[2]*lEnergy);
@@ -548,6 +617,9 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
           }
         }
       }
+    }
+    if (soft) {
+      lEnergy/=softExp;
     }
 
     // Spatial force
@@ -586,16 +658,18 @@ void getforce_cmap(System *system,bool calcEnergy)
   Potential *p=system->potential;
   State *s=system->state;
   Run *r=system->run;
-  int N=p->cmapCount;
+  real softExp=system->msld->softNotBondExponent;
+  int N;
   int shMem=0;
   real *pEnergy=NULL;
-
-  if (N==0) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eecmap;
   }
 
-  getforce_cmap_kernel<<<(2*N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->cmaps_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+  N=p->cmapCount;
+  if (N>0) getforce_cmap_kernel<false><<<(2*N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->cmaps_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,1,pEnergy);
+  N=p->softCmapCount;
+  if (N>0) getforce_cmap_kernel<true><<<(2*N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softCmaps_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,s->lambda_d,s->lambdaForce_d,softExp,pEnergy);
 }

@@ -48,6 +48,12 @@ Msld::Msld() {
   softBonds.clear();
   atomRestraints.clear();
 
+  atomRestraintCount=0;
+  atomRestraintBounds=NULL;
+  atomRestraintBounds_d=NULL;
+  atomRestraintIdx=NULL;
+  atomRestraintIdx_d=NULL;
+
   useSoftCore=false;
   useSoftCore14=false;
 
@@ -74,6 +80,11 @@ Msld::~Msld() {
   if (blocksPerSite_d) cudaFree(blocksPerSite_d);
   if (siteBound) free(siteBound);
   if (siteBound_d) cudaFree(siteBound_d);
+
+  if (atomRestraintBounds) free(atomRestraintBounds);
+  if (atomRestraintBounds_d) cudaFree(atomRestraintBounds_d);
+  if (atomRestraintIdx) free(atomRestraintIdx);
+  if (atomRestraintIdx_d) cudaFree(atomRestraintIdx_d);
 }
 
 
@@ -227,7 +238,10 @@ void parse_msld(char *line,System *system)
           atoms.emplace_back(i);
         }
       }
-      system->msld->atomRestraints.emplace_back(atoms);
+      if (atoms.size()>0) {
+        // NYI - checking for one atom per substituent
+        system->msld->atomRestraints.emplace_back(atoms);
+      }
     } else {
       fatal(__FILE__,__LINE__,"Selection %s not found for msld atom restraints\n");
     }
@@ -289,33 +303,64 @@ int merge_site_block(int site,int block)
 }
 
 // NYI: soft bonds or constrained atom scaling
-void Msld::bonded_scaling(int *idx,int *siteBlock,int type,int Nat,int Nsc)
+bool Msld::check_soft(int *idx,int Nat)
 {
-  bool scale;
+  int i,j,k;
+  bool found[2];
+
+  for (i=0; i<softBonds.size(); i++) {
+    for (j=0; j<2; j++) {
+      found[j]=false;
+      for (k=0; k<Nat; k++) {
+        if (softBonds[i].i[j]==idx[k]) {
+          found[j]=true;
+        }
+      }
+    }
+    if (found[0] && found[1]) return true;
+  }
+  return false;
+}
+
+bool Msld::check_restrained(int atom)
+{
+  int i,j;
+  for (i=0; i<atomRestraints.size(); i++) {
+    for (j=0; j<atomRestraints[i].size(); j++) {
+      if (atomRestraints[i][j]==atom) return true;
+    }
+  }
+  return false;
+}
+
+bool Msld::bonded_scaling(int *idx,int *siteBlock,int type,int Nat,int Nsc)
+{
+  bool scale,soft;
   int i,j;
   int ab;
   int block[Nsc+2]={0}; // First term is blockCount, last term is for error checking
   block[0]=blockCount;
 
   // Sort into a descending list with no duplicates.
-  scale=true;
-  if (type>=0) scale=scaleTerms[type];
+  scale=scaleTerms[type];
+  soft=check_soft(idx,Nat);
   if (scale) {
     for (i=1; i<Nsc+2; i++) {
       for (j=0; j<Nat; j++) {
         ab=atomBlock[idx[j]];
+        if (ab && (!soft) && (!check_restrained(idx[j])) && (!scale)) {
+          ab=0;
+        }
         if (ab>block[i] && ab<block[i-1]) {
           block[i]=ab;
         }
       }
     }
     // Check for errors
-    if (type>=-1) {
-      for (i=1; i<Nsc+1; i++) {
-        for (j=i+1; j<Nsc+1; j++) {
-          if (block[i]>0 && block[j]>0 && block[i]!=block[j] && lambdaSite[block[i]]==lambdaSite[block[j]]) {
-            fatal(__FILE__,__LINE__,"Illegal MSLD scaling between two atoms in the same site (%d) but different blocks (%d and %d)\n",lambdaSite[block[i]],block[i],block[j]);
-          }
+    for (i=1; i<Nsc+1; i++) {
+      for (j=i+1; j<Nsc+1; j++) {
+        if (block[i]>0 && block[j]>0 && block[i]!=block[j] && lambdaSite[block[i]]==lambdaSite[block[j]]) {
+          fatal(__FILE__,__LINE__,"Illegal MSLD scaling between two atoms in the same site (%d) but different blocks (%d and %d)\n",lambdaSite[block[i]],block[i],block[j]);
         }
       }
     }
@@ -327,51 +372,76 @@ void Msld::bonded_scaling(int *idx,int *siteBlock,int type,int Nat,int Nsc)
   for (i=0; i<Nsc; i++) {
     siteBlock[i]=merge_site_block(lambdaSite[block[i+1]],block[i+1]);
   }
+  return soft;
 }
 
-void Msld::bond_scaling(int idx[2],int siteBlock[2])
+void Msld::nonbonded_scaling(int *idx,int *siteBlock,int Nat)
 {
-  bonded_scaling(idx,siteBlock,0,2,2);
+  int i,j;
+  int ab;
+  int Nsc=Nat;
+  int block[Nsc+2]={0}; // First term is blockCount, last term is for error checking
+  block[0]=blockCount;
+
+  // Sort into a descending list with no duplicates.
+  for (i=1; i<Nsc+2; i++) {
+    for (j=0; j<Nat; j++) {
+      ab=atomBlock[idx[j]];
+      if (ab>block[i] && ab<block[i-1]) {
+        block[i]=ab;
+      }
+    }
+  }
+
+  for (i=0; i<Nsc; i++) {
+    siteBlock[i]=merge_site_block(lambdaSite[block[i+1]],block[i+1]);
+  }
 }
 
-void Msld::ureyb_scaling(int idx[3],int siteBlock[2])
+
+bool Msld::bond_scaling(int idx[2],int siteBlock[2])
 {
-  bonded_scaling(idx,siteBlock,1,3,2);
+  return bonded_scaling(idx,siteBlock,0,2,2);
 }
 
-void Msld::angle_scaling(int idx[3],int siteBlock[2])
+bool Msld::ureyb_scaling(int idx[3],int siteBlock[2])
 {
-  bonded_scaling(idx,siteBlock,2,3,2);
+  return bonded_scaling(idx,siteBlock,1,3,2);
 }
 
-void Msld::dihe_scaling(int idx[4],int siteBlock[2])
+bool Msld::angle_scaling(int idx[3],int siteBlock[2])
 {
-  bonded_scaling(idx,siteBlock,3,4,2);
+  return bonded_scaling(idx,siteBlock,2,3,2);
 }
 
-void Msld::impr_scaling(int idx[4],int siteBlock[2])
+bool Msld::dihe_scaling(int idx[4],int siteBlock[2])
 {
-  bonded_scaling(idx,siteBlock,4,4,2);
+  return bonded_scaling(idx,siteBlock,3,4,2);
 }
 
-void Msld::cmap_scaling(int idx[8],int siteBlock[3])
+bool Msld::impr_scaling(int idx[4],int siteBlock[2])
 {
-  bonded_scaling(idx,siteBlock,5,8,3);
+  return bonded_scaling(idx,siteBlock,4,4,2);
+}
+
+bool Msld::cmap_scaling(int idx[8],int siteBlock[3])
+{
+  return bonded_scaling(idx,siteBlock,5,8,3);
 }
 
 void Msld::nb14_scaling(int idx[2],int siteBlock[2])
 {
-  bonded_scaling(idx,siteBlock,-1,2,2);
+  nonbonded_scaling(idx,siteBlock,2);
 }
 
 void Msld::nbex_scaling(int idx[2],int siteBlock[2])
 {
-  bonded_scaling(idx,siteBlock,-2,2,2);
+  nonbonded_scaling(idx,siteBlock,2);
 }
 
 void Msld::nbond_scaling(int idx[1],int siteBlock[1])
 {
-  bonded_scaling(idx,siteBlock,-2,1,1);
+  nonbonded_scaling(idx,siteBlock,1);
 }
 
 bool Msld::interacting(int i,int j)
@@ -382,7 +452,7 @@ bool Msld::interacting(int i,int j)
 // Initialize MSLD for a simulation
 void Msld::initialize(System *system)
 {
-  int i;
+  int i,j;
 
   // Send the biases over
   cudaMemcpy(atomBlock_d,atomBlock,system->structure->atomCount*sizeof(int),cudaMemcpyHostToDevice);
@@ -420,14 +490,24 @@ void Msld::initialize(System *system)
   cudaMemcpy(siteBound_d,siteBound,(siteCount+1)*sizeof(int),cudaMemcpyHostToDevice);
   cudaMemcpy(lambdaSite_d,lambdaSite,blockCount*sizeof(int),cudaMemcpyHostToDevice);
 
-  // Soft bonds
-  if (softBonds.size()>0) {
-    fatal(__FILE__,__LINE__,"Soft bonds NYI\n");
-  }
-
   // Atom restraints
-  if (atomRestraints.size()>0) {
-    fatal(__FILE__,__LINE__,"Atom restraints NYI\n");
+  atomRestraintCount=atomRestraints.size();
+  if (atomRestraintCount>0) {
+    atomRestraintBounds=(int*)calloc(atomRestraintCount+1,sizeof(int));
+    cudaMalloc(&atomRestraintBounds_d,(atomRestraintCount+1)*sizeof(int));
+    atomRestraintBounds[0]=0;
+    for (i=0; i<atomRestraintCount; i++) {
+      atomRestraintBounds[i+1]=atomRestraintBounds[i]+atomRestraints[i].size();
+    }
+    atomRestraintIdx=(int*)calloc(atomRestraintBounds[atomRestraintCount],sizeof(int));
+    cudaMalloc(&atomRestraintIdx_d,atomRestraintBounds[atomRestraintCount]*sizeof(int));
+    for (i=0; i<atomRestraintCount; i++) {
+      for (j=0; j<atomRestraints[i].size(); j++) {
+        atomRestraintIdx[atomRestraintBounds[i]+j]=atomRestraints[i][j];
+      }
+    }
+    cudaMemcpy(atomRestraintBounds_d,atomRestraintBounds,(atomRestraintCount+1)*sizeof(int),cudaMemcpyHostToDevice);
+    cudaMemcpy(atomRestraintIdx_d,atomRestraintIdx,atomRestraintBounds[atomRestraintCount]*sizeof(int),cudaMemcpyHostToDevice);
   }
 }
 
@@ -580,4 +660,61 @@ void Msld::calc_variableBias(System *system,bool calcEnergy)
   }
 
   calc_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
+}
+
+__global__ void calc_atomRestraints_kernel(real3 *position,real3 *force,real3 box,real *energy,int atomRestraintCount,int *atomRestraintBounds,int *atomRestraintIdx,real kRestraint)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  int bounds[2];
+  int j, idx;
+  real3 x0, xCenter, dx;
+  extern __shared__ real sEnergy[];
+  real lEnergy=0;
+
+  if (i<atomRestraintCount) {
+    bounds[0]=atomRestraintBounds[i];
+    bounds[1]=atomRestraintBounds[i+1];
+    x0=position[atomRestraintIdx[bounds[0]]];
+    xCenter=real3_reset();
+    for (j=bounds[0]+1; j<bounds[1]; j++) {
+      real3_inc(&xCenter,real3_subpbc(position[atomRestraintIdx[j]],x0,box));
+    }
+    real3_scaleself(&xCenter,1.0/(bounds[1]-bounds[0]));
+    real3_inc(&xCenter,x0);
+
+    for (j=bounds[0]; j<bounds[1]; j++) {
+      idx=atomRestraintIdx[j];
+      dx=real3_subpbc(position[idx],xCenter,box);
+      at_real3_scaleinc(&force[idx],kRestraint,dx);
+      if (energy) {
+        lEnergy+=0.5*kRestraint*real3_mag2(dx);
+      }
+    }
+  }
+
+  // Energy, if requested
+  if (energy) {
+    __syncthreads();
+    real_sum_reduce(lEnergy,sEnergy,energy);
+  }
+}
+
+void Msld::calc_atomRestraints(System *system,bool calcEnergy)
+{
+  cudaStream_t stream=0;
+  State *s=system->state;
+  real *pEnergy=NULL;
+  int shMem=0;
+
+  if (calcEnergy) {
+    shMem=BLMS*sizeof(real)/32;
+    pEnergy=s->energy_d+eebias;
+  }
+  if (system->run) {
+    stream=system->run->biaspotStream;
+  }
+
+  if (atomRestraintCount) {
+    calc_atomRestraints_kernel<<<(atomRestraintCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>((real3*)s->position_d,(real3*)s->force_d,s->orthBox,pEnergy,atomRestraintCount,atomRestraintBounds_d,atomRestraintIdx_d,kRestraint);
+  }
 }

@@ -29,6 +29,7 @@ typedef enum eeterm {
   eenbrecipself,
   eenbrecipexcl,
   eelambda,
+  eebias,
   eepotential,
   eekinetic,
   eetotal,
@@ -150,6 +151,27 @@ class Potential {
   std::vector<struct CmapPotential> cmaps_tmp;
   struct CmapPotential *cmaps;
   struct CmapPotential *cmaps_d;
+
+  int softBondCount;
+  std::vector<struct BondPotential> softBonds_tmp;
+  struct BondPotential *softBonds;
+  struct BondPotential *softBonds_d;
+  int softAngleCount;
+  std::vector<struct AnglePotential> softAngles_tmp;
+  struct AnglePotential *softAngles;
+  struct AnglePotential *softAngles_d;
+  int softDiheCount;
+  std::vector<struct DihePotential> softDihes_tmp;
+  struct DihePotential *softDihes;
+  struct DihePotential *softDihes_d;
+  int softImprCount;
+  std::vector<struct ImprPotential> softImprs_tmp;
+  struct ImprPotential *softImprs;
+  struct ImprPotential *softImprs_d;
+  int softCmapCount;
+  std::vector<struct CmapPotential> softCmaps_tmp;
+  struct CmapPotential *softCmaps;
+  struct CmapPotential *softCmaps_d;
 
   std::map<TypeName8O,real(*)[4][4]> cmapTypeToPtr;
 

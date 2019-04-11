@@ -44,6 +44,22 @@ Potential::Potential() {
   cmaps=NULL;
   cmaps_d=NULL;
 
+  softBondCount=0;
+  softBonds=NULL;
+  softBonds_d=NULL;
+  softAngleCount=0;
+  softAngles=NULL;
+  softAngles_d=NULL;
+  softDiheCount=0;
+  softDihes=NULL;
+  softDihes_d=NULL;
+  softImprCount=0;
+  softImprs=NULL;
+  softImprs_d=NULL;
+  softCmapCount=0;
+  softCmaps=NULL;
+  softCmaps_d=NULL;
+
   charge=NULL;
   charge_d=NULL;
 
@@ -102,6 +118,17 @@ Potential::~Potential()
   if (dihes_d) cudaFree(dihes_d);
   if (imprs_d) cudaFree(imprs_d);
   if (cmaps_d) cudaFree(cmaps_d);
+
+  if (softBonds) free(softBonds);
+  if (softAngles) free(softAngles);
+  if (softDihes) free(softDihes);
+  if (softImprs) free(softImprs);
+  if (softCmaps) free(softCmaps);
+  if (softBonds_d) cudaFree(softBonds_d);
+  if (softAngles_d) cudaFree(softAngles_d);
+  if (softDihes_d) cudaFree(softDihes_d);
+  if (softImprs_d) cudaFree(softImprs_d);
+  if (softCmaps_d) cudaFree(softCmaps_d);
 
   for (std::map<TypeName8O,real(*)[4][4]>::iterator ii=cmapTypeToPtr.begin(); ii!=cmapTypeToPtr.end(); ii++) {
     cudaFree(ii->second);
@@ -400,12 +427,18 @@ void Potential::initialize(System *system)
   Parameters *param=system->parameters;
   Structure *struc=system->structure;
   Msld *msld=system->msld;
+  bool soft;
 
   bonds_tmp.clear();
   angles_tmp.clear();
   dihes_tmp.clear();
   imprs_tmp.clear();
   cmaps_tmp.clear();
+  softBonds_tmp.clear();
+  softAngles_tmp.clear();
+  softDihes_tmp.clear();
+  softImprs_tmp.clear();
+  softCmaps_tmp.clear();
   cons_tmp.clear();
 
   for (i=0; i<struc->bondList.size(); i++) {
@@ -425,7 +458,7 @@ void Potential::initialize(System *system)
     } else {
       // Add to bonds
       // Get their MSLD scaling
-      msld->bond_scaling(bond.idx,bond.siteBlock);
+      soft=msld->bond_scaling(bond.idx,bond.siteBlock);
       // Get their parameters
       if (param->bondParameter.count(type)==0) {
         fatal(__FILE__,__LINE__,"No bond parameter for %6d(%6s) %6d(%6s)\n",bond.idx[0],type.t[0].c_str(),bond.idx[1],type.t[1].c_str());
@@ -436,6 +469,8 @@ void Potential::initialize(System *system)
       // Separate out the constrained bonds
       if (system->structure->shakeHbond && (type.t[0][0]=='H' || type.t[1][0]=='H')) {
         fatal(__FILE__,__LINE__,"hbond constraints not yet implemented (NYI)\n");
+      } else if (soft) {
+        softBonds_tmp.emplace_back(bond);
       } else {
         bonds_tmp.emplace_back(bond);
       }
@@ -447,6 +482,7 @@ void Potential::initialize(System *system)
     struct BondPotential bond; // urey bradley
     struct AnglePotential angle;
     struct AngleParameter ap;
+    bool softU;
     // Get participating atoms
     for (j=0; j<3; j++) {
       angle.idx[j]=struc->angleList[i].i[j];
@@ -455,8 +491,8 @@ void Potential::initialize(System *system)
     bond.idx[0]=angle.idx[0];
     bond.idx[1]=angle.idx[2];
     // Get their MSLD scaling
-    msld->angle_scaling(angle.idx,angle.siteBlock);
-    msld->ureyb_scaling(angle.idx,bond.siteBlock);
+    soft=msld->angle_scaling(angle.idx,angle.siteBlock);
+    softU=msld->ureyb_scaling(angle.idx,bond.siteBlock);
     // Get their parameters
     if (param->angleParameter.count(type)==0) {
       fatal(__FILE__,__LINE__,"No angle parameter for %6d(%6s) %6d(%6s) %6d(%6s)\n",angle.idx[0],type.t[0].c_str(),angle.idx[1],type.t[1].c_str(),angle.idx[2],type.t[2].c_str());
@@ -466,10 +502,18 @@ void Potential::initialize(System *system)
     angle.angle0=ap.angle0;
     bond.kb=ap.kureyb;
     bond.b0=ap.ureyb0;
-    angles_tmp.emplace_back(angle);
+    if (soft) {
+      softAngles_tmp.emplace_back(angle);
+    } else {
+      angles_tmp.emplace_back(angle);
+    }
     // Only include urey bradley if it's nonzero
     if (bond.kb != 0) {
-      bonds_tmp.emplace_back(bond);
+      if (softU) {
+        softBonds_tmp.emplace_back(bond);
+      } else {
+        bonds_tmp.emplace_back(bond);
+      }
     }
   }
 
@@ -483,7 +527,7 @@ void Potential::initialize(System *system)
       type.t[j]=struc->atomList[dihe.idx[j]].atomTypeName;
     }
     // Get their MSLD scaling
-    msld->dihe_scaling(dihe.idx,dihe.siteBlock);
+    soft=msld->dihe_scaling(dihe.idx,dihe.siteBlock);
     // Get their parameters
     if (param->diheParameter.count(type)==1) {
       dp=param->diheParameter[type];
@@ -503,7 +547,11 @@ void Potential::initialize(System *system)
       dihe.ndih=dp[j].ndih;
       dihe.dih0=dp[j].dih0;
       // fprintf(stdout,"DEBUG j=%d n0=%d nj=%d\n",j,dp[0].ndih,dp[j].ndih);
-      dihes_tmp.emplace_back(dihe);
+      if (soft) {
+        softDihes_tmp.emplace_back(dihe);
+      } else {
+        dihes_tmp.emplace_back(dihe);
+      }
     }
   }
 
@@ -517,7 +565,7 @@ void Potential::initialize(System *system)
       type.t[j]=struc->atomList[impr.idx[j]].atomTypeName;
     }
     // Get their MSLD scaling
-    msld->impr_scaling(impr.idx,impr.siteBlock);
+    soft=msld->impr_scaling(impr.idx,impr.siteBlock);
     // Get their parameters
     if (param->imprParameter.count(type)==1) { // 1st ABCD
       ip=param->imprParameter[type];
@@ -551,7 +599,11 @@ void Potential::initialize(System *system)
     }
     impr.kimp=ip.kimp;
     impr.imp0=ip.imp0;
-    imprs_tmp.emplace_back(impr);
+    if (soft) {
+      softImprs_tmp.emplace_back(impr);
+    } else {
+      imprs_tmp.emplace_back(impr);
+    }
   }
 
   for (i=0; i<struc->cmapList.size(); i++) {
@@ -564,7 +616,7 @@ void Potential::initialize(System *system)
       type.t[j]=struc->atomList[cmap.idx[j]].atomTypeName;
     }
     // Get their MSLD scaling
-    msld->cmap_scaling(cmap.idx,cmap.siteBlock);
+    soft=msld->cmap_scaling(cmap.idx,cmap.siteBlock);
     // Get their parameters
     if (param->cmapParameter.count(type)==1) {
       cp=param->cmapParameter[type];
@@ -577,7 +629,11 @@ void Potential::initialize(System *system)
       cmapTypeToPtr[type]=alloc_kcmapPtr(cp.ngrid,cp.kcmap);
     }
     cmap.kcmapPtr=cmapTypeToPtr[type];
-    cmaps_tmp.emplace_back(cmap);
+    if (soft) {
+      softCmaps_tmp.emplace_back(cmap);
+    } else {
+      cmaps_tmp.emplace_back(cmap);
+    }
   }
 
   // ---------- Bonded setup complete, copy over data ----------
@@ -620,11 +676,49 @@ void Potential::initialize(System *system)
     cmaps[i]=cmaps_tmp[i];
   }
   cudaMemcpy(cmaps_d,cmaps,cmapCount*sizeof(struct CmapPotential),cudaMemcpyHostToDevice);
+  // soft bonds now
+  softBondCount=softBonds_tmp.size();
+  softBonds=(struct BondPotential*)calloc(softBondCount,sizeof(struct BondPotential));
+  cudaMalloc(&(softBonds_d),softBondCount*sizeof(struct BondPotential));
+  for (i=0; i<softBondCount; i++) {
+    softBonds[i]=softBonds_tmp[i];
+  }
+  cudaMemcpy(softBonds_d,softBonds,softBondCount*sizeof(struct BondPotential),cudaMemcpyHostToDevice);
+
+  softAngleCount=softAngles_tmp.size();
+  softAngles=(struct AnglePotential*)calloc(softAngleCount,sizeof(struct AnglePotential));
+  cudaMalloc(&(softAngles_d),softAngleCount*sizeof(struct AnglePotential));
+  for (i=0; i<softAngleCount; i++) {
+    softAngles[i]=softAngles_tmp[i];
+  }
+  cudaMemcpy(softAngles_d,softAngles,softAngleCount*sizeof(struct AnglePotential),cudaMemcpyHostToDevice);
+
+  softDiheCount=softDihes_tmp.size();
+  softDihes=(struct DihePotential*)calloc(softDiheCount,sizeof(struct DihePotential));
+  cudaMalloc(&(softDihes_d),softDiheCount*sizeof(struct DihePotential));
+  for (i=0; i<softDiheCount; i++) {
+    softDihes[i]=softDihes_tmp[i];
+  }
+  cudaMemcpy(softDihes_d,softDihes,softDiheCount*sizeof(struct DihePotential),cudaMemcpyHostToDevice);
+
+  softImprCount=softImprs_tmp.size();
+  softImprs=(struct ImprPotential*)calloc(softImprCount,sizeof(struct ImprPotential));
+  cudaMalloc(&(softImprs_d),softImprCount*sizeof(struct ImprPotential));
+  for (i=0; i<softImprCount; i++) {
+    softImprs[i]=softImprs_tmp[i];
+  }
+  cudaMemcpy(softImprs_d,softImprs,softImprCount*sizeof(struct ImprPotential),cudaMemcpyHostToDevice);
+
+  softCmapCount=softCmaps_tmp.size();
+  softCmaps=(struct CmapPotential*)calloc(softCmapCount,sizeof(struct CmapPotential));
+  cudaMalloc(&(softCmaps_d),softCmapCount*sizeof(struct CmapPotential));
+  for (i=0; i<softCmapCount; i++) {
+    softCmaps[i]=softCmaps_tmp[i];
+  }
+  cudaMemcpy(softCmaps_d,softCmaps,softCmapCount*sizeof(struct CmapPotential),cudaMemcpyHostToDevice);
   // ---------- Data copy complete ----------
 
 
-// WORKING HERE, add everything to bonds_tmp, remove hbonds if appropriate, put urey bradleys in too if they exit. Also create a structure for constrained bonds.
-  fprintf(stdout,"Implement nonbonded structures too\n");
 
   atomCount=struc->atomList.size();
   charge=(real*)calloc(atomCount,sizeof(real));
@@ -1181,6 +1275,7 @@ void Potential::calc_force(int step,System *system)
     cudaStreamWaitEvent(r->biaspotStream,r->forceBegin,0);
     system->msld->calc_fixedBias(system,calcEnergy);
     system->msld->calc_variableBias(system,calcEnergy);
+    system->msld->calc_atomRestraints(system,calcEnergy);
     cudaEventRecord(r->biaspotComplete,r->biaspotStream);
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }
