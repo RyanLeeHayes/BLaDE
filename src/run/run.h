@@ -34,7 +34,6 @@ class Run {
   int freqXTC;
   int freqLMD;
   int freqNRG;
-// NYI - read and write checkpoint files
 
   long int step; // current step
   long int step0; // starting step

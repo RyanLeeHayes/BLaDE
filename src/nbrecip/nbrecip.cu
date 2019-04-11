@@ -87,7 +87,7 @@ void getforce_ewaldself(System *system,bool calcEnergy)
 template <int order>
 __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *atomBlock,real3* position,real3 box,real *lambda,int3 gridDimPME,real *chargeGridPME)
 {
-  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  // int i=blockIdx.x*blockDim.x+threadIdx.x;
   real q;
   int b;
   real l=1;
@@ -237,7 +237,7 @@ __global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,myCufftComplex
 template <int order>
 __global__ void getforce_ewald_gather_kernel(int atomCount,real *charge,int *atomBlock,int3 gridDimPME,real *potentialGridPME,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 {
-  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  // int i=blockIdx.x*blockDim.x+threadIdx.x;
   real q;
   int b;
   real l=1;

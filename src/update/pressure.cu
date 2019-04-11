@@ -26,7 +26,7 @@ void scale_box(System *system,real scaleFactor)
   int N=3*system->state->atomCount;
   scale_box_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N,scaleFactor,(real*)system->state->position_d);
 
-#warning "Might be better ways to rectify holonomic constraints after volume update, I just want to avoid having bonds change direction, which will mess with the velocities"
+  // There might be better ways to rectify holonomic constraints after volume update, I just want to avoid having bonds change direction, which will mess with the velocities"
   holonomic_rectify(system);
 }
 

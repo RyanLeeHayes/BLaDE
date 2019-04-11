@@ -32,7 +32,6 @@ class Selection {
     }
   }
 
-// NYI - tried deleting this and got seg faults. Look into it further later
   Selection operator=(const Selection &other)
   {
     if (boolSelection) delete [] boolSelection;

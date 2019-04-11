@@ -302,7 +302,6 @@ int merge_site_block(int site,int block)
   return ((site<<16)|block);
 }
 
-// NYI: soft bonds or constrained atom scaling
 bool Msld::check_soft(int *idx,int Nat)
 {
   int i,j,k;

@@ -24,4 +24,3 @@ int main(int argc, char *argv[])
 
   MPI_Finalize();
 }
- // NYI - debug directive that allows the debugger to attach

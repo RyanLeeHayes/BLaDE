@@ -22,7 +22,6 @@
 // See also for integrator/bond constraints/thermostat
 // https://pubs.acs.org/doi/10.1021/jp411770f
 
-// NYI - NPT
 // Molecular dynamics simulations of water and biomolecules with a Monte Carlo constant pressure algorithm
 // Johan A...vist *, Petra Wennerstro...m, Martin Nervall, Sinisa Bjelic, Bj...rn O. Brandsdal
 

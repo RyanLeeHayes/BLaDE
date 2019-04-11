@@ -36,29 +36,28 @@ Domdec::Domdec()
 
 Domdec::~Domdec()
 {
-#warning "No free test"
-  free(domain);
-  cudaFree(domain_d);
-  cudaFree(localToGlobal_d);
-  cudaFree(globalToLocal_d);
-  cudaFree(localPosition_d);
-  cudaFree(localForce_d);
-  cudaFree(localNbonds_d);
-  cudaFree(blockSort_d);
-  cudaFree(blockToken_d);
-  cudaFree(blockBounds_d);
-  free(blockCount);
-  cudaFree(blockCount_d);
-  cudaFree(blockVolume_d);
-  cudaFree(blockCandidateCount_d);
-  cudaFree(blockCandidates_d);
-  cudaFree(blockPartnerCount_d);
-  cudaFree(blockPartners_d);
-  cudaFree(localExcls_d);
-  cudaFree(exclSort_d);
-  cudaFree(sortedExcls_d);
-  cudaFree(blockExcls_d);
-  cudaFree(blockExclCount_d);
+  if (domain) free(domain);
+  if (domain_d) cudaFree(domain_d);
+  if (localToGlobal_d) cudaFree(localToGlobal_d);
+  if (globalToLocal_d) cudaFree(globalToLocal_d);
+  if (localPosition_d) cudaFree(localPosition_d);
+  if (localForce_d) cudaFree(localForce_d);
+  if (localNbonds_d) cudaFree(localNbonds_d);
+  if (blockSort_d) cudaFree(blockSort_d);
+  if (blockToken_d) cudaFree(blockToken_d);
+  if (blockBounds_d) cudaFree(blockBounds_d);
+  if (blockCount) free(blockCount);
+  if (blockCount_d) cudaFree(blockCount_d);
+  if (blockVolume_d) cudaFree(blockVolume_d);
+  if (blockCandidateCount_d) cudaFree(blockCandidateCount_d);
+  if (blockCandidates_d) cudaFree(blockCandidates_d);
+  if (blockPartnerCount_d) cudaFree(blockPartnerCount_d);
+  if (blockPartners_d) cudaFree(blockPartners_d);
+  if (localExcls_d) cudaFree(localExcls_d);
+  if (exclSort_d) cudaFree(exclSort_d);
+  if (sortedExcls_d) cudaFree(sortedExcls_d);
+  if (blockExcls_d) cudaFree(blockExcls_d);
+  if (blockExclCount_d) cudaFree(blockExclCount_d);
 }
 
 void Domdec::initialize(System *system)

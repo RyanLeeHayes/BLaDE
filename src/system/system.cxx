@@ -189,7 +189,6 @@ void System::parse_system_endwhile(char *line,char *token,System *system)
   parse_endwhile(line,system);
 }
 
-// NYI also define, if, for, {} parsing, etc...
 // MOVE
 
 void System::help(char *line,char *token,System *system)

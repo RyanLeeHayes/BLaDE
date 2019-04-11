@@ -6,6 +6,8 @@
 
 #include "main/real3.h"
 
+#define MAXITERATION 100
+
 
 
 __global__ void holonomic_velocity_triangle_kernel(int N,struct TriangleCons *cons,struct LeapState ls,real3 box)
@@ -441,8 +443,7 @@ __global__ void holonomic_position_branch2_kernel(int N,struct Branch2Cons *cons
       if (abs(b[j])>=2*b02[j]*tolerance) unfinished=true;
     }
 
-#warning "Heuristic max iterations=100"
-    while (unfinished && iteration<100) {
+    while (unfinished && iteration<MAXITERATION) {
       for (j=0; j<2; j++) {
         AT[0][j]=2*real3_dot(dxPrev[0],dx[j])*invMass[0];
         AT[1][j]=2*real3_dot(dxPrev[1],dx[j])*invMass[0];
@@ -524,8 +525,7 @@ __global__ void holonomic_position_branch3_kernel(int N,struct Branch3Cons *cons
       if (abs(b[j])>=2*b02[j]*tolerance) unfinished=true;
     }
 
-#warning "Heuristic max iterations=100"
-    while (unfinished && iteration<100) {
+    while (unfinished && iteration<MAXITERATION) {
       for (j=0; j<3; j++) {
         AT[0][j]=2*real3_dot(dxPrev[0],dx[j])*invMass[0];
         AT[1][j]=2*real3_dot(dxPrev[1],dx[j])*invMass[0];
