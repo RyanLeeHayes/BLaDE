@@ -157,7 +157,6 @@ __global__ void holonomic_rectify_branch3_kernel(int N,struct Branch3Cons *cons,
   }
 }
 
-#warning "Function is not used during initialization"
 void holonomic_rectify(System *system)
 {
   Run *r=system->run;

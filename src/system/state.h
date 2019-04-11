@@ -113,6 +113,8 @@ class State {
   struct LeapState* alloc_leapstate(int N1,int N2,real *x,real *v,real *f,real *ism);
   void free_leapstate(struct LeapState *ls);
 
+  void recv_state();
+  void send_state();
   void recv_position();
   void recv_lambda();
   void recv_energy();

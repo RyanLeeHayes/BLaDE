@@ -26,6 +26,8 @@ class Run {
   std::string fnmXTC;
   std::string fnmLMD;
   std::string fnmNRG;
+  std::string fnmCPI;
+  std::string fnmCPO;
   XDRFILE *fpXTC;
   FILE *fpLMD;
   FILE *fpNRG;
@@ -34,8 +36,8 @@ class Run {
   int freqNRG;
 // NYI - read and write checkpoint files
 
-  int step; // current step
-  int step0; // starting step
+  long int step; // current step
+  long int step0; // starting step
   int nsteps; // steps in next dynamics call
   real dt;
   real T;

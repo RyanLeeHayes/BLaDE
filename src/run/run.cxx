@@ -6,6 +6,7 @@
 #include "msld/msld.h"
 #include "system/state.h"
 #include "system/potential.h"
+#include "holonomic/rectify.h"
 #include "domdec/domdec.h"
 
 
@@ -23,6 +24,8 @@ Run::Run()
   fnmXTC="default.xtc";
   fnmLMD="default.lmd";
   fnmNRG="default.nrg";
+  fnmCPI="";
+  fnmCPO="default.cpt";
   fpXTC=NULL;
   fpLMD=NULL;
   fpNRG=NULL;
@@ -163,6 +166,8 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
   fprintf(stdout,"RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
   fprintf(stdout,"RUN PRINT> fnmnrg=%s (file name for energy output)\n",fnmNRG.c_str());
+  fprintf(stdout,"RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n",fnmCPI.c_str());
+  fprintf(stdout,"RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n",fnmCPO.c_str());
   fprintf(stdout,"RUN PRINT> betaEwald=%f (input invbetaewald in A)\n",betaEwald);
   fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut);
   fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch);
@@ -193,6 +198,10 @@ void Run::set_variable(char *line,char *token,System *system)
     fnmLMD=io_nexts(line);
   } else if (strcmp(token,"fnmnrg")==0) {
     fnmNRG=io_nexts(line);
+  } else if (strcmp(token,"fnmcpi")==0) {
+    fnmCPI=io_nexts(line);
+  } else if (strcmp(token,"fnmcpo")==0) {
+    fnmCPO=io_nexts(line);
   } else if (strcmp(token,"freqxtc")==0) {
     freqXTC=io_nexti(line);
   } else if (strcmp(token,"freqlmd")==0) {
@@ -280,7 +289,13 @@ void Run::dynamics_initialize(System *system)
   system->potential=new Potential();
   system->potential->initialize(system);
 
-  //NYI read checkpoint
+  // Rectify bond constraints
+  holonomic_rectify(system);
+
+  // Read checkpoint
+  if (fnmCPI!="") {
+    read_checkpoint_file(fnmCPI.c_str(),system);
+  }
 
   // Set up domain decomposition
   if (system->domdec) delete system->domdec;
@@ -296,7 +311,7 @@ void Run::dynamics_initialize(System *system)
 
 void Run::dynamics_finalize(System *system)
 {
-  //NYI write checkpoint
   step0=step;
+  write_checkpoint_file(fnmCPO.c_str(),system);
 }
 

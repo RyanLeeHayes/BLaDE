@@ -56,4 +56,7 @@ void interpretter(const char *fnm,System *system);
 
 void print_dynamics_output(int step,System *system);
 
+void write_checkpoint_file(const char *fnm,System *system);
+void read_checkpoint_file(const char *fnm,System *system);
+
 #endif

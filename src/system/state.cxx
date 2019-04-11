@@ -201,6 +201,22 @@ void State::free_leapstate(struct LeapState* ls)
   cudaFree(ls->random);
 }
 
+void State::recv_state()
+{
+  cudaMemcpy(theta,theta_d,lambdaCount*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(position,position_d,3*atomCount*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(thetaVelocity,thetaVelocity_d,lambdaCount*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(velocity,velocity_d,3*atomCount*sizeof(real),cudaMemcpyDeviceToHost);
+}
+
+void State::send_state()
+{
+  cudaMemcpy(theta_d,theta,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
+  cudaMemcpy(position_d,position,3*atomCount*sizeof(real),cudaMemcpyHostToDevice);
+  cudaMemcpy(thetaVelocity_d,thetaVelocity,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
+  cudaMemcpy(velocity_d,velocity,3*atomCount*sizeof(real),cudaMemcpyHostToDevice);
+}
+
 void State::recv_position()
 {
   cudaMemcpy(position,position_d,3*atomCount*sizeof(real),cudaMemcpyDeviceToHost);
