@@ -11,8 +11,6 @@
 
 
 
-#define PROFILESERIAL
-
 // Class constructors
 Run::Run()
 {

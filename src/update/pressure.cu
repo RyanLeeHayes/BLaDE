@@ -76,9 +76,6 @@ void pressure_coupling(System *system)
     fprintf(stdout,"\n");
 
     // Compare energy
-#warning "Check atomCount vs. number of dof"
-    N=s->atomCount;
-    N=s->atomCount-(3*p->triangleConsCount+p->branch1ConsCount+2*p->branch2ConsCount+3*p->branch3ConsCount)/3.0;
     N=s->atomCount-(2*p->triangleConsCount+p->branch1ConsCount+2*p->branch2ConsCount+3*p->branch3ConsCount);
     kT=s->leapParms1->kT;
     dW=energyNew-energyOld+system->run->pressure*(volumeNew-volumeOld)-N*kT*log(volumeNew/volumeOld);
