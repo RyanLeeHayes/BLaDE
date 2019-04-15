@@ -14,16 +14,6 @@
 
 
 
-// Necessary because CUDA can't take modulus correctly reliably
-__device__ static inline
-int rectify_modulus(int a,int b)
-{
-  int c=a%b;
-  c-=(c>=b?b:0);
-  c+=(c<0?b:0);
-  return c;
-}
-
 // getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,p->bondedStream>>>(N,p->charge_d,prefactor,m->atomBlock_d,m->lambda_d,m->lambdaForce_d,pEnergy);
 __global__ void getforce_ewaldself_kernel(int atomCount,real *charge,real prefactor,int *atomBlock,real *lambda,real *lambdaForce,real *energy)
 {

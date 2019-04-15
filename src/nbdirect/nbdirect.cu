@@ -11,6 +11,8 @@
 
 
 
+#define WARPSPERBLOCK 1
+
 template <bool useSoftCore>
 __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 {
@@ -18,7 +20,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int iWarp=i>>5; // i/32
   int iThread=i-32*iWarp;
-  int iBlock=iWarp+startBlock;
+  int iBlock=(iWarp>>WARPSPERBLOCK)+startBlock;
   int jBlock;
   int iCount,jCount;
   int ii,jj;
@@ -38,7 +40,6 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   int bi,bj,bjtmp;
   real li,lj,ljtmp,lixljtmp;
   real rEff,dredr,dredll; // Soft core stuff
-  bool testSelf;
   int exclMask;
 
   if (iBlock<endBlock) {
@@ -57,18 +58,22 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
     fli=0;
 
     // used i/32 instead of iBlock to shift to beginning of array
-    jmax=blockPartnerCount[iWarp];
-    for (j=0; j<jmax; j++) {
-      jBlock=blockPartners[maxPartnersPerBlock*(iWarp)+j].jBlock;
-      boxShift=blockPartners[maxPartnersPerBlock*(iWarp)+j].shift;
+    jmax=blockPartnerCount[iWarp>>WARPSPERBLOCK];
+    for (j=rectify_modulus(iWarp,1<<WARPSPERBLOCK); j<jmax; j+=(1<<WARPSPERBLOCK)) {
+      jBlock=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].jBlock;
+      boxShift=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].shift;
       boxShift.x*=box.x;
       boxShift.y*=box.y;
       boxShift.z*=box.z;
-      int exclAddress=blockPartners[maxPartnersPerBlock*(iWarp)+j].exclAddress;
+      int exclAddress=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].exclAddress;
       if (exclAddress==-1) {
         exclMask=0xFFFFFFFF;
       } else {
         exclMask=blockExcls[32*exclAddress+(iThread)];
+      }
+      if (iBlock==jBlock && boxShift.x==0 && boxShift.y==0 && boxShift.z==0) {
+        exclMask>>=(iThread+1);
+        exclMask<<=(iThread+1);
       }
       jj=blockBounds[jBlock];
       jCount=blockBounds[jBlock+1]-jj;
@@ -81,13 +86,13 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
         lj=1;
         if (bj) lj=lambda[0xFFFF & bj];
       }
-      testSelf=(iBlock==jBlock && boxShift.x==0 && boxShift.y==0 && boxShift.z==0);
 
       fj=real3_reset();
       flj=0;
 
-      for (ij=testSelf; ij<32; ij++) {
-        jtmp=(iThread)+ij;
+      for (ij=0; ij<32; ij++) {
+        jtmp=iThread+ij;
+        jtmp-=32*(jtmp>=32);
         jtmpnp_q=__shfl_sync(0xFFFFFFFF,jnp.q,jtmp);
         int jtmpnp_typeIdx=__shfl_sync(0xFFFFFFFF,jnp.typeIdx,jtmp);
         xjtmp.x=__shfl_sync(0xFFFFFFFF,xj.x,jtmp);
@@ -98,9 +103,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
 
         fjtmp=real3_reset();
         fljtmp=0;
-        // if ((i&31)<iCount && (jtmp&31)<jCount)
-        jtmp=(testSelf?jtmp:(jtmp&31));
-        if ((iThread)<iCount && jtmp<jCount) {
+        if (iThread<iCount && jtmp<jCount && ((1<<jtmp)&exclMask)) {
           struct VdwPotential vdwp=vdwParameters[inp.typeIdx*vdwParameterCount+jtmpnp_typeIdx];
 
           // Geometry
@@ -108,7 +111,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
           // NOTE #warning "Unprotected sqrt"
           r=real3_mag(dr);
 
-          if (r<cutoffs.rCut && ((1<<(jtmp&31))&exclMask)) {
+          if (r<cutoffs.rCut) {
             // Scaling
             if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
               if (bi==bjtmp) {
@@ -204,6 +207,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
 
             // Energy, if requested
             if (energy) {
+              // if (!(lixljtmp*eij>-5000000)) printf("lixljtmp*eij=%f lixljtmp=%f eij=%f\n",lixljtmp*eij,lixljtmp,eij);
               lEnergy+=lixljtmp*eij;
             }
           }
@@ -260,9 +264,9 @@ void getforce_nbdirect(System *system,bool calcEnergy)
   }
 
   if (system->msld->useSoftCore) {
-    getforce_nbdirect_kernel<true><<<(32*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+    getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
   } else {
-    getforce_nbdirect_kernel<false><<<(32*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+    getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
   }
 
   system->domdec->unpack_forces(system);

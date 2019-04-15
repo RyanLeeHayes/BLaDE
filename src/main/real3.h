@@ -28,6 +28,18 @@ double atomicAdd(double* address, double val)
 
 
 
+// Necessary because CUDA can't take modulus correctly reliably
+__device__ static inline
+int rectify_modulus(int a,int b)
+{
+  int c=a%b;
+  c-=(c>=b?b:0);
+  c+=(c<0?b:0);
+  return c;
+}
+
+
+
 __device__ static inline
 void at_real3_scaleinc(real3 *a,real f,real3 x)
 {

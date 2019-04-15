@@ -123,6 +123,8 @@ class State {
   void restore_position();
 
   void broadcast_position(System *system);
+  void broadcast_velocity(System *system);
+  void broadcast_box(System *system);
   void gather_force(System *system,bool calcEnergy);
 
   // From update/update.cu

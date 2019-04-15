@@ -316,107 +316,114 @@ void print_dynamics_output(int step,System *system)
 
 void write_checkpoint_file(const char *fnm,System *system)
 {
-  FILE *fp=fopen(fnm,"w");
+  FILE *fp;
   int i;
 
-  system->state->recv_state();
+  if (system->id==0) {
+    fp=fopen(fnm,"w");
 
-  fprintf(fp,"Step %d\n",system->run->step0);
+    system->state->recv_state();
 
-  fprintf(fp,"Position %d\n",system->state->atomCount);
-  for (i=0; i<system->state->atomCount; i++) {
-    fprintf(fp,"%f ",system->state->position[i][0]);
-    fprintf(fp,"%f ",system->state->position[i][1]);
-    fprintf(fp,"%f\n",system->state->position[i][2]);
+    fprintf(fp,"Step %d\n",system->run->step0);
+
+    fprintf(fp,"Position %d\n",system->state->atomCount);
+    for (i=0; i<system->state->atomCount; i++) {
+      fprintf(fp,"%f ",system->state->position[i][0]);
+      fprintf(fp,"%f ",system->state->position[i][1]);
+      fprintf(fp,"%f\n",system->state->position[i][2]);
+    }
+
+    fprintf(fp,"Velocity %d\n",system->state->atomCount);
+    for (i=0; i<system->state->atomCount; i++) {
+      fprintf(fp,"%f ",system->state->velocity[i][0]);
+      fprintf(fp,"%f ",system->state->velocity[i][1]);
+      fprintf(fp,"%f\n",system->state->velocity[i][2]);
+    }
+
+    fprintf(fp,"ThetaPos %d\n",system->state->lambdaCount);
+    for (i=0; i<system->state->lambdaCount; i++) {
+      fprintf(fp,"%f\n",system->state->theta[i]);
+    }
+
+    fprintf(fp,"ThetaVel %d\n",system->state->lambdaCount);
+    for (i=0; i<system->state->lambdaCount; i++) {
+      fprintf(fp,"%f\n",system->state->thetaVelocity[i]);
+    }
+
+    fprintf(fp,"Box\n");
+    fprintf(fp,"%f 0 0\n",system->state->orthBox.x);
+    fprintf(fp,"0 %f 0\n",system->state->orthBox.y);
+    fprintf(fp,"0 0 %f\n",system->state->orthBox.z);
+
+    fclose(fp);
   }
-
-  fprintf(fp,"Velocity %d\n",system->state->atomCount);
-  for (i=0; i<system->state->atomCount; i++) {
-    fprintf(fp,"%f ",system->state->velocity[i][0]);
-    fprintf(fp,"%f ",system->state->velocity[i][1]);
-    fprintf(fp,"%f\n",system->state->velocity[i][2]);
-  }
-
-  fprintf(fp,"ThetaPos %d\n",system->state->lambdaCount);
-  for (i=0; i<system->state->lambdaCount; i++) {
-    fprintf(fp,"%f\n",system->state->theta[i]);
-  }
-
-  fprintf(fp,"ThetaVel %d\n",system->state->lambdaCount);
-  for (i=0; i<system->state->lambdaCount; i++) {
-    fprintf(fp,"%f\n",system->state->thetaVelocity[i]);
-  }
-
-  fprintf(fp,"Box\n");
-  fprintf(fp,"%f 0 0\n",system->state->orthBox.x);
-  fprintf(fp,"0 %f 0\n",system->state->orthBox.y);
-  fprintf(fp,"0 0 %f\n",system->state->orthBox.z);
-
-  fclose(fp);
 }
 
 void read_checkpoint_file(const char *fnm,System *system)
 {
-  FILE *fp=fopen(fnm,"r");
+  FILE *fp;
   int i;
   double v;
 
-  fscanf(fp,"Step %ld\n",&system->run->step0);
+  if (system->id==0) {
+    fp=fopen(fnm,"r");
+    fscanf(fp,"Step %ld\n",&system->run->step0);
 
-  fscanf(fp,"Position %d\n",&i);
-  if (i!=system->state->atomCount) {
-    fatal(__FILE__,__LINE__,"Checkpoint file is not compatible with system setup. Wrong number of atoms\n");
-  }
-  for (i=0; i<system->state->atomCount; i++) {
-    fscanf(fp,"%lf ",&v);
-    system->state->position[i][0]=v;
-    fscanf(fp,"%lf ",&v);
-    system->state->position[i][1]=v;
-    fscanf(fp,"%lf\n",&v);
-    system->state->position[i][2]=v;
-  }
+    fscanf(fp,"Position %d\n",&i);
+    if (i!=system->state->atomCount) {
+      fatal(__FILE__,__LINE__,"Checkpoint file is not compatible with system setup. Wrong number of atoms\n");
+    }
+    for (i=0; i<system->state->atomCount; i++) {
+      fscanf(fp,"%lf ",&v);
+      system->state->position[i][0]=v;
+      fscanf(fp,"%lf ",&v);
+      system->state->position[i][1]=v;
+      fscanf(fp,"%lf\n",&v);
+      system->state->position[i][2]=v;
+    }
 
-  fscanf(fp,"Velocity %d\n",&i);
-  if (i!=system->state->atomCount) {
-    fatal(__FILE__,__LINE__,"Checkpoint file is not compatible with system setup. Wrong number of atoms\n");
-  }
-  for (i=0; i<system->state->atomCount; i++) {
-    fscanf(fp,"%lf ",&v);
-    system->state->velocity[i][0]=v;
-    fscanf(fp,"%lf ",&v);
-    system->state->velocity[i][1]=v;
-    fscanf(fp,"%lf\n",&v);
-    system->state->velocity[i][2]=v;
-  }
+    fscanf(fp,"Velocity %d\n",&i);
+    if (i!=system->state->atomCount) {
+      fatal(__FILE__,__LINE__,"Checkpoint file is not compatible with system setup. Wrong number of atoms\n");
+    }
+    for (i=0; i<system->state->atomCount; i++) {
+      fscanf(fp,"%lf ",&v);
+      system->state->velocity[i][0]=v;
+      fscanf(fp,"%lf ",&v);
+      system->state->velocity[i][1]=v;
+      fscanf(fp,"%lf\n",&v);
+      system->state->velocity[i][2]=v;
+    }
 
-  fscanf(fp,"ThetaPos %d\n",&i);
-  if (i!=system->state->lambdaCount) {
-    fatal(__FILE__,__LINE__,"Checkpoint file is not compatible with system setup. Wrong number of alchemical coordinates\n");
-  }
-  for (i=0; i<system->state->lambdaCount; i++) {
-    fscanf(fp,"%lf\n",&v);
-    system->state->theta[i]=v;
-  }
+    fscanf(fp,"ThetaPos %d\n",&i);
+    if (i!=system->state->lambdaCount) {
+      fatal(__FILE__,__LINE__,"Checkpoint file is not compatible with system setup. Wrong number of alchemical coordinates\n");
+    }
+    for (i=0; i<system->state->lambdaCount; i++) {
+      fscanf(fp,"%lf\n",&v);
+      system->state->theta[i]=v;
+    }
 
-  fscanf(fp,"ThetaVel %d\n",&i);
-  if (i!=system->state->lambdaCount) {
-    fatal(__FILE__,__LINE__,"Checkpoint file is not compatible with system setup. Wrong number of alchemical coordinates\n");
+    fscanf(fp,"ThetaVel %d\n",&i);
+    if (i!=system->state->lambdaCount) {
+      fatal(__FILE__,__LINE__,"Checkpoint file is not compatible with system setup. Wrong number of alchemical coordinates\n");
+    }
+    for (i=0; i<system->state->lambdaCount; i++) {
+      fscanf(fp,"%lf\n",&v);
+      system->state->thetaVelocity[i]=v;
+    }
+
+    fscanf(fp,"Box\n");
+    fscanf(fp,"%lf 0 0\n",&v);
+    system->state->orthBox.x=v;
+    fscanf(fp,"0 %lf 0\n",&v);
+    system->state->orthBox.y=v;
+    fscanf(fp,"0 0 %lf\n",&v);
+    system->state->orthBox.z=v;
+
+    fclose(fp);
+
+    system->state->send_state();
+    system->msld->calc_lambda_from_theta(0,system);
   }
-  for (i=0; i<system->state->lambdaCount; i++) {
-    fscanf(fp,"%lf\n",&v);
-    system->state->thetaVelocity[i]=v;
-  }
-
-  fscanf(fp,"Box\n");
-  fscanf(fp,"%lf 0 0\n",&v);
-  system->state->orthBox.x=v;
-  fscanf(fp,"0 %lf 0\n",&v);
-  system->state->orthBox.y=v;
-  fscanf(fp,"0 0 %lf\n",&v);
-  system->state->orthBox.z=v;
-
-  fclose(fp);
-
-  system->state->send_state();
-  system->msld->calc_lambda_from_theta(0,system);
 }

@@ -258,14 +258,32 @@ void State::restore_position()
 
 void State::broadcast_position(System *system)
 {
-  int N=3*atomCount+lambdaCount;
+  int N=3*atomCount+2*lambdaCount;
   if (system->id==0) {
     cudaMemcpy(positionBuffer,positionBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
   }
-  MPI_Bcast(positionBuffer,N,MPI_FLOAT,0,MPI_COMM_WORLD);
+  MPI_Bcast(positionBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD);
   if (system->id!=0) {
     cudaMemcpy(positionBuffer_d,positionBuffer,N*sizeof(real),cudaMemcpyHostToDevice);
   }
+}
+
+void State::broadcast_velocity(System *system)
+{
+  int N=3*atomCount+lambdaCount;
+  if (system->id==0) {
+    cudaMemcpy(velocityBuffer,velocityBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
+  }
+  MPI_Bcast(velocityBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD);
+  if (system->id!=0) {
+    cudaMemcpy(velocityBuffer_d,velocityBuffer,N*sizeof(real),cudaMemcpyHostToDevice);
+  }
+}
+
+void State::broadcast_box(System *system)
+{
+  int N=3;
+  MPI_Bcast(&orthBox,N,MPI_CREAL,0,MPI_COMM_WORLD);
 }
 
 void State::gather_force(System *system,bool calcEnergy)
@@ -277,9 +295,9 @@ void State::gather_force(System *system,bool calcEnergy)
       cudaMemcpy(energy,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToHost);
     }
   }
-  MPI_Gather(forceBuffer,N,MPI_FLOAT,forceBuffer,N,MPI_FLOAT,0,MPI_COMM_WORLD);
+  MPI_Gather(forceBuffer,N,MPI_CREAL,forceBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD);
   if (calcEnergy) {
-    MPI_Gather(energy,eeend,MPI_FLOAT,energy,eeend,MPI_FLOAT,0,MPI_COMM_WORLD);
+    MPI_Gather(energy,eeend,MPI_CREAL,energy,eeend,MPI_CREAL,0,MPI_COMM_WORLD);
   }
   if (system->id==0) {
     cudaMemcpy(forceBuffer_d+N,forceBuffer+N,(system->idCount-1)*N*sizeof(real),cudaMemcpyHostToDevice);

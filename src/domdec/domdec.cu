@@ -62,6 +62,10 @@ Domdec::~Domdec()
 
 void Domdec::initialize(System *system)
 {
+  system->state->broadcast_position(system);
+  system->state->broadcast_velocity(system);
+  system->state->broadcast_box(system);
+
   idDomdec=make_int3(0,0,0);
   if (system->idCount==1) {
     gridDomdec=make_int3(1,1,1);
