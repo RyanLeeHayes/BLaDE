@@ -49,28 +49,25 @@ Run::Run()
 
 #ifdef PROFILESERIAL
   updateStream=0;
-#else
-  cudaStreamCreate(&updateStream);
-#endif
-  cudaEventCreate(&forceBegin);
-  cudaEventCreate(&forceComplete);
-  setup_parse_run();
-
-#ifdef PROFILESERIAL
   bondedStream=0;
   biaspotStream=0;
   nbdirectStream=0;
   nbrecipStream=0;
 #else
+  cudaStreamCreate(&updateStream);
   cudaStreamCreate(&bondedStream);
   cudaStreamCreate(&biaspotStream);
   cudaStreamCreate(&nbdirectStream);
   cudaStreamCreate(&nbrecipStream);
 #endif
+  cudaEventCreate(&forceBegin);
   cudaEventCreate(&bondedComplete);
   cudaEventCreate(&biaspotComplete);
   cudaEventCreate(&nbdirectComplete);
   cudaEventCreate(&nbrecipComplete);
+  cudaEventCreate(&forceComplete);
+
+  setup_parse_run();
 }
 
 Run::~Run()

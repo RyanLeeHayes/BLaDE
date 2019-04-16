@@ -131,6 +131,7 @@ void Variables::substitute(char *line)
   int lineLength=strlen(line);
   std::string token,value;
   int tokenLength,valueLength;
+  bool anySubstitutions=false;
 
   while (closeBrace>=0) {
     openBrace=-1;
@@ -148,7 +149,7 @@ void Variables::substitute(char *line)
       fatal(__FILE__,__LINE__,"Mismatched curly braces in string \"%s\"\n",line);
     }
 
-    if (openBrace>=0) {
+    if (closeBrace>=0) {
       // null terminate token
       line[closeBrace]='\0';
       token=&line[openBrace+1];
@@ -172,7 +173,8 @@ void Variables::substitute(char *line)
       for (i=0; i<valueLength; i++) {
         line[i+openBrace]=value.c_str()[i];
       }
-      fprintf(stdout,"SUBSTITUTE> %s",line);
+      anySubstitutions=true;
     }
   }
+  if (anySubstitutions) fprintf(stdout,"SUBSTITUTE> %s",line);
 }

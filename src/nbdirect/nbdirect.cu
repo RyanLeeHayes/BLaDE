@@ -12,9 +12,34 @@
 
 
 #define WARPSPERBLOCK 1
+__host__ __device__ inline
+bool check_proximity(DomdecBlockVolume a,real3 b,real c2)
+{
+  real bufferA,bufferB,buffer2;
+
+  bufferB=b.x-a.max.x; // Distance one way
+  bufferA=a.min.x-b.x; // Distance the other way
+  bufferA=(bufferA>bufferB?bufferA:bufferB);
+  bufferA=(bufferA<0?0:bufferA);
+  buffer2=bufferA*bufferA;
+
+  bufferB=b.y-a.max.y; // Distance one way
+  bufferA=a.min.y-b.y; // Distance the other way
+  bufferA=(bufferA>bufferB?bufferA:bufferB);
+  bufferA=(bufferA<0?0:bufferA);
+  buffer2+=bufferA*bufferA;
+
+  bufferB=b.z-a.max.z; // Distance one way
+  bufferA=a.min.z-b.z; // Distance the other way
+  bufferA=(bufferA>bufferB?bufferA:bufferB);
+  bufferA=(bufferA<0?0:bufferA);
+  buffer2+=bufferA*bufferA;
+
+  return buffer2<=c2;
+}
 
 template <bool useSoftCore>
-__global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
+__global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -23,14 +48,16 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   int iBlock=(iWarp>>WARPSPERBLOCK)+startBlock;
   int jBlock;
   int iCount,jCount;
+  struct DomdecBlockVolume iBlockVolume;
   int ii,jj;
   int j,jmax;
-  int ij,jtmp;
+  int jtmp;
   real r,rinv;
   real3 boxShift;
   real3 dr;
   NbondPotential inp,jnp;
   real jtmpnp_q;
+  int jtmpnp_typeIdx;
   real fij,eij;
   real lEnergy=0;
   extern __shared__ real sEnergy[];
@@ -40,7 +67,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   int bi,bj,bjtmp;
   real li,lj,ljtmp,lixljtmp;
   real rEff,dredr,dredll; // Soft core stuff
-  int exclMask;
+  int exclAddress, exclMask;
 
   if (iBlock<endBlock) {
     ii=blockBounds[iBlock];
@@ -53,6 +80,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
       li=1;
       if (bi) li=lambda[0xFFFF & bi];
     }
+    iBlockVolume=blockVolume[iBlock];
 
     fi=real3_reset();
     fli=0;
@@ -65,7 +93,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
       boxShift.x*=box.x;
       boxShift.y*=box.y;
       boxShift.z*=box.z;
-      int exclAddress=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].exclAddress;
+      exclAddress=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].exclAddress;
       if (exclAddress==-1) {
         exclMask=0xFFFFFFFF;
       } else {
@@ -86,138 +114,160 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
         lj=1;
         if (bj) lj=lambda[0xFFFF & bj];
       }
+      bool jFlag=check_proximity(iBlockVolume,xj,cutoffs.rCut*cutoffs.rCut);
 
       fj=real3_reset();
       flj=0;
 
-      for (ij=0; ij<32; ij++) {
-        jtmp=iThread+ij;
-        jtmp-=32*(jtmp>=32);
-        jtmpnp_q=__shfl_sync(0xFFFFFFFF,jnp.q,jtmp);
-        int jtmpnp_typeIdx=__shfl_sync(0xFFFFFFFF,jnp.typeIdx,jtmp);
-        xjtmp.x=__shfl_sync(0xFFFFFFFF,xj.x,jtmp);
-        xjtmp.y=__shfl_sync(0xFFFFFFFF,xj.y,jtmp);
-        xjtmp.z=__shfl_sync(0xFFFFFFFF,xj.z,jtmp);
-        bjtmp=__shfl_sync(0xFFFFFFFF,bj,jtmp);
-        ljtmp=__shfl_sync(0xFFFFFFFF,lj,jtmp);
+      for (jtmp=0; jtmp<jCount; jtmp++) {
+        if (__shfl_sync(0xFFFFFFFF,jFlag,jtmp)) {
+          jtmpnp_q=__shfl_sync(0xFFFFFFFF,jnp.q,jtmp);
+          jtmpnp_typeIdx=__shfl_sync(0xFFFFFFFF,jnp.typeIdx,jtmp);
+          xjtmp.x=__shfl_sync(0xFFFFFFFF,xj.x,jtmp);
+          xjtmp.y=__shfl_sync(0xFFFFFFFF,xj.y,jtmp);
+          xjtmp.z=__shfl_sync(0xFFFFFFFF,xj.z,jtmp);
+          bjtmp=__shfl_sync(0xFFFFFFFF,bj,jtmp);
+          ljtmp=__shfl_sync(0xFFFFFFFF,lj,jtmp);
 
-        fjtmp=real3_reset();
-        fljtmp=0;
-        if (iThread<iCount && jtmp<jCount && ((1<<jtmp)&exclMask)) {
-          struct VdwPotential vdwp=vdwParameters[inp.typeIdx*vdwParameterCount+jtmpnp_typeIdx];
+          fjtmp=real3_reset();
+          fljtmp=0;
+          if (iThread<iCount && ((1<<jtmp)&exclMask)) {
+            struct VdwPotential vdwp=vdwParameters[inp.typeIdx*vdwParameterCount+jtmpnp_typeIdx];
 
-          // Geometry
-          dr=real3_sub(xi,xjtmp);
-          // NOTE #warning "Unprotected sqrt"
-          r=real3_mag(dr);
+            // Geometry
+            dr=real3_sub(xi,xjtmp);
+            // NOTE #warning "Unprotected sqrt"
+            r=real3_mag(dr);
 
-          if (r<cutoffs.rCut) {
-            // Scaling
-            if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
-              if (bi==bjtmp) {
-                lixljtmp=li;
-              } else {
-                lixljtmp=0;
-              }
-            } else {
-              lixljtmp=li*ljtmp;
-            }
-
-            rEff=r;
-            if (useSoftCore) {
-              dredr=1.0; // d(rEff) / d(r)
-              dredll=0.0; // d(rEff) / d(lixljtmp)
-              if (bi || bjtmp) {
-                real rSoft=(2.0*ANGSTROM*sqrt(4.0))*(1.0-lixljtmp);
-                if (r<rSoft) {
-                  real rdivrs=r/rSoft;
-                  rEff=1.0-0.5*rdivrs;
-                  rEff=rEff*rdivrs*rdivrs*rdivrs+0.5;
-                  dredr=3.0-2.0*rdivrs;
-                  dredr*=rdivrs*rdivrs;
-                  dredll=rEff-dredr*rdivrs;
-                  dredll*=-(2.0*ANGSTROM*sqrt(4.0));
-                  rEff*=rSoft;
-                }
-              }
-            }
-            rinv=1/rEff;
-
-            // interaction
-              // Electrostatics
-            real br=cutoffs.betaEwald*rEff;
-            real erfcrinv=erfcf(br)*rinv;
-            fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
-            if (bi || bjtmp || energy) {
-              eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
-            }
-              // Van der Waals
-            real rinv3=rinv*rinv*rinv;
-            real rinv6=rinv3*rinv3;
-            /*fij+=-(12*(vdwp.c12*rinv6)-6*(vdwp.c6))*rinv6*rinv;
-            if (bi || bjtmp || energy) {
-              eij+=(vdwp.c12*rinv6-vdwp.c6)*rinv6;
-            }*/
-            // See charmm/source/domdec/enbxfast.F90, functions calc_vdw_constants, vdw_attraction, vdw_repulsion
-            real rCut3=cutoffs.rCut*cutoffs.rCut*cutoffs.rCut;
-            real rSwitch3=cutoffs.rSwitch*cutoffs.rSwitch*cutoffs.rSwitch;
-            if (rEff<cutoffs.rSwitch) {
-              fij+=(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv;
-              if (bi || bjtmp || energy) {
-                real dv6=1/(rCut3*rSwitch3);
-                eij+=vdwp.c12*(rinv6*rinv6-dv6*dv6)-vdwp.c6*(rinv6-dv6);
-              }
-            } else {
-              real k6=rCut3/(rCut3-rSwitch3);
-              real k12=rCut3*rCut3/(rCut3*rCut3-rSwitch3*rSwitch3);
-              real rCutinv3=1/rCut3;
-              fij+=(6*vdwp.c6*k6*(rinv3-rCutinv3)*rinv3-12*vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*rinv6)*rinv;
-              if (bi || bjtmp || energy) {
-                eij+=vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*(rinv6-rCutinv3*rCutinv3)-vdwp.c6*k6*(rinv3-rCutinv3)*(rinv3-rCutinv3);
-              }
-            }
-            fij*=lixljtmp;
-
-            // Lambda force
-            if (bi || bjtmp) {
-              if (useSoftCore) {
-                fljtmp=eij+fij*dredll;
-              } else {
-                fljtmp=eij;
-              }
+            if (r<cutoffs.rCut) {
+              // Scaling
               if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
                 if (bi==bjtmp) {
-                  fli+=fljtmp;
+                  lixljtmp=li;
                 } else {
-                  fljtmp=0;
+                  lixljtmp=0;
                 }
               } else {
-                fli+=ljtmp*fljtmp;
-                fljtmp*=li;
+                lixljtmp=li*ljtmp;
+              }
+
+              rEff=r;
+              if (useSoftCore) {
+                dredr=1.0; // d(rEff) / d(r)
+                dredll=0.0; // d(rEff) / d(lixljtmp)
+                if (bi || bjtmp) {
+                  real rSoft=(2.0*ANGSTROM*sqrt(4.0))*(1.0-lixljtmp);
+                  if (r<rSoft) {
+                    real rdivrs=r/rSoft;
+                    rEff=1.0-0.5*rdivrs;
+                    rEff=rEff*rdivrs*rdivrs*rdivrs+0.5;
+                    dredr=3.0-2.0*rdivrs;
+                    dredr*=rdivrs*rdivrs;
+                    dredll=rEff-dredr*rdivrs;
+                    dredll*=-(2.0*ANGSTROM*sqrt(4.0));
+                    rEff*=rSoft;
+                  }
+                }
+              }
+              rinv=1/rEff;
+
+              // interaction
+                // Electrostatics
+              real br=cutoffs.betaEwald*rEff;
+              real erfcrinv=erfcf(br)*rinv;
+              fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
+              if (bi || bjtmp || energy) {
+                eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
+              }
+                // Van der Waals
+              real rinv3=rinv*rinv*rinv;
+              real rinv6=rinv3*rinv3;
+              /*fij+=-(12*(vdwp.c12*rinv6)-6*(vdwp.c6))*rinv6*rinv;
+              if (bi || bjtmp || energy) {
+                eij+=(vdwp.c12*rinv6-vdwp.c6)*rinv6;
+              }*/
+              // See charmm/source/domdec/enbxfast.F90, functions calc_vdw_constants, vdw_attraction, vdw_repulsion
+              real rCut3=cutoffs.rCut*cutoffs.rCut*cutoffs.rCut;
+              real rSwitch3=cutoffs.rSwitch*cutoffs.rSwitch*cutoffs.rSwitch;
+              if (rEff<cutoffs.rSwitch) {
+                fij+=(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv;
+                if (bi || bjtmp || energy) {
+                  real dv6=1/(rCut3*rSwitch3);
+                  eij+=vdwp.c12*(rinv6*rinv6-dv6*dv6)-vdwp.c6*(rinv6-dv6);
+                }
+              } else {
+                real k6=rCut3/(rCut3-rSwitch3);
+                real k12=rCut3*rCut3/(rCut3*rCut3-rSwitch3*rSwitch3);
+                real rCutinv3=1/rCut3;
+                fij+=(6*vdwp.c6*k6*(rinv3-rCutinv3)*rinv3-12*vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*rinv6)*rinv;
+                if (bi || bjtmp || energy) {
+                  eij+=vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*(rinv6-rCutinv3*rCutinv3)-vdwp.c6*k6*(rinv3-rCutinv3)*(rinv3-rCutinv3);
+                }
+              }
+              fij*=lixljtmp;
+
+              // Lambda force
+              if (bi || bjtmp) {
+                if (useSoftCore) {
+                  fljtmp=eij+fij*dredll;
+                } else {
+                  fljtmp=eij;
+                }
+                if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
+                  if (bi==bjtmp) {
+                    fli+=fljtmp;
+                  } else {
+                    fljtmp=0;
+                  }
+                } else {
+                  fli+=ljtmp*fljtmp;
+                  fljtmp*=li;
+                }
+              }
+
+              // Spatial force
+              if (useSoftCore) {
+                rinv=1/r;
+                fij*=dredr;
+              }
+              real3_scaleinc(&fi, fij*rinv,dr);
+              fjtmp=real3_scale(-fij*rinv,dr);
+
+              // Energy, if requested
+              if (energy) {
+                // if (!(lixljtmp*eij>-5000000)) printf("lixljtmp*eij=%f lixljtmp=%f eij=%f\n",lixljtmp*eij,lixljtmp,eij);
+                lEnergy+=lixljtmp*eij;
               }
             }
-        
-            // Spatial force
-            if (useSoftCore) {
-              rinv=1/r;
-              fij*=dredr;
-            }
-            real3_scaleinc(&fi, fij*rinv,dr);
-            fjtmp=real3_scale(-fij*rinv,dr);
-
-            // Energy, if requested
-            if (energy) {
-              // if (!(lixljtmp*eij>-5000000)) printf("lixljtmp*eij=%f lixljtmp=%f eij=%f\n",lixljtmp*eij,lixljtmp,eij);
-              lEnergy+=lixljtmp*eij;
-            }
+          }
+          __syncwarp();
+          fjtmp.x+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.x,1);
+          fjtmp.x+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.x,2);
+          fjtmp.x+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.x,4);
+          fjtmp.x+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.x,8);
+          fjtmp.x+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.x,16);
+          if (iThread==jtmp) fj.x=fjtmp.x;
+          fjtmp.y+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.y,1);
+          fjtmp.y+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.y,2);
+          fjtmp.y+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.y,4);
+          fjtmp.y+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.y,8);
+          fjtmp.y+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.y,16);
+          if (iThread==jtmp) fj.y=fjtmp.y;
+          fjtmp.z+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.z,1);
+          fjtmp.z+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.z,2);
+          fjtmp.z+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.z,4);
+          fjtmp.z+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.z,8);
+          fjtmp.z+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.z,16);
+          if (iThread==jtmp) fj.z=fjtmp.z;
+          if (bjtmp) {
+            fljtmp+=__shfl_xor_sync(0xFFFFFFFF,fljtmp,1);
+            fljtmp+=__shfl_xor_sync(0xFFFFFFFF,fljtmp,2);
+            fljtmp+=__shfl_xor_sync(0xFFFFFFFF,fljtmp,4);
+            fljtmp+=__shfl_xor_sync(0xFFFFFFFF,fljtmp,8);
+            fljtmp+=__shfl_xor_sync(0xFFFFFFFF,fljtmp,16);
+            if (iThread==jtmp) flj=fljtmp;
           }
         }
-        __syncwarp();
-        jtmp=i-ij;
-        fj.x+=__shfl_sync(0xFFFFFFFF,fjtmp.x,jtmp);
-        fj.y+=__shfl_sync(0xFFFFFFFF,fjtmp.y,jtmp);
-        fj.z+=__shfl_sync(0xFFFFFFFF,fjtmp.z,jtmp);
-        flj+=__shfl_sync(0xFFFFFFFF,fljtmp,jtmp);
       }
       __syncwarp();
       if ((iThread)<jCount) {
@@ -264,9 +314,9 @@ void getforce_nbdirect(System *system,bool calcEnergy)
   }
 
   if (system->msld->useSoftCore) {
-    getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+    getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
   } else {
-    getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+    getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
   }
 
   system->domdec->unpack_forces(system);

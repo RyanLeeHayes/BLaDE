@@ -55,20 +55,18 @@ class Run {
   real pressure;
 
   cudaStream_t updateStream;
-
-  cudaEvent_t forceBegin;
-  cudaEvent_t forceComplete;
-
   cudaStream_t bondedStream;
   cudaStream_t biaspotStream;
   cudaStream_t nbdirectStream;
   cudaStream_t nbrecipStream;
 
+  cudaEvent_t forceBegin;
   cudaEvent_t bondedComplete;
   cudaEvent_t biaspotComplete;
   cudaEvent_t nbdirectComplete;
   cudaEvent_t nbrecipComplete;
-  
+  cudaEvent_t forceComplete;
+
 
   Run();
   ~Run();
