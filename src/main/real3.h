@@ -235,4 +235,19 @@ void real_sum_reduce(real input,real *shared,real *global)
     atomicAdd(global,local);
   }
 }
+
+__device__ static inline
+void real_sum_reduce(real input,real *global)
+{
+  real local=input;
+  local+=__shfl_down_sync(0xFFFFFFFF,local,1);
+  local+=__shfl_down_sync(0xFFFFFFFF,local,2);
+  local+=__shfl_down_sync(0xFFFFFFFF,local,4);
+  local+=__shfl_down_sync(0xFFFFFFFF,local,8);
+  local+=__shfl_down_sync(0xFFFFFFFF,local,16);
+  __syncthreads();
+  if ((0x1F & threadIdx.x)==0) {
+    atomicAdd(global,local);
+  }
+}
 #endif

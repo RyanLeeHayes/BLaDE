@@ -23,7 +23,7 @@ endif()
 
 ## Use for debugging kernels
 set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
-# set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "--use_fast_math")
+set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "--use_fast_math")
 
 # # Use for double atomicAdd - only works on GTX1080, not on GTX980
 # set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-gencode=arch=compute_60,code=sm_60")

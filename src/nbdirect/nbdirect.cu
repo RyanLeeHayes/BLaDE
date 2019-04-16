@@ -60,7 +60,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   int jtmpnp_typeIdx;
   real fij,eij;
   real lEnergy=0;
-  extern __shared__ real sEnergy[];
+  // extern __shared__ real sEnergy[];
   real3 xi,xj,xjtmp;
   real3 fi,fj,fjtmp;
   real fli,flj,fljtmp;
@@ -288,7 +288,9 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
 
   // Energy, if requested
   if (energy) {
-    real_sum_reduce(lEnergy,sEnergy,energy);
+    // Use of shared memory here causes error when getforce_nbrecip_gather is executed concurrently. Whatever CUDA...
+    // real_sum_reduce(lEnergy,sEnergy,energy);
+    real_sum_reduce(lEnergy,energy);
   }
 }
 
@@ -309,7 +311,8 @@ void getforce_nbdirect(System *system,bool calcEnergy)
   real *pEnergy=NULL;
 
   if (calcEnergy) {
-    shMem=BLNB*sizeof(real)/32;
+    // shMem=BLNB*sizeof(real)/32;
+    shMem=0;
     pEnergy=s->energy_d+eenbdirect;
   }
 
