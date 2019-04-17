@@ -1,13 +1,10 @@
-! Comment line
-! stream input2
+variables set dir ../test/T4L_peptide
 
-! parameters file ../test/T4L_prep/toppar/par_all36_msld.prm
-parameters file ../test/toppar/par_all36_prot.prm
-parameters file ../test/toppar_water_ions/par_water_ions.prm
+parameters file {dir}/../toppar/par_all36_prot.prm
+parameters file {dir}/../toppar_water_ions/par_water_ions.prm
 ! parameters print
 
-structure file psf ../test/T4L_prep/minimized.psf
-! structure file psf ../test/solventcavity_prep/minimized.psf
+structure file psf {dir}/T4L_prep/minimized.psf
 ! structure print
 ! structure shake none
 structure shake hbond
@@ -54,13 +51,12 @@ msld removescaling bond angle ! scale urey dihe impr and cmap
 msld bias 1 2 6 0.0 0.0 0
 msld softcore on
 
-coordinates file ../test/T4L_prep/minimized.pdb
-! coordinates file ../test/solventcavity_prep/minimized.pdb
+coordinates file {dir}/T4L_prep/minimized.pdb
 coordinates box 41.271760 0 0   0 41.271760 0   0 0 41.271760
 coordinates velocity 300
 
 run setvariable nsteps 1000 ! 50000
-run setvariable dt 0.003125
+run setvariable dt 0.0025 ! 0.003125
 run setvariable T 300
 run setvariable gamma 1
 run setvariable invbetaewald 3.125

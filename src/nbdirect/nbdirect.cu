@@ -11,7 +11,7 @@
 
 
 
-#define WARPSPERBLOCK 1
+#define WARPSPERBLOCK 2
 __host__ __device__ inline
 bool check_proximity(DomdecBlockVolume a,real3 b,real c2)
 {

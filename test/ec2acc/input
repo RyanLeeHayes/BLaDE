@@ -60,8 +60,8 @@ variables set cterres 155
 variables set ctercap cter
 variables set cterc 3  ! 2 nter, 3 cter, 4 ace, 5 ct3
 
-parameters file {dir}/toppar/par_all36_prot.prm
-parameters file {dir}/toppar_water_ions/par_water_ions.prm
+parameters file {dir}/../toppar/par_all36_prot.prm
+parameters file {dir}/../toppar_water_ions/par_water_ions.prm
 
 structure file psf {dir}/ec2acc_prep/minimized.psf
 structure shake hbond

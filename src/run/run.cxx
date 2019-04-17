@@ -62,8 +62,8 @@ Run::Run()
   // Set priorities if desired:
   // int low,high;
   // cudaDeviceGetStreamPriorityRange(&low,&high);
-  // cudaStreamCreateWithPriority(&nbdirectStream,cudaStreamDefault,high);
-  // cudaStreamCreateWithPriority(&nbrecipStream,cudaStreamDefault,low);
+  // cudaStreamCreateWithPriority(&nbdirectStream,cudaStreamDefault,low);
+  // cudaStreamCreateWithPriority(&nbrecipStream,cudaStreamDefault,high);
 #endif
   cudaEventCreate(&forceBegin);
   cudaEventCreate(&bondedComplete);
