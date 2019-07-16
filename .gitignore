@@ -1,5 +1,6 @@
 build
 buildDebug
+buildStable*
 run/output*
 run/input_debug
 run/*.xtc

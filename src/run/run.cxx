@@ -11,6 +11,9 @@
 
 
 
+// #warning "Hardcoded serial kernels"
+// #define PROFILESERIAL
+
 // Class constructors
 Run::Run()
 {

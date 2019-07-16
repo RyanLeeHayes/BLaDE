@@ -35,7 +35,7 @@ struct DomdecBlockVolume {
 
 struct DomdecBlockPartners {
   int jBlock;
-  real3 shift;
+  char4 shift;
   int exclAddress; // Tells where to look up exclusions
 };
 

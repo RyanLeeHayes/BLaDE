@@ -39,7 +39,26 @@ bool check_proximity(DomdecBlockVolume a,real3 b,real c2)
 }
 
 template <bool useSoftCore>
-__global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
+// __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
+__global__ void getforce_nbdirect_kernel(
+  int startBlock,
+  int endBlock,
+  int maxPartnersPerBlock,
+  const int* __restrict__ blockBounds,
+  const int* __restrict__ blockPartnerCount,
+  const struct DomdecBlockPartners* __restrict__ blockPartners,
+  const struct DomdecBlockVolume* __restrict__ blockVolume,
+  const struct NbondPotential* __restrict__ nbonds,
+  int vdwParameterCount,
+  const struct VdwPotential* __restrict__ vdwParameters,
+  const int* __restrict__ blockExcls,
+  struct Cutoffs cutoffs,
+  const real3* __restrict__ position,
+  real3* __restrict__ force,
+  real3 box,
+  const real* __restrict__ lambda,
+  real* __restrict__ lambdaForce,
+  real* __restrict__ energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -48,12 +67,12 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   int iBlock=(iWarp>>WARPSPERBLOCK)+startBlock;
   int jBlock;
   int iCount,jCount;
-  struct DomdecBlockVolume iBlockVolume;
+  __shared__ struct DomdecBlockVolume iBlockVolume;
   int ii,jj;
   int j,jmax;
   int jtmp;
   real r,rinv;
-  real3 boxShift;
+  char4 shift;
   real3 dr;
   NbondPotential inp,jnp;
   real jtmpnp_q;
@@ -69,6 +88,8 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
   real rEff,dredr,dredll; // Soft core stuff
   int exclAddress, exclMask;
 
+  if (iBlock<endBlock && threadIdx.x==0) iBlockVolume=blockVolume[iBlock];
+  __syncthreads();
   if (iBlock<endBlock) {
     ii=blockBounds[iBlock];
     iCount=blockBounds[iBlock+1]-ii;
@@ -80,7 +101,7 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
       li=1;
       if (bi) li=lambda[0xFFFF & bi];
     }
-    iBlockVolume=blockVolume[iBlock];
+    // iBlockVolume=blockVolume[iBlock];
 
     fi=real3_reset();
     fli=0;
@@ -89,17 +110,17 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
     jmax=blockPartnerCount[iWarp>>WARPSPERBLOCK];
     for (j=rectify_modulus(iWarp,1<<WARPSPERBLOCK); j<jmax; j+=(1<<WARPSPERBLOCK)) {
       jBlock=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].jBlock;
-      boxShift=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].shift;
-      boxShift.x*=box.x;
-      boxShift.y*=box.y;
-      boxShift.z*=box.z;
+      shift=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].shift;
+      // boxShift.x*=box.x;
+      // boxShift.y*=box.y;
+      // boxShift.z*=box.z;
       exclAddress=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].exclAddress;
       if (exclAddress==-1) {
         exclMask=0xFFFFFFFF;
       } else {
         exclMask=blockExcls[32*exclAddress+(iThread)];
       }
-      if (iBlock==jBlock && boxShift.x==0 && boxShift.y==0 && boxShift.z==0) {
+      if (iBlock==jBlock && shift.x==0 && shift.y==0 && shift.z==0) {
         exclMask>>=(iThread+1);
         exclMask<<=(iThread+1);
       }
@@ -109,7 +130,13 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
       if ((iThread)<jCount) {
         jnp=nbonds[jj];
         xj=position[jj];
-        real3_inc(&xj,boxShift);
+        // // real3_inc(&xj,boxShift);
+        // xj.x+=boxShift.x;
+        // xj.y+=boxShift.y;
+        // xj.z+=boxShift.z;
+        xj.x+=shift.x*box.x;
+        xj.y+=shift.y*box.y;
+        xj.z+=shift.z*box.z;
         bj=jnp.siteBlock;
         lj=1;
         if (bj) lj=lambda[0xFFFF & bj];
@@ -173,8 +200,13 @@ __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPart
 
               // interaction
                 // Electrostatics
+              /*fij=-kELECTRIC*inp.q*jtmpnp_q*rinv*rinv;
+              if (bi || bjtmp || energy) {
+                eij=kELECTRIC*inp.q*jtmpnp_q*rinv;
+              }*/
               real br=cutoffs.betaEwald*rEff;
-              real erfcrinv=erfcf(br)*rinv;
+              // real erfcrinv=erfcf(br)*rinv;
+              real erfcrinv=fasterfc(br)*rinv;
               fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
               if (bi || bjtmp || energy) {
                 eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
@@ -317,9 +349,9 @@ void getforce_nbdirect(System *system,bool calcEnergy)
   }
 
   if (system->msld->useSoftCore) {
-    getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+    getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
   } else {
-    getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+BLNB-1)/BLNB,BLNB,shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+    getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
   }
 
   system->domdec->unpack_forces(system);

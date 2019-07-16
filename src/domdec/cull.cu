@@ -43,7 +43,8 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
   int iBlock=i/32+blockCount[domainIdx]; // 32 threads tag teaming per block
   int partnerDomainIdx;
   int3 idPartnerDomain, idShift;
-  real3 shift,boxShift;
+  char4 shift;
+  real3 boxShift;
   int s;
   struct DomdecBlockVolume volume, partnerVolume;
   int j,startBlock,endBlock;
