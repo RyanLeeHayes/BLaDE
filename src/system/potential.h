@@ -220,7 +220,7 @@ class Potential {
   struct VdwPotential *vdwParameters;
   struct VdwPotential *vdwParameters_d;
 
-  std::map<int,std::set<int>> cons_tmp;
+  std::map<int,std::set<int> > cons_tmp;
   int triangleConsCount;
   std::vector<struct TriangleCons> triangleCons_tmp;
   struct TriangleCons *triangleCons;

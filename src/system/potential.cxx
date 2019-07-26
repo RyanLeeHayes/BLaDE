@@ -1043,7 +1043,7 @@ void Potential::initialize(System *system)
   branch1Cons_tmp.clear();
   branch2Cons_tmp.clear();
   branch3Cons_tmp.clear();
-  for (std::map<int,std::set<int>>::iterator ii=cons_tmp.begin(); ii!=cons_tmp.end(); ii++) {
+  for (std::map<int,std::set<int> >::iterator ii=cons_tmp.begin(); ii!=cons_tmp.end(); ii++) {
     std::vector<int> consIdx;
     std::vector<std::string> consType;
     std::vector<bool> consH;

@@ -124,7 +124,7 @@ class Parameters {
 
     std::map<TypeName2,struct BondParameter> bondParameter;
     std::map<TypeName3,struct AngleParameter> angleParameter;
-    std::map<TypeName4,std::vector<struct DiheParameter>> diheParameter;
+    std::map<TypeName4,std::vector<struct DiheParameter> > diheParameter;
     std::map<TypeName4,struct ImprParameter> imprParameter;
     std::map<TypeName8O,CmapParameter> cmapParameter;
     std::map<std::string,struct NbondParameter> nbondParameter;

@@ -49,7 +49,7 @@ class Msld {
   struct VariableBias *variableBias_d;
 
   std::vector<Int2> softBonds;
-  std::vector<std::vector<int>> atomRestraints;
+  std::vector<std::vector<int> > atomRestraints;
 
   int atomRestraintCount;
   int *atomRestraintBounds;
