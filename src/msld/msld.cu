@@ -658,7 +658,9 @@ void Msld::calc_variableBias(System *system,bool calcEnergy)
     stream=system->run->biaspotStream;
   }
 
-  calc_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
+  if (variableBiasCount>0) {
+    calc_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
+  }
 }
 
 __global__ void calc_atomRestraints_kernel(real3 *position,real3 *force,real3 box,real *energy,int atomRestraintCount,int *atomRestraintBounds,int *atomRestraintIdx,real kRestraint)

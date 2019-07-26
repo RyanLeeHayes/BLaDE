@@ -1247,7 +1247,10 @@ void Potential::reset_force(System *system,bool calcEnergy)
 
 void Potential::calc_force(int step,System *system)
 {
-  bool calcEnergy=(step%system->run->freqNRG==0)||(step%system->run->freqNPT==0);
+  bool calcEnergy=(step%system->run->freqNRG==0);
+  if (system->run->freqNPT>0) {
+    calcEnergy=(calcEnergy||(step%system->run->freqNPT==0));
+  }
   Run *r=system->run;
 
   reset_force(system,calcEnergy);
