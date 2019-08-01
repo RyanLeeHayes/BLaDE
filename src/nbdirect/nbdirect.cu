@@ -11,6 +11,42 @@
 
 
 
+// Directly from CHARMM source code, charmm/source/domdec_gpu/gpu_utils.h
+#warning "From CHARMM, not fully compatible"
+static __forceinline__ __device__ float __internal_fmad(float a, float b, float c)
+{
+#if __CUDA_ARCH__ >= 200
+  return __fmaf_rn (a, b, c);
+#else // __CUDA_ARCH__ >= 200
+  return a * b + c;
+#endif // __CUDA_ARCH__ >= 200
+}
+
+// Following inline functions are copied from PMEMD CUDA implementation.
+// Credit goes to:
+/*             Scott Le Grand (NVIDIA)             */
+/*               Duncan Poole (NVIDIA)             */
+/*                Ross Walker (SDSC)               */
+//
+// Faster ERFC approximation courtesy of Norbert Juffa. NVIDIA Corporation
+static __forceinline__ __device__ float fasterfc(float a)
+{
+  /* approximate log(erfc(a)) with rel. error < 7e-9 */
+  float t, x = a;
+  t =                       (float)-1.6488499458192755E-006;
+  t = __internal_fmad(t, x, (float)2.9524665006554534E-005);
+  t = __internal_fmad(t, x, (float)-2.3341951153749626E-004);
+  t = __internal_fmad(t, x, (float)1.0424943374047289E-003);
+  t = __internal_fmad(t, x, (float)-2.5501426008983853E-003);
+  t = __internal_fmad(t, x, (float)3.1979939710877236E-004);
+  t = __internal_fmad(t, x, (float)2.7605379075746249E-002);
+  t = __internal_fmad(t, x, (float)-1.4827402067461906E-001);
+  t = __internal_fmad(t, x, (float)-9.1844764013203406E-001);
+  t = __internal_fmad(t, x, (float)-1.6279070384382459E+000);
+  t = t * x;
+  return exp2f(t);
+}
+
 #define WARPSPERBLOCK 2
 __host__ __device__ inline
 bool check_proximity(DomdecBlockVolume a,real3 b,real c2)
@@ -321,6 +357,7 @@ __global__ void getforce_nbdirect_kernel(
   // Energy, if requested
   if (energy) {
     // Use of shared memory here causes error when getforce_nbrecip_gather is executed concurrently. Whatever CUDA...
+#warning "Using reduction without shared memory"
     // real_sum_reduce(lEnergy,sEnergy,energy);
     real_sum_reduce(lEnergy,energy);
   }

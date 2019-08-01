@@ -393,7 +393,9 @@ __global__ void getforce_ewald_gather_kernel(int atomCount,real *charge,int *ato
   // Energy, if requested
   if (energy) {
     lEnergy*=l*q;
-    real_sum_reduce(lEnergy,sEnergy,energy);
+#warning "Using reduction without shared memory"
+    // real_sum_reduce(lEnergy,sEnergy,energy);
+    real_sum_reduce(lEnergy,energy);
   }
 }
 
