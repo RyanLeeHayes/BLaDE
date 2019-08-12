@@ -1,3 +1,4 @@
+#include <cuda_runtime.h>
 #include <string.h>
 
 #include "run/run.h"
@@ -6,6 +7,7 @@
 #include "msld/msld.h"
 #include "system/state.h"
 #include "system/potential.h"
+#include "system/selections.h"
 #include "holonomic/rectify.h"
 #include "domdec/domdec.h"
 
@@ -49,6 +51,27 @@ Run::Run()
   freqNPT=50;
   volumeFluctuation=100*ANGSTROM*ANGSTROM*ANGSTROM;
   pressure=1*ATMOSPHERE;
+
+  termStringToInt.clear();
+  termStringToInt["bond"]=eebond;
+  termStringToInt["angle"]=eeangle;
+  termStringToInt["dihe"]=eedihe;
+  termStringToInt["impr"]=eeimpr;
+  termStringToInt["cmap"]=eecmap;
+  termStringToInt["nb14"]=eenb14;
+  termStringToInt["nbdirect"]=eenbdirect;
+  termStringToInt["nbrecip"]=eenbrecip;
+  termStringToInt["nbrecipself"]=eenbrecipself;
+  termStringToInt["nbrecipexcl"]=eenbrecipexcl;
+  termStringToInt["lambda"]=eelambda;
+  termStringToInt["bias"]=eebias;
+  termStringToInt["potential"]=eepotential;
+  termStringToInt["kinetic"]=eekinetic;
+  termStringToInt["total"]=eetotal;
+  calcTermFlag.clear();
+  for (int i=0; i<eeend; i++) {
+    calcTermFlag[i]=true;
+  }
 
 #ifdef PROFILESERIAL
   updateStream=0;
@@ -135,6 +158,10 @@ void Run::setup_parse_run()
   helpRun["reset"]="?run reset> Resets the run data structure to it's default values\n";
   parseRun["setvariable"]=&Run::set_variable;
   helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Available \"name\"s are: dt (time step in ps), nsteps (number of steps of dynamics to run), fnmxtc (filename for the coordinate output), fnmlmd (filename for the lambda output), fnmnrg (filename for the energy output)\n";
+  parseRun["setterm"]=&Run::set_term;
+  helpRun["setterm"]="?run setterm [term] [on|off]> Turn terms (including bond, angle, dihe, impr, nb14 nbdirect, nbrecip, nbrecipself, nbrecipexcl, lambda, and bias) on or off\n";
+  parseRun["test"]=&Run::test;
+  helpRun["test"]="?run test [arguments]> Test first derivatives using finite differences. Valid arguments are \"alchemical [difference]\" and \"spatial [selection] [difference]\"\n";
   parseRun["dynamics"]=&Run::dynamics;
   helpRun["dynamics"]="?run dynamics> Run dynamics with the options set by \"run setvariable\"\n";
 }
@@ -241,6 +268,88 @@ void Run::set_variable(char *line,char *token,System *system)
   } else {
     fatal(__FILE__,__LINE__,"Unrecognized token %s in run setvariable command\n",token);
   }
+}
+
+void Run::set_term(char *line,char *token,System *system)
+{
+  io_nexta(line,token);
+  if (termStringToInt.count(token)) {
+    calcTermFlag[termStringToInt[token]]=io_nextb(line);
+  } else {
+    fatal(__FILE__,__LINE__,"No such energy term %s to be turned on or off\n",token);
+  }
+}
+
+__global__
+void shift_kernel(real *x,real dx)
+{
+  int i=blockDim.x*blockIdx.x+threadIdx.x;
+  if (i==0) {
+    x[0]+=dx;
+  }
+}
+
+void Run::test(char *line,char *token,System *system)
+{
+  std::string testType=io_nexts(line);
+  std::string name; // (selection name for spatial test)
+  real dx;
+  int i,j,ij,s;
+  int ij0,imax,jmax;
+  real F,E[2];
+
+  // Initialize data structures
+  dynamics_initialize(system);
+
+  // Calculate forces
+  system->potential->calc_force(0,system);
+  // Save position and forces
+  system->state->backup_position();
+
+  if (testType=="alchemical") {
+    dx=io_nextf(line); // dimensionless
+    ij0=0;
+    imax=system->state->lambdaCount;
+    jmax=1;
+  } else if (testType=="spatial") {
+    name=io_nexts(line);
+    if (system->selections->selectionMap.count(name)==0) {
+      fatal(__FILE__,__LINE__,"Error: selection %s not found for spatial derivative testing\n",name.c_str());
+    }
+    dx=io_nextf(line)*ANGSTROM; // ANGSTROM units
+    ij0=system->state->lambdaCount;
+    imax=system->state->atomCount;
+    jmax=3;
+  } else {
+    fatal(__FILE__,__LINE__,"Error: test type %s does not match alchemical or spatial\n",testType.c_str());
+  }
+
+  for (i=0; i<imax; i++) {
+    if (jmax==1 || system->selections->selectionMap[name].boolSelection[i]) {
+      for (j=0; j<jmax; j++) {
+        ij=ij0+i*jmax+j;
+        for (s=0; s<2; s++) {
+          // Shift ij by (s-0.5)*dx
+          shift_kernel<<<1,1>>>(&system->state->positionBuffer_d[ij],(s-0.5)*dx);
+          
+          // Calculate energy
+          system->domdec->update_domdec(system,0);
+          system->potential->calc_force(0,system);
+
+          // Save relevant data
+          system->state->recv_energy();
+          E[s]=system->state->energy[eepotential];
+
+          // Restore positions
+          system->state->restore_position();
+        }
+        cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
+        fprintf(stdout,"ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
+      }
+    }
+  }
+
+  dynamics_finalize(system);
 }
 
 void Run::dynamics(char *line,char *token,System *system)

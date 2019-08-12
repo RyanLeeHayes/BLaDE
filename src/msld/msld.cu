@@ -573,8 +573,6 @@ __global__ void calc_lambda_from_theta_kernel(real *lambda,real *theta,int siteC
     for (j=ji; j<jf; j++) {
       lambda[j]*=norm;
     }
-#warning "DEBUG"
-//     lambda[1]+=0.0005; // DEBUG
   }
 }
 
@@ -632,9 +630,12 @@ __global__ void calc_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambda
 void Msld::calc_fixedBias(System *system,bool calcEnergy)
 {
   cudaStream_t stream=0;
+  Run *r=system->run;
   State *s=system->state;
   real *pEnergy=NULL;
   int shMem=0;
+
+  if (r->calcTermFlag[eelambda]==false) return;
 
   if (calcEnergy) {
     shMem=BLMS*sizeof(real)/32;
@@ -691,9 +692,12 @@ __global__ void calc_variableBias_kernel(real *lambda,real *lambdaForce,real *en
 void Msld::calc_variableBias(System *system,bool calcEnergy)
 {
   cudaStream_t stream=0;
+  Run *r=system->run;
   State *s=system->state;
   real *pEnergy=NULL;
   int shMem=0;
+
+  if (r->calcTermFlag[eelambda]==false) return;
 
   if (calcEnergy) {
     shMem=BLMS*sizeof(real)/32;
@@ -748,9 +752,12 @@ __global__ void calc_atomRestraints_kernel(real3 *position,real3 *force,real3 bo
 void Msld::calc_atomRestraints(System *system,bool calcEnergy)
 {
   cudaStream_t stream=0;
+  Run *r=system->run;
   State *s=system->state;
   real *pEnergy=NULL;
   int shMem=0;
+
+  if (r->calcTermFlag[eebias]==false) return;
 
   if (calcEnergy) {
     shMem=BLMS*sizeof(real)/32;

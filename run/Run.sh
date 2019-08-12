@@ -1,8 +1,8 @@
 #! /bin/bash
 
 source ../modules
-LADYEXE=../build/lady
+MSLDEXE=../build/blade
 
-# $LADYEXE input
+# $MSLDEXE input
 export OMP_NUM_THREADS=1
-mpirun -np 1 --bind-to none --bynode $LADYEXE input
+mpirun -np 1 --bind-to none --bynode $MSLDEXE input

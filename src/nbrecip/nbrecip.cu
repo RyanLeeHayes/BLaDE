@@ -63,6 +63,8 @@ void getforce_ewaldself(System *system,bool calcEnergy)
   real *pEnergy=NULL;
   real prefactor=-system->run->betaEwald*(kELECTRIC/sqrt(M_PI));
 
+  if (r->calcTermFlag[eenbrecipself]==false) return;
+
   if (calcEnergy) {
     shMem=BLNB*sizeof(real)/32;
     pEnergy=s->energy_d+eenbrecipself;
@@ -382,10 +384,9 @@ __global__ void getforce_ewald_gather_kernel(int atomCount,real *charge,int *ato
 
   // Spatial force
   if (iAtom<atomCount && iThread<atomsPerWarp*order) {
-#warning "Check forces for correctness (factor of two?)"
-    fi.x*=l*q*gridDimPME.x/box.x;
-    fi.y*=l*q*gridDimPME.y/box.y;
-    fi.z*=l*q*gridDimPME.z/box.z;
+    fi.x*=2*l*q*gridDimPME.x/box.x;
+    fi.y*=2*l*q*gridDimPME.y/box.y;
+    fi.z*=2*l*q*gridDimPME.z/box.z;
     if (threadOfAtom==0) {
       at_real3_inc(&force[iAtom], fi);
     }
@@ -409,6 +410,8 @@ void getforce_ewald(System *system,bool calcEnergy)
   int N=p->atomCount;
   int shMem=0;
   real *pEnergy=NULL;
+
+  if (r->calcTermFlag[eenbrecip]==false) return;
 
   if (calcEnergy) {
     shMem=BLNB*sizeof(real)/32;

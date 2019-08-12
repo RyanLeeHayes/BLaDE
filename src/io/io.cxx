@@ -123,6 +123,21 @@ std::string io_nexts(char *line)
   return output;
 }
 
+#warning "Make sure msld soft on/off uses this too."
+bool io_nextb(char *line)
+{
+  std::string booleanString=io_nexts(line);
+
+  if (booleanString=="on" || booleanString=="true" || booleanString=="1") {
+    return true;
+  } else if (booleanString=="off" || booleanString=="false" || booleanString=="0") {
+    return false;
+  } else {
+    fatal(__FILE__,__LINE__,"Error: could not convert string %s to boolean value\n",booleanString.c_str());
+  }
+  return false;
+}
+
 // Read the next int in the line and shift line to after string
 int io_nexti(char *line)
 {

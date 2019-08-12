@@ -2,7 +2,7 @@
 
 source ../modules
 module load gdb/8.2_gcc_6.4.0
-MSLDEXE=../buildDebug/lady
+MSLDEXE=../buildDebug/blade
 
 echo "arrest $1" > input_debug
 echo "stream input" >> input_debug

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(lady LANGUAGES CXX CUDA)
+project(blade LANGUAGES CXX CUDA)
 
 file(GLOB_RECURSE sources *.cxx *.cu *.h)
 
@@ -33,8 +33,8 @@ set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "--use_fast_math")
 set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} -lcufft -lnvToolsExt")
 
 # message("${sources}")
-cuda_add_executable(lady ${sources})
-target_include_directories(lady PUBLIC ${MPI_CXX_INCLUDE_PATH} .)
+cuda_add_executable(blade ${sources})
+target_include_directories(blade PUBLIC ${MPI_CXX_INCLUDE_PATH} .)
 # target_compile_options(md PUBLIC -DNOMPI -g -O3 -arch=sm_20)
 
 # Stuff that didn't work:

@@ -1,0 +1,63 @@
+! CHARMM input file for Multi-Site lambda-dynamics
+! MSLD references:
+!    J.L. Knight and C.L. Brooks III. Multi-site lambda-dynamics: 
+!       free energy method for simulating Structure-Activity Relationship 
+!       studies. J. Chem. Theory Comput. 7, 2728-2739 (2011). 
+!    J.L. Knight and C.L. Brooks III. Applying efficient 
+!       implicit non-geometric constraints in free energy simulations.
+!       J. Comput. Chem. 32, 3423-3432 (2011). 
+! Stream file for MSLD created by process.py
+! Written by Ryan Hayes 2016-06-18
+!
+
+! arrest 30
+
+! verbose 0
+
+stream arguments.inp
+
+variables set fnex 5.5
+variables set temp 298.15
+
+stream variablesprod.inp
+
+stream prep/{sysname}.inp
+
+! Set nonbonded options
+run setvariable rswitch 9.0
+run setvariable rcut 10.0
+run setvariable invbetaewald 3.125
+run setvariable orderewald 6
+run setvariable gridspace 1.1 ! 1.1 A is max grid spacing, should give 40x40x40
+
+coordinates file prep/minimized.pdb
+coordinates velocity 300
+
+!---------------------------------------------------------------------------
+! Setup of dynamics run
+!---------------------------------------------------------------------------
+
+! structure shake hbond
+run setvariable gamma 10.0
+
+variables calculate ittm1 int - {itt} 1
+
+run setvariable fnmxtc dcd/{sysname}_res{itt}_prod.xtc
+run setvariable fnmnrg dcd/{sysname}_res{itt}_prod.nrg
+run setvariable fnmlmd res/{sysname}_res{itt}_prod.lmd
+if > {itt} 1
+  run setvariable fnmcpi res/{sysname}_res{ittm1}_prod.res
+endif
+run setvariable fnmcpo res/{sysname}_res{itt}_prod.res
+
+run setvariable nsteps {nsteps}
+run setvariable dt 0.002
+run setvariable T {temp}
+run setvariable freqxtc 1000
+run setvariable freqnrg 10
+run setvariable freqnpt 100
+! run dynamics
+! run setterm nbdirect off
+run test alchemical 0.0001
+selection define testselection segid PROT
+run test spatial testselection 0.001

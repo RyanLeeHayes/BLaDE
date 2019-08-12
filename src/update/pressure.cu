@@ -45,15 +45,6 @@ void pressure_coupling(System *system)
     s->recv_energy();
     energyOld=s->energy[eepotential];
 
-#warning "DEBUG"
-  /*{ // DEBUG
-    cudaMemcpy(system->state->lambdaForce,system->state->lambdaForce_d,system->state->lambdaCount*sizeof(real),cudaMemcpyDeviceToHost);
-    for (int i=0; i<system->state->lambdaCount; i++) {
-     fprintf(stdout," %g",system->state->lambdaForce[i]);
-    }
-    fprintf(stdout,"\n%20.15g\n",system->state->energy[eepotential]);
-  } // DEBUG
-*/
     // and print it
     if (system->verbose>0) {
       for (int i=0; i<eeend; i++) {

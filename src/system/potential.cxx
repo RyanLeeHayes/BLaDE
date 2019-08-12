@@ -546,7 +546,6 @@ void Potential::initialize(System *system)
       dihe.kdih=dp[j].kdih;
       dihe.ndih=dp[j].ndih;
       dihe.dih0=dp[j].dih0;
-      // fprintf(stdout,"DEBUG j=%d n0=%d nj=%d\n",j,dp[0].ndih,dp[j].ndih);
       if (soft) {
         softDihes_tmp.emplace_back(dihe);
       } else {
@@ -1286,7 +1285,6 @@ void Potential::calc_force(int step,System *system)
 
   cudaStreamWaitEvent(r->nbdirectStream,r->forceBegin,0);
   if (system->id>0 || system->idCount==1) {
-#warning "DEBUG - error in lambda force"
     getforce_nbdirect(system,calcEnergy);
   }
   system->state->gather_force(system,calcEnergy);

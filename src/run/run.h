@@ -54,6 +54,9 @@ class Run {
   real volumeFluctuation;
   real pressure;
 
+  std::map<std::string,int> termStringToInt;
+  std::map<int,bool> calcTermFlag;
+
   cudaStream_t updateStream;
   cudaStream_t bondedStream;
   cudaStream_t biaspotStream;
@@ -79,6 +82,8 @@ class Run {
   void reset(char *line,char *token,System *system);
 
   void set_variable(char *line,char *token,System *system);
+  void set_term(char *line,char *token,System *system);
+  void test(char *line,char *token,System *system);
   void dynamics(char *line,char *token,System *system);
 
   void dynamics_initialize(System *system);

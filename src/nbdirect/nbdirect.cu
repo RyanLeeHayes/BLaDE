@@ -284,9 +284,8 @@ __global__ void getforce_nbdirect_kernel(
                 if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
                   if (bi==bjtmp) {
                     fli+=fljtmp;
-                  } else {
-                    fljtmp=0;
                   }
+                  fljtmp=0;
                 } else {
                   fli+=ljtmp*fljtmp;
                   fljtmp*=li;
@@ -378,6 +377,8 @@ void getforce_nbdirect(System *system,bool calcEnergy)
   int N=endBlock-startBlock;
   int shMem=0;
   real *pEnergy=NULL;
+
+  if (r->calcTermFlag[eenbdirect]==false) return;
 
   if (calcEnergy) {
     // shMem=BLNB*sizeof(real)/32;
