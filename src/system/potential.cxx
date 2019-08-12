@@ -839,10 +839,11 @@ void Potential::initialize(System *system)
         nbex.idx[0]=i;
         nbex.idx[1]=*jj;
         // Get their MSLD scaling
-        msld->nbex_scaling(nbex.idx,nbex.siteBlock);
-        // Get their parameters
-        nbex.qxq=charge[nbex.idx[0]]*charge[nbex.idx[1]];
-        nbexs_tmp.emplace_back(nbex);
+        if (msld->nbex_scaling(nbex.idx,nbex.siteBlock)) {
+          // Get their parameters
+          nbex.qxq=charge[nbex.idx[0]]*charge[nbex.idx[1]];
+          nbexs_tmp.emplace_back(nbex);
+        }
       }
     }
   }
@@ -1285,6 +1286,7 @@ void Potential::calc_force(int step,System *system)
 
   cudaStreamWaitEvent(r->nbdirectStream,r->forceBegin,0);
   if (system->id>0 || system->idCount==1) {
+#warning "DEBUG - error in lambda force"
     getforce_nbdirect(system,calcEnergy);
   }
   system->state->gather_force(system,calcEnergy);

@@ -250,7 +250,9 @@ void Run::dynamics(char *line,char *token,System *system)
 
   // Run dynamics
   for (step=step0; step<step0+nsteps; step++) {
-    fprintf(stdout,"Step %d\n",step);
+    if (system->verbose>0) {
+      fprintf(stdout,"Step %d\n",step);
+    }
     system->domdec->update_domdec(system,(step%system->domdec->freqDomdec)==0);
     system->potential->calc_force(step,system);
     system->state->update(step,system);

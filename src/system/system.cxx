@@ -21,6 +21,7 @@
 
 // Class constructors
 System::System() {
+  verbose=1;
   variables=new Variables;
   parameters=NULL;
   structure=NULL;
@@ -105,6 +106,8 @@ void System::setup_parse_system()
   helpSystem["while"]="?while [conditional]\nendwhile> Used for loops within script. To use a for loop, place initialization before while and increment operation before endwhile.\n";
   parseSystem["endwhile"]=&System::parse_system_endwhile;
   helpSystem["endwhile"]="?while [conditional]\nendwhile> Used for loops within script. To use a for loop, place initialization before while and increment operation before endwhile.\n";
+  parseSystem["verbose"]=&System::parse_system_verbose;
+  helpSystem["verbose"]="?verbose [int]> Set a verbose level for output. verbose=1 is default, verbose=0 is less output.\n";
 }
 
 // MOVE
@@ -187,6 +190,11 @@ void System::parse_system_while(char *line,char *token,System *system)
 void System::parse_system_endwhile(char *line,char *token,System *system)
 {
   parse_endwhile(line,system);
+}
+
+void System::parse_system_verbose(char *line,char *token,System *system)
+{
+  verbose=io_nexti(line);
 }
 
 // MOVE

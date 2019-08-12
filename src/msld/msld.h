@@ -59,6 +59,7 @@ class Msld {
 
   bool useSoftCore;
   bool useSoftCore14;
+  int msldEwaldType; // 1=normal scaling 2=normal scaling squared self interactions 3=correct scaling
 
   real kRestraint;
   real softBondRadius;
@@ -79,7 +80,8 @@ class Msld {
   bool impr_scaling(int idx[4],int siteBlock[2]);
   bool cmap_scaling(int idx[8],int siteBlock[3]);
   void nb14_scaling(int idx[2],int siteBlock[2]);
-  void nbex_scaling(int idx[2],int siteBlock[2]);
+  // void nbex_scaling(int idx[2],int siteBlock[2]);
+  bool nbex_scaling(int idx[2],int siteBlock[2]);
   void nbond_scaling(int idx[1],int siteBlock[1]);
 
   bool interacting(int i,int j);

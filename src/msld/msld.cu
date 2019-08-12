@@ -56,6 +56,8 @@ Msld::Msld() {
 
   useSoftCore=false;
   useSoftCore14=false;
+#warning "MSLD PME type cannot be set"
+  msldEwaldType=2; // 1-3, not set up to read arguments currently (1=on, 2=ex, 3=nn)
 
   kRestraint=59.2*KCAL_MOL/(ANGSTROM*ANGSTROM);
   softBondRadius=1.0*ANGSTROM;
@@ -431,11 +433,52 @@ bool Msld::cmap_scaling(int idx[8],int siteBlock[3])
 void Msld::nb14_scaling(int idx[2],int siteBlock[2])
 {
   nonbonded_scaling(idx,siteBlock,2);
+  if ((siteBlock[0]!=siteBlock[1]) && ((siteBlock[0]&0xFFFF0000)==(siteBlock[1]&0xFFFF0000))) {
+    fatal(__FILE__,__LINE__,"Illegal 14 interaction between atom %d and %d\n",idx[0],idx[1]);
+  }
 }
 
-void Msld::nbex_scaling(int idx[2],int siteBlock[2])
+bool Msld::nbex_scaling(int idx[2],int siteBlock[2])
 {
-  nonbonded_scaling(idx,siteBlock,2);
+  // nonbonded_scaling(idx,siteBlock,2);
+  bool include=true;
+  int i,j;
+  int ab;
+  int block[2];
+
+  for (i=0; i<2; i++) {
+    block[i]=atomBlock[idx[i]];
+  }
+
+  // Sort into a descending list (allow duplicates).
+  if (block[0]<block[1]) {
+    ab=block[0];
+    block[0]=block[1];
+    block[1]=ab;
+  }
+
+  if (msldEwaldType==1) {
+    if (block[0]==block[1]) {
+      block[1]=0;
+    }
+    if (block[0]!=block[1] && lambdaSite[block[0]]==lambdaSite[block[1]]) {
+      include=false;
+    }
+  } else if (msldEwaldType==2) {
+    if (block[0]!=block[1] && lambdaSite[block[0]]==lambdaSite[block[1]]) {
+      include=false;
+    }
+  } else if (msldEwaldType==3) {
+    // Do nothing, scale by both atom's lambdas regardless of site
+  } else {
+    fatal(__FILE__,__LINE__,"Illegal msldEwaldType parameter of %d, only 1, 2, or 3 is allowed\n",msldEwaldType);
+  }
+
+  for (i=0; i<2; i++) {
+    siteBlock[i]=merge_site_block(lambdaSite[block[i]],block[i]);
+  }
+
+  return include;
 }
 
 void Msld::nbond_scaling(int idx[1],int siteBlock[1])
@@ -530,6 +573,8 @@ __global__ void calc_lambda_from_theta_kernel(real *lambda,real *theta,int siteC
     for (j=ji; j<jf; j++) {
       lambda[j]*=norm;
     }
+#warning "DEBUG"
+//     lambda[1]+=0.0005; // DEBUG
   }
 }
 

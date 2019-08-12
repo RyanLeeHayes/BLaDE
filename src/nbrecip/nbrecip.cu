@@ -376,12 +376,13 @@ __global__ void getforce_ewald_gather_kernel(int atomCount,real *charge,int *ato
   // Lambda force
   if (iAtom<atomCount && iThread<atomsPerWarp*order) {
     if (b && threadOfAtom==0) {
-      atomicAdd(&lambdaForce[b],q*lEnergy);
+      atomicAdd(&lambdaForce[b],2*q*lEnergy);
     }
   }
 
   // Spatial force
   if (iAtom<atomCount && iThread<atomsPerWarp*order) {
+#warning "Check forces for correctness (factor of two?)"
     fi.x*=l*q*gridDimPME.x/box.x;
     fi.y*=l*q*gridDimPME.y/box.y;
     fi.z*=l*q*gridDimPME.z/box.z;

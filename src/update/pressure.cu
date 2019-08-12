@@ -45,11 +45,22 @@ void pressure_coupling(System *system)
     s->recv_energy();
     energyOld=s->energy[eepotential];
 
-    // and print it
-    for (int i=0; i<eeend; i++) {
-      fprintf(stdout," %12.4f",s->energy[i]);
+#warning "DEBUG"
+  /*{ // DEBUG
+    cudaMemcpy(system->state->lambdaForce,system->state->lambdaForce_d,system->state->lambdaCount*sizeof(real),cudaMemcpyDeviceToHost);
+    for (int i=0; i<system->state->lambdaCount; i++) {
+     fprintf(stdout," %g",system->state->lambdaForce[i]);
     }
-    fprintf(stdout,"\n");
+    fprintf(stdout,"\n%20.15g\n",system->state->energy[eepotential]);
+  } // DEBUG
+*/
+    // and print it
+    if (system->verbose>0) {
+      for (int i=0; i<eeend; i++) {
+        fprintf(stdout," %12.4f",s->energy[i]);
+      }
+      fprintf(stdout,"\n");
+    }
 
     s->backup_position();
 
@@ -70,20 +81,28 @@ void pressure_coupling(System *system)
     energyNew=s->energy[eepotential];
 
     // and print it
-    for (int i=0; i<eeend; i++) {
-      fprintf(stdout," %12.4f",s->energy[i]);
+    if (system->verbose>0) {
+      for (int i=0; i<eeend; i++) {
+        fprintf(stdout," %12.4f",s->energy[i]);
+      }
+      fprintf(stdout,"\n");
     }
-    fprintf(stdout,"\n");
 
     // Compare energy
     N=s->atomCount-(2*p->triangleConsCount+p->branch1ConsCount+2*p->branch2ConsCount+3*p->branch3ConsCount);
     kT=s->leapParms1->kT;
     dW=energyNew-energyOld+system->run->pressure*(volumeNew-volumeOld)-N*kT*log(volumeNew/volumeOld);
-    fprintf(stdout,"dW= %f, dV= %f\n",dW,volumeNew-volumeOld);
+    if (system->verbose>0) {
+      fprintf(stdout,"dW= %f, dV= %f\n",dW,volumeNew-volumeOld);
+    }
     if (system->rngCPU->rand_uniform()<exp(-dW/kT)) { // accept move
-      fprintf(stdout,"Volume move accepted. New volume=%f\n",volumeNew);
+      if (system->verbose>0) {
+        fprintf(stdout,"Volume move accepted. New volume=%f\n",volumeNew);
+      }
     } else {
-      fprintf(stdout,"Volume move rejected. Old volume=%f\n",volumeOld);
+      if (system->verbose>0) {
+        fprintf(stdout,"Volume move rejected. Old volume=%f\n",volumeOld);
+      }
       s->restore_position();
     }
   }

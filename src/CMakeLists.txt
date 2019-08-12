@@ -6,16 +6,17 @@ file(GLOB_RECURSE sources *.cxx *.cu *.h)
 find_package(CUDA 10.0)
 find_package(MPI REQUIRED)
 
-option(UNITS "AKMA (CHARMM) or NMPS (GROMACS)" "NMPS")
+# option(UNITS "AKMA (CHARMM) or NMPS (GROMACS)" "NMPS")
+set(UNITS "NMPS" CACHE STRING "AKMA (CHARMM) or NMPS (GROMACS)")
 if (UNITS STREQUAL "AKMA")
   add_definitions(-DCHARMM_UNITS)
 endif()
 
-## Not working?
 # option(PRECISION "FLOAT OR DOUBLE" "FLOAT")
-# if (UNITS STREQUAL "DOUBLE")
-#   add_definitions(-DDOUBLE)
-# endif()
+set(PRECISION "FLOAT" CACHE STRING "FLOAT OR DOUBLE")
+if (PRECISION STREQUAL "DOUBLE")
+  add_definitions(-DDOUBLE)
+endif()
 
 ## Add compiler definition flags here
 # add_definitions(-DCUDAGRAPH)

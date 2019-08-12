@@ -27,6 +27,7 @@ class Domdec;
 class System {
   public:
   int id,idCount;
+  int verbose;
 // Have command parsing
   std::vector<Control> control;
   Variables *variables;
@@ -72,6 +73,8 @@ class System {
   void parse_system_endif(char *line,char *token,System *system);
   void parse_system_while(char *line,char *token,System *system);
   void parse_system_endwhile(char *line,char *token,System *system);
+
+  void parse_system_verbose(char *line,char *token,System *system);
 };
 
 #endif
