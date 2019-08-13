@@ -253,7 +253,7 @@ while <= {ii} {nsites}
 endwhile
 
 run setvariable nsteps 1000 ! 50000
-run setvariable dt 0.0025 ! 0.003125
+run setvariable dt 0.002 ! 0.003125
 run setvariable T 300
 run setvariable gamma 1
 run setvariable invbetaewald 3.125

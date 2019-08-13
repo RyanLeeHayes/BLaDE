@@ -1276,9 +1276,10 @@ void Potential::calc_force(int step,System *system)
     cudaStreamWaitEvent(r->updateStream,r->nbrecipComplete,0);
 
     cudaStreamWaitEvent(r->biaspotStream,r->forceBegin,0);
-    system->msld->calc_fixedBias(system,calcEnergy);
-    system->msld->calc_variableBias(system,calcEnergy);
-    system->msld->calc_atomRestraints(system,calcEnergy);
+    system->msld->getforce_fixedBias(system,calcEnergy);
+    system->msld->getforce_variableBias(system,calcEnergy);
+    system->msld->getforce_atomRestraints(system,calcEnergy);
+    system->msld->getforce_chargeRestraints(system,calcEnergy);
     cudaEventRecord(r->biaspotComplete,r->biaspotStream);
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }

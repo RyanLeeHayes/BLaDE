@@ -2,6 +2,7 @@
 #include <string.h>
 #include <math.h>
 #include <mpi.h>
+// #include <mpi-ext.h>
 
 #include "system/state.h"
 #include "io/io.h"
@@ -261,13 +262,28 @@ void State::broadcast_position(System *system)
 {
   int N=3*atomCount+2*lambdaCount;
   // nvtxRangePushA("broadcast_position");
+#if defined(USE_CUDA_MPI) && defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+// https://www.open-mpi.org/faq/?category=runcuda#mpi-cuda-aware-support
+#error "Not working yet"
+  if (system->id==0) {
+    cudaStreamSynchronize(system->run->updateStream);
+  }
+  MPI_Bcast(positionBuffer_d,N,MPI_CREAL,0,MPI_COMM_WORLD);
+#else
+  // nvtxRangePushA("GPU->CPU communication");
   if (system->id==0) {
     cudaMemcpy(positionBuffer,positionBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
   }
+  // nvtxRangePop();
+  // nvtxRangePushA("CPU->CPU communication");
   MPI_Bcast(positionBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD);
+  // nvtxRangePop();
+  // nvtxRangePushA("CPU->GPU communication");
   if (system->id!=0) {
     cudaMemcpy(positionBuffer_d,positionBuffer,N*sizeof(real),cudaMemcpyHostToDevice);
   }
+  // nvtxRangePop();
+#endif
   // nvtxRangePop();
 }
 
@@ -293,21 +309,43 @@ void State::gather_force(System *system,bool calcEnergy)
 {
   int N=3*atomCount+2*system->msld->blockCount;
   // nvtxRangePushA("gather_force");
+#if defined(USE_CUDA_MPI) && defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+// https://www.open-mpi.org/faq/?category=runcuda#mpi-cuda-aware-support
+#error "Not working yet"
+  // nvtxRangePushA("waiting");
+  // if (system->id!=0) {
+    cudaStreamSynchronize(system->run->nbdirectStream);
+  // }
+  // nvtxRangePop();
+  // nvtxRangePushA("sending");
+  MPI_Gather(forceBuffer_d,N,MPI_CREAL,forceBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD);
+  if (calcEnergy) {
+    MPI_Gather(energy_d,eeend,MPI_CREAL,energy,eeend,MPI_CREAL,0,MPI_COMM_WORLD);
+  }
+  // nvtxRangePop();
+#else
+  // nvtxRangePushA("GPU->CPU communication");
   if (system->id!=0) {
     cudaMemcpy(forceBuffer,forceBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
     if (calcEnergy) {
       cudaMemcpy(energy,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToHost);
     }
   }
+  // nvtxRangePop();
+  // nvtxRangePushA("CPU->CPU communication");
   MPI_Gather(forceBuffer,N,MPI_CREAL,forceBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD);
   if (calcEnergy) {
     MPI_Gather(energy,eeend,MPI_CREAL,energy,eeend,MPI_CREAL,0,MPI_COMM_WORLD);
   }
+  // nvtxRangePop();
+  // nvtxRangePushA("CPU->GPU communication");
   if (system->id==0) {
     cudaMemcpy(forceBuffer_d+N,forceBuffer+N,(system->idCount-1)*N*sizeof(real),cudaMemcpyHostToDevice);
     if (calcEnergy) {
       cudaMemcpy(energy_d+eeend,energy+eeend,(system->idCount-1)*eeend*sizeof(real),cudaMemcpyHostToDevice);
     }
   }
+  // nvtxRangePop();
+#endif
   // nvtxRangePop();
 }

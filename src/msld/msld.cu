@@ -28,6 +28,7 @@ Msld::Msld() {
   atomBlock_d=NULL;
   lambdaSite_d=NULL;
   lambdaBias_d=NULL;
+  lambdaCharge_d=NULL;
 
   blocksPerSite=NULL;
   blocksPerSite_d=NULL;
@@ -56,10 +57,10 @@ Msld::Msld() {
 
   useSoftCore=false;
   useSoftCore14=false;
-#warning "MSLD PME type cannot be set"
   msldEwaldType=2; // 1-3, not set up to read arguments currently (1=on, 2=ex, 3=nn)
 
   kRestraint=59.2*KCAL_MOL/(ANGSTROM*ANGSTROM);
+  kChargeRestraint=0;
   softBondRadius=1.0*ANGSTROM;
   softBondExponent=2.0;
   softNotBondExponent=1.0;
@@ -77,6 +78,7 @@ Msld::~Msld() {
   if (atomBlock_d) cudaFree(atomBlock_d);
   if (lambdaSite_d) cudaFree(lambdaSite_d);
   if (lambdaBias_d) cudaFree(lambdaBias_d);
+  if (lambdaCharge_d) cudaFree(lambdaCharge_d);
 
   if (blocksPerSite) free(blocksPerSite);
   if (blocksPerSite_d) cudaFree(blocksPerSite_d);
@@ -129,6 +131,7 @@ void parse_msld(char *line,System *system)
     cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
     cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
     cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real));
 
     // NYI - this would be a lot easier to read if these were split in to parsing functions.
     fprintf(stdout,"NYI - Initialize all blocks in first site %s:%d\n",__FILE__,__LINE__);
@@ -203,21 +206,20 @@ void parse_msld(char *line,System *system)
       }
     }
   } else if (strcmp(token,"softcore")==0) {
-    if ("on"==io_nexts(line)) {
-      system->msld->useSoftCore=true;
-    } else {
-      system->msld->useSoftCore=false;
-    }
+    system->msld->useSoftCore=io_nextb(line);
   } else if (strcmp(token,"softcore14")==0) {
-    if ("on"==io_nexts(line)) {
-      system->msld->useSoftCore14=true;
-    } else {
-      system->msld->useSoftCore14=false;
+    system->msld->useSoftCore14=io_nextb(line);
+  } else if (strcmp(token,"ewaldtype")==0) {
+    system->msld->msldEwaldType=io_nexti(line);
+    if (system->msld->msldEwaldType<=0 || system->msld->msldEwaldType>3) {
+      fatal(__FILE__,__LINE__,"Invalid choice of %d for msld ewaldtype. Must choose 1, 2, or 3 (default 2).\n",system->msld->msldEwaldType);
     }
   } else if (strcmp(token,"parameter")==0) {
     std::string parameterToken=io_nexts(line);
     if (parameterToken=="krestraint") {
       system->msld->kRestraint=io_nextf(line)*KCAL_MOL/(ANGSTROM*ANGSTROM);
+    } else if (parameterToken=="kchargerestraint") {
+      system->msld->kChargeRestraint=io_nextf(line)*KCAL_MOL;
     } else if (parameterToken=="softbondradius") {
       system->msld->softBondRadius=io_nextf(line)*ANGSTROM;
     } else if (parameterToken=="softbondexponent") {
@@ -442,7 +444,7 @@ bool Msld::nbex_scaling(int idx[2],int siteBlock[2])
 {
   // nonbonded_scaling(idx,siteBlock,2);
   bool include=true;
-  int i,j;
+  int i;
   int ab;
   int block[2];
 
@@ -499,6 +501,7 @@ void Msld::initialize(System *system)
   // Send the biases over
   cudaMemcpy(atomBlock_d,atomBlock,system->structure->atomCount*sizeof(int),cudaMemcpyHostToDevice);
   cudaMemcpy(lambdaBias_d,lambdaBias,blockCount*sizeof(real),cudaMemcpyHostToDevice);
+  cudaMemcpy(lambdaCharge_d,lambdaCharge,blockCount*sizeof(real),cudaMemcpyHostToDevice);
   variableBiasCount=variableBias_tmp.size();
   variableBias=(struct VariableBias*)calloc(variableBiasCount,sizeof(struct VariableBias));
   cudaMalloc(&variableBias_d,variableBiasCount*sizeof(struct VariableBias));
@@ -607,7 +610,7 @@ void Msld::calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system)
   calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,s->lambdaForce_d,s->thetaForce_d,blockCount,lambdaSite_d,siteBound_d,fnex);
 }
 
-__global__ void calc_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambdaForce,real *energy,int blockCount)
+__global__ void getforce_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambdaForce,real *energy,int blockCount)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   extern __shared__ real sEnergy[];
@@ -627,7 +630,7 @@ __global__ void calc_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambda
   }
 }
 
-void Msld::calc_fixedBias(System *system,bool calcEnergy)
+void Msld::getforce_fixedBias(System *system,bool calcEnergy)
 {
   cudaStream_t stream=0;
   Run *r=system->run;
@@ -645,10 +648,10 @@ void Msld::calc_fixedBias(System *system,bool calcEnergy)
     stream=system->run->biaspotStream;
   }
 
-  calc_fixedBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,lambdaBias_d,s->lambdaForce_d,pEnergy,blockCount);
+  getforce_fixedBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,lambdaBias_d,s->lambdaForce_d,pEnergy,blockCount);
 }
 
-__global__ void calc_variableBias_kernel(real *lambda,real *lambdaForce,real *energy,int variableBiasCount,struct VariableBias *variableBias)
+__global__ void getforce_variableBias_kernel(real *lambda,real *lambdaForce,real *energy,int variableBiasCount,struct VariableBias *variableBias)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct VariableBias vb;
@@ -689,7 +692,7 @@ __global__ void calc_variableBias_kernel(real *lambda,real *lambdaForce,real *en
   }
 }
 
-void Msld::calc_variableBias(System *system,bool calcEnergy)
+void Msld::getforce_variableBias(System *system,bool calcEnergy)
 {
   cudaStream_t stream=0;
   Run *r=system->run;
@@ -708,11 +711,11 @@ void Msld::calc_variableBias(System *system,bool calcEnergy)
   }
 
   if (variableBiasCount>0) {
-    calc_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
+    getforce_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
   }
 }
 
-__global__ void calc_atomRestraints_kernel(real3 *position,real3 *force,real3 box,real *energy,int atomRestraintCount,int *atomRestraintBounds,int *atomRestraintIdx,real kRestraint)
+__global__ void getforce_atomRestraints_kernel(real3 *position,real3 *force,real3 box,real *energy,int atomRestraintCount,int *atomRestraintBounds,int *atomRestraintIdx,real kRestraint)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int bounds[2];
@@ -749,7 +752,7 @@ __global__ void calc_atomRestraints_kernel(real3 *position,real3 *force,real3 bo
   }
 }
 
-void Msld::calc_atomRestraints(System *system,bool calcEnergy)
+void Msld::getforce_atomRestraints(System *system,bool calcEnergy)
 {
   cudaStream_t stream=0;
   Run *r=system->run;
@@ -768,6 +771,78 @@ void Msld::calc_atomRestraints(System *system,bool calcEnergy)
   }
 
   if (atomRestraintCount) {
-    calc_atomRestraints_kernel<<<(atomRestraintCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>((real3*)s->position_d,(real3*)s->force_d,s->orthBox,pEnergy,atomRestraintCount,atomRestraintBounds_d,atomRestraintIdx_d,kRestraint);
+    getforce_atomRestraints_kernel<<<(atomRestraintCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>((real3*)s->position_d,(real3*)s->force_d,s->orthBox,pEnergy,atomRestraintCount,atomRestraintBounds_d,atomRestraintIdx_d,kRestraint);
+  }
+}
+
+__global__ void getforce_chargeRestraints_kernel(real *lambda,real *lambdaForce,real *energy,int blockCount,real kChargeRestraint,real *lambdaCharge)
+{
+  int i=threadIdx.x;
+  int j;
+  real netCharge=0;
+  extern __shared__ real sEnergy[];
+
+  for (j=i; j<blockCount; j+=BLMS) {
+    netCharge+=lambda[j]*lambdaCharge[j];
+  }
+
+  __syncthreads();
+  netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,1);
+  netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,2);
+  netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,4);
+  netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,8);
+  netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,16);
+  __syncthreads();
+  if ((0x1F & threadIdx.x)==0) {
+    sEnergy[threadIdx.x>>5]=netCharge;
+  }
+  __syncthreads();
+  netCharge=0;
+  if (threadIdx.x < (blockDim.x>>5)) {
+    netCharge=sEnergy[threadIdx.x];
+  }
+  if (threadIdx.x < 32) {
+    if (blockDim.x>=64) netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,1);
+    if (blockDim.x>=128) netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,2);
+    if (blockDim.x>=256) netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,4);
+    if (blockDim.x>=512) netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,8);
+    if (blockDim.x>=1024) netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,16);
+  }
+  if (threadIdx.x==0) {
+    sEnergy[0]=netCharge;
+    if (energy) {
+      atomicAdd(energy,0.5*kChargeRestraint*netCharge*netCharge);
+    }
+  }
+  __syncthreads();
+  netCharge=sEnergy[0];
+
+  for (j=i; j<blockCount; j+=BLMS) {
+    if (j>0) {
+      atomicAdd(&lambdaForce[j],kChargeRestraint*netCharge*lambdaCharge[j]);
+    }
+  }
+}
+
+void Msld::getforce_chargeRestraints(System *system,bool calcEnergy)
+{
+  cudaStream_t stream=0;
+  Run *r=system->run;
+  State *s=system->state;
+  real *pEnergy=NULL;
+  int shMem=0;
+
+  if (r->calcTermFlag[eebias]==false) return;
+
+  shMem=BLMS*sizeof(real)/32; // Always needs shared memory for reduction
+  if (calcEnergy) {
+    pEnergy=s->energy_d+eebias;
+  }
+  if (system->run) {
+    stream=system->run->biaspotStream;
+  }
+
+  if (kChargeRestraint>0) {
+    getforce_chargeRestraints_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_d,s->lambdaForce_d,pEnergy,blockCount,kChargeRestraint,lambdaCharge_d);
   }
 }

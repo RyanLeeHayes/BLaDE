@@ -123,7 +123,6 @@ std::string io_nexts(char *line)
   return output;
 }
 
-#warning "Make sure msld soft on/off uses this too."
 bool io_nextb(char *line)
 {
   std::string booleanString=io_nexts(line);

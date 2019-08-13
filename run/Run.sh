@@ -5,4 +5,4 @@ MSLDEXE=../build/blade
 
 # $MSLDEXE input
 export OMP_NUM_THREADS=1
-mpirun -np 1 --bind-to none --bynode $MSLDEXE input
+mpirun -np 3 --bind-to none --bynode $MSLDEXE input

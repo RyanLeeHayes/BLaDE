@@ -31,6 +31,7 @@ class Msld {
   int *atomBlock_d;
   int *lambdaSite_d;
   real *lambdaBias_d;
+  real *lambdaCharge_d;
 
   int siteCount;
   int *blocksPerSite;
@@ -62,6 +63,7 @@ class Msld {
   int msldEwaldType; // 1=normal scaling 2=normal scaling squared self interactions 3=correct scaling
 
   real kRestraint;
+  real kChargeRestraint;
   real softBondRadius;
   real softBondExponent;
   real softNotBondExponent;
@@ -90,9 +92,10 @@ class Msld {
 
   void calc_lambda_from_theta(cudaStream_t stream,System *system);
   void calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system);
-  void calc_fixedBias(System *system,bool calcEnergy);
-  void calc_variableBias(System *system,bool calcEnergy);
-  void calc_atomRestraints(System *system,bool calcEnergy);
+  void getforce_fixedBias(System *system,bool calcEnergy);
+  void getforce_variableBias(System *system,bool calcEnergy);
+  void getforce_atomRestraints(System *system,bool calcEnergy);
+  void getforce_chargeRestraints(System *system,bool calcEnergy);
 };
 
 void parse_msld(char *line,System *system);
