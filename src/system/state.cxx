@@ -83,6 +83,22 @@ State::State(System *system) {
   thetaInvsqrtMass=invsqrtMassBuffer+3*n;
   thetaInvsqrtMass_d=invsqrtMassBuffer_d+3*n;
 
+/*
+  if (system->idCount>1) {
+    positionBuffer_gpu=(real**)calloc(system->idCount,sizeof(real*));
+    forceBuffer_gpu=(real**)calloc(system->idCount,sizeof(real*));
+    energy_gpu=(real**)calloc(system->idCount,sizeof(real*));
+    for (i=0; i<system->idCount; i++) {
+      if (i!=system->id) {
+        cudaDeviceEnablePeerAccess(i,0);
+      }
+    }
+    MPI_Allgather(&positionBuffer_d,sizeof(real*),MPI_BYTE,positionBuffer_gpu,sizeof(real*),MPI_BYTE,MPI_COMM_WORLD);
+    MPI_Allgather(&forceBuffer_d,sizeof(real*),MPI_BYTE,forceBuffer_gpu,sizeof(real*),MPI_BYTE,MPI_COMM_WORLD);
+    MPI_Allgather(&energy_d,sizeof(real*),MPI_BYTE,energy_gpu,sizeof(real*),MPI_BYTE,MPI_COMM_WORLD);
+  }
+*/
+
   // Leapfrog structures
   leapParms1=alloc_leapparms1(system->run->dt,system->run->gamma,system->run->T);
   leapParms2=alloc_leapparms2(system->run->dt,system->run->gamma,system->run->T);
@@ -285,6 +301,12 @@ void State::broadcast_position(System *system)
   // nvtxRangePop();
 #endif
   // nvtxRangePop();
+/*
+  if (system->id!=0) {
+    // cudaMemcpy(positionBuffer_d,positionBuffer_gpu[0],N*sizeof(real),cudaMemcpyDefault);
+    cudaMemcpyPeer(positionBuffer_d,system->id,positionBuffer_gpu[0],0,N*sizeof(real));
+  }
+*/
 }
 
 void State::broadcast_velocity(System *system)
@@ -348,4 +370,14 @@ void State::gather_force(System *system,bool calcEnergy)
   // nvtxRangePop();
 #endif
   // nvtxRangePop();
+/*
+  if (system->id!=0) {
+    // cudaMemcpy(&forceBuffer_gpu[0][(system->id-1)*N],forceBuffer_d,N*sizeof(real),cudaMemcpyDefault);
+    cudaMemcpyPeer(&forceBuffer_gpu[0][(system->id-1)*N],0,forceBuffer_d,system->id,N*sizeof(real));
+    if (calcEnergy) {
+      // cudaMemcpy(&energy_gpu[0][(system->id-1)*eeend],energy_d,eeend*sizeof(real),cudaMemcpyDefault);
+      cudaMemcpyPeer(&energy_gpu[0][(system->id-1)*eeend],0,energy_d,system->id,eeend*sizeof(real));
+    }
+  }
+*/
 }

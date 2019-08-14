@@ -48,14 +48,17 @@ class State {
   real *positionBuffer;
   real *positionBuffer_d;
   real *positionBackup_d; // For NPT
+  // real **positionBuffer_gpu;
   real *forceBuffer;
   real *forceBuffer_d;
   real *forceBackup_d; // For NPT
+  // real **forceBuffer_gpu;
 
   // Other buffers
   real *energy;
   real *energy_d;
   real *energyBackup_d;
+  // real **energy_gpu;
 
   // Spatial-Theta buffers
   real *velocityBuffer;
