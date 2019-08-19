@@ -4,6 +4,8 @@
 #include <cuda_runtime.h>
 #include <cufft.h>
 
+#define USE_TEXTURE
+
 #define MAXLENGTHSTRING 1024
 
 // Units

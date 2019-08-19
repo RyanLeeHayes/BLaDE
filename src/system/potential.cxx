@@ -1,6 +1,9 @@
 #include <cuda_runtime.h>
 #include <math.h>
 #include <mpi.h>
+#ifdef USE_TEXTURE
+#include <string.h> // for memset
+#endif
 
 #include "system/potential.h"
 #include "system/system.h"
@@ -91,6 +94,9 @@ Potential::Potential() {
   vdwParameterCount=0;
   vdwParameters=NULL;
   vdwParameters_d=NULL;
+#ifdef USE_TEXTURE
+  vdwParameters_tex=0;
+#endif
 
   triangleConsCount=0;
   triangleCons=NULL;
@@ -160,6 +166,9 @@ Potential::~Potential()
   if (nbonds_d) cudaFree(nbonds_d);
   if (vdwParameters) free(vdwParameters);
   if (vdwParameters_d) cudaFree(vdwParameters_d);
+#ifdef USE_TEXTURE
+  if (vdwParameters_tex) cudaDestroyTextureObject(vdwParameters_tex);
+#endif
 
   if (triangleCons) free(triangleCons);
   if (triangleCons_d) cudaFree(triangleCons_d);
@@ -1037,6 +1046,23 @@ void Potential::initialize(System *system)
     }
   }
   cudaMemcpy(vdwParameters_d,vdwParameters,vdwParameterCount*vdwParameterCount*sizeof(VdwPotential),cudaMemcpyHostToDevice);
+#ifdef USE_TEXTURE
+  {
+    cudaResourceDesc resDesc;
+    memset(&resDesc,0,sizeof(resDesc));
+    resDesc.resType=cudaResourceTypeLinear;
+    resDesc.res.linear.devPtr=vdwParameters_d;
+    // resDesc.res.linear.desc.f = cudaChannelFormatKindFloat;
+    // resDesc.res.linear.desc.x = 32; // bits per channel
+    resDesc.res.linear.desc=cudaCreateChannelDesc<real2>();
+    // resDesc.res.linear.desc=cudaCreateChannelDesc<VdwPotential>();
+    resDesc.res.linear.sizeInBytes=vdwParameterCount*vdwParameterCount*sizeof(VdwPotential);
+    cudaTextureDesc texDesc;
+    memset(&texDesc,0,sizeof(texDesc));
+    texDesc.readMode=cudaReadModeElementType;
+    cudaCreateTextureObject(&vdwParameters_tex,&resDesc,&texDesc,NULL);
+  }
+#endif
 
   // Sort out these constraints
   triangleCons_tmp.clear();

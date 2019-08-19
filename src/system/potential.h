@@ -219,6 +219,9 @@ class Potential {
   int vdwParameterCount;
   struct VdwPotential *vdwParameters;
   struct VdwPotential *vdwParameters_d;
+#ifdef USE_TEXTURE
+  cudaTextureObject_t vdwParameters_tex;
+#endif
 
   std::map<int,std::set<int> > cons_tmp;
   int triangleConsCount;

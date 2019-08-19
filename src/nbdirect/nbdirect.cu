@@ -86,7 +86,11 @@ __global__ void getforce_nbdirect_kernel(
   const struct DomdecBlockVolume* __restrict__ blockVolume,
   const struct NbondPotential* __restrict__ nbonds,
   int vdwParameterCount,
+#ifdef USE_TEXTURE
+  cudaTextureObject_t vdwParameters,
+#else
   const struct VdwPotential* __restrict__ vdwParameters,
+#endif
   const int* __restrict__ blockExcls,
   struct Cutoffs cutoffs,
   const real3* __restrict__ position,
@@ -195,7 +199,12 @@ __global__ void getforce_nbdirect_kernel(
           fjtmp=real3_reset();
           fljtmp=0;
           if (iThread<iCount && ((1<<jtmp)&exclMask)) {
+#ifdef USE_TEXTURE
+            struct VdwPotential vdwp;
+            ((real2*)(&vdwp))[0]=tex1Dfetch<real2>(vdwParameters,inp.typeIdx*vdwParameterCount+jtmpnp_typeIdx);
+#else
             struct VdwPotential vdwp=vdwParameters[inp.typeIdx*vdwParameterCount+jtmpnp_typeIdx];
+#endif
 
             // Geometry
             dr=real3_sub(xi,xjtmp);
@@ -387,9 +396,17 @@ void getforce_nbdirect(System *system,bool calcEnergy)
   }
 
   if (system->msld->useSoftCore) {
+#ifdef USE_TEXTURE
+    getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_tex,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+#else
     getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+#endif
   } else {
+#ifdef USE_TEXTURE
+    getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_tex,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+#else
     getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+#endif
   }
 
   system->domdec->unpack_forces(system);
