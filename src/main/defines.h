@@ -10,25 +10,25 @@
 
 // Units
 // At least this is uncontroversial...
-#define DEGREES 0.017453292519943
+#define DEGREES ((real)0.017453292519943)
 
 #ifdef CHARMM_UNITS
 
 // Use CHARMM units, energy: kcal/mol, distance: A, time: A/sqrt(kcal/mol/amu), mass: amu
 
 // See values in charmm/source/ltm/consta_ltm.F90
-#define ANGSTROM 1.0
-#define FOURANGSTROM 4.0f
-#define KCAL_MOL 1.0
+#define ANGSTROM ((real)1.0)
+#define SOFTCORERADIUS ((real)4.0)
+#define KCAL_MOL ((real)1.0)
 // 1 / CHARMM TIMFAC value 0.0488882129
-#define PICOSECOND 20.454828284385908
+#define PICOSECOND ((real)20.454828284385908)
 // CHARMM KBOLTZ
-#define kB 0.001987191
+#define kB ((real)0.001987191)
 // Charmm CCELEC0 value
-#define kELECTRIC 332.0716f
+#define kELECTRIC ((real)332.0716)
 
 // from gromacs values
-#define ATMOSPHERE 0.000014584319218586
+#define ATMOSPHERE ((real)0.000014584319218586)
 
 // NOTE kB and KCAL_MOL disagree by 3.01E-5 in 1 over temperature scale
 // That's 0.01 K at T=300 K
@@ -43,16 +43,16 @@
 // NA 6.02214076E23
 // ATM 101325 bar
 
-#define ANGSTROM 0.1
-#define FOURANGSTROM 0.4f
+#define ANGSTROM ((real)0.1)
+#define SOFTCORERADIUS ((real)0.4)
 // 4.184 according to CHARMM, this number is from kELECTRIC conversion
-#define KCAL_MOL 4.183900553475091
-#define PICOSECOND 1.0
-#define kB 0.0083144598
-#define kELECTRIC 138.935455103336f
+#define KCAL_MOL ((real)4.183900553475091)
+#define PICOSECOND ((real)1.0)
+#define kB ((real)0.0083144598)
+#define kELECTRIC ((real)138.935455103336)
 
 // atm -> bar -> kJ/mol/nm^3
-#define ATMOSPHERE 0.0610193412507
+#define ATMOSPHERE ((real)0.0610193412507)
 
 // NOTE kB and KCAL_MOL disagree by 3.01E-5 in 1 over temperature scale
 // That's 0.01 K at T=300 K

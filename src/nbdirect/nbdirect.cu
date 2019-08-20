@@ -11,6 +11,9 @@
 
 
 
+#ifdef DOUBLE
+#define fasterfc erfc
+#else
 // Directly from CHARMM source code, charmm/source/domdec_gpu/gpu_utils.h
 #warning "From CHARMM, not fully compatible"
 static __forceinline__ __device__ float __internal_fmad(float a, float b, float c)
@@ -46,6 +49,7 @@ static __forceinline__ __device__ float fasterfc(float a)
   t = t * x;
   return exp2f(t);
 }
+#endif
 
 #define WARPSPERBLOCK 2
 __host__ __device__ inline
@@ -230,20 +234,20 @@ __global__ void getforce_nbdirect_kernel(
               rEff=r;
               if (useSoftCore) {
 #warning "Hard-coded floating precision in soft core section"
-                dredr=1.0f; // d(rEff) / d(r)
-                dredll=0.0f; // d(rEff) / d(lixljtmp)
+                dredr=1; // d(rEff) / d(r)
+                dredll=0; // d(rEff) / d(lixljtmp)
                 if (bi || bjtmp) {
                   // real rSoft=(2.0*ANGSTROM*sqrt(4.0))*(1.0-lixljtmp);
-                  real rSoft=FOURANGSTROM*(1.0f-lixljtmp);
+                  real rSoft=SOFTCORERADIUS*(1-lixljtmp);
                   if (r<rSoft) {
                     real rdivrs=r/rSoft;
-                    rEff=1.0f-0.5f*rdivrs;
-                    rEff=rEff*rdivrs*rdivrs*rdivrs+0.5f;
-                    dredr=3.0f-2.0f*rdivrs;
+                    rEff=1-((real)0.5)*rdivrs;
+                    rEff=rEff*rdivrs*rdivrs*rdivrs+((real)0.5);
+                    dredr=3-2*rdivrs;
                     dredr*=rdivrs*rdivrs;
                     dredll=rEff-dredr*rdivrs;
                     // dredll*=-(2.0*ANGSTROM*sqrt(4.0));
-                    dredll*=-FOURANGSTROM;
+                    dredll*=-SOFTCORERADIUS;
                     rEff*=rSoft;
                   }
                 }
@@ -260,7 +264,9 @@ __global__ void getforce_nbdirect_kernel(
               // real erfcrinv=erfcf(br)*rinv;
               real erfcrinv=fasterfc(br)*rinv;
               // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
-              fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+1.128379167095513f*cutoffs.betaEwald*expf(-br*br))*rinv;
+              // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+1.128379167095513f*cutoffs.betaEwald*expf(-br*br))*rinv;
+              // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)(2/sqrt(M_PI)))*cutoffs.betaEwald*expf(-br*br))*rinv;
+              fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)1.128379167095513)*cutoffs.betaEwald*expf(-br*br))*rinv;
               if (bi || bjtmp || energy) {
                 eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
               }

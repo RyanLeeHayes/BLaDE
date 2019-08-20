@@ -13,6 +13,46 @@
 
 
 
+#ifdef DOUBLE
+#define fasterfc erfc
+#else
+// Directly from CHARMM source code, charmm/source/domdec_gpu/gpu_utils.h
+#warning "From CHARMM, not fully compatible"
+static __forceinline__ __device__ float __internal_fmad(float a, float b, float c)
+{
+#if __CUDA_ARCH__ >= 200
+  return __fmaf_rn (a, b, c);
+#else // __CUDA_ARCH__ >= 200
+  return a * b + c;
+#endif // __CUDA_ARCH__ >= 200
+}
+
+// Following inline functions are copied from PMEMD CUDA implementation.
+// Credit goes to:
+/*             Scott Le Grand (NVIDIA)             */
+/*               Duncan Poole (NVIDIA)             */
+/*                Ross Walker (SDSC)               */
+//
+// Faster ERFC approximation courtesy of Norbert Juffa. NVIDIA Corporation
+static __forceinline__ __device__ float fasterfc(float a)
+{
+  /* approximate log(erfc(a)) with rel. error < 7e-9 */
+  float t, x = a;
+  t =                       (float)-1.6488499458192755E-006;
+  t = __internal_fmad(t, x, (float)2.9524665006554534E-005);
+  t = __internal_fmad(t, x, (float)-2.3341951153749626E-004);
+  t = __internal_fmad(t, x, (float)1.0424943374047289E-003);
+  t = __internal_fmad(t, x, (float)-2.5501426008983853E-003);
+  t = __internal_fmad(t, x, (float)3.1979939710877236E-004);
+  t = __internal_fmad(t, x, (float)2.7605379075746249E-002);
+  t = __internal_fmad(t, x, (float)-1.4827402067461906E-001);
+  t = __internal_fmad(t, x, (float)-9.1844764013203406E-001);
+  t = __internal_fmad(t, x, (float)-1.6279070384382459E+000);
+  t = t * x;
+  return exp2f(t);
+}
+#endif
+
 // From charmm/source/domdec/enbfix14_kernel.inc:985, vfswitch code (not normal vfswitch??? 1-4s are different)
 // r*fpair=6*c6*r^-6 - 12*c12*r^-12                                                 r<rs
 // r*fpair=6*c6*r^-6*(rc^3-r^3)/(rc^3-rs^3) - 12*c12*r^-12*(rc^6-r^6)/(rc^6-rs^6)   rs<r<rc
@@ -55,9 +95,11 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
     real br=rc.betaEwald*r;
     real kqq=kELECTRIC*pp.qxq;
 
-    fpair[0]+=kqq*(-erfcf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
+    real erfcrinv=fasterfc(br)*rinv;
+    // fpair[0]+=kqq*(-erfcf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
+    fpair[0]+=kqq*(-erfcrinv-((real)1.128379167095513)*rc.betaEwald*expf(-br*br))*rinv;
     if (calcEnergy) {
-      lE[0]+=kqq*erfcf(br)*rinv;
+      lE[0]+=kqq*erfcrinv;
     }
   }
 }
@@ -69,7 +111,8 @@ __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,rea
   real kqq=kELECTRIC*pp.qxq;
 
 #warning "No nan guard"
-  fpair[0]=kqq*(erff(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
+  // fpair[0]=kqq*(erff(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
+  fpair[0]=kqq*(erff(br)*rinv-((real)1.128379167095513)*rc.betaEwald*expf(-br*br))*rinv;
   if (calcEnergy) {
     lE[0]=-kqq*erff(br)*rinv;
   }
@@ -114,18 +157,18 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
 
     rEff=r;
     if (useSoftCore) {
-      dredr=1.0; // d(rEff) / d(r)
-      dredll=0.0; // d(rEff) / d(lixljtmp)
+      dredr=1; // d(rEff) / d(r)
+      dredll=0; // d(rEff) / d(lixljtmp)
       if (b[0]) {
-        real rSoft=(2.0*ANGSTROM*sqrt(4.0))*(1.0-l[0]*l[1]);
+        real rSoft=SOFTCORERADIUS*(1-l[0]*l[1]);
         if (r<rSoft) {
           real rdivrs=r/rSoft;
-          rEff=1.0-0.5*rdivrs;
-          rEff=rEff*rdivrs*rdivrs*rdivrs+0.5;
-          dredr=3.0-2.0*rdivrs;
+          rEff=1-((real)0.5)*rdivrs;
+          rEff=rEff*rdivrs*rdivrs*rdivrs+((real)0.5);
+          dredr=3-2*rdivrs;
           dredr*=rdivrs*rdivrs;
           dredll=rEff-dredr*rdivrs;
-          dredll*=-(2.0*ANGSTROM*sqrt(4.0));
+          dredll*=-SOFTCORERADIUS;
           rEff*=rSoft;
         }
       }
