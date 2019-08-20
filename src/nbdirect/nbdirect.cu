@@ -135,8 +135,10 @@ __global__ void getforce_nbdirect_kernel(
     iCount=blockBounds[iBlock+1]-ii;
     ii+=(iThread);
     if ((iThread)<iCount) {
-      inp=nbonds[ii];
-      xi=position[ii];
+      // inp=nbonds[ii];
+      // xi=position[ii];
+      inp=nbonds[32*iBlock+iThread];
+      xi=position[32*iBlock+iThread];
       bi=inp.siteBlock;
       li=1;
       if (bi) li=lambda[0xFFFF & bi];
@@ -168,8 +170,10 @@ __global__ void getforce_nbdirect_kernel(
       jCount=blockBounds[jBlock+1]-jj;
       jj+=(iThread);
       if ((iThread)<jCount) {
-        jnp=nbonds[jj];
-        xj=position[jj];
+        // jnp=nbonds[jj];
+        // xj=position[jj];
+        jnp=nbonds[32*jBlock+iThread];
+        xj=position[32*jBlock+iThread];
         // // real3_inc(&xj,boxShift);
         // xj.x+=boxShift.x;
         // xj.y+=boxShift.y;
@@ -225,18 +229,21 @@ __global__ void getforce_nbdirect_kernel(
 
               rEff=r;
               if (useSoftCore) {
-                dredr=1.0; // d(rEff) / d(r)
-                dredll=0.0; // d(rEff) / d(lixljtmp)
+#warning "Hard-coded floating precision in soft core section"
+                dredr=1.0f; // d(rEff) / d(r)
+                dredll=0.0f; // d(rEff) / d(lixljtmp)
                 if (bi || bjtmp) {
-                  real rSoft=(2.0*ANGSTROM*sqrt(4.0))*(1.0-lixljtmp);
+                  // real rSoft=(2.0*ANGSTROM*sqrt(4.0))*(1.0-lixljtmp);
+                  real rSoft=FOURANGSTROM*(1.0f-lixljtmp);
                   if (r<rSoft) {
                     real rdivrs=r/rSoft;
-                    rEff=1.0-0.5*rdivrs;
-                    rEff=rEff*rdivrs*rdivrs*rdivrs+0.5;
-                    dredr=3.0-2.0*rdivrs;
+                    rEff=1.0f-0.5f*rdivrs;
+                    rEff=rEff*rdivrs*rdivrs*rdivrs+0.5f;
+                    dredr=3.0f-2.0f*rdivrs;
                     dredr*=rdivrs*rdivrs;
                     dredll=rEff-dredr*rdivrs;
-                    dredll*=-(2.0*ANGSTROM*sqrt(4.0));
+                    // dredll*=-(2.0*ANGSTROM*sqrt(4.0));
+                    dredll*=-FOURANGSTROM;
                     rEff*=rSoft;
                   }
                 }
@@ -252,7 +259,8 @@ __global__ void getforce_nbdirect_kernel(
               real br=cutoffs.betaEwald*rEff;
               // real erfcrinv=erfcf(br)*rinv;
               real erfcrinv=fasterfc(br)*rinv;
-              fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
+              // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
+              fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+1.128379167095513f*cutoffs.betaEwald*expf(-br*br))*rinv;
               if (bi || bjtmp || energy) {
                 eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
               }
@@ -350,7 +358,7 @@ __global__ void getforce_nbdirect_kernel(
         if (bj) {
           atomicAdd(&lambdaForce[0xFFFF & bj],flj);
         }
-        at_real3_inc(&force[jj],fj);
+        at_real3_inc(&force[32*jBlock+iThread],fj);
       }
     }
     __syncwarp();
@@ -358,7 +366,7 @@ __global__ void getforce_nbdirect_kernel(
       if (bi) {
         atomicAdd(&lambdaForce[0xFFFF & bi],fli);
       }
-      at_real3_inc(&force[ii],fi);
+      at_real3_inc(&force[32*iBlock+iThread],fi);
     }
   }
 

@@ -1,9 +1,6 @@
 #include <cuda_runtime.h>
 #include <math.h>
 #include <mpi.h>
-#ifdef USE_TEXTURE
-#include <string.h> // for memset
-#endif
 
 #include "system/potential.h"
 #include "system/system.h"
@@ -18,6 +15,10 @@
 #include "bonded/pair.h"
 #include "nbrecip/nbrecip.h"
 #include "nbdirect/nbdirect.h"
+
+#ifdef USE_TEXTURE
+#include <string.h> // for memset
+#endif
 
 
 
@@ -1265,7 +1266,8 @@ void Potential::initialize(System *system)
 void Potential::reset_force(System *system,bool calcEnergy)
 {
   cudaMemset(system->state->forceBuffer_d,0,(2*system->state->lambdaCount+3*system->state->atomCount)*sizeof(real));
-  cudaMemset(system->domdec->localForce_d,0,3*system->domdec->globalCount*sizeof(real));
+#warning "Also need to do something intelligent about localForce_d size here"
+  cudaMemset(system->domdec->localForce_d,0,2*system->domdec->globalCount*sizeof(real3));
   if (calcEnergy) {
     cudaMemset(system->state->energy_d,0,eeend*sizeof(real));
   }

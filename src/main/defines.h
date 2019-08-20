@@ -18,13 +18,14 @@
 
 // See values in charmm/source/ltm/consta_ltm.F90
 #define ANGSTROM 1.0
+#define FOURANGSTROM 4.0f
 #define KCAL_MOL 1.0
 // 1 / CHARMM TIMFAC value 0.0488882129
 #define PICOSECOND 20.454828284385908
 // CHARMM KBOLTZ
 #define kB 0.001987191
 // Charmm CCELEC0 value
-#define kELECTRIC 332.0716
+#define kELECTRIC 332.0716f
 
 // from gromacs values
 #define ATMOSPHERE 0.000014584319218586
@@ -43,11 +44,12 @@
 // ATM 101325 bar
 
 #define ANGSTROM 0.1
+#define FOURANGSTROM 0.4f
 // 4.184 according to CHARMM, this number is from kELECTRIC conversion
 #define KCAL_MOL 4.183900553475091
 #define PICOSECOND 1.0
 #define kB 0.0083144598
-#define kELECTRIC 138.935455103336
+#define kELECTRIC 138.935455103336f
 
 // atm -> bar -> kJ/mol/nm^3
 #define ATMOSPHERE 0.0610193412507
@@ -65,6 +67,7 @@
 
 #ifdef DOUBLE
 typedef double real;
+typedef double4 real4;
 typedef double3 real3;
 typedef double2 real2;
 typedef cufftDoubleReal myCufftReal;
@@ -76,6 +79,7 @@ typedef cufftDoubleComplex myCufftComplex;
 #define MPI_CREAL MPI_DOUBLE
 #else
 typedef float real;
+typedef float4 real4;
 typedef float3 real3;
 typedef float2 real2;
 typedef cufftReal myCufftReal;

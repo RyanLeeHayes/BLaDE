@@ -258,13 +258,21 @@ __global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,
   }
 }
 
-__global__ void assign_blocks_localNbonds_kernel(int globalCount,int *localToGlobal,int *globalToLocal,NbondPotential *nbonds,NbondPotential *localNbonds)
+__global__ void assign_blocks_localNbonds_kernel(int blockCount,int *blockBounds,int *localToGlobal,int *globalToLocal,NbondPotential *nbonds,NbondPotential *localNbonds)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  if (i<globalCount) {
-    int iGlobal=localToGlobal[i];
-    globalToLocal[iGlobal]=i;
-    localNbonds[i]=nbonds[iGlobal];
+  int iBlock=i/32;
+  int j,iLocal,iGlobal,atomsInBlock;
+
+  if (iBlock<blockCount) {
+    iLocal=blockBounds[iBlock];
+    atomsInBlock=blockBounds[iBlock+1]-iLocal;
+    iLocal+=(i&31);
+    if ((i&31)<atomsInBlock) {
+      iGlobal=localToGlobal[iLocal];
+      globalToLocal[iGlobal]=iLocal;
+      localNbonds[i]=nbonds[iGlobal];
+    }
   }
 }
 
@@ -294,7 +302,7 @@ __global__ void assign_blocks_localPosition_kernel(int blockCount,int *blockBoun
     if ((i&31)<atomsInBlock) {
       iGlobal=localToGlobal[iLocal];
       xi=position[iGlobal];
-      localPosition[iLocal]=xi;
+      localPosition[i]=xi;
     }
 
     // Find extreme values
@@ -359,7 +367,7 @@ void Domdec::assign_blocks(System *system)
 
     cudaMemcpy(blockCount,blockCount_d,(idCount+1)*sizeof(int),cudaMemcpyDeviceToHost);
 
-    assign_blocks_localNbonds_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,localToGlobal_d,globalToLocal_d,system->potential->nbonds_d,localNbonds_d);
+    assign_blocks_localNbonds_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,globalToLocal_d,system->potential->nbonds_d,localNbonds_d);
 
     // Redundant with pack_positions, needed for call to cull
     assign_blocks_localPosition_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,(real3*)system->state->position_d,localPosition_d,blockVolume_d);
@@ -375,18 +383,27 @@ void Domdec::pack_positions(System *system)
   }
 }
 
-__global__ void unpack_forces_kernel(int atomCount,int *localToGlobal,real3 *force,real3 *localForce)
+__global__ void unpack_forces_kernel(int blockCount,int *blockBounds,int *localToGlobal,real3 *force,real3 *localForce)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  if (i<atomCount) {
-    at_real3_inc(&force[localToGlobal[i]],localForce[i]);
+  int iBlock=i/32;
+  int j,iLocal,iGlobal,atomsInBlock;
+
+  if (iBlock<blockCount) {
+    iLocal=blockBounds[iBlock];
+    atomsInBlock=blockBounds[iBlock+1]-iLocal;
+    iLocal+=(i&31);
+    if ((i&31)<atomsInBlock) {
+      at_real3_inc(&force[localToGlobal[iLocal]],localForce[i]);
+    }
   }
 }
 
 void Domdec::unpack_forces(System *system)
 {
   Run *r=system->run;
+  int N=blockCount[gridDomdec.x*gridDomdec.y*gridDomdec.z];
   if (system->idCount==1 || system->id!=0) {
-    unpack_forces_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(globalCount,localToGlobal_d,(real3*)system->state->force_d,localForce_d);
+    unpack_forces_kernel<<<(32*N+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(N,blockBounds_d,localToGlobal_d,(real3*)system->state->force_d,localForce_d);
   }
 }

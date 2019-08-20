@@ -105,9 +105,10 @@ void Domdec::initialize(System *system)
   cudaMalloc(&domain_d,globalCount*sizeof(int));
   cudaMalloc(&localToGlobal_d,globalCount*sizeof(int));
   cudaMalloc(&globalToLocal_d,globalCount*sizeof(int));
-  cudaMalloc(&localPosition_d,globalCount*sizeof(real3));
-  cudaMalloc(&localForce_d,globalCount*sizeof(real3));
-  cudaMalloc(&localNbonds_d,globalCount*sizeof(struct NbondPotential));
+#warning "Arbitrarily doubled localPosition_d localForce_d and localNbonds_d size to account for padding. Won't work for small systems. Do something more intelligent."
+  cudaMalloc(&localPosition_d,2*globalCount*sizeof(real3));
+  cudaMalloc(&localForce_d,2*globalCount*sizeof(real3));
+  cudaMalloc(&localNbonds_d,2*globalCount*sizeof(struct NbondPotential));
   cudaMalloc(&blockSort_d,(globalCount+1)*sizeof(struct DomdecBlockSort));
   cudaMalloc(&blockToken_d,(globalCount+1)*sizeof(struct DomdecBlockToken));
   cudaMalloc(&blockBounds_d,maxBlocks*sizeof(int));
