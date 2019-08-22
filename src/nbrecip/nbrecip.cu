@@ -114,7 +114,7 @@ __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *ato
     u=xi.x*gridDimPME.x/box.x;
     u0.x=(int)floor(u);
     u-=u0.x;
-    u0.x=rectify_modulus(u0.x,gridDimPME.x);
+    u0.x=nearby_modulus(u0.x,gridDimPME.x);
     u+=(order-1-threadOfAtom); // very important 
   } else {
     u=0;
@@ -136,7 +136,7 @@ __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *ato
     u=xi.y*gridDimPME.y/box.y;
     u0.y=(int)floor(u);
     u-=u0.y;
-    u0.y=rectify_modulus(u0.y,gridDimPME.y);
+    u0.y=nearby_modulus(u0.y,gridDimPME.y);
     u+=(order-1-threadOfAtom); // very important 
   } else {
     u=0;
@@ -158,7 +158,7 @@ __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *ato
     u=xi.z*gridDimPME.z/box.z;
     u0.z=(int)floor(u);
     u-=u0.z;
-    u0.z=rectify_modulus(u0.z,gridDimPME.z);
+    u0.z=nearby_modulus(u0.z,gridDimPME.z);
     u+=(order-1-threadOfAtom); // very important 
   } else {
     u=0;
@@ -181,11 +181,11 @@ __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *ato
     for (k=0; k<order; k++) {
       dIndex.y=__shfl_sync(0xFFFFFFFF,density.y,iThread-threadOfAtom+k);
       if (iAtom<atomCount && iThread<atomsPerWarp*order) {
-        index=rectify_modulus(u0.x+j,gridDimPME.x); // ((u0.x+j)%gridDimPME.x);
+        index=nearby_modulus(u0.x+j,gridDimPME.x); // ((u0.x+j)%gridDimPME.x);
         index*=gridDimPME.y;
-        index+=rectify_modulus(u0.y+k,gridDimPME.y); // ((u0.y+k)%gridDimPME.y);
+        index+=nearby_modulus(u0.y+k,gridDimPME.y); // ((u0.y+k)%gridDimPME.y);
         index*=gridDimPME.z;
-        index+=rectify_modulus(u0.z+threadOfAtom,gridDimPME.z); // ((u0.z+threadOfAtom)%gridDimPME.z);
+        index+=nearby_modulus(u0.z+threadOfAtom,gridDimPME.z); // ((u0.z+threadOfAtom)%gridDimPME.z);
         atomicAdd(&chargeGridPME[index],q*dIndex.x*dIndex.y*density.z);
       }
     }
@@ -212,13 +212,9 @@ __global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,myCufftComplex
     kcomp=k/box.z; // always true // (2*k<=gridDimPME.z?k:k-gridDimPME.z)/box.z;
     k2+=kcomp*kcomp;
     factor=bGridPME[ijk];
-    factor*=(0.5*kELECTRIC/M_PI)/V;
-    // factor/=(gridDimPME.x*gridDimPME.y*gridDimPME.z); // cufft Normalization
-    factor*=exp(-M_PI*M_PI*k2/(betaEwald*betaEwald));
-    factor/=k2;
-    // factor*=(2*i==gridDimPME.x?0:1); // Oops, looks like edges are counted once, not twice in paper
-    // factor*=(2*j==gridDimPME.y?0:1);
-    // factor*=(2*k==gridDimPME.z?0:1);
+    factor*=(((real)0.5)*kELECTRIC/((real)M_PI));
+    factor*=exp(-((real)M_PI)*((real)M_PI)*k2/(betaEwald*betaEwald));
+    factor/=V*k2;
     factor=(ijk==0?0:factor);
     fourierGridPME[ijk].x*=factor;
     fourierGridPME[ijk].y*=factor;

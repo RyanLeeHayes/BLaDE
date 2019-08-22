@@ -38,6 +38,15 @@ int rectify_modulus(int a,int b)
   return c;
 }
 
+// rectify_modulus might be expensive
+__device__ static inline
+int nearby_modulus(int a,int b)
+{
+  a-=(a>=b?b:0);
+  a+=(a<0?b:0);
+  return a;
+}
+
 
 
 __device__ static inline
