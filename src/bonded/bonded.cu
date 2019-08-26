@@ -489,10 +489,10 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
   int b[3];
   real l[3]={1,1,1};
 
+  lastBit=threadIdx.x&1;
   if (i<2*cmapCount) { // Threads work in pairs
     // Geometry
     cp=cmaps[i>>1];
-    lastBit=threadIdx.x&1;
     ii=cp.idx[0+4*lastBit];
     jj=cp.idx[1+4*lastBit];
     kk=cp.idx[2+4*lastBit];
@@ -532,7 +532,9 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
     // Interaction
       // get phi and psi (both called phi), phi[0] is on even threads, phi[1] on odd
     rPhi[lastBit]=phi;
+  }
     rPhi[1-lastBit]=__shfl_xor_sync(0xFFFFFFFF,phi,1);
+  if (i<2*cmapCount) { // Avoid hang
       // Get the remainders within each box
     invSpace=cp.ngrid*(1/(2*((real) M_PI)));
     rPhi[0]*=invSpace;
@@ -592,8 +594,8 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
       lEnergy+=fcmapPhiColumn[1];
       lEnergy*=(lastBit?rPhi[1]:1);
       // Put all energy on first thread of pair
-      lEnergy+=__shfl_xor_sync(0xFFFFFFFF,lEnergy,1);
-      lEnergy=(lastBit?0:lEnergy);
+      // NOHANG lEnergy+=__shfl_xor_sync(0xFFFFFFFF,lEnergy,1);
+      // NOHANG lEnergy=(lastBit?0:lEnergy);
     }
     fcmapPhi[0]+=fcmapPhiColumn[0];
     fcmapPhi[0]*=(lastBit?rPhi[1]:1);
@@ -601,7 +603,9 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
 
       // Put partner's force in fcmap for exchange
     fcmap=fcmapPhi[1-lastBit];
+  }
     fcmap=__shfl_xor_sync(0xFFFFFFFF,fcmap,1);
+  if (i<2*cmapCount) { // Avoid hang
       // Add own force
     fcmap+=fcmapPhi[lastBit];
     fcmap*=invSpace;
@@ -615,7 +619,7 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
     if (soft) {
       lEnergy*=softExp*pow(l[0]*l[1]*l[2],softExp-1);
     }
-    if (lastBit==0) { // First partner has full energy
+    // NOHANG if (lastBit==0) { // First partner has full energy
       if (b[0]) {
         atomicAdd(&lambdaForce[b[0]],l[1]*l[2]*lEnergy);
         if (b[1]) {
@@ -625,7 +629,7 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
           }
         }
       }
-    }
+    // NOHANG }
     if (soft) {
       lEnergy/=softExp;
     }

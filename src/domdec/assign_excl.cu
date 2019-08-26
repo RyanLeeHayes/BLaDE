@@ -70,18 +70,19 @@ __global__ void assign_excl_grow_tree_kernel(int tokenCount,struct ExclPotential
   }
 }
 
-__global__ void assign_excl_count_tree_kernel(int tokenCount,struct ExclPotential *tokens,DomdecBlockSort *sort)
+__global__ void assign_excl_count_tree_kernel(int tokenCount,struct ExclPotential *tokens,volatile DomdecBlockSort *sort)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int leafPos, nextLeafPos;
   struct DomdecBlockSort s;
   int count;
   int whoAmI;
+  int findWhoAmI;
   bool sister; // boolean for whether a sister exists at a particular level
   bool finished=false;
 
   if (i<tokenCount) { // MODIFIED
-    s=sort[i];
+    s=((struct DomdecBlockSort*)sort)[i];
     // If this is a terminal leaf, start counting up the tree
     if (s.root!=-1 && s.lower==-1 && s.upper==-1) {
       sort[i].lowerCount=0;
@@ -92,24 +93,26 @@ __global__ void assign_excl_count_tree_kernel(int tokenCount,struct ExclPotentia
         count=sort[leafPos].lowerCount+sort[leafPos].upperCount+1;
         sister=true;
         
-        if (sort[nextLeafPos].lower==-1) {
+        findWhoAmI=sort[nextLeafPos].lower;
+        if (findWhoAmI==-1) {
           sort[nextLeafPos].lowerCount=0;
           sister=false;
-        } else if (sort[nextLeafPos].lower==leafPos) {
+        } else if (findWhoAmI==leafPos) {
           sort[nextLeafPos].lowerCount=count;
           whoAmI=0;
         }
-        if (sort[nextLeafPos].upper==-1) {
+        findWhoAmI=sort[nextLeafPos].upper;
+        if (findWhoAmI==-1) {
           sort[nextLeafPos].upperCount=0;
           sister=false;
-        } else if (sort[nextLeafPos].upper==leafPos) {
+        } else if (findWhoAmI==leafPos) {
           sort[nextLeafPos].upperCount=count;
           whoAmI=1;
         }
 
         // Try to tell sister to go up tree
         if (sister) {
-          if (atomicCAS(&sort[nextLeafPos].whoCounts,-1,1-whoAmI)==-1) { // Succeeded
+          if (atomicCAS((int*)&sort[nextLeafPos].whoCounts,-1,1-whoAmI)==-1) { // Succeeded
             finished=true;
           }
         }
