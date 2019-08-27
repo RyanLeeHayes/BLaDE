@@ -47,6 +47,14 @@ int nearby_modulus(int a,int b)
   return a;
 }
 
+// rectify_modulus might be expensive
+__device__ static inline
+int over_modulus(int a,int b)
+{
+  a-=(a>=b?b:0);
+  return a;
+}
+
 
 
 __device__ static inline

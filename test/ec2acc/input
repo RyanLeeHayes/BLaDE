@@ -252,7 +252,7 @@ while <= {ii} {nsites}
    variables calculate ii int + {ii} 1
 endwhile
 
-run setvariable nsteps 1000 ! 50000
+run setvariable nsteps 10000 ! 50000
 run setvariable dt 0.002 ! 0.003125
 run setvariable T 300
 run setvariable gamma 1

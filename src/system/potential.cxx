@@ -87,6 +87,9 @@ Potential::Potential() {
   chargeGridPME_d=NULL;
   fourierGridPME_d=NULL;
   potentialGridPME_d=NULL;
+#ifdef USE_TEXTURE
+  potentialGridPME_tex=0;
+#endif
   planFFTPME=0;
   planIFFTPME=0;
 
@@ -162,6 +165,9 @@ Potential::~Potential()
   if (chargeGridPME_d) cudaFree(chargeGridPME_d);
   if (fourierGridPME_d) cudaFree(fourierGridPME_d);
   if (potentialGridPME_d) cudaFree(potentialGridPME_d);
+#ifdef USE_TEXTURE
+  if (potentialGridPME_tex) cudaDestroyTextureObject(potentialGridPME_tex);
+#endif
 
   if (nbonds) free(nbonds);
   if (nbonds_d) cudaFree(nbonds_d);
@@ -910,6 +916,23 @@ void Potential::initialize(System *system)
   cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal));
   cudaMalloc(&fourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(myCufftComplex));
   cudaMalloc(&potentialGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal));
+#ifdef USE_TEXTURE
+  {
+    cudaResourceDesc resDesc;
+    memset(&resDesc,0,sizeof(resDesc));
+    resDesc.resType=cudaResourceTypeLinear;
+    resDesc.res.linear.devPtr=potentialGridPME_d;
+    // resDesc.res.linear.desc.f = cudaChannelFormatKindFloat;
+    // resDesc.res.linear.desc.x = 32; // bits per channel
+    resDesc.res.linear.desc=cudaCreateChannelDesc<real>();
+    // resDesc.res.linear.desc=cudaCreateChannelDesc<VdwPotential>();
+    resDesc.res.linear.sizeInBytes=vdwParameterCount*vdwParameterCount*sizeof(real);
+    cudaTextureDesc texDesc;
+    memset(&texDesc,0,sizeof(texDesc));
+    texDesc.readMode=cudaReadModeElementType;
+    cudaCreateTextureObject(&potentialGridPME_tex,&resDesc,&texDesc,NULL);
+  }
+#endif
 
   bGridPME=(real*)calloc(gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1),sizeof(real));
   cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real));
