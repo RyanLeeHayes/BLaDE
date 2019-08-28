@@ -394,7 +394,7 @@ void getforce_nbdirect(System *system,bool calcEnergy)
   State *s=system->state;
   Run *r=system->run;
   Domdec *d=system->domdec;
-  int id=system->id-1+(system->idCount==1);
+  int id=d->id;
   int startBlock=d->blockCount[id];
   int endBlock=d->blockCount[id+1];
   int N=endBlock-startBlock;

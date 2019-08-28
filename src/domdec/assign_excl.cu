@@ -307,8 +307,6 @@ void Domdec::setup_exclusions(System *system)
   if (system->potential->exclCount==0) return;
   Run *r=system->run;
 
-  int id=system->id-1+(system->idCount==1);
-
   if (id>=0) {
     // Create localExcls_d (the sort tokens)
 

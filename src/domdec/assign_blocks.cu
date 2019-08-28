@@ -334,10 +334,6 @@ __global__ void assign_blocks_localPosition_kernel(int blockCount,int *blockBoun
 
 void Domdec::assign_blocks(System *system)
 {
-  int id=system->id-1;
-  int idCount=system->idCount-1;
-  id+=(system->idCount==1);
-  idCount+=(system->idCount==1);
   Run *r=system->run;
 
   if (id>=0) { 
@@ -379,8 +375,8 @@ void Domdec::assign_blocks(System *system)
 void Domdec::pack_positions(System *system)
 {
   Run *r=system->run;
-  int N=blockCount[gridDomdec.x*gridDomdec.y*gridDomdec.z];
-  if (system->idCount==1 || system->id!=0) {
+  int N=blockCount[idCount];
+  if (id>=0) {
     assign_blocks_localPosition_kernel<<<(32*N+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(N,blockBounds_d,localToGlobal_d,(real3*)system->state->position_d,localPosition_d,blockVolume_d);
   }
 }
@@ -404,8 +400,8 @@ __global__ void unpack_forces_kernel(int blockCount,int *blockBounds,int *localT
 void Domdec::unpack_forces(System *system)
 {
   Run *r=system->run;
-  int N=blockCount[gridDomdec.x*gridDomdec.y*gridDomdec.z];
-  if (system->idCount==1 || system->id!=0) {
+  int N=blockCount[idCount];
+  if (id>=0) {
     unpack_forces_kernel<<<(32*N+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(N,blockBounds_d,localToGlobal_d,(real3*)system->state->force_d,localForce_d);
   }
 }

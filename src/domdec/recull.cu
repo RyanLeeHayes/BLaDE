@@ -108,7 +108,6 @@ __global__ void recull_blocks_kernel(
 void Domdec::recull_blocks(System *system)
 {
   Run *r=system->run;
-  int id=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
   int beginBlock=blockCount[id];
   int endBlock=blockCount[id+1];
   int localBlockCount=endBlock-beginBlock;

@@ -1294,6 +1294,7 @@ void Potential::reset_force(System *system,bool calcEnergy)
 void Potential::calc_force(int step,System *system)
 {
   bool calcEnergy=(step%system->run->freqNRG==0);
+  int helper=(system->idCount==2); // 0 unless there are 2 GPUs, then it's 1.
   if (system->run->freqNPT>0) {
     calcEnergy=(calcEnergy||(step%system->run->freqNPT==0));
   }
@@ -1315,25 +1316,29 @@ void Potential::calc_force(int step,System *system)
     getforce_nbex(system,calcEnergy);
     cudaEventRecord(r->bondedComplete,r->bondedStream);
     cudaStreamWaitEvent(r->updateStream,r->bondedComplete,0);
+  }
 
+  if (system->id==0) {
     cudaStreamWaitEvent(r->nbrecipStream,r->forceBegin,0);
     getforce_ewaldself(system,calcEnergy);
     getforce_ewald(system,calcEnergy);
+    system->rngGPU->rand_normal(2*s->leapState->N,s->leapState->random,r->nbrecipStream);
     cudaEventRecord(r->nbrecipComplete,r->nbrecipStream);
     cudaStreamWaitEvent(r->updateStream,r->nbrecipComplete,0);
+  }
 
+  if (system->id==0) {
     cudaStreamWaitEvent(r->biaspotStream,r->forceBegin,0);
     system->msld->getforce_fixedBias(system,calcEnergy);
     system->msld->getforce_variableBias(system,calcEnergy);
     system->msld->getforce_atomRestraints(system,calcEnergy);
     system->msld->getforce_chargeRestraints(system,calcEnergy);
-    system->rngGPU->rand_normal(2*s->leapState->N,s->leapState->random,r->biaspotStream);
     cudaEventRecord(r->biaspotComplete,r->biaspotStream);
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }
 
   cudaStreamWaitEvent(r->nbdirectStream,r->forceBegin,0);
-  if (system->id>0 || system->idCount==1) {
+  if (system->domdec->id>=0) {
     getforce_nbdirect(system,calcEnergy);
   }
   system->state->gather_force(system,calcEnergy);

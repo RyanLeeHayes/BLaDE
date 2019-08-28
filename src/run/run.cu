@@ -353,14 +353,18 @@ void Run::test(char *line,char *token,System *system)
           system->potential->calc_force(0,system);
 
           // Save relevant data
-          system->state->recv_energy();
-          E[s]=system->state->energy[eepotential];
+          if (system->id==0) {
+            system->state->recv_energy();
+            E[s]=system->state->energy[eepotential];
+          }
 
           // Restore positions
           system->state->restore_position();
         }
-        cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
-        fprintf(stdout,"ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
+        if (system->id==0) {
+          cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
+          fprintf(stdout,"ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
+        }
       }
     }
   }

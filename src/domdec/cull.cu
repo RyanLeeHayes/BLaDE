@@ -249,8 +249,6 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
 void Domdec::cull_blocks(System *system)
 {
   Run *r=system->run;
-  int id=system->id-1+(system->idCount==1);
-  // int id=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
   if (id>=0) {
     int localBlockCount=blockCount[id+1]-blockCount[id];
     real rc2=system->run->cutoffs.rCut+cullPad;

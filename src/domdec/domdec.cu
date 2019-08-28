@@ -75,16 +75,15 @@ void Domdec::initialize(System *system)
   system->state->broadcast_position(system);
   system->state->broadcast_box(system);
 
-  idDomdec=make_int3(0,0,0);
-  if (system->idCount==1) {
-    gridDomdec=make_int3(1,1,1);
-  } else {
-#warning "No 2d or 3d decomposition implemented"
-    gridDomdec=make_int3(1,1,system->idCount-1);
-    if (system->id!=0) {
-      idDomdec=make_int3(0,0,system->id-1);
-    }
+  id=system->id;
+  idCount=system->idCount;
+  if (!(system->idCount<=2)) {
+    id--;
+    idCount--;
   }
+#warning "No 2d or 3d decomposition implemented"
+  gridDomdec=make_int3(1,1,idCount);
+  idDomdec=make_int3(0,0,id);
 
   globalCount=system->state->atomCount;
 
@@ -118,8 +117,8 @@ void Domdec::initialize(System *system)
   cudaMalloc(&blockSort_d,(globalCount+1)*sizeof(struct DomdecBlockSort));
   cudaMalloc(&blockToken_d,(globalCount+1)*sizeof(struct DomdecBlockToken));
   cudaMalloc(&blockBounds_d,maxBlocks*sizeof(int));
-  blockCount=(int*)calloc(gridDomdec.x*gridDomdec.y*gridDomdec.z+1,sizeof(int));
-  cudaMalloc(&blockCount_d,(gridDomdec.x*gridDomdec.y*gridDomdec.z+1)*sizeof(int));
+  blockCount=(int*)calloc(idCount+1,sizeof(int));
+  cudaMalloc(&blockCount_d,(idCount+1)*sizeof(int));
   cudaMalloc(&blockVolume_d,maxBlocks*sizeof(struct DomdecBlockVolume));
   cudaMalloc(&blockCandidateCount_d,maxBlocks*sizeof(int));
   cudaMalloc(&blockCandidates_d,maxBlocks*maxPartnersPerBlock*sizeof(struct DomdecBlockPartners));

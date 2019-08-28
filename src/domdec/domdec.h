@@ -39,6 +39,8 @@ struct DomdecBlockPartners {
 
 class Domdec {
   public:
+  int id;
+  int idCount;
   int3 gridDomdec;
   int3 idDomdec;
 // Heuristic settings
