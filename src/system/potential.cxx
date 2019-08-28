@@ -1,6 +1,5 @@
 #include <cuda_runtime.h>
 #include <math.h>
-#include <mpi.h>
 
 #include "system/potential.h"
 #include "system/system.h"

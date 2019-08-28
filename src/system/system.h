@@ -28,6 +28,7 @@ class System {
   public:
   int id,idCount;
   int verbose;
+  void **message; // (shared variable for message passing of pointers)
 // Have command parsing
   std::vector<Control> control;
   Variables *variables;

@@ -1,5 +1,4 @@
 #include <cuda_runtime.h>
-#include <mpi.h>
 
 #include "domdec/domdec.h"
 #include "io/io.h"

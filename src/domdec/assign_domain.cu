@@ -1,5 +1,4 @@
 #include <cuda_runtime.h>
-#include <mpi.h>
 
 #include "domdec/domdec.h"
 #include "system/system.h"
@@ -35,13 +34,12 @@ __global__ void assign_domain_kernel(int atomCount,real3 *position,real3 box,int
 void Domdec::broadcast_domain(System *system)
 {
   int N=globalCount;
-  if (system->id==0) {
-    cudaMemcpy(domain,domain_d,N*sizeof(int),cudaMemcpyDeviceToHost);
-  }
-  MPI_Bcast(domain,N,MPI_INT,0,MPI_COMM_WORLD);
+#pragma omp barrier
   if (system->id!=0) {
-    cudaMemcpy(domain_d,domain,N*sizeof(int),cudaMemcpyHostToDevice);
+    // cudaMemcpyPeer(domain_d,system->id,domain_omp,0,N*sizeof(int));
+    cudaMemcpy(domain_d,domain_omp,N*sizeof(int),cudaMemcpyDefault);
   }
+#pragma omp barrier
 }
 
 void Domdec::assign_domain(System *system)

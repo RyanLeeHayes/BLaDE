@@ -371,7 +371,7 @@ void Run::dynamics(char *line,char *token,System *system)
     // NYI check gpu
     if (cudaPeekAtLastError() != cudaSuccess) {
       cudaError_t err=cudaPeekAtLastError();
-      fatal(__FILE__,__LINE__,"GPU error code %d during run propogation of MPI rank %d\n%s\n",err,system->id,cudaGetErrorString(err));
+      fatal(__FILE__,__LINE__,"GPU error code %d during run propogation of OMP rank %d\n%s\n",err,system->id,cudaGetErrorString(err));
     }
   }
 
@@ -419,7 +419,7 @@ void Run::dynamics_initialize(System *system)
   // NYI check gpu
   if (cudaPeekAtLastError() != cudaSuccess) {
     cudaError_t err=cudaPeekAtLastError();
-    fatal(__FILE__,__LINE__,"GPU error code %d during run initialization of MPI rank %d\n%s\n",err,system->id,cudaGetErrorString(err));
+    fatal(__FILE__,__LINE__,"GPU error code %d during run initialization of OMP rank %d\n%s\n",err,system->id,cudaGetErrorString(err));
   }
 }
 

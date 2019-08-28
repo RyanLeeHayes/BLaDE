@@ -1,8 +1,6 @@
 // #include <nvToolsExt.h>
 #include <string.h>
 #include <math.h>
-#include <mpi.h>
-// #include <mpi-ext.h>
 
 #include "system/state.h"
 #include "io/io.h"
@@ -38,10 +36,42 @@ State::State(System *system) {
   cudaMalloc(&(forceBuffer_d),rootFactor*(2*nL+3*n)*sizeof(real));
   cudaMalloc(&(forceBackup_d),(2*nL+3*n)*sizeof(real));
 
+  if (system->idCount>0) { // OMP
+#pragma omp barrier // OMP
+    if (system->id==0) { // OMP
+      system->message[0]=(void*)positionBuffer_d; // OMP
+      for (i=1; i<system->idCount; i++) { // OMP
+        system->message[i]=(void*)&forceBuffer_d[i*(2*nL+3*n)]; // OMP
+      } // OMP
+#pragma omp barrier // master barrier // OMP
+    } else { // OMP
+#pragma omp barrier // everyone else's barrier // OMP
+      positionBuffer_omp=(real*)(system->message[0]); // OMP
+      forceBuffer_omp=(real*)(system->message[system->id]); // OMP
+    } // OMP
+#pragma omp barrier // OMP
+  } // OMP
+
   // Other buffers
   energy=(real*)calloc(rootFactor*eeend,sizeof(real));
   cudaMalloc(&(energy_d),rootFactor*eeend*sizeof(real));
   cudaMalloc(&(energyBackup_d),eeend*sizeof(real));
+
+  if (system->idCount>0) { // OMP
+#pragma omp barrier // OMP
+    if (system->id==0) { // OMP
+      system->message[0]=(void*)&orthBox; // OMP
+      for (i=1; i<system->idCount; i++) { // OMP
+        system->message[i]=(void*)&energy_d[i*eeend]; // OMP
+      } // OMP
+#pragma omp barrier // master barrier // OMP
+    } else { // OMP
+#pragma omp barrier // everyone else's barrier // OMP
+      orthBox_omp=(real3*)(system->message[0]); // OMP
+      energy_omp=(real*)(system->message[system->id]); // OMP
+    } // OMP
+#pragma omp barrier // OMP
+  } // OMP
 
   // Spatial-Theta buffers
   velocityBuffer=(real*)calloc((nL+3*n),sizeof(real));
@@ -82,22 +112,6 @@ State::State(System *system) {
   invsqrtMass_d=(real(*)[3])invsqrtMassBuffer_d;
   thetaInvsqrtMass=invsqrtMassBuffer+3*n;
   thetaInvsqrtMass_d=invsqrtMassBuffer_d+3*n;
-
-/*
-  if (system->idCount>1) {
-    positionBuffer_gpu=(real**)calloc(system->idCount,sizeof(real*));
-    forceBuffer_gpu=(real**)calloc(system->idCount,sizeof(real*));
-    energy_gpu=(real**)calloc(system->idCount,sizeof(real*));
-    for (i=0; i<system->idCount; i++) {
-      if (i!=system->id) {
-        cudaDeviceEnablePeerAccess(i,0);
-      }
-    }
-    MPI_Allgather(&positionBuffer_d,sizeof(real*),MPI_BYTE,positionBuffer_gpu,sizeof(real*),MPI_BYTE,MPI_COMM_WORLD);
-    MPI_Allgather(&forceBuffer_d,sizeof(real*),MPI_BYTE,forceBuffer_gpu,sizeof(real*),MPI_BYTE,MPI_COMM_WORLD);
-    MPI_Allgather(&energy_d,sizeof(real*),MPI_BYTE,energy_gpu,sizeof(real*),MPI_BYTE,MPI_COMM_WORLD);
-  }
-*/
 
   // Leapfrog structures
   leapParms1=alloc_leapparms1(system->run->dt,system->run->gamma,system->run->T);
@@ -274,110 +288,69 @@ void State::restore_position()
   orthBox=orthBoxBackup;
 }
 
+// CUDA AWARE MPI // NOMPI
+// https://www.open-mpi.org/faq/?category=runcuda#mpi-cuda-aware-support // NOMPI
+// doesn't work well
+
 void State::broadcast_position(System *system)
 {
   int N=3*atomCount+2*lambdaCount;
   // nvtxRangePushA("broadcast_position");
-#if defined(USE_CUDA_MPI) && defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-// https://www.open-mpi.org/faq/?category=runcuda#mpi-cuda-aware-support
-#error "Not working yet"
-  if (system->id==0) {
-    cudaStreamSynchronize(system->run->updateStream);
-  }
-  MPI_Bcast(positionBuffer_d,N,MPI_CREAL,0,MPI_COMM_WORLD);
-#else
-  // nvtxRangePushA("GPU->CPU communication");
-  if (system->id==0) {
+/*  if (system->id==0) {
     cudaMemcpy(positionBuffer,positionBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
   }
-  // nvtxRangePop();
-  // nvtxRangePushA("CPU->CPU communication");
-  MPI_Bcast(positionBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD);
-  // nvtxRangePop();
-  // nvtxRangePushA("CPU->GPU communication");
+  MPI_Bcast(positionBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD); // NOMPI
   if (system->id!=0) {
     cudaMemcpy(positionBuffer_d,positionBuffer,N*sizeof(real),cudaMemcpyHostToDevice);
-  }
+  }*/ // NOMPI
+#pragma omp barrier // OMP
+  if (system->id!=0) { // OMP
+    // cudaMemcpyPeer(positionBuffer_d,system->id,positionBuffer_omp,0,N*sizeof(real)); // OMP
+    cudaMemcpy(positionBuffer_d,positionBuffer_omp,N*sizeof(real),cudaMemcpyDefault); // OMP
+  } // OMP
+#pragma omp barrier // OMP
   // nvtxRangePop();
-#endif
-  // nvtxRangePop();
-/*
-  if (system->id!=0) {
-    // cudaMemcpy(positionBuffer_d,positionBuffer_gpu[0],N*sizeof(real),cudaMemcpyDefault);
-    cudaMemcpyPeer(positionBuffer_d,system->id,positionBuffer_gpu[0],0,N*sizeof(real));
-  }
-*/
-}
-
-void State::broadcast_velocity(System *system)
-{
-  int N=3*atomCount+lambdaCount;
-  if (system->id==0) {
-    cudaMemcpy(velocityBuffer,velocityBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
-  }
-  MPI_Bcast(velocityBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD);
-  if (system->id!=0) {
-    cudaMemcpy(velocityBuffer_d,velocityBuffer,N*sizeof(real),cudaMemcpyHostToDevice);
-  }
 }
 
 void State::broadcast_box(System *system)
 {
-  int N=3;
-  MPI_Bcast(&orthBox,N,MPI_CREAL,0,MPI_COMM_WORLD);
+  // int N=3; // NOMPI
+  // MPI_Bcast(&orthBox,N,MPI_CREAL,0,MPI_COMM_WORLD); // NOMPI
+#pragma omp barrier // OMP
+  if (system->id!=0) { // OMP
+    orthBox=orthBox_omp[0]; // OMP
+  } // OMP
+#pragma omp barrier // OMP
 }
 
 void State::gather_force(System *system,bool calcEnergy)
 {
   int N=3*atomCount+2*system->msld->blockCount;
   // nvtxRangePushA("gather_force");
-#if defined(USE_CUDA_MPI) && defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-// https://www.open-mpi.org/faq/?category=runcuda#mpi-cuda-aware-support
-#error "Not working yet"
-  // nvtxRangePushA("waiting");
-  // if (system->id!=0) {
-    cudaStreamSynchronize(system->run->nbdirectStream);
-  // }
-  // nvtxRangePop();
-  // nvtxRangePushA("sending");
-  MPI_Gather(forceBuffer_d,N,MPI_CREAL,forceBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD);
-  if (calcEnergy) {
-    MPI_Gather(energy_d,eeend,MPI_CREAL,energy,eeend,MPI_CREAL,0,MPI_COMM_WORLD);
-  }
-  // nvtxRangePop();
-#else
-  // nvtxRangePushA("GPU->CPU communication");
-  if (system->id!=0) {
+/*  if (system->id!=0) {
     cudaMemcpy(forceBuffer,forceBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
     if (calcEnergy) {
       cudaMemcpy(energy,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToHost);
     }
   }
-  // nvtxRangePop();
-  // nvtxRangePushA("CPU->CPU communication");
-  MPI_Gather(forceBuffer,N,MPI_CREAL,forceBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD);
+  MPI_Gather(forceBuffer,N,MPI_CREAL,forceBuffer,N,MPI_CREAL,0,MPI_COMM_WORLD); // NOMPI
   if (calcEnergy) {
-    MPI_Gather(energy,eeend,MPI_CREAL,energy,eeend,MPI_CREAL,0,MPI_COMM_WORLD);
+    MPI_Gather(energy,eeend,MPI_CREAL,energy,eeend,MPI_CREAL,0,MPI_COMM_WORLD); // NOMPI
   }
-  // nvtxRangePop();
-  // nvtxRangePushA("CPU->GPU communication");
   if (system->id==0) {
     cudaMemcpy(forceBuffer_d+N,forceBuffer+N,(system->idCount-1)*N*sizeof(real),cudaMemcpyHostToDevice);
     if (calcEnergy) {
       cudaMemcpy(energy_d+eeend,energy+eeend,(system->idCount-1)*eeend*sizeof(real),cudaMemcpyHostToDevice);
     }
-  }
+  }*/ // NOMPI
+#pragma omp barrier // OMP
+  if (system->id!=0) { // OMP
+    // cudaMemcpyPeer(forceBuffer_omp,0,forceBuffer_d,system->id,N*sizeof(real)); // OMP
+    cudaMemcpy(forceBuffer_omp,forceBuffer_d,N*sizeof(real),cudaMemcpyDefault); // OMP
+    if (calcEnergy) { // OMP
+      cudaMemcpy(energy_omp,energy_d,eeend*sizeof(real),cudaMemcpyDefault); // OMP
+    } // OMP
+  } // OMP
+#pragma omp barrier // OMP
   // nvtxRangePop();
-#endif
-  // nvtxRangePop();
-/*
-  if (system->id!=0) {
-    // cudaMemcpy(&forceBuffer_gpu[0][(system->id-1)*N],forceBuffer_d,N*sizeof(real),cudaMemcpyDefault);
-    cudaMemcpyPeer(&forceBuffer_gpu[0][(system->id-1)*N],0,forceBuffer_d,system->id,N*sizeof(real));
-    if (calcEnergy) {
-      // cudaMemcpy(&energy_gpu[0][(system->id-1)*eeend],energy_d,eeend*sizeof(real),cudaMemcpyDefault);
-      cudaMemcpyPeer(&energy_gpu[0][(system->id-1)*eeend],0,energy_d,system->id,eeend*sizeof(real));
-    }
-  }
-*/
 }

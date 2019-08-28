@@ -1,5 +1,3 @@
-#include <mpi.h>
-
 #include "main/defines.h"
 
 
@@ -43,7 +41,6 @@ class Domdec {
   public:
   int3 gridDomdec;
   int3 idDomdec;
-  MPI_Comm MPI_COMM_NBOND;
 // Heuristic settings
   int maxBlocks, maxPartnersPerBlock;
   int freqDomdec;
@@ -52,6 +49,7 @@ class Domdec {
 // Assign atoms to domains
   int *domain;
   int *domain_d;
+  int *domain_omp;
 // For converting between local and global indices
   int globalCount;
   int *localToGlobal_d;

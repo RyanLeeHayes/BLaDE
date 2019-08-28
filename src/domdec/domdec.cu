@@ -63,7 +63,6 @@ Domdec::~Domdec()
 void Domdec::initialize(System *system)
 {
   system->state->broadcast_position(system);
-  system->state->broadcast_velocity(system);
   system->state->broadcast_box(system);
 
   idDomdec=make_int3(0,0,0);
@@ -76,9 +75,6 @@ void Domdec::initialize(System *system)
       idDomdec=make_int3(0,0,system->id-1);
     }
   }
-
-  int color=(system->idCount==1 || system->id!=0)?0:MPI_UNDEFINED;
-  MPI_Comm_split(MPI_COMM_WORLD,color,0,&MPI_COMM_NBOND);
 
   globalCount=system->state->atomCount;
 
@@ -125,6 +121,14 @@ void Domdec::initialize(System *system)
   cudaMalloc(&sortedExcls_d,system->potential->exclCount*sizeof(struct ExclPotential));
   cudaMalloc(&blockExcls_d,maxBlockExclCount*sizeof(int));
   cudaMalloc(&blockExclCount_d,sizeof(int));
+
+  if (system->idCount>0) {
+#pragma omp barrier
+    system->message[system->id]=(void*)domain_d;
+#pragma omp barrier
+    domain_omp=(int*)(system->message[0]);
+#pragma omp barrier
+  }
 
   reset_domdec(system);
 }

@@ -76,7 +76,6 @@ typedef cufftDoubleComplex myCufftComplex;
 #define myCufftExecC2R cufftExecZ2D
 #define MYCUFFT_R2C CUFFT_D2Z
 #define MYCUFFT_C2R CUFFT_Z2D
-#define MPI_CREAL MPI_DOUBLE
 #else
 typedef float real;
 typedef float4 real4;
@@ -88,7 +87,6 @@ typedef cufftComplex myCufftComplex;
 #define myCufftExecC2R cufftExecC2R
 #define MYCUFFT_R2C CUFFT_R2C
 #define MYCUFFT_C2R CUFFT_C2R
-#define MPI_CREAL MPI_FLOAT
 #endif
 
 struct Int2 {

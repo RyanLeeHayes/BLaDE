@@ -48,17 +48,17 @@ class State {
   real *positionBuffer;
   real *positionBuffer_d;
   real *positionBackup_d; // For NPT
-  // real **positionBuffer_gpu;
+  real *positionBuffer_omp;
   real *forceBuffer;
   real *forceBuffer_d;
   real *forceBackup_d; // For NPT
-  // real **forceBuffer_gpu;
+  real *forceBuffer_omp;
 
   // Other buffers
   real *energy;
   real *energy_d;
   real *energyBackup_d;
-  // real **energy_gpu;
+  real *energy_omp;
 
   // Spatial-Theta buffers
   real *velocityBuffer;
@@ -71,6 +71,7 @@ class State {
 
   // The box
   real3 orthBox;
+  real3 *orthBox_omp;
   real3 orthBoxBackup;
 
   // Buffer for floating point output

@@ -1,6 +1,5 @@
 #include <string.h>
 #include <math.h>
-#include <mpi.h>
 
 #include "system/coordinates.h"
 #include "io/io.h"
