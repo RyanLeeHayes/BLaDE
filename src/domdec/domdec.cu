@@ -6,6 +6,10 @@
 #include "run/run.h"
 #include "system/potential.h"
 
+#ifdef USE_TEXTURE
+#include <string.h> // for memset
+#endif
+
 
 
 Domdec::Domdec()
@@ -30,6 +34,9 @@ Domdec::Domdec()
   localExcls_d=NULL;
   exclSort_d=NULL;
   sortedExcls_d=NULL;
+#ifdef USE_TEXTURE
+  sortedExcls_tex=0;
+#endif
   blockExcls_d=NULL;
   blockExclCount_d=NULL;
 }
@@ -56,6 +63,9 @@ Domdec::~Domdec()
   if (localExcls_d) cudaFree(localExcls_d);
   if (exclSort_d) cudaFree(exclSort_d);
   if (sortedExcls_d) cudaFree(sortedExcls_d);
+#ifdef USE_TEXTURE
+  if (sortedExcls_tex) cudaDestroyTextureObject(sortedExcls_tex);
+#endif
   if (blockExcls_d) cudaFree(blockExcls_d);
   if (blockExclCount_d) cudaFree(blockExclCount_d);
 }
@@ -121,6 +131,22 @@ void Domdec::initialize(System *system)
   cudaMalloc(&sortedExcls_d,system->potential->exclCount*sizeof(struct ExclPotential));
   cudaMalloc(&blockExcls_d,maxBlockExclCount*sizeof(int));
   cudaMalloc(&blockExclCount_d,sizeof(int));
+
+#ifdef USE_TEXTURE
+  {
+    cudaResourceDesc resDesc;
+    memset(&resDesc,0,sizeof(resDesc));
+    resDesc.resType=cudaResourceTypeLinear;
+    resDesc.res.linear.devPtr=sortedExcls_d;
+    // pretend it is an int texture instead of int2 texture, because we only ever need to load one element or the other, never both together.
+    resDesc.res.linear.desc=cudaCreateChannelDesc<int>();
+    resDesc.res.linear.sizeInBytes=2*system->potential->exclCount*sizeof(int);
+    cudaTextureDesc texDesc;
+    memset(&texDesc,0,sizeof(texDesc));
+    texDesc.readMode=cudaReadModeElementType;
+    cudaCreateTextureObject(&sortedExcls_tex,&resDesc,&texDesc,NULL);
+  }
+#endif
 
   if (system->idCount>0) {
 #pragma omp barrier

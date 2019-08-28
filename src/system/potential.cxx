@@ -10,6 +10,7 @@
 #include "system/state.h"
 #include "run/run.h"
 #include "domdec/domdec.h"
+#include "rng/rng_gpu.h"
 #include "bonded/bonded.h"
 #include "bonded/pair.h"
 #include "nbrecip/nbrecip.h"
@@ -921,11 +922,8 @@ void Potential::initialize(System *system)
     memset(&resDesc,0,sizeof(resDesc));
     resDesc.resType=cudaResourceTypeLinear;
     resDesc.res.linear.devPtr=potentialGridPME_d;
-    // resDesc.res.linear.desc.f = cudaChannelFormatKindFloat;
-    // resDesc.res.linear.desc.x = 32; // bits per channel
     resDesc.res.linear.desc=cudaCreateChannelDesc<real>();
-    // resDesc.res.linear.desc=cudaCreateChannelDesc<VdwPotential>();
-    resDesc.res.linear.sizeInBytes=vdwParameterCount*vdwParameterCount*sizeof(real);
+    resDesc.res.linear.sizeInBytes=gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(real);
     cudaTextureDesc texDesc;
     memset(&texDesc,0,sizeof(texDesc));
     texDesc.readMode=cudaReadModeElementType;
@@ -936,6 +934,7 @@ void Potential::initialize(System *system)
   bGridPME=(real*)calloc(gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1),sizeof(real));
   cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real));
   int order=system->run->orderEwald;
+#warning "order 10 no longer supported"
   // Only have to support orders 4, 6, 8, and 10
   real Meven[11]={0,1,0,0,0,0,0,0,0,0,0};
   real Modd[11]={0,0,0,0,0,0,0,0,0,0,0};
@@ -1075,10 +1074,7 @@ void Potential::initialize(System *system)
     memset(&resDesc,0,sizeof(resDesc));
     resDesc.resType=cudaResourceTypeLinear;
     resDesc.res.linear.devPtr=vdwParameters_d;
-    // resDesc.res.linear.desc.f = cudaChannelFormatKindFloat;
-    // resDesc.res.linear.desc.x = 32; // bits per channel
     resDesc.res.linear.desc=cudaCreateChannelDesc<real2>();
-    // resDesc.res.linear.desc=cudaCreateChannelDesc<VdwPotential>();
     resDesc.res.linear.sizeInBytes=vdwParameterCount*vdwParameterCount*sizeof(VdwPotential);
     cudaTextureDesc texDesc;
     memset(&texDesc,0,sizeof(texDesc));
@@ -1302,6 +1298,7 @@ void Potential::calc_force(int step,System *system)
     calcEnergy=(calcEnergy||(step%system->run->freqNPT==0));
   }
   Run *r=system->run;
+  State *s=system->state;
 
   reset_force(system,calcEnergy);
 
@@ -1330,6 +1327,7 @@ void Potential::calc_force(int step,System *system)
     system->msld->getforce_variableBias(system,calcEnergy);
     system->msld->getforce_atomRestraints(system,calcEnergy);
     system->msld->getforce_chargeRestraints(system,calcEnergy);
+    system->rngGPU->rand_normal(2*s->leapState->N,s->leapState->random,r->biaspotStream);
     cudaEventRecord(r->biaspotComplete,r->biaspotStream);
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }

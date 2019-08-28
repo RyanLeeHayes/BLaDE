@@ -99,6 +99,54 @@ __global__ void update_VV(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   }
 }
 
+__global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real *bx)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  struct LeapParms2 lp;
+
+  if (i < ls.N1) {
+    lp=lp1;
+  } else {
+    lp=lp2;
+  }
+
+  if (i < ls.N) {
+    // Force is dU/dx by convention in this program, not -dU/dx
+    real v=ls.v[i];
+    real x=ls.x[i];
+    v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    if (bx) bx[i]=x;
+    x+=lp.fscale*v;
+    ls.v[i]=v;
+    ls.x[i]=x;
+  }
+}
+
+__global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real *bx)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  struct LeapParms2 lp;
+
+  if (i < ls.N1) {
+    lp=lp1;
+  } else {
+    lp=lp2;
+  }
+
+  if (i < ls.N) {
+    // Force is dU/dx by convention in this program, not -dU/dx
+    real v=ls.v[i];
+    real x=ls.x[i];
+    // v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    // v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    v-=2*lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i]; // Let's just do both those lines in one step.
+    if (bx) bx[i]=x;
+    x+=lp.fscale*v;
+    ls.v[i]=v;
+    ls.x[i]=x;
+  }
+}
+
 __global__ void kinetic_energy_kernel(struct LeapState ls,real *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -152,6 +200,30 @@ __global__ void update_OO(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   }
 }
 
+__global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real *bx)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  struct LeapParms2 lp;
+
+  if (i < ls.N1) {
+    lp=lp1;
+  } else {
+    lp=lp2;
+  }
+
+  if (i < ls.N) {
+    real v=ls.v[i];
+    real x=ls.x[i];
+    v=lp.sqrta*v+lp.noise*ls.ism[i]*ls.random[i];
+    // Hamiltonian changes here
+    v=lp.sqrta*v+lp.noise*ls.ism[i]*ls.random[ls.N+i];
+    if (bx) bx[i]=x;
+    x+=lp.fscale*v;
+    ls.v[i]=v;
+    ls.x[i]=x;
+  }
+}
+
 
 
 void State::update(int step,System *system)
@@ -180,27 +252,30 @@ void State::update(int step,System *system)
     // Kinetic Energy
     kinetic_energy_kernel<<<(leapState->N+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32,r->updateStream>>>(*leapState,energy_d+eekinetic);
     // Update V for current step
-    update_V<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+    // update_V<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+    update_VhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
   } else {
     // Update V from previous step and for current step
-    update_VV<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+    // update_VV<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+    update_VVhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
   }
   // Velocity Constraint
   // holonomic_velocity(system); // superfluous, I think
-  // Get Gaussian distributed random numbers
-  system->rngGPU->rand_normal(2*leapState->N,leapState->random,r->updateStream);
+  // Get Gaussian distributed random numbers // done in calc_force now
+  // system->rngGPU->rand_normal(2*leapState->N,leapState->random,r->updateStream);
   // Update spatial coordinates
-  holonomic_backup_position(leapState,positionCons_d,r->updateStream);
-  update_R<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+  // holonomic_backup_position(leapState,positionCons_d,r->updateStream); // done in VVhbpR
+  // update_R<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2); // done in VVhbpR
   // Position Constraint
   holonomic_position(system);
   // Apply random drift
-  update_OO<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+  // update_OO<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+  update_OOhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
   // Velocity Constraint
   // holonomic_velocity(system); // superfluous, I think
   // Update spatial coordinates
-  holonomic_backup_position(leapState,positionCons_d,r->updateStream);
-  update_R<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+  // holonomic_backup_position(leapState,positionCons_d,r->updateStream); // done in OOhbpR
+  // update_R<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2); // done in OOhbpR
   // Position Constraint
   holonomic_position(system);
   // Project lambdas

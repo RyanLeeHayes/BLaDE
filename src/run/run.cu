@@ -17,7 +17,7 @@
 // #define PROFILESERIAL
 
 // Class constructors
-Run::Run()
+Run::Run(System *system)
 {
   step0=0;
   nsteps=5000;
@@ -97,6 +97,20 @@ Run::Run()
   cudaEventCreate(&nbdirectComplete);
   cudaEventCreate(&nbrecipComplete);
   cudaEventCreate(&forceComplete);
+  cudaEventCreate(&communicate);
+
+  if (system->idCount>0) {
+    communicate_omp=(cudaEvent_t*)calloc(system->idCount,sizeof(cudaEvent_t));
+#pragma omp barrier
+    system->message[system->id]=(void*)&communicate;
+#pragma omp barrier
+    for (int i=0; i<system->idCount; i++) {
+      communicate_omp[i]=((cudaEvent_t*)(system->message[i]))[0];
+    }
+#pragma omp barrier
+  } else {
+    communicate_omp=NULL;
+  }
 
   setup_parse_run();
 }
@@ -122,6 +136,8 @@ Run::~Run()
   cudaEventDestroy(biaspotComplete);
   cudaEventDestroy(nbdirectComplete);
   cudaEventDestroy(nbrecipComplete);
+  cudaEventDestroy(communicate);
+  if (communicate_omp) free(communicate_omp);
 }
 
 
@@ -133,7 +149,7 @@ void parse_run(char *line,System *system)
   std::string name;
 
   if (!system->run) {
-    system->run=new Run();
+    system->run=new Run(system);
   }
 
   io_nexta(line,token);

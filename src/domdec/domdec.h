@@ -72,6 +72,9 @@ class Domdec {
   struct ExclPotential *localExcls_d;
   struct DomdecBlockSort *exclSort_d;
   struct ExclPotential *sortedExcls_d;
+#ifdef USE_TEXTURE
+  cudaTextureObject_t sortedExcls_tex;
+#endif
   int sortedExclCount;
   int *blockExcls_d;
   int *blockExclCount_d;

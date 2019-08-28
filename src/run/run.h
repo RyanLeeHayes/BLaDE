@@ -69,9 +69,11 @@ class Run {
   cudaEvent_t nbdirectComplete;
   cudaEvent_t nbrecipComplete;
   cudaEvent_t forceComplete;
+  cudaEvent_t communicate;
+  cudaEvent_t *communicate_omp;
 
 
-  Run();
+  Run(System *system);
   ~Run();
 
   void setup_parse_run();

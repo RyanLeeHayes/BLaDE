@@ -158,7 +158,12 @@ __global__ void assign_excl_blockExcls_kernel(
   int beginBlock,int endBlock,int *blockBounds,
   int maxPartnersPerBlock,int *blockCandidateCount,
   struct DomdecBlockPartners *blockCandidates,
-  int exclCount,struct ExclPotential *sortedExcls,
+  int exclCount,
+#ifdef USE_TEXTURE
+  cudaTextureObject_t sortedExcls,
+#else
+  struct ExclPotential *sortedExcls,
+#endif
   int *blockExclCount,int *blockExcls)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -201,7 +206,11 @@ __global__ void assign_excl_blockExcls_kernel(
         for (; hwidth>0; hwidth=hwidth>>1) {
           probePos=lowerPos+hwidth;
           if (probePos<upperPos) {
+#ifdef USE_TEXTURE
+            probeAtom=tex1Dfetch<int>(sortedExcls,2*probePos);
+#else
             probeAtom=sortedExcls[probePos].idx[0];
+#endif
             if (probeAtom<iAtom+b) {
               lowerPos=probePos;
             } else {
@@ -243,7 +252,11 @@ __global__ void assign_excl_blockExcls_kernel(
           for (; hwidth>0; hwidth=hwidth>>1) {
             probePos=lowerPos+hwidth;
             if (probePos<upperPos) {
+#ifdef USE_TEXTURE
+              probeAtom=tex1Dfetch<int>(sortedExcls,2*probePos+1);
+#else
               probeAtom=sortedExcls[probePos].idx[1];
+#endif
               if (probeAtom<jBlockAtomBounds[b]) {
                 lowerPos=probePos;
               } else {
@@ -255,7 +268,11 @@ __global__ void assign_excl_blockExcls_kernel(
         }
 
         for (exclPos=jExclBounds[0]; exclPos<jExclBounds[1]; exclPos++) {
+#ifdef USE_TEXTURE
+          jAtom=tex1Dfetch<int>(sortedExcls,2*exclPos+1);
+#else
           jAtom=sortedExcls[exclPos].idx[1];
+#endif
           mask^=(1<<(jAtom-jBlockAtomBounds[0]));
         }
       }
@@ -263,11 +280,12 @@ __global__ void assign_excl_blockExcls_kernel(
       // See if any atoms got hit after that mess of binary searches.
       hit=(mask!=0xFFFFFFFF);
       // Need to put shfl before ||, otherwise short circuit || prevents some shfls from calling which has undefined results.
-      hit=(__shfl_xor_sync(0xFFFFFFFF,hit,1) || hit);
-      hit=(__shfl_xor_sync(0xFFFFFFFF,hit,2) || hit);
-      hit=(__shfl_xor_sync(0xFFFFFFFF,hit,4) || hit);
-      hit=(__shfl_xor_sync(0xFFFFFFFF,hit,8) || hit);
-      hit=(__shfl_xor_sync(0xFFFFFFFF,hit,16) || hit);
+      // hit=(__shfl_xor_sync(0xFFFFFFFF,hit,1) || hit);
+      // hit=(__shfl_xor_sync(0xFFFFFFFF,hit,2) || hit);
+      // hit=(__shfl_xor_sync(0xFFFFFFFF,hit,4) || hit);
+      // hit=(__shfl_xor_sync(0xFFFFFFFF,hit,8) || hit);
+      // hit=(__shfl_xor_sync(0xFFFFFFFF,hit,16) || hit);
+      hit=__any_sync(0xFFFFFFFF,hit);
 
       // If so, try to save exclusions
       if (hit) {
@@ -316,6 +334,12 @@ void Domdec::setup_exclusions(System *system)
     int beginBlock=blockCount[id];
     int endBlock=blockCount[id+1];
     int localBlockCount=endBlock-beginBlock;
-    assign_excl_blockExcls_kernel<<<(32*localBlockCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(beginBlock,endBlock,blockBounds_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,sortedExclCount,sortedExcls_d,blockExclCount_d,blockExcls_d);
+    assign_excl_blockExcls_kernel<<<(32*localBlockCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(beginBlock,endBlock,blockBounds_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,sortedExclCount,
+#ifdef USE_TEXTURE
+      sortedExcls_tex,
+#else
+      sortedExcls_d,
+#endif
+      blockExclCount_d,blockExcls_d);
   }
 }
