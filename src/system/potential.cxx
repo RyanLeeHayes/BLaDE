@@ -1305,7 +1305,7 @@ void Potential::calc_force(int step,System *system)
 
   cudaEventRecord(r->forceBegin,r->updateStream);
 
-  if (system->id==0) {
+  if (system->id==helper) {
     cudaStreamWaitEvent(r->bondedStream,r->forceBegin,0);
     getforce_bond(system,calcEnergy);
     getforce_angle(system,calcEnergy);
@@ -1327,7 +1327,7 @@ void Potential::calc_force(int step,System *system)
     cudaStreamWaitEvent(r->updateStream,r->nbrecipComplete,0);
   }
 
-  if (system->id==0) {
+  if (system->id==helper) {
     cudaStreamWaitEvent(r->biaspotStream,r->forceBegin,0);
     system->msld->getforce_fixedBias(system,calcEnergy);
     system->msld->getforce_variableBias(system,calcEnergy);

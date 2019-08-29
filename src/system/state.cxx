@@ -1,4 +1,4 @@
-#include <nvToolsExt.h>
+// #include <nvToolsExt.h>
 #include <string.h>
 #include <math.h>
 
@@ -295,7 +295,7 @@ void State::restore_position()
 void State::broadcast_position(System *system)
 {
   int N=3*atomCount+2*lambdaCount;
-  nvtxRangePushA("broadcast_position");
+  // nvtxRangePushA("broadcast_position");
 /*  if (system->id==0) {
     cudaMemcpy(positionBuffer,positionBuffer_d,N*sizeof(real),cudaMemcpyDeviceToHost);
   }
@@ -312,18 +312,20 @@ void State::broadcast_position(System *system)
     // cudaMemcpyPeer(positionBuffer_d,system->id,positionBuffer_omp,0,N*sizeof(real)); // OMP
     cudaMemcpyAsync(positionBuffer_d,positionBuffer_omp,N*sizeof(real),cudaMemcpyDefault,system->run->updateStream); // OMP
   } // OMP
-  nvtxRangePop();
+  // nvtxRangePop();
 }
 
 void State::broadcast_box(System *system)
 {
   // int N=3; // NOMPI
   // MPI_Bcast(&orthBox,N,MPI_CREAL,0,MPI_COMM_WORLD); // NOMPI
+  // nvtxRangePushA("broadcast_box");
 #pragma omp barrier // OMP
   if (system->id!=0) { // OMP
     orthBox=orthBox_omp[0]; // OMP
   } // OMP
 #pragma omp barrier // OMP
+  // nvtxRangePop();
 }
 
 void State::gather_force(System *system,bool calcEnergy)

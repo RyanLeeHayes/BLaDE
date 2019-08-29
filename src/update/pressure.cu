@@ -1,3 +1,5 @@
+// #include <nvToolsExt.h>
+
 #include "system/system.h"
 #include "run/run.h"
 #include "system/state.h"
@@ -40,7 +42,9 @@ void pressure_coupling(System *system)
   real scaleFactor;
   real N,kT,dW;
 
+  // nvtxRangePushA("pressure_coupling");
   if (system->id==0) {
+    // nvtxRangePushA("head node stuff...");
     // Get old energy
     s->recv_energy();
     energyOld=s->energy[eepotential];
@@ -60,13 +64,22 @@ void pressure_coupling(System *system)
     volumeNew=volumeOld+r->volumeFluctuation*system->rngCPU->rand_normal();
     scaleFactor=exp(log(volumeNew/volumeOld)/3);
     scale_box(system,scaleFactor);
+    // nvtxRangePop();
+  }
+  if (system->idCount>1) {
+    system->state->broadcast_box(system);
   }
 
   // Evaluate new energy
+  // nvtxRangePushA("update_domdec");
   system->domdec->update_domdec(system,false);
+  // nvtxRangePop();
+  // nvtxRangePushA("calc_force");
   p->calc_force(0,system); // 0 tells it to calculate energy freqNRG
+  // nvtxRangePop();
 
   if (system->id==0) {
+    // nvtxRangePushA("more head node stuff...");
     // Get new energy
     s->recv_energy();
     energyNew=s->energy[eepotential];
@@ -96,5 +109,10 @@ void pressure_coupling(System *system)
       }
       s->restore_position();
     }
+    // nvtxRangePop();
   }
+  if (system->idCount>1) {
+    system->state->broadcast_box(system);
+  }
+  // nvtxRangePop();
 }
