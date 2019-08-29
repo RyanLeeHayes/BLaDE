@@ -382,18 +382,18 @@ __global__ void getforce_ewald_gather_kernel(
   }
 
   // Reductions
-  fi.x=__shfl_down_sync(0xFFFFFFFF,fi.x,1);
-  fi.y=__shfl_down_sync(0xFFFFFFFF,fi.y,1);
-  fi.z=__shfl_down_sync(0xFFFFFFFF,fi.z,1);
-  lEnergy=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
-  fi.x=__shfl_down_sync(0xFFFFFFFF,fi.x,2);
-  fi.y=__shfl_down_sync(0xFFFFFFFF,fi.y,2);
-  fi.z=__shfl_down_sync(0xFFFFFFFF,fi.z,2);
-  lEnergy=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
-  fi.x=__shfl_down_sync(0xFFFFFFFF,fi.x,4);
-  fi.y=__shfl_down_sync(0xFFFFFFFF,fi.y,4);
-  fi.z=__shfl_down_sync(0xFFFFFFFF,fi.z,4);
-  lEnergy=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
+  fi.x+=__shfl_down_sync(0xFFFFFFFF,fi.x,1);
+  fi.y+=__shfl_down_sync(0xFFFFFFFF,fi.y,1);
+  fi.z+=__shfl_down_sync(0xFFFFFFFF,fi.z,1);
+  lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,1);
+  fi.x+=__shfl_down_sync(0xFFFFFFFF,fi.x,2);
+  fi.y+=__shfl_down_sync(0xFFFFFFFF,fi.y,2);
+  fi.z+=__shfl_down_sync(0xFFFFFFFF,fi.z,2);
+  lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,2);
+  fi.x+=__shfl_down_sync(0xFFFFFFFF,fi.x,4);
+  fi.y+=__shfl_down_sync(0xFFFFFFFF,fi.y,4);
+  fi.z+=__shfl_down_sync(0xFFFFFFFF,fi.z,4);
+  lEnergy+=__shfl_down_sync(0xFFFFFFFF,lEnergy,4);
   // Reduction only correct for threadOfAtom==0
 
   // Lambda force

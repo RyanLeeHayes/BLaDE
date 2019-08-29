@@ -4,7 +4,9 @@
 #include <cuda_runtime.h>
 #include <cufft.h>
 
+#ifndef DOUBLE
 #define USE_TEXTURE
+#endif
 
 #define MAXLENGTHSTRING 1024
 
