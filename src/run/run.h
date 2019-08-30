@@ -29,11 +29,13 @@ class Run {
   std::string fnmCPI;
   std::string fnmCPO;
   XDRFILE *fpXTC;
+  XDRFILE *fpXLMD;
   FILE *fpLMD;
   FILE *fpNRG;
   int freqXTC;
   int freqLMD;
   int freqNRG;
+  bool hrLMD;
 
   long int step; // current step
   long int step0; // starting step

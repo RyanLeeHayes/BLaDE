@@ -124,9 +124,9 @@ bool io_nextb(char *line)
 {
   std::string booleanString=io_nexts(line);
 
-  if (booleanString=="on" || booleanString=="true" || booleanString=="1") {
+  if (booleanString=="on" || booleanString=="true" || booleanString=="yes" || booleanString=="1") {
     return true;
-  } else if (booleanString=="off" || booleanString=="false" || booleanString=="0") {
+  } else if (booleanString=="off" || booleanString=="false" || booleanString=="no" || booleanString=="0") {
     return false;
   } else {
     fatal(__FILE__,__LINE__,"Error: could not convert string %s to boolean value\n",booleanString.c_str());
@@ -283,15 +283,28 @@ void print_xtc(int step,System *system)
 
 void print_lmd(int step,System *system)
 {
-  FILE *fp=system->run->fpLMD;
   real *l=system->state->lambda;
   int i;
 
-  fprintf(fp,"%10d",step);
-  for (i=1; i<system->state->lambdaCount; i++) {
-    fprintf(fp," %8.6f",l[i]);
+  if (system->run->hrLMD) {
+    FILE *fp=system->run->fpLMD;
+    fprintf(fp,"%10d",step);
+    for (i=1; i<system->state->lambdaCount; i++) {
+      fprintf(fp," %8.6f",l[i]);
+    }
+    fprintf(fp,"\n");
+  } else {
+    XDRFILE *fp=system->run->fpXLMD;
+    xdrfile_write_int(&system->state->lambdaCount,1,fp);
+#ifdef DOUBLE
+    for (i=0; i<system->state->lambdaCount; i++) {
+      float lf=l[i];
+      xdrfile_write_float(&lf,1,fp);
+    }
+#else
+    xdrfile_write_float(l,system->state->lambdaCount,fp);
+#endif
   }
-  fprintf(fp,"\n");
 }
 
 void print_nrg(int step,System *system)

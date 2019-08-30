@@ -264,7 +264,7 @@ __global__ void assign_blocks_localNbonds_kernel(int blockCount,int *blockBounds
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int iBlock=i/32;
-  int j,iLocal,iGlobal,atomsInBlock;
+  int iLocal,iGlobal,atomsInBlock;
 
   if (iBlock<blockCount) {
     iLocal=blockBounds[iBlock];
@@ -385,7 +385,7 @@ __global__ void unpack_forces_kernel(int blockCount,int *blockBounds,int *localT
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int iBlock=i/32;
-  int j,iLocal,iGlobal,atomsInBlock;
+  int iLocal,atomsInBlock;
 
   if (iBlock<blockCount) {
     iLocal=blockBounds[iBlock];

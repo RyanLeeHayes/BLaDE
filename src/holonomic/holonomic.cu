@@ -574,7 +574,6 @@ __device__ inline void holonomic_position_branch3_kernel(int N,int B0,struct Bra
 
 __global__ void holonomic_position_kernel(int N0,int N1,int N2,int N3,int B0,int B1,int B2,int B3,struct TriangleCons *cons0,struct Branch1Cons *cons1,struct Branch2Cons *cons2,struct Branch3Cons *cons3,struct LeapState ls,struct LeapParms2 lp,real *xPrevious,real3 box,real tolerance)
 {
-  int B=0;
   if (blockIdx.x<B0) {
     holonomic_position_triangle_kernel(N0,0,cons0,ls,lp,xPrevious,box,tolerance);
   } else if (blockIdx.x<B1) {

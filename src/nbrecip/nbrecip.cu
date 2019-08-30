@@ -261,7 +261,6 @@ __global__ void getforce_ewald_gather_kernel(
   int iThread=rectify_modulus(threadIdx.x,32); // threadIdx.x&31; // within warp
   int iAtom=i/8;
   int threadOfAtom=rectify_modulus(i,8); // iThread%order;
-  real passValue;
   real lEnergy=0;
   extern __shared__ real sEnergy[];
 

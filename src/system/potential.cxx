@@ -934,10 +934,9 @@ void Potential::initialize(System *system)
   bGridPME=(real*)calloc(gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1),sizeof(real));
   cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real));
   int order=system->run->orderEwald;
-#warning "order 10 no longer supported"
-  // Only have to support orders 4, 6, 8, and 10
-  real Meven[11]={0,1,0,0,0,0,0,0,0,0,0};
-  real Modd[11]={0,0,0,0,0,0,0,0,0,0,0};
+  // Only have to support orders 4, 6, and 8
+  real Meven[9]={0,1,0,0,0,0,0,0,0};
+  real Modd[9]={0,0,0,0,0,0,0,0,0};
   for (i=2; i<order; i+=2) {
     for (l=0; l<i+1; l++) {
       Modd[l]=l*Meven[l]/i+(i+1-l)*Meven[i+1-l]/i;

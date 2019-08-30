@@ -233,7 +233,6 @@ __global__ void getforce_nbdirect_kernel(
 
               rEff=r;
               if (useSoftCore) {
-#warning "Hard-coded floating precision in soft core section"
                 dredr=1; // d(rEff) / d(r)
                 dredll=0; // d(rEff) / d(lixljtmp)
                 if (bi || bjtmp) {

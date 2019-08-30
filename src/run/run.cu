@@ -30,11 +30,13 @@ Run::Run(System *system)
   fnmCPI="";
   fnmCPO="default.cpt";
   fpXTC=NULL;
+  fpXLMD=NULL;
   fpLMD=NULL;
   fpNRG=NULL;
   freqXTC=1000;
   freqLMD=10;
   freqNRG=10;
+  hrLMD=true;
 // Nonbonded options
   betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
@@ -118,6 +120,7 @@ Run::Run(System *system)
 Run::~Run()
 {
   if (fpXTC) xdrfile_close(fpXTC);
+  if (fpXLMD) xdrfile_close(fpXLMD);
   if (fpLMD) fclose(fpLMD);
   if (fpNRG) fclose(fpNRG);
 #ifndef PROFILESERIAL
@@ -254,6 +257,8 @@ void Run::set_variable(char *line,char *token,System *system)
     freqLMD=io_nexti(line);
   } else if (strcmp(token,"freqnrg")==0) {
     freqNRG=io_nexti(line);
+  } else if (strcmp(token,"hrlmd")==0) {
+    hrLMD=io_nextb(line);
   } else if (strcmp(token,"T")==0) {
     T=io_nextf(line);
   } else if (strcmp(token,"gamma")==0) {
@@ -272,7 +277,7 @@ void Run::set_variable(char *line,char *token,System *system)
   } else if (strcmp(token,"orderewald")==0) {
     orderEwald=io_nexti(line);
     if ((orderEwald/2)*2!=orderEwald) fatal(__FILE__,__LINE__,"orderEwald (%d) must be even\n",orderEwald);
-    if (orderEwald<4 || orderEwald>10) fatal(__FILE__,__LINE__,"orderEwald (%d) must be 4, 6, 8, or 10\n",orderEwald);
+    if (orderEwald<4 || orderEwald>8) fatal(__FILE__,__LINE__,"orderEwald (%d) must be 4, 6, or 8\n",orderEwald);
   } else if (strcmp(token,"shaketolerance")==0) {
     shakeTolerance=io_nextf(line);
   } else if (strcmp(token,"freqnpt")==0) {
@@ -407,7 +412,11 @@ void Run::dynamics_initialize(System *system)
       fatal(__FILE__,__LINE__,"Failed to open XTC file %s\n",fnmXTC.c_str());
     }
   }
-  if (!fpLMD) fpLMD=fpopen(fnmLMD.c_str(),"w");
+  if (hrLMD) {
+    if (!fpLMD) fpLMD=fpopen(fnmLMD.c_str(),"w");
+  } else {
+    if (!fpXLMD) fpXLMD=xdrfile_open(fnmLMD.c_str(),"w");
+  }
   if (!fpNRG) fpNRG=fpopen(fnmNRG.c_str(),"w");
 
   // Finish setting up MSLD
