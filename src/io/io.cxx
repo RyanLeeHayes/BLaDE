@@ -295,14 +295,14 @@ void print_lmd(int step,System *system)
     fprintf(fp,"\n");
   } else {
     XDRFILE *fp=system->run->fpXLMD;
-    xdrfile_write_int(&system->state->lambdaCount,1,fp);
+    xdrfile_write_int(&system->state->lambdaCount-1,1,fp);
 #ifdef DOUBLE
-    for (i=0; i<system->state->lambdaCount; i++) {
+    for (i=1; i<system->state->lambdaCount; i++) {
       float lf=l[i];
       xdrfile_write_float(&lf,1,fp);
     }
 #else
-    xdrfile_write_float(l,system->state->lambdaCount,fp);
+    xdrfile_write_float(&l[1],system->state->lambdaCount-1,fp);
 #endif
   }
 }
