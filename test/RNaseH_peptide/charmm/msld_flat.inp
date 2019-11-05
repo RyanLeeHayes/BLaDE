@@ -1,0 +1,182 @@
+* CHARMM input file for Multi-Site lambda-dynamics
+* MSLD references:
+*    J.L. Knight and C.L. Brooks III. Multi-site lambda-dynamics: 
+*       free energy method for simulating Structure-Activity Relationship 
+*       studies. J. Chem. Theory Comput. 7, 2728-2739 (2011). 
+*    J.L. Knight and C.L. Brooks III. Applying efficient 
+*       implicit non-geometric constraints in free energy simulations.
+*       J. Comput. Chem. 32, 3423-3432 (2011). 
+* Stream file for MSLD created by process.py
+* Written by Ryan Hayes 2016-06-18
+*
+
+set iflat = 1
+set esteps = 13000
+swt nsteps = 39000
+set seed = 1234
+
+set fnex = 5.5
+set temp = 298.15
+
+stream "variables@{IFLAT}.inp"
+
+bomblev -1
+
+stream "prep/@{SYSNAME}.inp"
+
+! Set nonbonded options
+stream nbond.str
+
+faster on
+
+! system "mkdir -p res dcd"
+
+! bomlev -6
+! domdec gpu only dlb off ndir 1 @nnodes 1
+! mini sd nstep 100 nprint 10 step 0.005                  !! Do min, Steepest-Decent
+! bomlev 0
+
+!---------------------------------------------------------------------------
+! Write out structure after minimization
+!---------------------------------------------------------------------------
+
+! write psf card form name aftermin.psf 
+! * after minimization psf
+! *
+! write coor pdb form name minimized.pdb 
+! * after minimization pdb
+! *
+read coor pdb resid name prep/minimized.pdb
+
+
+!---------------------------------------------------------------------------
+! Setup of dynamics run
+!---------------------------------------------------------------------------
+
+! !! Initiate BP-REX MSLD
+! repd fast nrep @nreps EXLM FREQuency 1000 MSPH SPH 6.0 DPH 0.5 unit 27
+! 
+! !! Direct output of replicas to their individual files
+! set myrep = ?myrep
+! open write form unit 28 name output_?myrep
+! outu 28
+
+shake fast bonh param
+scalar fbeta set 10.0 sele all end
+
+domdec gpu only dlb off ndir 1 @nnodes 1
+
+!! Heating run of 100 ps
+open unit 21 write unform name "dcd/@{SYSNAME}_1_heat.dcd"
+open unit 22 write form name "res/@{SYSNAME}_1_heat.res"
+open unit 24 write file name "res/@{SYSNAME}_1_heat.lmd"
+
+if @?restartfile eq 0 then
+set resttoken = start
+set iurest = -1
+else
+set resttoken = restart
+open unit 23 read form name "@{RESTARTFILE}"
+set iurest = 23
+endif
+
+calc seed = @seed
+calc pmass = ?natom * 0.12
+dynamics cpt @resttoken -
+  iseed @seed @seed @seed @seed -
+  timestep 0.002 -      !!timestep interval
+  nstep @esteps -         !!no. of steps  (== 200 ps)
+  nprint 1000 -         !!freq of printout
+  iprfrq 1000 -         !!freq of calc avg/rms energy
+  nsavc 1000 -          !!freq of writing coordinates
+  nsavl 10 -            !!freq of writing lambda histograms
+  isvfrq 10000 -        !!freq of writing out restart files
+  iunread @iurest -          !!read restart file
+  iuncrd 21 -           !!write out coordinates
+  iunwri 22 -           !!write out restart file
+  iunldm 24 -           !!write out lambda histograms and biasing potential
+  firstt @temp -          !!initial temp
+  finalt @temp -          !!final temp
+  tstruc @temp -          !!temp at which starting structure has been equilibrated
+  tbath @temp -           !!temp of langevin bath
+  pconstant -           !! use constant pressure (pressure.doc recommendations)
+  pmass @pmass -         !! pressure "mass" 2% of mass or 400.0 amu
+  pref 1.0 -            !! pressure in atm
+  pgamma 20.0 -         !! pressure collision frequency
+  hoover -
+  reft @temp -
+  tmass 1000 -
+  ichecw 0 -            !!do not scale velocities to final temp (i.e. equilibrate)
+  ihtfrq 0 -            !!freq of heating
+  ieqfrq 0 -            !!freq of scaling/assigning velocity(X)
+  iasors 1 -            !!assign velocities during heating (0 will be scale velocities)
+  iasvel 1 -            !!using gaussian distribution to assign velocities
+  iscvel 0 -
+  inbfrq -1 -
+  ilbfrq 0 -
+  imgfrq -1 -
+  ntrfrq 500 -
+  echeck -1             !!energy tolerance check before crashing
+
+!! Production run of 100 ps / 1 ns
+open unit 21 write unform name "dcd/@{SYSNAME}_res0_prod.dcd"
+open unit 22 write form name "res/@{SYSNAME}_res0_prod.res"
+! open unit 23 read form name "res/@{SYSNAME}_1_heat.res"
+open unit 24 write file name "res/@{SYSNAME}_res0_prod.lmd"
+
+calc pmass = ?natom * 0.12
+dynamics cpt start -
+  timestep 0.002 -      !!timestep interval
+  nstep  @nsteps -          !!no. of steps  (== 2 ns)
+  nprint 1000 -         !!freq of printout
+  iprfrq 1000 -         !!freq of calc avg/rms energy
+  nsavc 1000 -          !!freq of writing coordinates
+  nsavl 10 -            !!freq of writing lambda histograms
+  isvfrq 10000 -        !!freq of writing out restart files
+  iunread -1 - ! 23 -          !!read restart file
+  iuncrd 21 -           !!write out coordinates
+  iunwri 22 -           !!write out restart file
+  iunldm 24 -           !!write out lambda histograms and biasing potential
+  firstt @temp -          !!initial temp
+  finalt @temp -          !!final temp
+  tstruc @temp -          !!temp at which starting structure has been equilibrated
+  tbath @temp -           !!temp of langevin bath
+  pconstant -           !! use constant pressure (pressure.doc recommendations)
+  pmass @pmass -         !! pressure "mass" 2% of mass or 400.0 amu
+  pref 1.0 -            !! pressure in atm
+  pgamma 20.0 -         !! pressure collision frequency
+  hoover -
+  reft @temp -
+  tmass 1000 -
+  ichecw 0 -            !!do not scale velocities to final temp (i.e. equilibrate)
+  ihtfrq 0 -            !!freq of heating
+  ieqfrq 0 -            !!freq of scaling/assigning velocity(X)
+  iasors 1 -            !!assign velocities during heating (0 will be scale velocities)
+  iasvel 1 -            !!using gaussian distribution to assign velocities
+  iscvel 0 -
+  inbfrq -1 -
+  ilbfrq 0 -
+  imgfrq -1 -
+  ntrfrq 500 -
+  echeck -1             !!energy tolerance check before crashing
+
+!----------------------------------------------------------------------------
+! Write out structure after simulation
+!----------------------------------------------------------------------------
+
+write psf card form name "@{SYSNAME}_res0_prod.psf"
+* after dynamics psf
+*
+write coor pdb form name "@{SYSNAME}_res0_prod.pdb"
+* after dynamics pdb
+*
+
+!---------------------------------------------------------------------------
+! Analyze l-dynamics output
+!---------------------------------------------------------------------------
+open unit 44 read file name "res/@{SYSNAME}_res0_prod.lmd"
+
+traj lamb print ctlo 0.8 cthi 0.95 first 44 nunit 1
+
+stop
+

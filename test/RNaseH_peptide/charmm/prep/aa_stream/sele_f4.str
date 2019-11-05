@@ -1,0 +1,12 @@
+* nuissance title
+*
+define site@{site}cap@{sub} -
+   select ( -
+   segid @segid .and. resid @resid .and. ( -
+   type CFTA .or. -
+   type HFTA .or. -
+   type HFTB .or. -
+   type HFTC .or. -
+   type CFTB .or. -
+   type OFTA .or. -
+   none ) ) end

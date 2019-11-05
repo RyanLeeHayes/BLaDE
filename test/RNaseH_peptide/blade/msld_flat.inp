@@ -1,0 +1,77 @@
+! CHARMM input file for Multi-Site lambda-dynamics
+! MSLD references:
+!    J.L. Knight and C.L. Brooks III. Multi-site lambda-dynamics: 
+!       free energy method for simulating Structure-Activity Relationship 
+!       studies. J. Chem. Theory Comput. 7, 2728-2739 (2011). 
+!    J.L. Knight and C.L. Brooks III. Applying efficient 
+!       implicit non-geometric constraints in free energy simulations.
+!       J. Comput. Chem. 32, 3423-3432 (2011). 
+! Stream file for MSLD created by process.py
+! Written by Ryan Hayes 2016-06-18
+!
+
+verbose 0
+
+variables set restartfile null
+
+stream arguments.inp
+
+variables set fnex 5.5
+variables set temp 298.15
+
+stream variablesflat.inp
+
+stream prep/{sysname}.inp
+
+! Set nonbonded options
+run setvariable rswitch 9.0
+run setvariable rcut 10.0
+run setvariable invbetaewald 3.125
+run setvariable orderewald 6
+run setvariable gridspace 1.1 ! 1.1 A is max grid spacing, should give 40x40x40
+
+coordinates file prep/minimized.pdb
+coordinates velocity {temp}
+
+!---------------------------------------------------------------------------
+! Setup of dynamics run
+!---------------------------------------------------------------------------
+
+structure shake hbond
+run setvariable gamma 1.0
+
+
+run setvariable fnmxtc dcd/{sysname}_heat.xtc
+run setvariable fnmnrg dcd/{sysname}_heat.nrg
+run setvariable fnmlmd res/{sysname}_heat.lmd
+run setvariable fnmcpo res/{sysname}_heat.res
+if ne {restartfile} null
+  run setvariable fnmcpi {restartfile}
+endif
+
+run setvariable nsteps {esteps}
+run setvariable dt 0.002
+run setvariable T {temp}
+run setvariable freqxtc 10000
+run setvariable freqnrg 1000
+run setvariable freqnpt 100
+run setvariable freqlmd 10
+run setvariable hrlmd no
+run dynamics
+
+
+!! Production run of 100 ps / 1 ns
+run setvariable fnmxtc dcd/{sysname}_flat.xtc
+run setvariable fnmnrg dcd/{sysname}_flat.nrg
+run setvariable fnmlmd res/{sysname}_flat.lmd_0
+run setvariable fnmcpo res/{sysname}_flat.res
+
+run setvariable nsteps {nsteps}
+run setvariable dt 0.002
+run setvariable T {temp}
+run setvariable freqxtc 10000
+run setvariable freqnrg 1000
+run setvariable freqnpt 100
+run setvariable freqlmd 10
+run setvariable hrlmd no
+run dynamics

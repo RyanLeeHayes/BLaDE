@@ -1,0 +1,1 @@
+selection define site{site}sub{sub} and and segid {segid} resid {resid} atomnames NW_A HW_A CW_A HW_B CW_C HW_C HW_D CW_D CW_E HW_E NW_B HW_F CW_F CW_G CW_H HW_G CW_I HW_H CW_J HW_I CW_K HW_J CW_B OW_A

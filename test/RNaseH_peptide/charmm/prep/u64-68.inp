@@ -1,0 +1,697 @@
+* Lame Title - run with openMM
+*
+
+set box = 40.685169
+
+! set resid1 = 29
+! set s1seq1 = 0 ! r
+! set s1seq2 = k
+! set resid2 = 30
+! set s2seq1 = 0 ! g
+! set s2seq2 = q
+! set resid3 = 31
+! set s3seq1 = 0 ! r
+! set s3seq2 = j ! hsp
+! set resid4 = 40
+! set s4seq1 = 0 ! t
+! set s4seq2 = r
+! set resid5 = 41
+! set s5seq1 = 0 ! r
+! set s5seq2 = l
+! set resid6 = 60
+! set s6seq1 = 0 ! k
+! set s6seq2 = t
+! set resid7 = 62
+! set s7seq1 = 0 ! j ! hsp
+! set s7seq2 = p
+set resid1 = 66
+set s1seq1 = 0 ! i
+set s1seq2 = t
+! set resid9 = 111
+! set s9seq1 = 0 ! l
+! set s9seq2 = i
+! set resid10 = 112
+! set s10seq1 = 0 ! g
+! set s10seq2 = q
+! set resid11 = 113
+! set s11seq1 = 0 ! q
+! set s11seq2 = r
+! set resid12 = 142
+! set s12seq1 = 0 ! m
+! set s12seq2 = s
+! set resid13 = 149
+! set s13seq1 = 0 ! t
+! set s13seq2 = v
+! set resid14 = 153
+! set s14seq1 = 0 ! v
+! set s14seq2 = p
+! set resid15 = 154
+! set s15seq1 = 0 ! e
+! set s15seq2 = e
+set segid = PROT
+
+set nterdel = 0 ! 0 means don't do it
+set nterres = 64
+set ntercap = ace
+set nterc = 4 ! 2 nter, 3 cter, 4 ace, 5 ct3
+set cterdel = 0 ! 0 means don't do it
+set cterres = 68
+set ctercap = ct3
+set cterc = 5  ! 2 nter, 3 cter, 4 ace, 5 ct3
+
+set bomlev = ?bomlev
+bomlev -1
+read rtf card name prep/toppar/top_all36_prot.rtf
+read param card flex name prep/toppar/par_all36_prot.prm
+read rtf card append name "prep/toppar/top_all36_cgenff.rtf"
+read param card flex append name "prep/toppar/par_all36_cgenff.prm"
+stream "prep/toppar/toppar_water_ions.str"
+bomlev @bomlev
+
+stream prep/aa_stream/msldpatch.str
+
+
+read sequ pdb name prep/protein.pdb
+! generate PROT setup ! full length
+generate PROT first ACE last CT3 setup ! pentapeptide
+
+goto skippH
+
+! SUMMARY OF THIS PREDICTION
+!        Group      pKa  model-pKa   ligand atom-type
+!    ASP  10 A     7.09       3.80
+!    ASP  70 A     4.86       3.80
+!    ASP  94 A     2.78       3.80
+!    ASP 102 A     3.15       3.80
+!    ASP 108 A     3.95       3.80
+!    ASP 134 A     3.58       3.80
+!    ASP 148 A     2.87       3.80
+!    GLU   6 A     4.57       4.50
+!    GLU  32 A     3.53       4.50
+!    GLU  48 A     6.32       4.50
+!    GLU  57 A     3.47       4.50
+!    GLU  61 A     3.77       4.50
+!    GLU  64 A     4.60       4.50
+!    GLU 119 A     3.62       4.50
+!    GLU 129 A     3.28       4.50
+!    GLU 131 A     4.76       4.50
+!    GLU 135 A     4.53       4.50
+!    GLU 147 A     4.66       4.50
+!    GLU 154 A     4.21       4.50
+!    C-  155 A     3.44       3.20
+!    HIS  62 A     6.69       6.50
+!    HIS  83 A     6.08       6.50
+!    HIS 114 A     5.39       6.50
+!    HIS 124 A     6.30       6.50
+!    HIS 127 A     7.26       6.50
+! Use pH 6.0?
+patch aspp PROT 10 setup
+patch glup PROT 48 setup
+auto angle dihe ! redundant
+
+label skippH
+
+read coor pdb resid name prep/protein.pdb
+! ic fill ! Extra unnecessary, fill creates IC table from cartesian, and fills it with garbage if atoms are undefined
+! ic param
+! ic build
+
+
+bomlev -2
+
+set procount = 0
+
+set ii = 1
+label patchsiteloop
+if @ii .le. @nsites then
+
+   set resid = @resid@@ii
+   calc residminus2 = @resid - 2
+   calc residminus1 = @resid - 1
+   calc residplus1 = @resid + 1
+   calc iiminus2 = @ii - 2
+   calc iiminus1 = @ii - 1
+
+   ! determine proline in current position
+   define testpro select segid @segid .and. resid @resid .and. resname PRO end
+   if ?nsel .gt. 0 then
+      calc procount = @procount + 1
+   endif
+   ! determine proline in residplus1 position
+   define testpro select segid @segid .and. resid @residplus1 .and. resname PRO end
+   set ptag = 0
+   if ?nsel .gt. 0 then
+      set ptag = 1
+   endif
+
+   set jj = 2
+   label patchloop
+   if @jj .le. @nsubs@@ii then
+
+      set seqjj = @{s@@{ii}seq@@jj}
+      patch aa_@{seqjj} @segid @resid@@ii setup warn ! setup for IC table
+
+      if @{seqjj} .eq. p then
+         calc procount = @procount + 1
+      endif
+
+      if @ii .eq. @nterdel then
+         ! delete connectivity, not just bond
+         dele conn sele ( atom @segid @residminus1 C ) show end -
+            sele ( atom @segid @resid@@ii N@{seqjj}_A ) show end
+         patch cap_@{seqjj}@nterc @segid @resid@@ii setup ! setup for IC table
+      endif
+      if @resid .eq. @nterres then
+         patch cap_@{seqjj}@nterc @segid @resid@@ii setup ! setup for IC table
+      endif
+      if @ii .eq. @cterdel then
+         ! delete connectivity, not just bond
+         dele conn sele ( atom @segid @resid@@ii C@{seqjj}_B ) show end -
+            sele ( atom @segid @residplus1 N ) show end
+         patch cap_@{seqjj}@cterc @segid @resid@@ii setup ! setup for IC table
+      endif
+      if @resid .eq. @cterres then
+         patch cap_@{seqjj}@cterc @segid @resid@@ii setup ! setup for IC table
+      endif
+
+      ! add links
+      if @residminus1 .gt. @nterres then
+         patch l_00@{seqjj} @segid @residminus1 ! setup
+      endif
+      if @residminus1 .eq. @nterres then
+         patch l_@{nterc}0@{seqjj} @segid @residminus1 ! setup
+      endif
+      if @residplus1 .lt. @cterres then
+         patch l_@{seqjj}@{ptag}0 @segid @residplus1 ! setup
+      endif
+      if @residplus1 .eq. @cterres then
+         patch l_@{seqjj}@{ptag}@{cterc} @segid @residplus1 ! setup
+      endif
+
+      ! add pairwise links
+      if @ii .gt. 1 then
+         if @resid@@iiminus1 .eq. @residminus1 then
+            set kk = 2
+            label linkloop1
+            if @kk .le. @nsubs@@iiminus1 then
+               set seqkk = @{s@@{iiminus1}seq@@kk}
+               if @residminus1 .eq. @nterres then
+                  patch l_@{nterc}@{seqkk}@{seqjj} @segid @residminus1
+               else
+                  if @nterdel .eq. @iiminus1 then
+                     patch l_@{nterc}@{seqkk}@{seqjj} @segid @residminus1
+                  else
+                     patch l_0@{seqkk}@{seqjj} @segid @residminus1
+                  endif
+               endif
+               if @residplus1 .eq. @cterres then
+                  patch l_@{seqkk}@{seqjj}@{cterc} @segid @resid
+               else
+                  if @cterdel .eq. @ii then
+                     patch l_@{seqkk}@{seqjj}@{cterc} @segid @resid
+                  else
+                     patch l_@{seqkk}@{seqjj}0 @segid @resid
+                  endif
+               endif
+               calc kk = @kk + 1
+               goto linkloop1
+            endif
+         endif
+         if @resid@@iiminus1 .eq. @residminus2 then
+            set kk = 2
+            label linkloop2
+            if @kk .le. @nsubs@@iiminus1 then
+               set seqkk = @{s@@{iiminus1}seq@@kk}
+               patch l_@{seqkk}0@{seqjj} @segid @residminus1
+               calc kk = @kk + 1
+               goto linkloop2
+            endif
+         endif
+      endif
+
+      ! add three-way links
+      if @ii .gt. 2 then
+         if @resid@@iiminus1 .eq. @residminus1 then
+            if @resid@@iiminus2 .eq. @residminus2 then
+               set ll = 2
+               label linkloop3
+               if @ll .le. @nsubs@@iiminus2 then
+                  set seqll = @{s@@{iiminus2}seq@@ll}
+                  patch l_@{seqll}0@{seqjj} @segid @residminus1
+                  set kk = 2
+                  label linkloop4
+                  if @kk .le. @nsubs@@iiminus1 then
+                     set seqkk = @{s@@{iiminus1}seq@@kk}
+                     patch l_@{seqll}@{seqkk}@{seqjj} @segid @residminus1
+                     calc kk = @kk + 1
+                     goto linkloop4
+                  endif
+                  calc ll = @ll + 1
+                  goto linkloop3
+               endif
+            endif
+         endif
+      endif
+
+      ! Copy backbone positions and move them slightly to prevent EWEX = NAN
+      calc moveit = ( @jj - 1 ) * 0.01
+      coor dupl sele atom @segid @resid N end sele atom @segid @resid N@{seqjj}_A end
+      scalar Z add @moveit sele atom @segid @resid N@{seqjj}_A end
+      coor dupl sele atom @segid @resid CA end sele atom @segid @resid C@{seqjj}_A end
+      scalar Z add @moveit sele atom @segid @resid C@{seqjj}_A end
+      coor dupl sele atom @segid @resid C end sele atom @segid @resid C@{seqjj}_B end
+      scalar Z add @moveit sele atom @segid @resid C@{seqjj}_B end
+
+      calc jj = @jj + 1
+      goto patchloop
+   endif
+
+   calc ii = @ii + 1
+   goto patchsiteloop
+endif
+
+read coor pdb resid name prep/protein.pdb
+ic param
+ic build
+
+
+set ii = 1
+label selesiteloop
+if @ii .le. @nsites then
+   set resid = @resid@@ii
+   set site = @ii
+
+   define site@{site}suball - 
+      select ( -
+      segid @segid .and. resid @resid ) show end
+
+   ! include residues in a possible terminal deletion
+   if @ii .eq. @nterdel then
+      define site@{site}suball -
+         select ( -
+         segid @segid .and. resid @nterres:@resid ) show end
+   endif
+   if @ii .eq. @cterdel then
+      define site@{site}suball -
+         select ( -
+         segid @segid .and. resid @resid:@cterres ) show end
+   endif
+
+   define site@{site}sub1 -
+      select ( site@{site}suball ) show end
+
+   ! Get constrained residues
+   stream prep/aa_stream/sele_cons_0.str
+   if @ii .eq. @nterdel then
+      define site@{site}cons1 select none end
+   endif
+   if @resid .eq. @nterres then
+      define site@{site}cons1 select none end
+   endif
+   if @ii .eq. @cterdel then
+      define site@{site}cons1 select none end
+   endif
+   if @resid .eq. @cterres then
+      define site@{site}cons1 select none end
+   endif
+
+   set jj = 2
+   label seleloop
+   if @jj .le. @nsubs@@ii then
+
+      set sub = @jj
+      set seqjj = @{s@@{ii}seq@@jj}
+      stream prep/aa_stream/sele_@{seqjj}.str
+
+      ! account for cap in case of terminal deletion
+      if @ii .eq. @nterdel then
+         stream prep/aa_stream/sele_@{seqjj}@nterc.str
+         define site@{site}sub@{sub} select ( site@{site}sub@{sub} .or. site@{site}cap@{sub} ) show end
+      endif
+      if @resid .eq. @nterres then
+         stream prep/aa_stream/sele_@{seqjj}@nterc.str
+         define site@{site}sub@{sub} select ( site@{site}sub@{sub} .or. site@{site}cap@{sub} ) show end
+      endif
+      if @ii .eq. @cterdel then
+         stream prep/aa_stream/sele_@{seqjj}@cterc.str
+         define site@{site}sub@{sub} select ( site@{site}sub@{sub} .or. site@{site}cap@{sub} ) show end
+      endif
+      if @resid .eq. @cterres then
+         stream prep/aa_stream/sele_@{seqjj}@cterc.str
+         define site@{site}sub@{sub} select ( site@{site}sub@{sub} .or. site@{site}cap@{sub} ) show end
+      endif
+
+      define site@{site}sub1 -
+         select ( -
+         site@{site}sub1 .and. .not. site@{site}sub@{sub} ) show end
+
+      ! Get constrained residues
+      stream prep/aa_stream/sele_cons_@{seqjj}.str
+      if @ii .eq. @nterdel then
+         define site@{site}cons@{sub} select none end
+      endif
+      if @resid .eq. @nterres then
+         define site@{site}cons@{sub} select none end
+      endif
+      if @ii .eq. @cterdel then
+         define site@{site}cons@{sub} select none end
+      endif
+      if @resid .eq. @cterres then
+         define site@{site}cons@{sub} select none end
+      endif
+
+      calc jj = @jj + 1
+      goto seleloop
+   endif
+
+   calc ii = @ii + 1
+   goto selesiteloop
+endif
+
+
+auto angle dihe
+bomlev -1
+
+
+set ii = 1
+label deletesiteloop
+if @ii .le. @nsites then
+   set resid = @resid@@ii
+
+   set jj = 1
+   label delete1loop
+   if @jj .le. @nsubs@@ii then
+
+      calc kk = @jj + 1
+      label delete2loop
+      if @kk .le. @nsubs@@ii then
+
+         dele angle sele ( site@{ii}sub@{jj} ) show end sele ( site@{ii}sub@{kk} ) show end
+         dele dihe  sele ( site@{ii}sub@{jj} ) show end sele ( site@{ii}sub@{kk} ) show end
+         dele impr  sele ( site@{ii}sub@{jj} ) show end sele ( site@{ii}sub@{kk} ) show end
+
+         calc kk = @kk + 1
+         goto delete2loop
+      endif
+
+      calc jj = @jj + 1
+      goto delete1loop
+   endif
+
+   calc ii = @ii + 1
+   goto deletesiteloop
+endif
+
+
+! read sequ pdb name "ligand00.pdb"
+! generate LI00 setup
+! read coor pdb resid name "ligand00.pdb"
+
+! read sequ pdb name "ligand01.pdb"
+! generate LI01 setup
+! read coor pdb resid name "ligand01.pdb"
+
+read sequ pdb name prep/solvent00.pdb
+generate WT00 first none last none setup noangl nodihe
+read coor pdb resid name prep/solvent00.pdb
+
+! read sequ pdb name prep/solvent01.pdb
+! generate WT01 first none last none setup noangl nodihe
+! read coor pdb resid name prep/solvent01.pdb
+
+read sequ pdb segid IONS name prep/ions.pdb
+generate IONS setup
+read coor pdb resid name prep/ions.pdb
+
+write psf card form name patch.psf
+* after patching psf
+*
+write coor pdb form name patch.pdb
+* after patching pdb
+*
+
+! Make sure all atoms have coordinates
+PRINt COORdinate SELEct .NOT. INITialized END
+
+
+! MODIFY to set up periodic images or SBC
+coor stat
+crystal define cubic @box @box @box 90. 90. 90.   !! Need to use CRYSTAL in repdstr
+crystal build cutoff 15 nope 0
+image byseg xcen 0 ycen 0 zcen 0 sele .not. ( resn TIP3 .or. segid IONS ) end
+image byres xcen 0 ycen 0 zcen 0 sele resn TIP3 .or. segid IONS end
+
+
+calc blockplusone = @nblocks + 1
+BLOCK @blockplusone
+   clear
+END
+
+if @nreps .eq. 1 then
+BLOCK @blockplusone
+else
+BLOCK @blockplusone NREP @nreps
+endif
+   ! Call 2 sele site@{resid1}sub@{s1seq1} end
+   ! Call 3 sele site@{resid1}sub@{s1seq2} end
+   ! Call 4 sele site@{resid1}sub@{s1seq3} end
+scat on
+
+set prevblock = 0
+set ii = 1
+label callsiteloop
+if @ii .le. @nsites then
+   set jj = 1
+   label callloop
+   if @jj .le. @nsubs@@ii then
+      calc jp1 = @jj + 1 + @prevblock
+
+      Call @jp1 sele site@{ii}sub@{jj} end
+      Cats @jp1 sele site@{ii}cons@{jj} end
+
+      calc jj = @jj + 1
+      goto callloop
+   endif
+   calc prevblock = @prevblock + @nsubs@@{ii}
+   calc ii = @ii + 1
+   goto callsiteloop
+endif
+   qldm theta
+   lang temp @temp
+if @nreps .eq. 1 then
+   ldin 1 1.0  0.0  5.0  0.0  5.0
+else
+   phmd 7.0
+   ldin 1 1.0  0.0  5.0  0.0  5.0  fix 7.0
+endif
+   ! ldin 2 0.995 0.0  5.0  @lams1s1 5.0  fix 7.0
+   ! ldin 3 0.001 0.0  5.0  @lams1s2 5.0  fix 7.0
+   ! ldin 4 0.001 0.0  5.0  @lams1s3 5.0  fix 7.0
+set blockassign = 0
+set nbiaspot = 0
+set prevblock = 0
+set ii = 1
+label ldinsiteloop
+if @ii .le. @nsites then
+   calc lambda0 = 1.001 - 0.001 * @nsubs@@{ii}
+   calc nbiaspot = @nbiaspot + 5 * ( @nsubs@@{ii} * ( @nsubs@@{ii} - 1 ) ) / 2
+   set jj = 1
+   label ldinloop
+   if @jj .le. @nsubs@@ii then
+      calc jp1 = @jj + 1 + @prevblock
+
+if @nreps .eq. 1 then
+      ldin @jp1 @lambda0 0.0  5.0  @lams@@{ii}s@@{jj} 5.0
+else
+      ldin @jp1 @lambda0 0.0  5.0  @lams@@{ii}s@@{jj} 5.0  fix 7.0
+endif
+
+      set lambda0 = 0.001
+      set blockassign = @blockassign @ii
+      calc jj = @jj + 1
+      goto ldinloop
+   endif
+   calc prevblock = @prevblock + @nsubs@@{ii}
+   calc ii = @ii + 1
+   goto ldinsiteloop
+endif
+   ! set excl1 = 2 3 2 4 3 4
+   ! excl @excl1
+   rmla bond thet impr 
+   ! msld 0  1  1  1  fnex @fnex
+   msld @blockassign fnex @fnex
+   msma
+
+   soft w14
+   pmel ex
+
+   ! Check block.doc for functional form of these biasing potentials
+   calc nbiaspot = 5 * ( @nblocks * ( @nblocks - 1 ) ) / 2
+   ldbi @nbiaspot
+set ibias = 1
+set iblock = 0
+set si = 1
+label loop5
+if @si .le. @nsites then
+   set jblock = @iblock
+   set sj = @si
+   label loop5b
+   if @sj .le. @nsites then
+      set ii = 1
+      label loop6
+      if @ii .le. @nsubs@@{si} then
+         calc ip1 = @ii + 1 + @iblock
+         set jj = 1
+         if @si .eq. @sj then
+            calc jj = @ii + 1
+         endif
+         label loop7
+         if @jj .le. @nsubs@@{sj} then
+            calc jp1 = @jj + 1 + @jblock
+            if @si .eq. @sj then
+               adex @ip1 @jp1
+            endif
+
+            ldbv @ibias @ip1 @jp1 6 0.0 @cs@@{si}s@@{ii}s@@{sj}s@@{jj} 0
+            calc ibias = @ibias + 1
+            ldbv @ibias @ip1 @jp1 10 -5.56 @xs@@{si}s@@{ii}s@@{sj}s@@{jj} 0
+            calc ibias = @ibias + 1
+            ldbv @ibias @ip1 @jp1 8 0.017 @ss@@{si}s@@{ii}s@@{sj}s@@{jj} 0
+            calc ibias = @ibias + 1
+            ldbv @ibias @jp1 @ip1 10 -5.56 @xs@@{sj}s@@{jj}s@@{si}s@@{ii} 0
+            calc ibias = @ibias + 1
+            ldbv @ibias @jp1 @ip1 8 0.017 @ss@@{sj}s@@{jj}s@@{si}s@@{ii} 0
+            calc ibias = @ibias + 1
+            calc jj = @jj + 1
+            goto loop7
+         endif
+         calc ii = @ii + 1
+         goto loop6
+      endif
+      calc jblock = @jblock + @nsubs@@{sj}
+      calc sj = @sj + 1
+      goto loop5b
+   endif
+   calc iblock = @iblock + @nsubs@@{si}
+   calc si = @si + 1
+   goto loop5
+endif
+
+! nsob 1
+! sobo 1 2.0 sele atom @segid @resid1 NP_A end sele atom @segid @resid1 CP_C end
+nsob @procount LEXP 2 RALF -1
+set ii = 1
+label softsiteloop
+if @ii .le. @nsites then
+   define testpro select segid @segid .and. resid @resid@@ii .and. resname PRO end
+   if ?nsel .gt. 0 then
+      sobo 1 sele atom @segid @resid@@ii CB end sele atom @segid @resid@@ii CG end
+   endif
+   set jj = 2
+   label softloop
+   if @jj .le. @nsubs@@ii then
+      if @{s@@{ii}seq@@jj} .eq. p then
+         sobo 1 sele atom @segid @resid@@ii CP_C end sele atom @segid @resid@@ii CP_D end
+      endif
+      calc jj = @jj + 1
+      goto softloop
+   endif
+   calc ii = @ii + 1
+   goto softsiteloop
+endif
+
+END
+
+! ! Set nonbonded options
+! nbonds atom -
+!  - ! fswitch -                !! Use force switch for elec-nb interactions
+! cdie eps 1 -             !! Set constant dielectric value of 1
+! vdw vfswitch -            !! Set nb VDW using switching function
+! cutnb 12.0 -             !! Was 15.0 Set nb list cut off to 15A
+! cutim 12.0 -             !! Was 15.0 Set image nb list cut off to 15A
+! ctonnb 9.0 ctofnb 10.0 - !! Were 10.0 and 12.0 Switching function used from 10A to 12A for VDW interaction
+! Ewald -                  !! Use Ewald electrostatics
+! kappa 0.320 -            !! 0.320 makes direct space decay to 10^-5 at 10 A
+! pmEwald -                !! Keyword
+! order 6 -                !! Interpolation order
+! fftx 72 ffty 72 fftz 72  !! Choose approximate box length
+
+! bomlev -6
+! domdec gpu only dlb off ndir 1 @nnodes 1
+! mini sd nstep 100 nprint 10 step 0.005                  !! Do min, Steepest-Decent
+! bomlev 0
+
+NOE
+   RESET
+END
+
+set ii = 1
+label noesiteloop
+if @ii .le. @nsites then
+   set site = @ii
+   set resid = @resid@@ii
+   calc knoe = 59.2 / ( @nsubs@@ii - 1 )
+
+   define testgly select atom @segid @resid HA2 end
+   set HA = HA
+   if ?nsel .eq. 1 then
+      set HA = HA2
+   endif
+
+   define testcons select site@{ii}cons1 end
+   if ?nsel .eq. 0 then
+      echo "No NOE restraint at site @II"
+   else
+      set jj = 2
+      label noeloop
+      if @jj .le. @nsubs@@ii then
+         ! stream prep/aa_stream/noe_@{s@@{ii}seq@jj}.str
+         set seqjj = @{s@@{ii}seq@@jj}
+NOE
+assign sele atom @segid @resid N end -
+   sele atom @segid @resid N@{seqjj}_A end -
+   kmin @knoe rmin 0.0 kmax @knoe rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid CA end -
+   sele atom @segid @resid C@{seqjj}_A end -
+   kmin @knoe rmin 0.0 kmax @knoe rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid @HA end -
+   sele atom @segid @resid H@{seqjj}_B end -
+   kmin @knoe rmin 0.0 kmax @knoe rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid C end -
+   sele atom @segid @resid C@{seqjj}_B end -
+   kmin @knoe rmin 0.0 kmax @knoe rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid O end -
+   sele atom @segid @resid O@{seqjj}_A end -
+   kmin @knoe rmin 0.0 kmax @knoe rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+END
+         calc kk = @jj + 1
+         label noeloop2
+         if @kk .le. @nsubs@@ii then
+            set seqkk = @{s@@{ii}seq@@kk}
+NOE
+assign sele atom @segid @resid N@{seqjj}_A end -
+   sele atom @segid @resid N@{seqkk}_A end -
+   kmin @knoe rmin 0.0 kmax @knoe rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid C@{seqjj}_A end -
+   sele atom @segid @resid C@{seqkk}_A end -
+   kmin @knoe rmin 0.0 kmax @knoe rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid H@{seqjj}_B end -
+   sele atom @segid @resid H@{seqkk}_B end -
+   kmin @knoe rmin 0.0 kmax @knoe rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid C@{seqjj}_B end -
+   sele atom @segid @resid C@{seqkk}_B end -
+   kmin @knoe rmin 0.0 kmax @knoe rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+assign sele atom @segid @resid O@{seqjj}_A end -
+   sele atom @segid @resid O@{seqkk}_A end -
+   kmin @knoe rmin 0.0 kmax @knoe rmax 0.0 fmax 2.0 rswitch 100.0 sexp 1.0
+END
+            calc kk = @kk + 1
+            goto noeloop2
+         endif
+         calc jj = @jj + 1
+         goto noeloop
+      endif
+   endif
+   calc ii = @ii + 1
+   goto noesiteloop
+endif

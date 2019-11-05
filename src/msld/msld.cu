@@ -339,7 +339,7 @@ bool Msld::check_restrained(int atom)
 bool Msld::bonded_scaling(int *idx,int *siteBlock,int type,int Nat,int Nsc)
 {
   bool scale,soft;
-  int i,j;
+  int i,j,k;
   int ab;
   int block[Nsc+2]={0}; // First term is blockCount, last term is for error checking
   block[0]=blockCount;
@@ -347,29 +347,31 @@ bool Msld::bonded_scaling(int *idx,int *siteBlock,int type,int Nat,int Nsc)
   // Sort into a descending list with no duplicates.
   scale=scaleTerms[type];
   soft=check_soft(idx,Nat);
-  if (scale) {
-    for (i=1; i<Nsc+2; i++) {
-      for (j=0; j<Nat; j++) {
-        ab=atomBlock[idx[j]];
-        if (ab && (!soft) && (!check_restrained(idx[j])) && (!scale)) {
-          ab=0;
-        }
-        if (ab>block[i] && ab<block[i-1]) {
-          block[i]=ab;
-        }
-      }
-    }
-    // Check for errors
-    for (i=1; i<Nsc+1; i++) {
-      for (j=i+1; j<Nsc+1; j++) {
-        if (block[i]>0 && block[j]>0 && block[i]!=block[j] && lambdaSite[block[i]]==lambdaSite[block[j]]) {
-          fatal(__FILE__,__LINE__,"Illegal MSLD scaling between two atoms in the same site (%d) but different blocks (%d and %d)\n",lambdaSite[block[i]],block[i],block[j]);
+  for (i=1; i<Nsc+2; i++) {
+    for (j=0; j<Nat; j++) {
+      ab=atomBlock[idx[j]];
+      if ((!soft) && (!scale)) {
+        for (k=0; k<Nat; k++) {
+          if (atomBlock[idx[j]]==atomBlock[idx[k]] && !check_restrained(idx[k])) {
+            ab=0;
+          }
         }
       }
+      if (ab>block[i] && ab<block[i-1]) {
+        block[i]=ab;
+      }
     }
-    if (block[Nsc+1] != 0) {
-      fatal(__FILE__,__LINE__,"Only %d lambda scalings allowed in a group of %d bonded atoms\n",Nsc,Nat);
+  }
+  // Check for errors
+  for (i=1; i<Nsc+1; i++) {
+    for (j=i+1; j<Nsc+1; j++) {
+      if (block[i]>0 && block[j]>0 && block[i]!=block[j] && lambdaSite[block[i]]==lambdaSite[block[j]]) {
+        fatal(__FILE__,__LINE__,"Illegal MSLD scaling between two atoms in the same site (%d) but different blocks (%d and %d)\n",lambdaSite[block[i]],block[i],block[j]);
+      }
     }
+  }
+  if (block[Nsc+1] != 0) {
+    fatal(__FILE__,__LINE__,"Only %d lambda scalings allowed in a group of %d bonded atoms\n",Nsc,Nat);
   }
 
   for (i=0; i<Nsc; i++) {
