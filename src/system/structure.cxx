@@ -298,3 +298,76 @@ void Structure::add_structure_psf_file(FILE *fp)
     cmapList.emplace_back(cmap);
   }
 }
+
+void Structure::blade_add_atom(
+  int atomIdx,std::string segName,int resdIdx,std::string resName,
+  std::string atomName,std::string atomTypeName,double charge,double mass)
+{
+  struct AtomStructure at;
+  at.atomIdx=atomIdx-1;
+  at.segName=segName;
+  at.resIdx=resIdx;
+  at.resName=resName;
+  at.atomName=atomName;
+  at.atomTypeName=atomTypeName;
+  at.charge=charge;
+  at.mass=mass;
+  atomList.emplace_back(at);
+  atomCount=atomList.size();
+}
+
+void Structure::blade_add_bond(int i,int j)
+{
+  struct Int2 bond;
+  bond.i[0]=i-1;
+  bond.i[1]=j-1;
+  bondList.emplace_back(bond);
+  bondCount=bondList.size();
+}
+
+void Structure::blade_add_angle(int i,int j,int k)
+{
+  struct Int3 angle;
+  angle.i[0]=i-1;
+  angle.i[1]=j-1;
+  angle.i[2]=k-1;
+  angleList.emplace_back(angle);
+  angleCount=angleList.size();
+}
+
+void Structure::blade_add_dihe(int i,int j,int k,int l)
+{
+  struct Int4 dihe;
+  dihe.i[0]=i-1;
+  dihe.i[1]=j-1;
+  dihe.i[2]=k-1;
+  dihe.i[3]=l-1;
+  diheList.emplace_back(dihe);
+  diheCount=diheList.size();
+}
+
+void Structure::blade_add_impr(int i,int j,int k,int l)
+{
+  struct Int4 impr;
+  impr.i[0]=i-1;
+  impr.i[1]=j-1;
+  impr.i[2]=k-1;
+  impr.i[3]=l-1;
+  imprList.emplace_back(impr);
+  imprCount=imprList.size();
+}
+
+void Structure::blade_add_cmap(int i1,int j1,int k1,int l1,int i2,int j2,int k2,int l2)
+{
+  struct Int8 cmap;
+  cmap.i[0]=i1-1;
+  cmap.i[1]=j1-1;
+  cmap.i[2]=k1-1;
+  cmap.i[3]=l1-1;
+  cmap.i[4]=i2-1;
+  cmap.i[5]=j2-1;
+  cmap.i[6]=k2-1;
+  cmap.i[7]=l2-1;
+  cmapList.emplace_back(cmap);
+  cmapCount=cmapList.size();
+}
