@@ -299,9 +299,9 @@ void Structure::add_structure_psf_file(FILE *fp)
   }
 }
 
-void Structure::blade_add_atom(
-  int atomIdx,std::string segName,int resdIdx,std::string resName,
-  std::string atomName,std::string atomTypeName,double charge,double mass)
+void blade_add_atom(System *system,
+  int atomIdx,const char *segName,int resIdx,const char *resName,
+  const char *atomName,const char *atomTypeName,double charge,double mass)
 {
   struct AtomStructure at;
   at.atomIdx=atomIdx-1;
@@ -312,52 +312,52 @@ void Structure::blade_add_atom(
   at.atomTypeName=atomTypeName;
   at.charge=charge;
   at.mass=mass;
-  atomList.emplace_back(at);
-  atomCount=atomList.size();
+  system->structure->atomList.emplace_back(at);
+  system->structure->atomCount=system->structure->atomList.size();
 }
 
-void Structure::blade_add_bond(int i,int j)
+void blade_add_bond(System *system,int i,int j)
 {
   struct Int2 bond;
   bond.i[0]=i-1;
   bond.i[1]=j-1;
-  bondList.emplace_back(bond);
-  bondCount=bondList.size();
+  system->structure->bondList.emplace_back(bond);
+  system->structure->bondCount=system->structure->bondList.size();
 }
 
-void Structure::blade_add_angle(int i,int j,int k)
+void blade_add_angle(System *system,int i,int j,int k)
 {
   struct Int3 angle;
   angle.i[0]=i-1;
   angle.i[1]=j-1;
   angle.i[2]=k-1;
-  angleList.emplace_back(angle);
-  angleCount=angleList.size();
+  system->structure->angleList.emplace_back(angle);
+  system->structure->angleCount=system->structure->angleList.size();
 }
 
-void Structure::blade_add_dihe(int i,int j,int k,int l)
+void blade_add_dihe(System *system,int i,int j,int k,int l)
 {
   struct Int4 dihe;
   dihe.i[0]=i-1;
   dihe.i[1]=j-1;
   dihe.i[2]=k-1;
   dihe.i[3]=l-1;
-  diheList.emplace_back(dihe);
-  diheCount=diheList.size();
+  system->structure->diheList.emplace_back(dihe);
+  system->structure->diheCount=system->structure->diheList.size();
 }
 
-void Structure::blade_add_impr(int i,int j,int k,int l)
+void blade_add_impr(System *system,int i,int j,int k,int l)
 {
   struct Int4 impr;
   impr.i[0]=i-1;
   impr.i[1]=j-1;
   impr.i[2]=k-1;
   impr.i[3]=l-1;
-  imprList.emplace_back(impr);
-  imprCount=imprList.size();
+  system->structure->imprList.emplace_back(impr);
+  system->structure->imprCount=system->structure->imprList.size();
 }
 
-void Structure::blade_add_cmap(int i1,int j1,int k1,int l1,int i2,int j2,int k2,int l2)
+void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int k2,int l2)
 {
   struct Int8 cmap;
   cmap.i[0]=i1-1;
@@ -368,6 +368,6 @@ void Structure::blade_add_cmap(int i1,int j1,int k1,int l1,int i2,int j2,int k2,
   cmap.i[5]=j2-1;
   cmap.i[6]=k2-1;
   cmap.i[7]=l2-1;
-  cmapList.emplace_back(cmap);
-  cmapCount=cmapList.size();
+  system->structure->cmapList.emplace_back(cmap);
+  system->structure->cmapCount=system->structure->cmapList.size();
 }

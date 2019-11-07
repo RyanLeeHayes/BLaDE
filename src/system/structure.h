@@ -59,18 +59,20 @@ class Structure {
   void parse_shake(char *line,char *token,System *system);
   void dump(char *line,char *token,System *system);
   void add_structure_psf_file(FILE *fp);
-
-  // Library functions
-  void blade_add_atom(
-    int atomIdx,std::string segName,int resdIdx,std::string resName,
-    std::string atomName,std::string atomTypeName,double charge,double mass);
-  void blade_add_bond(int i,int j);
-  void blade_add_angle(int i,int j,int k);
-  void blade_add_dihe(int i,int j,int k,int l);
-  void blade_add_impr(int i,int j,int k,int l);
-  void blade_add_cmap(int i1,int j1,int k1,int l1,int i2,int j2,int k2,int l2);
 };
 
 void parse_structure(char *line,System *system);
+
+// Library functions
+extern "C" {
+  void blade_add_atom(System *system,
+    int atomIdx,const char *segName,int resIdx,const char *resName,
+    const char *atomName,const char *atomTypeName,double charge,double mass);
+  void blade_add_bond(System *system,int i,int j);
+  void blade_add_angle(System *system,int i,int j,int k);
+  void blade_add_dihe(System *system,int i,int j,int k,int l);
+  void blade_add_impr(System *system,int i,int j,int k,int l);
+  void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int k2,int l2);
+}
 
 #endif
