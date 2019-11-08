@@ -299,6 +299,13 @@ void Structure::add_structure_psf_file(FILE *fp)
   }
 }
 
+void blade_init_structure(System *system)
+{
+  if (!system->structure) {
+    system->structure=new Structure();
+  }
+}
+
 void blade_add_atom(System *system,
   int atomIdx,const char *segName,int resIdx,const char *resName,
   const char *atomName,const char *atomTypeName,double charge,double mass)
