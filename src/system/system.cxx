@@ -1,3 +1,4 @@
+#include <omp.h>
 #include <map>
 #include <string>
 
@@ -218,4 +219,18 @@ void System::help(char *line,char *token,System *system)
 void System::error(char *line,char *token,System *system)
 {
   fatal(__FILE__,__LINE__,"Unrecognized token: %s\n",token);
+}
+
+System* blade_init_system()
+{
+  System *system;
+
+  system=new(System);
+  system->id=omp_get_thread_num();
+  system->idCount=omp_get_num_threads();
+  if (system->idCount>1) {
+    fatal(__FILE__,__LINE__,"Error: blade library not set up for omp parallelization yet.\n");
+  }
+
+  return system;
 }

@@ -451,3 +451,8 @@ void read_checkpoint_file(const char *fnm,System *system)
     system->msld->calc_lambda_from_theta(0,system);
   }
 }
+
+void blade_interpretter(const char *fnm,System *system)
+{
+  interpretter(fnm,system);
+}

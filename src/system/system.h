@@ -78,4 +78,9 @@ class System {
   void parse_system_verbose(char *line,char *token,System *system);
 };
 
+// Library functions
+extern "C" {
+  System* blade_init_system();
+}
+
 #endif

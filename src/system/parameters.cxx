@@ -561,3 +561,160 @@ std::string Parameters::require_type_name(std::string type,const char *tag)
   }
   return type;
 }
+
+
+
+void blade_add_parameter_atoms(System *system,const char *name,double mass)
+{
+  system->parameters->atomTypeMap[name]=system->parameters->atomTypeCount;
+  system->parameters->atomType.emplace_back(name);
+  system->parameters->atomMass[name]=mass;
+  system->parameters->atomTypeCount++;
+}
+
+void blade_add_parameter_bonds(System *system,const char *t1,const char *t2,double kb,double b0)
+{
+  TypeName2 name;
+  struct BondParameter bp;
+
+  name.t[0]=t1;
+  name.t[1]=t2;
+  bp.kb=(2.0*KCAL_MOL/(ANGSTROM*ANGSTROM))*kb;
+  bp.b0=ANGSTROM*b0;
+  system->parameters->bondParameter[name]=bp;
+}
+
+void blade_add_parameter_angles(System *system,const char *t1,const char *t2,const char *t3,double kangle,double angle0,double kureyb,double ureyb0)
+{
+  TypeName3 name;
+  struct AngleParameter ap;
+
+  name.t[0]=t1;
+  name.t[1]=t2;
+  name.t[2]=t3;
+  ap.kangle=(2.0*KCAL_MOL)*kangle;
+  ap.angle0=DEGREES*angle0;
+  ap.kureyb=(2.0*KCAL_MOL/(ANGSTROM*ANGSTROM))*kureyb;
+  ap.ureyb0=ANGSTROM*ureyb0;
+  system->parameters->angleParameter[name]=ap;
+}
+
+// V(dihedral) = Kdih(1 + cos(ndih(chi) - dih0))
+void blade_add_parameter_dihes(System *system,const char *t1,const char *t2,const char *t3,const char *t4,double kdih,int ndih,double dih0)
+{
+  TypeName4 name;
+  struct DiheParameter dp;
+  std::vector<struct DiheParameter> dpv;
+  int diheTerms;
+
+  name.t[0]=t1;
+  name.t[1]=t2;
+  name.t[2]=t3;
+  name.t[3]=t4;
+  dp.kdih=KCAL_MOL*kdih;
+  dp.ndih=ndih;
+  dp.dih0=DEGREES*dih0;
+  if (system->parameters->diheParameter.count(name)==1) {
+    system->parameters->diheParameter[name].emplace_back(dp);
+  } else {
+    dpv.clear();
+    dpv.emplace_back(dp);
+    system->parameters->diheParameter[name]=dpv;
+  }
+  diheTerms=system->parameters->diheParameter[name].size();
+  system->parameters->maxDiheTerms=((system->parameters->maxDiheTerms<diheTerms)?diheTerms:system->parameters->maxDiheTerms);
+}
+
+void blade_add_parameter_imprs(System *system,const char *t1,const char *t2,const char *t3,const char *t4,double kimp,double imp0)
+{
+  TypeName4 name;
+  struct ImprParameter ip;
+
+  name.t[0]=t1;
+  name.t[1]=t2;
+  name.t[2]=t3;
+  name.t[3]=t4;
+  ip.kimp=(2.0*KCAL_MOL)*kimp;
+  ip.imp0=DEGREES*imp0;
+  system->parameters->imprParameter[name]=ip;
+}
+
+void blade_add_parameter_cmaps(System *system,
+  const char *t1,const char *t2,const char *t3,const char *t4,
+  const char *t5,const char *t6,const char *t7,const char *t8,
+  int ngrid,double *kcmap)
+{
+  TypeName8O name;
+  CmapParameter cp;
+  int i,j;
+  real k;
+  char *escape;
+
+  name.t[0]=t1;
+  name.t[1]=t2;
+  name.t[2]=t3;
+  name.t[3]=t4;
+  name.t[4]=t5;
+  name.t[5]=t6;
+  name.t[6]=t7;
+  name.t[7]=t8;
+  cp.ngrid=ngrid;
+  if (cp.ngrid>60) {
+    fatal(__FILE__,__LINE__,"CMAP grid is greater than 60 points per 360 degrees (%d). Have you really thought about how much memory that will take?\n",cp.ngrid);
+  }
+  cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
+  fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
+
+  for (i=0; i<cp.ngrid; i++) {
+    for (j=0; j<cp.ngrid; j++) {
+      // Persistent search
+      cp.kcmap[cp.ngrid*i+j]=KCAL_MOL*kcmap[cp.ngrid*i+j];
+    }
+  }
+  system->parameters->cmapParameter[name]=cp;
+}
+
+/*
+!
+!V(Lennard-Jones) = Eps,i,j[(Rmin,i,j/ri,j)**12 - 2(Rmin,i,j/ri,j)**6]
+!
+!epsilon: kcal/mole, Eps,i,j = sqrt(eps,i * eps,j)
+!Rmin/2: A, Rmin,i,j = Rmin/2,i + Rmin/2,j
+!
+!atom  ignored    epsilon      Rmin/2   ignored   eps,1-4       Rmin/2,1-4
+!
+*/
+void blade_add_parameter_nbonds(System *system,const char *t1,double eps,double sig,double eps14,double sig14)
+{
+  std::string name;
+  struct NbondParameter np;
+
+  name=t1;
+  np.eps=eps;
+  np.sig=sig;
+  np.eps14=eps14;
+  np.sig14=sig14;
+  np.eps*=-KCAL_MOL;
+  np.sig*=ANGSTROM;
+  np.eps14*=-KCAL_MOL;
+  np.sig14*=ANGSTROM;
+  system->parameters->nbondParameter[name]=np;
+}
+
+void blade_add_parameter_nbfixs(System *system,const char *t1,const char *t2,double eps,double sig,double eps14,double sig14)
+{
+  TypeName2 name;
+  struct NbondParameter np;
+
+  name.t[0]=t1;
+  name.t[1]=t2;
+  np.eps=eps;
+  np.sig=sig;
+  np.eps14=eps14;
+  np.sig14=sig14;
+  np.eps*=-KCAL_MOL;
+  np.sig*=ANGSTROM;
+  np.eps14*=-KCAL_MOL;
+  np.sig14*=ANGSTROM;
+  system->parameters->nbfixParameter[name]=np;
+}

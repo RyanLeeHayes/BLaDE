@@ -60,4 +60,9 @@ void print_dynamics_output(int step,System *system);
 void write_checkpoint_file(const char *fnm,System *system);
 void read_checkpoint_file(const char *fnm,System *system);
 
+// Library functions
+extern "C" {
+  void blade_interpretter(const char *fnm,System *system);
+}
+
 #endif

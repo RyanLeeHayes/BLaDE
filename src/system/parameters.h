@@ -195,4 +195,29 @@ class Parameters {
 
 void parse_parameters(char *line,System *system);
 
+// Library functions
+extern "C" {
+  void blade_add_parameter_atoms(System *system,const char *name,double mass);
+  void blade_add_parameter_bonds(System *system,
+    const char *t1,const char *t2,double kb,double b0);
+  void blade_add_parameter_angles(System *system,
+    const char *t1,const char *t2,const char *t3,
+    double kangle,double angle0,double kureyb,double ureyb0);
+  void blade_add_parameter_dihes(System *system,
+    const char *t1,const char *t2,const char *t3,const char *t4,
+    double kdih,int ndih,double dih0);
+  void blade_add_parameter_imprs(System *system,
+    const char *t1,const char *t2,const char *t3,const char *t4,
+    double kimp,double imp0);
+  void blade_add_parameter_cmaps(System *system,
+    const char *t1,const char *t2,const char *t3,const char *t4,
+    const char *t5,const char *t6,const char *t7,const char *t8,
+    int ngrid,double *kcmap);
+  void blade_add_parameter_nbonds(System *system,
+    const char *t1,double eps,double sig,double eps14,double sig14);
+  void blade_add_parameter_nbfixs(System *system,
+    const char *t1,const char *t2,
+    double eps,double sig,double eps14,double sig14);
+}
+
 #endif
