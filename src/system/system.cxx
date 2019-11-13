@@ -22,6 +22,7 @@
 
 // Class constructors
 System::System() {
+  fprintf(stdout,"Creating a copy of system\n");
   verbose=1;
   variables=new Variables;
   parameters=NULL;
@@ -39,6 +40,7 @@ System::System() {
 }
 
 System::~System() {
+  fprintf(stdout,"Destroying a copy of system\n");
   if (variables) delete(variables);
   if (parameters) delete(parameters);
   if (structure) delete(structure);
@@ -221,16 +223,45 @@ void System::error(char *line,char *token,System *system)
   fatal(__FILE__,__LINE__,"Unrecognized token: %s\n",token);
 }
 
-System* blade_init_system()
+System* init_system()
 {
   System *system;
+  int id;
+  int idCount=omp_get_max_threads(); // omp_get_num_threads();
+  void **message; // OMP
 
-  system=new(System);
-  system->id=omp_get_thread_num();
-  system->idCount=omp_get_num_threads();
-  if (system->idCount>1) {
-    fatal(__FILE__,__LINE__,"Error: blade library not set up for omp parallelization yet.\n");
+  system=new System[idCount];
+
+  message=(void**)calloc(idCount,sizeof(void*));
+  for (id=0; id<idCount; id++) {
+    system[id].id=id;
+    system[id].idCount=idCount;
+    system[id].message=message;
+    cudaSetDevice(id);
+    if (id!=0) {
+      int accessible;
+      cudaDeviceCanAccessPeer(&accessible, id, 0);
+      if (accessible) {
+        cudaDeviceEnablePeerAccess(0,0); // host 0, required 0
+      }
+    }
   }
 
   return system;
+}
+
+void dest_system(System *system)
+{
+  free(system->message);
+  delete[] system;
+}
+
+System* blade_init_system()
+{
+  return init_system();
+}
+
+void blade_dest_system(System *system)
+{
+  dest_system(system);
 }

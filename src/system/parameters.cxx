@@ -564,12 +564,34 @@ std::string Parameters::require_type_name(std::string type,const char *tag)
 
 
 
+void blade_init_parameters(System *system)
+{
+  for (int id=0; id<system->idCount; id++) {
+    system->parameters=new Parameters();
+    system++;
+  }
+}
+
+void blade_dest_parameters(System *system)
+{
+  for (int id=0; id<system->idCount; id++) {
+    if (system->parameters) {
+      delete(system->parameters);
+      system->parameters=NULL;
+    }
+    system++;
+  }
+}
+
 void blade_add_parameter_atoms(System *system,const char *name,double mass)
 {
-  system->parameters->atomTypeMap[name]=system->parameters->atomTypeCount;
-  system->parameters->atomType.emplace_back(name);
-  system->parameters->atomMass[name]=mass;
-  system->parameters->atomTypeCount++;
+  for (int id=0; id<system->idCount; id++) {
+    system->parameters->atomTypeMap[name]=system->parameters->atomTypeCount;
+    system->parameters->atomType.emplace_back(name);
+    system->parameters->atomMass[name]=mass;
+    system->parameters->atomTypeCount++;
+    system++;
+  }
 }
 
 void blade_add_parameter_bonds(System *system,const char *t1,const char *t2,double kb,double b0)
@@ -581,7 +603,10 @@ void blade_add_parameter_bonds(System *system,const char *t1,const char *t2,doub
   name.t[1]=t2;
   bp.kb=(2.0*KCAL_MOL/(ANGSTROM*ANGSTROM))*kb;
   bp.b0=ANGSTROM*b0;
-  system->parameters->bondParameter[name]=bp;
+  for (int id=0; id<system->idCount; id++) {
+    system->parameters->bondParameter[name]=bp;
+    system++;
+  }
 }
 
 void blade_add_parameter_angles(System *system,const char *t1,const char *t2,const char *t3,double kangle,double angle0,double kureyb,double ureyb0)
@@ -596,7 +621,10 @@ void blade_add_parameter_angles(System *system,const char *t1,const char *t2,con
   ap.angle0=DEGREES*angle0;
   ap.kureyb=(2.0*KCAL_MOL/(ANGSTROM*ANGSTROM))*kureyb;
   ap.ureyb0=ANGSTROM*ureyb0;
-  system->parameters->angleParameter[name]=ap;
+  for (int id=0; id<system->idCount; id++) {
+    system->parameters->angleParameter[name]=ap;
+    system++;
+  }
 }
 
 // V(dihedral) = Kdih(1 + cos(ndih(chi) - dih0))
@@ -614,15 +642,18 @@ void blade_add_parameter_dihes(System *system,const char *t1,const char *t2,cons
   dp.kdih=KCAL_MOL*kdih;
   dp.ndih=ndih;
   dp.dih0=DEGREES*dih0;
-  if (system->parameters->diheParameter.count(name)==1) {
-    system->parameters->diheParameter[name].emplace_back(dp);
-  } else {
-    dpv.clear();
-    dpv.emplace_back(dp);
-    system->parameters->diheParameter[name]=dpv;
+  for (int id=0; id<system->idCount; id++) {
+    if (system->parameters->diheParameter.count(name)==1) {
+      system->parameters->diheParameter[name].emplace_back(dp);
+    } else {
+      dpv.clear();
+      dpv.emplace_back(dp);
+      system->parameters->diheParameter[name]=dpv;
+    }
+    diheTerms=system->parameters->diheParameter[name].size();
+    system->parameters->maxDiheTerms=((system->parameters->maxDiheTerms<diheTerms)?diheTerms:system->parameters->maxDiheTerms);
+    system++;
   }
-  diheTerms=system->parameters->diheParameter[name].size();
-  system->parameters->maxDiheTerms=((system->parameters->maxDiheTerms<diheTerms)?diheTerms:system->parameters->maxDiheTerms);
 }
 
 void blade_add_parameter_imprs(System *system,const char *t1,const char *t2,const char *t3,const char *t4,double kimp,double imp0)
@@ -636,13 +667,16 @@ void blade_add_parameter_imprs(System *system,const char *t1,const char *t2,cons
   name.t[3]=t4;
   ip.kimp=(2.0*KCAL_MOL)*kimp;
   ip.imp0=DEGREES*imp0;
-  system->parameters->imprParameter[name]=ip;
+  for (int id=0; id<system->idCount; id++) {
+    system->parameters->imprParameter[name]=ip;
+    system++;
+  }
 }
 
 void blade_add_parameter_cmaps(System *system,
   const char *t1,const char *t2,const char *t3,const char *t4,
   const char *t5,const char *t6,const char *t7,const char *t8,
-  int ngrid,double *kcmap)
+  int ngrid)
 {
   TypeName8O name;
   CmapParameter cp;
@@ -662,16 +696,38 @@ void blade_add_parameter_cmaps(System *system,
   if (cp.ngrid>60) {
     fatal(__FILE__,__LINE__,"CMAP grid is greater than 60 points per 360 degrees (%d). Have you really thought about how much memory that will take?\n",cp.ngrid);
   }
-  cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
-  fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
-
-  for (i=0; i<cp.ngrid; i++) {
-    for (j=0; j<cp.ngrid; j++) {
-      // Persistent search
-      cp.kcmap[cp.ngrid*i+j]=KCAL_MOL*kcmap[cp.ngrid*i+j];
-    }
+  for (int id=0; id<system->idCount; id++) {
+    cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
+    fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
+    system->parameters->cmapParameter[name]=cp;
+    system++;
   }
-  system->parameters->cmapParameter[name]=cp;
+}
+
+void blade_add_parameter_cmaps_fill(System *system,
+  const char *t1,const char *t2,const char *t3,const char *t4,
+  const char *t5,const char *t6,const char *t7,const char *t8,
+  int i,int j,double kcmapij)
+{
+  TypeName8O name;
+
+  name.t[0]=t1;
+  name.t[1]=t2;
+  name.t[2]=t3;
+  name.t[3]=t4;
+  name.t[4]=t5;
+  name.t[5]=t6;
+  name.t[6]=t7;
+  name.t[7]=t8;
+  for (int id=0; id<system->idCount; id++) {
+    int ngrid=system->parameters->cmapParameter[name].ngrid;
+    if (i-1<ngrid) {
+      if (j-1<ngrid) {
+        system->parameters->cmapParameter[name].kcmap[ngrid*(i-1)+(j-1)]=KCAL_MOL*kcmapij;
+      }
+    }
+    system++;
+  }
 }
 
 /*
@@ -698,7 +754,10 @@ void blade_add_parameter_nbonds(System *system,const char *t1,double eps,double 
   np.sig*=ANGSTROM;
   np.eps14*=-KCAL_MOL;
   np.sig14*=ANGSTROM;
-  system->parameters->nbondParameter[name]=np;
+  for (int id=0; id<system->idCount; id++) {
+    system->parameters->nbondParameter[name]=np;
+    system++;
+  }
 }
 
 void blade_add_parameter_nbfixs(System *system,const char *t1,const char *t2,double eps,double sig,double eps14,double sig14)
@@ -716,5 +775,7 @@ void blade_add_parameter_nbfixs(System *system,const char *t1,const char *t2,dou
   np.sig*=ANGSTROM;
   np.eps14*=-KCAL_MOL;
   np.sig14*=ANGSTROM;
-  system->parameters->nbfixParameter[name]=np;
+  for (int id=0; id<system->idCount; id++) {
+    system->parameters->nbfixParameter[name]=np;
+  }
 }

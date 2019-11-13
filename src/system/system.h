@@ -81,6 +81,7 @@ class System {
 // Library functions
 extern "C" {
   System* blade_init_system();
+  void blade_dest_system(System *system);
 }
 
 #endif

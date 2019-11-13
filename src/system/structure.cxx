@@ -301,8 +301,10 @@ void Structure::add_structure_psf_file(FILE *fp)
 
 void blade_init_structure(System *system)
 {
-  if (!system->structure) {
-    system->structure=new Structure();
+  for (int id=0; id<system->idCount; id++) {
+    if (!system->structure) {
+      system[id].structure=new Structure();
+    }
   }
 }
 
@@ -319,8 +321,11 @@ void blade_add_atom(System *system,
   at.atomTypeName=atomTypeName;
   at.charge=charge;
   at.mass=mass;
-  system->structure->atomList.emplace_back(at);
-  system->structure->atomCount=system->structure->atomList.size();
+  for (int id=0; id<system->idCount; id++) {
+    system->structure->atomList.emplace_back(at);
+    system->structure->atomCount=system->structure->atomList.size();
+    system++;
+  }
 }
 
 void blade_add_bond(System *system,int i,int j)
@@ -328,8 +333,11 @@ void blade_add_bond(System *system,int i,int j)
   struct Int2 bond;
   bond.i[0]=i-1;
   bond.i[1]=j-1;
-  system->structure->bondList.emplace_back(bond);
-  system->structure->bondCount=system->structure->bondList.size();
+  for (int id=0; id<system->idCount; id++) {
+    system->structure->bondList.emplace_back(bond);
+    system->structure->bondCount=system->structure->bondList.size();
+    system++;
+  }
 }
 
 void blade_add_angle(System *system,int i,int j,int k)
@@ -338,8 +346,11 @@ void blade_add_angle(System *system,int i,int j,int k)
   angle.i[0]=i-1;
   angle.i[1]=j-1;
   angle.i[2]=k-1;
-  system->structure->angleList.emplace_back(angle);
-  system->structure->angleCount=system->structure->angleList.size();
+  for (int id=0; id<system->idCount; id++) {
+    system->structure->angleList.emplace_back(angle);
+    system->structure->angleCount=system->structure->angleList.size();
+    system++;
+  }
 }
 
 void blade_add_dihe(System *system,int i,int j,int k,int l)
@@ -349,8 +360,11 @@ void blade_add_dihe(System *system,int i,int j,int k,int l)
   dihe.i[1]=j-1;
   dihe.i[2]=k-1;
   dihe.i[3]=l-1;
-  system->structure->diheList.emplace_back(dihe);
-  system->structure->diheCount=system->structure->diheList.size();
+  for (int id=0; id<system->idCount; id++) {
+    system->structure->diheList.emplace_back(dihe);
+    system->structure->diheCount=system->structure->diheList.size();
+    system++;
+  }
 }
 
 void blade_add_impr(System *system,int i,int j,int k,int l)
@@ -360,8 +374,11 @@ void blade_add_impr(System *system,int i,int j,int k,int l)
   impr.i[1]=j-1;
   impr.i[2]=k-1;
   impr.i[3]=l-1;
-  system->structure->imprList.emplace_back(impr);
-  system->structure->imprCount=system->structure->imprList.size();
+  for (int id=0; id<system->idCount; id++) {
+    system->structure->imprList.emplace_back(impr);
+    system->structure->imprCount=system->structure->imprList.size();
+    system++;
+  }
 }
 
 void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int k2,int l2)
@@ -375,6 +392,9 @@ void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int
   cmap.i[5]=j2-1;
   cmap.i[6]=k2-1;
   cmap.i[7]=l2-1;
-  system->structure->cmapList.emplace_back(cmap);
-  system->structure->cmapCount=system->structure->cmapList.size();
+  for (int id=0; id<system->idCount; id++) {
+    system->structure->cmapList.emplace_back(cmap);
+    system->structure->cmapCount=system->structure->cmapList.size();
+    system++;
+  }
 }
