@@ -1,4 +1,4 @@
-variables set dir prep
+variables set dir {DIR}/prep
 
 variables set box 40.685169
 
@@ -61,7 +61,7 @@ variables set cterc 5  ! 2 nter, 3 cter, 4 ace, 5 ct3
 parameters file {dir}/toppar/par_all36_prot.prm
 parameters file {dir}/toppar_water_ions/par_water_ions.prm
 
-structure file psf {dir}/minimized.psf
+!PORTED structure file psf {dir}/minimized.psf
 structure shake hbond
 
 coordinates file {dir}/minimized.pdb

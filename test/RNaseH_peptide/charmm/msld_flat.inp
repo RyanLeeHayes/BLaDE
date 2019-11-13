@@ -12,7 +12,7 @@
 
 set iflat = 1
 set esteps = 13000
-swt nsteps = 39000
+set nsteps = 39000
 set seed = 1234
 
 set fnex = 5.5
@@ -48,6 +48,10 @@ faster on
 ! *
 read coor pdb resid name prep/minimized.pdb
 
+blade on
+system "cp ../blade/arguments.inp ./"
+blade file "../blade/msld_flat.inp"
+stop
 
 !---------------------------------------------------------------------------
 ! Setup of dynamics run
