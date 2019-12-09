@@ -567,6 +567,9 @@ std::string Parameters::require_type_name(std::string type,const char *tag)
 void blade_init_parameters(System *system)
 {
   for (int id=0; id<system->idCount; id++) {
+    if (system->parameters) {
+      delete(system->parameters);
+    }
     system->parameters=new Parameters();
     system++;
   }
@@ -577,8 +580,8 @@ void blade_dest_parameters(System *system)
   for (int id=0; id<system->idCount; id++) {
     if (system->parameters) {
       delete(system->parameters);
-      system->parameters=NULL;
     }
+    system->parameters=NULL;
     system++;
   }
 }

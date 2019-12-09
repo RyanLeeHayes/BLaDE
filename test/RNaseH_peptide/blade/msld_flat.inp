@@ -45,7 +45,7 @@ run setvariable fnmxtc {DIR}/dcd/{sysname}_heat.xtc
 run setvariable fnmnrg {DIR}/dcd/{sysname}_heat.nrg
 run setvariable fnmlmd {DIR}/res/{sysname}_heat.lmd
 run setvariable fnmcpo {DIR}/res/{sysname}_heat.res
-if ne {restartfile} null
+if not eq {restartfile} null
   run setvariable fnmcpi {restartfile}
 endif
 

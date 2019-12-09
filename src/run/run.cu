@@ -242,10 +242,18 @@ void Run::set_variable(char *line,char *token,System *system)
   } else if (strcmp(token,"nsteps")==0) {
     nsteps=io_nexti(line);
   } else if (strcmp(token,"fnmxtc")==0) {
+    if (fpXTC) xdrfile_close(fpXTC);
+    fpXTC=NULL;
     fnmXTC=io_nexts(line);
   } else if (strcmp(token,"fnmlmd")==0) {
+    if (fpXLMD) xdrfile_close(fpXLMD);
+    fpXLMD=NULL;
+    if (fpLMD) fclose(fpLMD);
+    fpLMD=NULL;
     fnmLMD=io_nexts(line);
   } else if (strcmp(token,"fnmnrg")==0) {
+    if (fpNRG) fclose(fpNRG);
+    fpNRG=NULL;
     fnmNRG=io_nexts(line);
   } else if (strcmp(token,"fnmcpi")==0) {
     fnmCPI=io_nexts(line);

@@ -66,6 +66,7 @@ void parse_structure(char *line,System *system);
 // Library functions
 extern "C" {
   void blade_init_structure(System *system);
+  void blade_dest_structure(System *system);
   void blade_add_atom(System *system,
     int atomIdx,const char *segName,int resIdx,const char *resName,
     const char *atomName,const char *atomTypeName,double charge,double mass);

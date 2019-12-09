@@ -302,9 +302,22 @@ void Structure::add_structure_psf_file(FILE *fp)
 void blade_init_structure(System *system)
 {
   for (int id=0; id<system->idCount; id++) {
-    if (!system->structure) {
-      system[id].structure=new Structure();
+    if (system->structure) {
+      delete(system->structure);
     }
+    system->structure=new Structure();
+    system++;
+  }
+}
+
+void blade_dest_structure(System *system)
+{
+  for (int id=0; id<system->idCount; id++) {
+    if (system->structure) {
+      delete(system->structure);
+    }
+    system->structure=NULL;
+    system++;
   }
 }
 
