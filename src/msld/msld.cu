@@ -848,3 +848,27 @@ void Msld::getforce_chargeRestraints(System *system,bool calcEnergy)
     getforce_chargeRestraints_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_d,s->lambdaForce_d,pEnergy,blockCount,kChargeRestraint,lambdaCharge_d);
   }
 }
+
+
+
+void blade_init_msld(System *system)
+{
+  for (int id=0; id<system->idCount; id++) {
+    if (system->msld) {
+      delete(system->msld);
+    }
+    system->msld=new Msld();
+    system++;
+  }
+}
+
+void blade_dest_msld(System *system)
+{
+  for (int id=0; id<system->idCount; id++) {
+    if (system->msld) {
+      delete(system->msld);
+    }
+    system->msld=NULL;
+    system++;
+  }
+}

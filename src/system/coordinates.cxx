@@ -219,3 +219,74 @@ void Coordinates::parse_velocity(char *line,char *token,System *system)
     }
   }
 }
+
+
+
+void blade_init_coordinates(System *system,int n)
+{
+  for (int id=0; id<system->idCount; id++) {
+    if (system->coordinates) {
+      delete(system->coordinates);
+    }
+    system->coordinates=new Coordinates(n,system);
+    system++;
+  }
+}
+
+void blade_dest_coordinates(System *system)
+{
+  for (int id=0; id<system->idCount; id++) {
+    if (system->coordinates) {
+      delete(system->coordinates);
+    }
+    system->coordinates=NULL;
+    system++;
+  }
+}
+
+void blade_add_coordinates_position(System *system,int i,double x,double y,double z)
+{
+  for (int id=0; id<system->idCount; id++) {
+    system->coordinates->particlePosition[i][0]=x;
+    system->coordinates->particlePosition[i][1]=y;
+    system->coordinates->particlePosition[i][2]=z;
+    system++;
+  }
+}
+
+void blade_add_coordinates_velocity(System *system,int i,double vx,double vy,double vz)
+{
+  for (int id=0; id<system->idCount; id++) {
+    system->coordinates->particleVelocity[i][0]=vx;
+    system->coordinates->particleVelocity[i][1]=vy;
+    system->coordinates->particleVelocity[i][2]=vz;
+    system++;
+  }
+}
+
+void blade_add_coordinates_box(System *system,double ax,double ay,double az,double bx,double by,double bz,double cx,double cy,double cz)
+{
+  int i,j;
+  for (int id=0; id<system->idCount; id++) {
+    system->coordinates->particleBox[0][0]=ax;
+    system->coordinates->particleBox[0][1]=ay;
+    system->coordinates->particleBox[0][2]=az;
+    system->coordinates->particleBox[1][0]=bx;
+    system->coordinates->particleBox[1][1]=by;
+    system->coordinates->particleBox[1][2]=bz;
+    system->coordinates->particleBox[2][0]=cx;
+    system->coordinates->particleBox[2][1]=cy;
+    system->coordinates->particleBox[2][2]=cz;
+    for (i=0; i<3; i++) {
+      for (j=0; j<3; j++) {
+        if (i!=j && system->coordinates->particleBox[i][j]!=0) {
+          fatal(__FILE__,__LINE__,"Non-orthogonal boxes are not yet implemented NYI\n");
+        }
+      }
+    }
+    system->coordinates->particleOrthBox.x=system->coordinates->particleBox[0][0];
+    system->coordinates->particleOrthBox.y=system->coordinates->particleBox[1][1];
+    system->coordinates->particleOrthBox.z=system->coordinates->particleBox[2][2];
+    system++;
+  }
+}

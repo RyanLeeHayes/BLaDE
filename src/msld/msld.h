@@ -100,4 +100,10 @@ class Msld {
 
 void parse_msld(char *line,System *system);
 
+// Library functions
+extern "C" {
+  void blade_init_msld(System *system);
+  void blade_dest_msld(System *system);
+}
+
 #endif
