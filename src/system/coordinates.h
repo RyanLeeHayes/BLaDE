@@ -55,7 +55,7 @@ void parse_coordinates(char *line,System *system);
 extern "C" {
   void blade_init_coordinates(System *system,int n);
   void blade_dest_coordinates(System *system);
-  void blade_add_coordinates_velocity(System *system,int i,double x,double y,double z);
+  void blade_add_coordinates_position(System *system,int i,double x,double y,double z);
   void blade_add_coordinates_velocity(System *system,int i,double vx,double vy,double vz);
   void blade_add_coordinates_box(System *system,double ax,double ay,double az,double bx,double by,double bz,double cx,double cy,double cz);
 }
