@@ -851,13 +851,30 @@ void Msld::getforce_chargeRestraints(System *system,bool calcEnergy)
 
 
 
-void blade_init_msld(System *system)
+void blade_init_msld(System *system,int nblocks)
 {
   for (int id=0; id<system->idCount; id++) {
     if (system->msld) {
       delete(system->msld);
     }
     system->msld=new Msld();
+
+    system->msld->blockCount=nblocks+1;
+    system->msld->atomBlock=(int*)calloc(system->structure->atomList.size(),sizeof(int));
+    system->msld->lambdaSite=(int*)calloc(system->msld->blockCount,sizeof(int));
+    system->msld->lambdaBias=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->theta=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->thetaVelocity=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->thetaMass[0]=1;
+    system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
+
+    if (id>0) fatal(__FILE__,__LINE__,"Warning: blade_init_msld calls cudaMalloc, not thread safe yet\n");
+    cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
+    cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
+    cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real));
+
     system++;
   }
 }
@@ -869,6 +886,85 @@ void blade_dest_msld(System *system)
       delete(system->msld);
     }
     system->msld=NULL;
+    system++;
+  }
+}
+
+void blade_add_msld_atomassignment(System *system,int atomIdx,int blockIdx)
+{
+  for (int id=0; id<system->idCount; id++) {
+    system->msld->atomBlock[atomIdx-1]=blockIdx-1;
+    system++;
+  }
+}
+
+void blade_add_msld_initialconditions(System *system,int blockIdx,int siteIdx,double theta0,double thetaVelocity,double thetaMass,double fixBias,double blockCharge)
+{
+  blockIdx-=1;
+  for (int id=0; id<system->idCount; id++) {
+    system->msld->lambdaSite[blockIdx]=siteIdx;
+    system->msld->theta[blockIdx]=theta0;
+    system->msld->thetaVelocity[blockIdx]=thetaVelocity;
+    system->msld->thetaMass[blockIdx]=thetaMass;
+    system->msld->lambdaBias[blockIdx]=fixBias;
+    system->msld->lambdaCharge[blockIdx]=blockCharge;
+    system++;
+  }
+}
+
+void blade_add_msld_termscaling(System *system,bool scaleBond,bool scaleUrey,bool scaleAngle,bool scaleDihe,bool scaleImpr,bool scaleCmap)
+{
+  for (int id=0; id<system->idCount; id++) {
+    system->msld->scaleTerms[0]=scaleBond;
+    system->msld->scaleTerms[1]=scaleUrey;
+    system->msld->scaleTerms[2]=scaleAngle;
+    system->msld->scaleTerms[3]=scaleDihe;
+    system->msld->scaleTerms[4]=scaleImpr;
+    system->msld->scaleTerms[5]=scaleCmap;
+    system++;
+  }
+}
+
+void blade_add_msld_flags(System *system,bool useSoftCore,bool useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent)
+{
+  for (int id=0; id<system->idCount; id++) {
+    system->msld->useSoftCore=useSoftCore;
+    system->msld->useSoftCore14=useSoftCore14;
+    system->msld->msldEwaldType=msldEwaldType;
+    system->msld->kRestraint=kRestraint;
+    system->msld->kChargeRestraint=kChargeRestraint;
+    system->msld->softBondRadius=softBondRadius;
+    system->msld->softBondExponent=softBondExponent;
+    system->msld->softNotBondExponent=softNotBondExponent;
+    system++;
+  }
+}
+
+void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n)
+{
+  for (int id=0; id<system->idCount; id++) {
+    struct VariableBias vb;
+    vb.i=i-1;
+    vb.j=j-1;
+    vb.type=type;
+    if (vb.type!=6 && vb.type!=8 && vb.type!=10) {
+      fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type (6, 8, or 10)\n",vb.type);
+    }
+    vb.l0=l0;
+    vb.k=k;
+    vb.n=n;
+    system->msld->variableBias_tmp.emplace_back(vb);
+    system++;
+  }
+}
+
+void blade_add_msld_softbond(System *system,int i,int j)
+{
+  for (int id=0; id<system->idCount; id++) {
+    Int2 i2;
+    i2.i[0]=i;
+    i2.i[1]=j;
+    system->msld->softBonds.emplace_back(i2);
     system++;
   }
 }
