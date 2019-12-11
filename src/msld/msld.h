@@ -104,6 +104,7 @@ void parse_msld(char *line,System *system);
 extern "C" {
   void blade_init_msld(System *system,int nblocks);
   void blade_dest_msld(System *system);
+  void blade_add_msld_atomassignment(System *system,int atomIdx,int blockIdx);
   void blade_add_msld_initialconditions(System *system,int blockIdx,int siteIdx,double theta0,double thetaVelocity,double thetaMass,double fixBias,double blockCharge);
   void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int scaleAngle,int scaleDihe,int scaleImpr,int scaleCmap);
   void blade_add_msld_flags(System *system,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent);

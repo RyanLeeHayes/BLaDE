@@ -58,14 +58,14 @@ variables set cterres 68
 variables set ctercap ct3
 variables set cterc 5  ! 2 nter, 3 cter, 4 ace, 5 ct3
 
-!PORTED parameters file {dir}/toppar/par_all36_prot.prm
-!PORTED parameters file {dir}/toppar_water_ions/par_water_ions.prm
+parameters file {dir}/toppar/par_all36_prot.prm
+parameters file {dir}/toppar_water_ions/par_water_ions.prm
 
 !PORTED structure file psf {dir}/minimized.psf
 structure shake hbond
 
-coordinates file {dir}/minimized.pdb
-coordinates box {box} 0 0   0 {box} 0   0 0 {box}
+!PORTED coordinates file {dir}/minimized.pdb
+!PORTED coordinates box {box} 0 0   0 {box} 0   0 0 {box}
 coordinates velocity 300
 
 selection limit 200
@@ -136,19 +136,19 @@ endwhile
 
 
 
-msld nblocks {nblocks}
-
+!PORTED msld nblocks {nblocks}
+!PORTED 
 variables set prevblock 0
 variables set ii 1
 while <= {ii} {nsites}
-   variables set jj 1
-   while <= {jj} {nsubs{ii}}
-      variables calculate jp0 int + {jj} {prevblock}
-
-      msld call {jp0} site{ii}sub{jj}
-
-      variables calculate jj int + {jj} 1
-   endwhile
+!PORTED    variables set jj 1
+!PORTED    while <= {jj} {nsubs{ii}}
+!PORTED       variables calculate jp0 int + {jj} {prevblock}
+!PORTED 
+!PORTED       msld call {jp0} site{ii}sub{jj}
+!PORTED 
+!PORTED       variables calculate jj int + {jj} 1
+!PORTED    endwhile
 
    variables set resid {resid{ii}}
    variables set site {ii}
@@ -164,88 +164,88 @@ while <= {ii} {nsites}
    variables calculate ii int + {ii} 1
 endwhile
 
-!               B S   t0  tv  tm  fb   q
-   msld initialize 0 0 0 0 5 0 0
-
-variables set blockassign 0
-variables set prevblock 0
-variables set ii 1
-while <= {ii} {nsites}
-   variables set jj 1
-   variables set theta0 1
-   while <= {jj} {nsubs{ii}}
-      variables calculate jp0 int + {jj} {prevblock}
-
-!               B S   t0  tv  tm  fb   q
-      msld initialize {jp0} {ii} {theta0} 0 5 {lams{ii}s{jj}} 0
-
-      variables set theta0 -1
-      variables calculate jj int + {jj} 1
-   endwhile
-   variables calculate prevblock int + {prevblock} {nsubs{ii}}
-   variables calculate ii int + {ii} 1
-endwhile
-   msld removescaling bond urey angle impr
-
-   msld softcore on
-   msld softcore14 on
-
-   ! Check block.doc for functional form of these biasing potentials
-variables set iblock 0
-variables set si 1
-while <= {si} {nsites}
-   variables set jblock {iblock}
-   variables set sj {si}
-   while <= {sj} {nsites}
-      variables set ii 1
-      while <= {ii} {nsubs{si}}
-         variables calculate ip0 int + {ii} {iblock}
-         variables set jj 1
-         if == {si} {sj}
-            variables calculate jj int + {ii} 1
-         endif
-         while <= {jj} {nsubs{sj}}
-            variables calculate jp0 int + {jj} {jblock}
-
-!        s1s2 t  l0   k n
-            msld bias {ip0} {jp0} 6 0.0 {cs{si}s{ii}s{sj}s{jj}} 0
-            msld bias {ip0} {jp0} 10 -5.56 {xs{si}s{ii}s{sj}s{jj}} 0
-            msld bias {ip0} {jp0} 8 0.017 {ss{si}s{ii}s{sj}s{jj}} 0
-            msld bias {jp0} {ip0} 10 -5.56 {xs{sj}s{jj}s{si}s{ii}} 0
-            msld bias {jp0} {ip0} 8 0.017 {ss{sj}s{jj}s{si}s{ii}} 0
-            variables calculate jj int + {jj} 1
-         endwhile
-         variables calculate ii int + {ii} 1
-      endwhile
-      variables calculate jblock int + {jblock} {nsubs{sj}}
-      variables calculate sj int + {sj} 1
-   endwhile
-   variables calculate iblock int + {iblock} {nsubs{si}}
-   variables calculate si int + {si} 1
-endwhile
+!PORTED !               B S   t0  tv  tm  fb   q
+!PORTED    msld initialize 0 0 0 0 5 0 0
+!PORTED 
+!PORTED variables set blockassign 0
+!PORTED variables set prevblock 0
+!PORTED variables set ii 1
+!PORTED while <= {ii} {nsites}
+!PORTED    variables set jj 1
+!PORTED    variables set theta0 1
+!PORTED    while <= {jj} {nsubs{ii}}
+!PORTED       variables calculate jp0 int + {jj} {prevblock}
+!PORTED 
+!PORTED !               B S   t0  tv  tm  fb   q
+!PORTED       msld initialize {jp0} {ii} {theta0} 0 5 {lams{ii}s{jj}} 0
+!PORTED 
+!PORTED       variables set theta0 -1
+!PORTED       variables calculate jj int + {jj} 1
+!PORTED    endwhile
+!PORTED    variables calculate prevblock int + {prevblock} {nsubs{ii}}
+!PORTED    variables calculate ii int + {ii} 1
+!PORTED endwhile
+!PORTED    msld removescaling bond urey angle impr
+!PORTED 
+!PORTED    msld softcore on
+!PORTED    msld softcore14 on
+!PORTED 
+!PORTED    ! Check block.doc for functional form of these biasing potentials
+!PORTED variables set iblock 0
+!PORTED variables set si 1
+!PORTED while <= {si} {nsites}
+!PORTED    variables set jblock {iblock}
+!PORTED    variables set sj {si}
+!PORTED    while <= {sj} {nsites}
+!PORTED       variables set ii 1
+!PORTED       while <= {ii} {nsubs{si}}
+!PORTED          variables calculate ip0 int + {ii} {iblock}
+!PORTED          variables set jj 1
+!PORTED          if == {si} {sj}
+!PORTED             variables calculate jj int + {ii} 1
+!PORTED          endif
+!PORTED          while <= {jj} {nsubs{sj}}
+!PORTED             variables calculate jp0 int + {jj} {jblock}
+!PORTED 
+!PORTED !        s1s2 t  l0   k n
+!PORTED             msld bias {ip0} {jp0} 6 0.0 {cs{si}s{ii}s{sj}s{jj}} 0
+!PORTED             msld bias {ip0} {jp0} 10 -5.56 {xs{si}s{ii}s{sj}s{jj}} 0
+!PORTED             msld bias {ip0} {jp0} 8 0.017 {ss{si}s{ii}s{sj}s{jj}} 0
+!PORTED             msld bias {jp0} {ip0} 10 -5.56 {xs{sj}s{jj}s{si}s{ii}} 0
+!PORTED             msld bias {jp0} {ip0} 8 0.017 {ss{sj}s{jj}s{si}s{ii}} 0
+!PORTED             variables calculate jj int + {jj} 1
+!PORTED          endwhile
+!PORTED          variables calculate ii int + {ii} 1
+!PORTED       endwhile
+!PORTED       variables calculate jblock int + {jblock} {nsubs{sj}}
+!PORTED       variables calculate sj int + {sj} 1
+!PORTED    endwhile
+!PORTED    variables calculate iblock int + {iblock} {nsubs{si}}
+!PORTED    variables calculate si int + {si} 1
+!PORTED endwhile
 
 
    msld parameter krestraint 118.4 ! 59.2*nsubs/(nsubs-1) to match charmm, because charmm is scaled by 59.2/(nsubs-1)
 
-   msld parameter softbondradius inf
-   msld parameter softbondexponent 2
-   msld parameter softnotbondexponent 2 ! should be 1?
-
-variables set ii 1
-while <= {ii} {nsites}
-   selection define testpro and and segid {segid} resid {resid{ii}} resname PRO
-   selection count testpro nsel
-   if > {nsel} 0
-      selection define probond or atom {segid} {resid{ii}} CB atom {segid} {resid{ii}} CG
-      msld softbond probond
-   endif
-   variables set jj 2
-   while <= {jj} {nsubs{ii}}
-      if eq {s{ii}seq{jj}} p
-         selection define probond or atom {segid} {resid{ii}} CP_C atom {segid} {resid{ii}} CP_D
-         msld softbond probond
-      endif
-      variables calculate jj int + {jj} 1
-   endwhile
-   variables calculate ii int + {ii} 1
-endwhile
+!PORTED    msld parameter softbondradius inf
+!PORTED    msld parameter softbondexponent 2
+!PORTED    msld parameter softnotbondexponent 2 ! should be 1?
+!PORTED 
+!PORTED variables set ii 1
+!PORTED while <= {ii} {nsites}
+!PORTED    selection define testpro and and segid {segid} resid {resid{ii}} resname PRO
+!PORTED    selection count testpro nsel
+!PORTED    if > {nsel} 0
+!PORTED       selection define probond or atom {segid} {resid{ii}} CB atom {segid} {resid{ii}} CG
+!PORTED       msld softbond probond
+!PORTED    endif
+!PORTED    variables set jj 2
+!PORTED    while <= {jj} {nsubs{ii}}
+!PORTED       if eq {s{ii}seq{jj}} p
+!PORTED          selection define probond or atom {segid} {resid{ii}} CP_C atom {segid} {resid{ii}} CP_D
+!PORTED          msld softbond probond
+!PORTED       endif
+!PORTED       variables calculate jj int + {jj} 1
+!PORTED    endwhile
+!PORTED    variables calculate ii int + {ii} 1
+!PORTED endwhile
