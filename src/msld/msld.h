@@ -105,8 +105,8 @@ extern "C" {
   void blade_init_msld(System *system,int nblocks);
   void blade_dest_msld(System *system);
   void blade_add_msld_initialconditions(System *system,int blockIdx,int siteIdx,double theta0,double thetaVelocity,double thetaMass,double fixBias,double blockCharge);
-  void blade_add_msld_termscaling(System *system,bool scaleBond,bool scaleUrey,bool scaleAngle,bool scaleDihe,bool scaleImpr,bool scaleCmap);
-  void blade_add_msld_flags(System *system,bool useSoftCore,bool useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent);
+  void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int scaleAngle,int scaleDihe,int scaleImpr,int scaleCmap);
+  void blade_add_msld_flags(System *system,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent);
   void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n);
   void blade_add_msld_softbond(System *system,int i,int j);
 }

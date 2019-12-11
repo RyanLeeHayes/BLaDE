@@ -902,7 +902,7 @@ void blade_add_msld_initialconditions(System *system,int blockIdx,int siteIdx,do
 {
   blockIdx-=1;
   for (int id=0; id<system->idCount; id++) {
-    system->msld->lambdaSite[blockIdx]=siteIdx;
+    system->msld->lambdaSite[blockIdx]=siteIdx-1;
     system->msld->theta[blockIdx]=theta0;
     system->msld->thetaVelocity[blockIdx]=thetaVelocity;
     system->msld->thetaMass[blockIdx]=thetaMass;
@@ -912,7 +912,7 @@ void blade_add_msld_initialconditions(System *system,int blockIdx,int siteIdx,do
   }
 }
 
-void blade_add_msld_termscaling(System *system,bool scaleBond,bool scaleUrey,bool scaleAngle,bool scaleDihe,bool scaleImpr,bool scaleCmap)
+void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int scaleAngle,int scaleDihe,int scaleImpr,int scaleCmap)
 {
   for (int id=0; id<system->idCount; id++) {
     system->msld->scaleTerms[0]=scaleBond;
@@ -925,7 +925,7 @@ void blade_add_msld_termscaling(System *system,bool scaleBond,bool scaleUrey,boo
   }
 }
 
-void blade_add_msld_flags(System *system,bool useSoftCore,bool useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent)
+void blade_add_msld_flags(System *system,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent)
 {
   for (int id=0; id<system->idCount; id++) {
     system->msld->useSoftCore=useSoftCore;
