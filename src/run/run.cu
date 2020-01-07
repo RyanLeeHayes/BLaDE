@@ -466,3 +466,55 @@ void Run::dynamics_finalize(System *system)
   write_checkpoint_file(fnmCPO.c_str(),system);
 }
 
+
+
+void blade_init_run(System *system)
+{
+  for (int id=0; id<system->idCount; id++) {
+    if (system->run) {
+      delete(system->run);
+    }
+    system->run=new Run(system);
+    system++;
+  }
+}
+
+void blade_dest_run(System *system)
+{
+  for (int id=0; id<system->idCount; id++) {
+    if (system->run) {
+      delete(system->run);
+    }
+    system->run=NULL;
+    system++;
+  }
+}
+
+void blade_add_run_flags(System *system, long int step, long int step0, int nsteps, double dt, double T, double gamma, double betaEwald, double rCut, double rSwitch, double gridSpace, int orderEwald, double shakeTolerance, int freqNPT, double volumeFluctuation, double pressure)
+{
+  for (int id=0; id<system->idCount; id++) {
+    system->run->step=step; // current step
+    system->run->step0=step0; // starting step
+    system->run->nsteps=nsteps; // steps in next dynamics call
+    system->run->dt=dt;
+    system->run->T=T;
+    system->run->gamma=gamma;
+
+    system->run->betaEwald=betaEwald;
+    system->run->rCut=rCut;
+    system->run->rSwitch=rSwitch;
+    system->run->gridSpace=gridSpace; // grid spacing for PME calculation
+    system->run->orderEwald=orderEwald; // interpolation order (4, 6, or 8 typically)
+    system->run->shakeTolerance=shakeTolerance;
+
+    system->run->freqNPT=freqNPT;
+    system->run->volumeFluctuation=volumeFluctuation;
+    system->run->pressure=pressure;
+
+    system->run->cutoffs.betaEwald=betaEwald;
+    system->run->cutoffs.rCut=rCut;
+    system->run->cutoffs.rSwitch=rSwitch;
+
+    system++;
+  }
+}

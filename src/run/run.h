@@ -96,4 +96,11 @@ class Run {
 
 void parse_run(char *line,System *system);
 
+// Library functions
+extern "C" {
+  void blade_init_run(System *system);
+  void blade_dest_run(System *system);
+  void blade_add_run_flags(System *system, long int step, long int step0, int nsteps, double dt, double T, double gamma, double betaEwald, double rCut, double rSwitch, double gridSpace, int orderEwald, double shakeTolerance, int freqNPT, double volumeFluctuation, double pressure);
+}
+
 #endif

@@ -411,3 +411,11 @@ void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int
     system++;
   }
 }
+
+void blade_add_shake(System *system,int shakeHbond)
+{
+  for (int id=0; id<system->idCount; id++) {
+    system->structure->shakeHbond=shakeHbond;
+    system++;
+  }
+}
