@@ -490,14 +490,16 @@ void blade_dest_run(System *system)
   }
 }
 
-void blade_add_run_flags(System *system, long int step, long int step0, int nsteps, double dt, double T, double gamma, double betaEwald, double rCut, double rSwitch, double gridSpace, int orderEwald, double shakeTolerance, int freqNPT, double volumeFluctuation, double pressure)
+void blade_add_run_flags(System *system,
+  double gamma,
+  double betaEwald,
+  double rCut,
+  double rSwitch,
+  double gridSpace,
+  int orderEwald,
+  double shakeTolerance)
 {
   for (int id=0; id<system->idCount; id++) {
-    system->run->step=step; // current step
-    system->run->step0=step0; // starting step
-    system->run->nsteps=nsteps; // steps in next dynamics call
-    system->run->dt=dt;
-    system->run->T=T;
     system->run->gamma=gamma;
 
     system->run->betaEwald=betaEwald;
@@ -507,13 +509,34 @@ void blade_add_run_flags(System *system, long int step, long int step0, int nste
     system->run->orderEwald=orderEwald; // interpolation order (4, 6, or 8 typically)
     system->run->shakeTolerance=shakeTolerance;
 
-    system->run->freqNPT=freqNPT;
-    system->run->volumeFluctuation=volumeFluctuation;
-    system->run->pressure=pressure;
-
     system->run->cutoffs.betaEwald=betaEwald;
     system->run->cutoffs.rCut=rCut;
     system->run->cutoffs.rSwitch=rSwitch;
+
+    system++;
+  }
+}
+
+void blade_add_run_dynopts(System *system,
+  long int step,
+  long int step0,
+  int nsteps,
+  double dt,
+  double T,
+  int freqNPT,
+  double volumeFluctuation,
+  double pressure)
+{
+  for (int id=0; id<system->idCount; id++) {
+    system->run->step=step; // current step
+    system->run->step0=step0; // starting step
+    system->run->nsteps=nsteps; // steps in next dynamics call
+    system->run->dt=dt;
+    system->run->T=T;
+
+    system->run->freqNPT=freqNPT;
+    system->run->volumeFluctuation=volumeFluctuation;
+    system->run->pressure=pressure;
 
     system++;
   }
