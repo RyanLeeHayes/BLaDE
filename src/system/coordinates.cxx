@@ -247,9 +247,9 @@ void blade_dest_coordinates(System *system)
 void blade_add_coordinates_position(System *system,int i,double x,double y,double z)
 {
   for (int id=0; id<system->idCount; id++) {
-    system->coordinates->particlePosition[i][0]=x;
-    system->coordinates->particlePosition[i][1]=y;
-    system->coordinates->particlePosition[i][2]=z;
+    system->coordinates->particlePosition[i-1][0]=x;
+    system->coordinates->particlePosition[i-1][1]=y;
+    system->coordinates->particlePosition[i-1][2]=z;
     system++;
   }
 }
@@ -257,9 +257,9 @@ void blade_add_coordinates_position(System *system,int i,double x,double y,doubl
 void blade_add_coordinates_velocity(System *system,int i,double vx,double vy,double vz)
 {
   for (int id=0; id<system->idCount; id++) {
-    system->coordinates->particleVelocity[i][0]=vx;
-    system->coordinates->particleVelocity[i][1]=vy;
-    system->coordinates->particleVelocity[i][2]=vz;
+    system->coordinates->particleVelocity[i-1][0]=vx;
+    system->coordinates->particleVelocity[i-1][1]=vy;
+    system->coordinates->particleVelocity[i-1][2]=vz;
     system++;
   }
 }

@@ -24,21 +24,22 @@ stream {DIR}/variablesflat.inp
 stream {DIR}/prep/{sysname}.inp
 
 ! Set nonbonded options
-run setvariable rswitch 9.0
-run setvariable rcut 10.0
-run setvariable invbetaewald 3.125
-run setvariable orderewald 6
-run setvariable gridspace 1.1 ! 1.1 A is max grid spacing, should give 40x40x40
+! PORTED run setvariable rswitch 9.0
+! PORTED run setvariable rcut 10.0
+! PORTED run setvariable invbetaewald 3.125
+! PORTED run setvariable orderewald 6
+! PORTED run setvariable gridspace 1.1 ! 1.1 A is max grid spacing, should give 40x40x40
 
-coordinates file {DIR}/prep/minimized.pdb
+! PORTED coordinates file {DIR}/prep/minimized.pdb
 coordinates velocity {temp}
 
 !---------------------------------------------------------------------------
 ! Setup of dynamics run
 !---------------------------------------------------------------------------
 
-structure shake hbond
-run setvariable gamma 1.0
+! PORTED structure shake hbond
+! PORTED run setvariable gamma 1.0
+! run setvariable shaketolerance 0.0000002
 
 
 run setvariable fnmxtc {DIR}/dcd/{sysname}_heat.xtc
