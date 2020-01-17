@@ -103,7 +103,7 @@ extern "C" {
   void blade_add_run_flags(System *system,
     double gamma, double betaEwald, double rCut, double rSwitch, double gridSpace, int orderEwald, double shakeTolerance);
   void blade_add_run_dynopts(System *system,
-    long int step, long int step0, int nsteps, double dt, double T,
+    int step, int step0, int nsteps, double dt, double T,
     int freqNPT, double volumeFluctuation, double pressure);
 }
 

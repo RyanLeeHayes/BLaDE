@@ -518,8 +518,8 @@ void blade_add_run_flags(System *system,
 }
 
 void blade_add_run_dynopts(System *system,
-  long int step,
-  long int step0,
+  int step,
+  int step0,
   int nsteps,
   double dt,
   double T,
