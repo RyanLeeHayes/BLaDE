@@ -48,6 +48,7 @@ faster on
 ! *
 read coor pdb resid name prep/minimized.pdb
 
+
 !---------------------------------------------------------------------------
 ! Setup of dynamics run
 !---------------------------------------------------------------------------
@@ -62,13 +63,6 @@ read coor pdb resid name prep/minimized.pdb
 
 shake fast bonh param
 scalar fbeta set 10.0 sele all end
-
-blade on
-system "cp ../blade/arguments.inp ./"
-system "mkdir ../blade/dcd"
-system "mkdir ../blade/res"
-blade file "../blade/msld_flat.inp"
-stop
 
 domdec gpu only dlb off ndir 1 @nnodes 1
 

@@ -1,0 +1,9 @@
+* nuissance title
+*
+define site@{site}cap@{sub} -
+   select ( -
+   segid @segid .and. resid @resid .and. ( -
+   type CT_B .or. -
+   type OTTA .or. -
+   type OTTB .or. -
+   none ) ) end

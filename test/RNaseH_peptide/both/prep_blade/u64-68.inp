@@ -1,0 +1,251 @@
+variables set dir {DIR}/prep_blade
+
+variables set box 40.685169
+
+! variables set resid1 29
+! variables set s1seq1 0 ! r
+! variables set s1seq2 k
+! variables set resid2 30
+! variables set s2seq1 0 ! g
+! variables set s2seq2 q
+! variables set resid3 31
+! variables set s3seq1 0 ! r
+! variables set s3seq2 j ! hsp
+! variables set resid4 40
+! variables set s4seq1 0 ! t
+! variables set s4seq2 r
+! variables set resid5 41
+! variables set s5seq1 0 ! r
+! variables set s5seq2 l
+! variables set resid6 60
+! variables set s6seq1 0 ! k
+! variables set s6seq2 t
+! variables set resid7 62
+! variables set s7seq1 0 ! j ! hsp
+! variables set s7seq2 p
+variables set resid1 66
+variables set s1seq1 0 ! i
+variables set s1seq2 t
+! variables set resid9 111
+! variables set s9seq1 0 ! l
+! variables set s9seq2 i
+! variables set resid10 112
+! variables set s10seq1 0 ! g
+! variables set s10seq2 q
+! variables set resid11 113
+! variables set s11seq1 0 ! q
+! variables set s11seq2 r
+! variables set resid12 142
+! variables set s12seq1 0 ! m
+! variables set s12seq2 s
+! variables set resid13 149
+! variables set s13seq1 0 ! t
+! variables set s13seq2 v
+! variables set resid14 153
+! variables set s14seq1 0 ! v
+! variables set s14seq2 p
+! variables set resid15 154
+! variables set s15seq1 0 ! e
+! variables set s15seq2 e
+variables set segid PROT
+
+variables set nterdel 0 ! 0 means don't do it
+variables set nterres 64
+variables set ntercap ace
+variables set nterc 4 ! 2 nter, 3 cter, 4 ace, 5 ct3
+variables set cterdel 0 ! 0 means don't do it
+variables set cterres 68
+variables set ctercap ct3
+variables set cterc 5  ! 2 nter, 3 cter, 4 ace, 5 ct3
+
+!PORTED parameters file {dir}/toppar/par_all36_prot.prm
+!PORTED parameters file {dir}/toppar_water_ions/par_water_ions.prm
+
+!PORTED structure file psf {dir}/minimized.psf
+structure shake hbond
+
+!PORTED coordinates file {dir}/minimized.pdb
+!PORTED coordinates box {box} 0 0   0 {box} 0   0 0 {box}
+coordinates velocity 300
+
+selection limit 200
+
+variables set ii 1
+while <= {ii} {nsites}
+   variables set resid {resid{ii}}
+   variables set site {ii}
+
+   selection define site{site}suball and segid {segid} resid {resid}
+
+   selection define site{site}consN  and and segid {segid} resid {resid} atomnames NA_A NB_A NC_A ND_A NE_A NF_A NG_A NH_A NI_A NJ_A NK_A NL_A NM_A NN_A NP_A NQ_A NR_A NS_A NT_A NV_A NW_A NY_A N
+   selection define site{site}consCA and and segid {segid} resid {resid} atomnames CA_A CB_A CC_A CD_A CE_A CF_A CG_A CH_A CI_A CJ_A CK_A CL_A CM_A CN_A CP_A CQ_A CR_A CS_A CT_A CV_A CW_A CY_A CA
+   selection define site{site}consHA and and segid {segid} resid {resid} atomnames HA_B HB_B HC_B HD_B HE_B HF_B HG_B HH_B HI_B HJ_B HK_B HL_B HM_B HN_B HP_B HQ_B HR_B HS_B HT_B HV_B HW_B HY_B HA HA2
+   selection define site{site}consC  and and segid {segid} resid {resid} atomnames CA_B CB_B CC_B CD_B CE_B CF_B CG_B CH_B CI_B CJ_B CK_B CL_B CM_B CN_B CP_B CQ_B CR_B CS_B CT_B CV_B CW_B CY_B C
+   selection define site{site}consO  and and segid {segid} resid {resid} atomnames OA_A OB_A OC_A OD_A OE_A OF_A OG_A OH_A OI_A OJ_A OK_A OL_A OM_A ON_A OP_A OQ_A OR_A OS_A OT_A OV_A OW_A OY_A O
+
+   if || || || == {ii} {nterdel} == {resid} {nterres} == {ii} {cterdel} == {resid} {cterres}
+      selection define site{site}consN none
+      selection define site{site}consCA none
+      selection define site{site}consHA none
+      selection define site{site}consC none
+      selection define site{site}consO none
+   endif
+
+   ! include residues in a possible terminal deletion
+   if == {ii} {nterdel}
+      selection define site{site}suball and segid {segid} residrange {nterres} {resid}
+   endif
+   if == {ii} {cterdel}
+      selection define site{site}suball and segid {segid} residrange {resid} {cterres}
+   endif
+
+   selection define site{site}sub1 selection site{site}suball
+
+   variables set jj 2
+   while <= {jj} {nsubs{ii}}
+
+      variables set sub {jj}
+      variables set seqjj {s{ii}seq{jj}}
+      stream {dir}/aa_stream_lady/sele_{seqjj}.str
+
+      ! account for cap in case of terminal deletion
+      if == {ii} {nterdel}
+         stream {dir}/aa_stream_lady/sele_{seqjj}{nterc}.str
+         selection define site{site}sub{sub} or selection site{site}sub{sub} selection site{site}cap{sub}
+      endif
+      if == {resid} {nterres}
+         stream {dir}/aa_stream_lady/sele_{seqjj}{nterc}.str
+         selection define site{site}sub{sub} or selection site{site}sub{sub} selection site{site}cap{sub}
+      endif
+      if == {ii} {cterdel}
+         stream {dir}/aa_stream_lady/sele_{seqjj}{cterc}.str
+         selection define site{site}sub{sub} or selection site{site}sub{sub} selection site{site}cap{sub}
+      endif
+      if == {resid} {cterres}
+         stream {dir}/aa_stream_lady/sele_{seqjj}{cterc}.str
+         selection define site{site}sub{sub} or selection site{site}sub{sub} selection site{site}cap{sub}
+      endif
+
+      selection define site{site}sub1 and selection site{site}sub1 not selection site{site}sub{sub}
+
+      variables calculate jj int + {jj} 1
+   endwhile
+
+   variables calculate ii int + {ii} 1
+endwhile
+
+
+
+!PORTED msld nblocks {nblocks}
+!PORTED 
+variables set prevblock 0
+variables set ii 1
+while <= {ii} {nsites}
+!PORTED    variables set jj 1
+!PORTED    while <= {jj} {nsubs{ii}}
+!PORTED       variables calculate jp0 int + {jj} {prevblock}
+!PORTED 
+!PORTED       msld call {jp0} site{ii}sub{jj}
+!PORTED 
+!PORTED       variables calculate jj int + {jj} 1
+!PORTED    endwhile
+
+   variables set resid {resid{ii}}
+   variables set site {ii}
+   if not || || || == {ii} {nterdel} == {resid} {nterres} == {ii} {cterdel} == {resid} {cterres}
+      msld restrain site{site}consN
+      msld restrain site{site}consCA
+      msld restrain site{site}consHA
+      msld restrain site{site}consC
+      msld restrain site{site}consO
+   endif
+
+   variables calculate prevblock int + {prevblock} {nsubs{ii}}
+   variables calculate ii int + {ii} 1
+endwhile
+
+!PORTED !               B S   t0  tv  tm  fb   q
+!PORTED    msld initialize 0 0 0 0 5 0 0
+!PORTED 
+!PORTED variables set blockassign 0
+!PORTED variables set prevblock 0
+!PORTED variables set ii 1
+!PORTED while <= {ii} {nsites}
+!PORTED    variables set jj 1
+!PORTED    variables set theta0 1
+!PORTED    while <= {jj} {nsubs{ii}}
+!PORTED       variables calculate jp0 int + {jj} {prevblock}
+!PORTED 
+!PORTED !               B S   t0  tv  tm  fb   q
+!PORTED       msld initialize {jp0} {ii} {theta0} 0 5 {lams{ii}s{jj}} 0
+!PORTED 
+!PORTED       variables set theta0 -1
+!PORTED       variables calculate jj int + {jj} 1
+!PORTED    endwhile
+!PORTED    variables calculate prevblock int + {prevblock} {nsubs{ii}}
+!PORTED    variables calculate ii int + {ii} 1
+!PORTED endwhile
+!PORTED    msld removescaling bond urey angle impr
+!PORTED 
+!PORTED    msld softcore on
+!PORTED    msld softcore14 on
+!PORTED 
+!PORTED    ! Check block.doc for functional form of these biasing potentials
+!PORTED variables set iblock 0
+!PORTED variables set si 1
+!PORTED while <= {si} {nsites}
+!PORTED    variables set jblock {iblock}
+!PORTED    variables set sj {si}
+!PORTED    while <= {sj} {nsites}
+!PORTED       variables set ii 1
+!PORTED       while <= {ii} {nsubs{si}}
+!PORTED          variables calculate ip0 int + {ii} {iblock}
+!PORTED          variables set jj 1
+!PORTED          if == {si} {sj}
+!PORTED             variables calculate jj int + {ii} 1
+!PORTED          endif
+!PORTED          while <= {jj} {nsubs{sj}}
+!PORTED             variables calculate jp0 int + {jj} {jblock}
+!PORTED 
+!PORTED !        s1s2 t  l0   k n
+!PORTED             msld bias {ip0} {jp0} 6 0.0 {cs{si}s{ii}s{sj}s{jj}} 0
+!PORTED             msld bias {ip0} {jp0} 10 -5.56 {xs{si}s{ii}s{sj}s{jj}} 0
+!PORTED             msld bias {ip0} {jp0} 8 0.017 {ss{si}s{ii}s{sj}s{jj}} 0
+!PORTED             msld bias {jp0} {ip0} 10 -5.56 {xs{sj}s{jj}s{si}s{ii}} 0
+!PORTED             msld bias {jp0} {ip0} 8 0.017 {ss{sj}s{jj}s{si}s{ii}} 0
+!PORTED             variables calculate jj int + {jj} 1
+!PORTED          endwhile
+!PORTED          variables calculate ii int + {ii} 1
+!PORTED       endwhile
+!PORTED       variables calculate jblock int + {jblock} {nsubs{sj}}
+!PORTED       variables calculate sj int + {sj} 1
+!PORTED    endwhile
+!PORTED    variables calculate iblock int + {iblock} {nsubs{si}}
+!PORTED    variables calculate si int + {si} 1
+!PORTED endwhile
+
+
+   msld parameter krestraint 118.4 ! 59.2*nsubs/(nsubs-1) to match charmm, because charmm is scaled by 59.2/(nsubs-1)
+
+!PORTED    msld parameter softbondradius inf
+!PORTED    msld parameter softbondexponent 2
+!PORTED    msld parameter softnotbondexponent 2 ! should be 1?
+!PORTED 
+!PORTED variables set ii 1
+!PORTED while <= {ii} {nsites}
+!PORTED    selection define testpro and and segid {segid} resid {resid{ii}} resname PRO
+!PORTED    selection count testpro nsel
+!PORTED    if > {nsel} 0
+!PORTED       selection define probond or atom {segid} {resid{ii}} CB atom {segid} {resid{ii}} CG
+!PORTED       msld softbond probond
+!PORTED    endif
+!PORTED    variables set jj 2
+!PORTED    while <= {jj} {nsubs{ii}}
+!PORTED       if eq {s{ii}seq{jj}} p
+!PORTED          selection define probond or atom {segid} {resid{ii}} CP_C atom {segid} {resid{ii}} CP_D
+!PORTED          msld softbond probond
+!PORTED       endif
+!PORTED       variables calculate jj int + {jj} 1
+!PORTED    endwhile
+!PORTED    variables calculate ii int + {ii} 1
+!PORTED endwhile

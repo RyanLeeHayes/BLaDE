@@ -1,0 +1,25 @@
+* Nonbonded option setup
+* 
+
+! ! Set nonbonded options
+! nbonds atom -
+! fswitch -                !! (use "switch" for openMM) Use force switch for elec-nb interactions
+! cdie eps 1 -             !! Set constant dielectric value of 1
+! vdw vfswitch -            !! Set nb VDW using switching function
+! cutnb 15.0 -             !! Set nb list cut off to 15A
+! cutim 15.0 -             !! Set image nb list cut off to 15A
+! ctonnb 10.0 ctofnb 12.0   !! Switching function used from 10A to 12A for VDW interaction
+
+! Set nonbonded options
+nbonds atom -
+ - ! fswitch -                !! Use force switch for elec-nb interactions
+cdie eps 1 -             !! Set constant dielectric value of 1
+vdw vfswitch -            !! Set nb VDW using switching function
+cutnb 12.0 -             !! Was 15.0 Set nb list cut off to 15A
+cutim 12.0 -             !! Was 15.0 Set image nb list cut off to 15A
+ctonnb 9.0 ctofnb 10.0 - !! Were 10.0 and 12.0 Switching function used from 10A to 12A for VDW interaction
+Ewald -                  !! Use Ewald electrostatics
+kappa 0.320 -            !! 0.320 makes direct space decay to 10^-5 at 10 A
+pmEwald -                !! Keyword
+order 6 -                !! Interpolation order
+fftx 40 ffty 40 fftz 40  !! Choose approximate box length

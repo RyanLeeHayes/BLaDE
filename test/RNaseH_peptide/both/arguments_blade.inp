@@ -1,0 +1,3 @@
+variables set esteps 13000
+variables set nsteps 39000
+variables set DIR ../both
