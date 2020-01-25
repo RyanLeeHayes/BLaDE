@@ -925,9 +925,11 @@ void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int s
   }
 }
 
-void blade_add_msld_flags(System *system,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent)
+void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent)
 {
   for (int id=0; id<system->idCount; id++) {
+    system->msld->gamma=gamma;
+    system->msld->fnex=fnex;
     system->msld->useSoftCore=useSoftCore;
     system->msld->useSoftCore14=useSoftCore14;
     system->msld->msldEwaldType=msldEwaldType;
