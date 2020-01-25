@@ -65,9 +65,8 @@ scalar fbeta set 10.0 sele all end
 
 blade on
 blade file "msld_flat_blade.inp"
-stop
 
-domdec gpu only dlb off ndir 1 @nnodes 1
+! domdec gpu only dlb off ndir 1 @nnodes 1
 
 !! Heating run of 100 ps
 open unit 21 write unform name "dcd/@{SYSNAME}_1_heat.dcd"
