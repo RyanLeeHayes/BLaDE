@@ -4,9 +4,18 @@
 #include "system/system.h"
 #include "io/io.h"
 
+#ifdef REPLICAEXCHANGE
+#include <mpi.h>
+#endif
+
 int main(int argc, char *argv[])
 {
   void **message; // OMP
+
+#ifdef REPLICAEXCHANGE
+  MPI_Init(&argc,&argv);
+#endif
+
   message=(void**)calloc(omp_get_max_threads(),sizeof(void*));
 #pragma omp parallel
   {
@@ -36,4 +45,8 @@ int main(int argc, char *argv[])
   delete(system);
   }
   free(message);
+
+#ifdef REPLICAEXCHANGE
+  MPI_Finalize();
+#endif
 }

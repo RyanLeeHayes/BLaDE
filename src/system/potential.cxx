@@ -144,6 +144,10 @@ Potential::~Potential()
     cudaFree(ii->second);
   }
   cmapTypeToPtr.clear();
+  for (std::map<TypeName8O,real(*)[4][4]>::iterator ii=cmapRestTypeToPtr.begin(); ii!=cmapRestTypeToPtr.end(); ii++) {
+    cudaFree(ii->second);
+  }
+  cmapRestTypeToPtr.clear();
 
   if (charge) free(charge);
   if (charge_d) cudaFree(charge_d);
@@ -373,7 +377,7 @@ void bicubic_setup_alternative(int ngrid,real (*cmapIntermediate)[4],real (*cmap
   }
 }
 
-real (*alloc_kcmapPtr(int ngrid,real *kcmap))[4][4]
+real (*alloc_kcmapPtr(int ngrid,real scaling,real *kcmap))[4][4]
 {
   real (*cmapIntermediate)[4]; // E dEdphi dEdpsi ddEdphidpsi
   real (*cmapParameters)[4][4]; // E_(phi_i,psi_j)
@@ -389,14 +393,14 @@ real (*alloc_kcmapPtr(int ngrid,real *kcmap))[4][4]
   // 0 element of intermediate is the function values
   for (i=0; i<ngrid; i++) {
     for (j=0; j<ngrid; j++) {
-      cmapIntermediate[ngrid*i+j][0]=kcmap[ngrid*i+j];
+      cmapIntermediate[ngrid*i+j][0]=scaling*kcmap[ngrid*i+j];
     }
   }
 
   // 1 element of intermediate is gradient with respect to phi
   for (j=0; j<ngrid; j++) {
     for (i=0; i<ngrid; i++) {
-      y[i]=kcmap[ngrid*i+j];
+      y[i]=scaling*kcmap[ngrid*i+j];
     }
     cmap_cubic_spline_setup(ngrid,y,dy);
     for (i=0; i<ngrid; i++) {
@@ -407,7 +411,7 @@ real (*alloc_kcmapPtr(int ngrid,real *kcmap))[4][4]
   // 2 element of intermediate is gradient with respect to psi
   for (i=0; i<ngrid; i++) {
     for (j=0; j<ngrid; j++) {
-      y[j]=kcmap[ngrid*i+j];
+      y[j]=scaling*kcmap[ngrid*i+j];
     }
     cmap_cubic_spline_setup(ngrid,y,dy);
     for (j=0; j<ngrid; j++) {
@@ -557,11 +561,18 @@ void Potential::initialize(System *system)
         fatal(__FILE__,__LINE__,"No dihe parameter for %6d(%6s) %6d(%6s) %6d(%6s) %6d(%6s)\n",dihe.idx[0],type.t[0].c_str(),dihe.idx[1],type.t[1].c_str(),dihe.idx[2],type.t[2].c_str(),dihe.idx[3],type.t[3].c_str());
       }
     }
+    bool rest=false;
+    if (system->msld->rest) {
+      for (j=0; j<4; j++) {
+        rest+=system->msld->rest[dihe.idx[j]];
+      }
+    }
     // Include each harmonic as a separate dihedral.
     for (j=0; j<dp.size(); j++) {
       dihe.kdih=dp[j].kdih;
       dihe.ndih=dp[j].ndih;
       dihe.dih0=dp[j].dih0;
+      if (rest) dihe.kdih*=system->msld->restScaling;
       if (soft) {
         softDihes_tmp.emplace_back(dihe);
       } else {
@@ -612,8 +623,15 @@ void Potential::initialize(System *system)
         }
       }
     }
+    bool rest=false;
+    if (system->msld->rest) {
+      for (j=0; j<4; j++) {
+        rest+=system->msld->rest[impr.idx[j]];
+      }
+    }
     impr.kimp=ip.kimp;
     impr.imp0=ip.imp0;
+    if (rest) impr.kimp*=system->msld->restScaling;
     if (soft) {
       softImprs_tmp.emplace_back(impr);
     } else {
@@ -638,12 +656,25 @@ void Potential::initialize(System *system)
     } else {
       fatal(__FILE__,__LINE__,"No cmap parameter for\n%6d(%6s) %6d(%6s) %6d(%6s) %6d(%6s)\n%6d(%6s) %6d(%6s) %6d(%6s) %6d(%6s)\n",cmap.idx[0],type.t[0].c_str(),cmap.idx[1],type.t[1].c_str(),cmap.idx[2],type.t[2].c_str(),cmap.idx[3],type.t[3].c_str(),cmap.idx[4],type.t[4].c_str(),cmap.idx[5],type.t[5].c_str(),cmap.idx[6],type.t[6].c_str(),cmap.idx[7],type.t[7].c_str());
     }
+    bool rest=false;
+    if (system->msld->rest) {
+      for (j=0; j<8; j++) {
+        rest+=system->msld->rest[cmap.idx[j]];
+      }
+    }
     cmap.ngrid=cp.ngrid;
     // See if we have to copy the data onto the GPU or if it's already there
-    if (cmapTypeToPtr.count(type)!=1) {
-      cmapTypeToPtr[type]=alloc_kcmapPtr(cp.ngrid,cp.kcmap);
+    if (rest) {
+      if (cmapRestTypeToPtr.count(type)!=1) {
+        cmapRestTypeToPtr[type]=alloc_kcmapPtr(cp.ngrid,system->msld->restScaling,cp.kcmap);
+      }
+      cmap.kcmapPtr=cmapRestTypeToPtr[type];
+    } else {
+      if (cmapTypeToPtr.count(type)!=1) {
+        cmapTypeToPtr[type]=alloc_kcmapPtr(cp.ngrid,1.0,cp.kcmap);
+      }
+      cmap.kcmapPtr=cmapTypeToPtr[type];
     }
-    cmap.kcmapPtr=cmapTypeToPtr[type];
     if (soft) {
       softCmaps_tmp.emplace_back(cmap);
     } else {
@@ -740,6 +771,11 @@ void Potential::initialize(System *system)
   cudaMalloc(&charge_d,atomCount*sizeof(real));
   for (i=0; i<atomCount; i++) {
     charge[i]=struc->atomList[i].charge;
+    if (system->msld->rest) {
+      if (system->msld->rest[i]) {
+        charge[i]*=sqrt(system->msld->restScaling);
+      }
+    }
   }
   cudaMemcpy(charge_d,charge,atomCount*sizeof(real),cudaMemcpyHostToDevice);
 
@@ -836,6 +872,13 @@ void Potential::initialize(System *system)
           }
           np.eps14=sqrt(npij[0].eps14*npij[1].eps14);
           np.sig14=npij[0].sig14+npij[1].sig14;
+        }
+        if (system->msld->rest) {
+          for (j=0; j<2; j++) {
+            if (system->msld->rest[nb14.idx[j]]) {
+              np.eps14*=sqrt(system->msld->restScaling);
+            }
+          }
         }
         real sig6=np.sig14*np.sig14;
         sig6*=(sig6*sig6);
@@ -998,6 +1041,11 @@ void Potential::initialize(System *system)
   typeCount.clear();
   for (i=0; i<atomCount; i++) {
     std::string type=struc->atomList[i].atomTypeName;
+    if (system->msld->rest) {
+      if (system->msld->rest[i]) {
+        type="REST_"+type;
+      }
+    }
     if (typeCount.count(type)==1) {
       typeCount[type]++;
     } else {
@@ -1028,6 +1076,11 @@ void Potential::initialize(System *system)
     struct NbondPotential nbond;
     std::string type;
     type=struc->atomList[i].atomTypeName;
+    if (system->msld->rest) {
+      if (system->msld->rest[i]) {
+        type="REST_"+type;
+      }
+    }
     // Get their MSLD scaling
     msld->nbond_scaling(&i,&nbond.siteBlock);
     // Get their parameters
@@ -1043,9 +1096,20 @@ void Potential::initialize(System *system)
   for (i=0; i<vdwParameterCount; i++) {
     TypeName2 type;
     struct NbondParameter np;
+    real scaling[2];
     type.t[0]=typeList[i];
+    scaling[0]=1;
+    if (type.t[0].substr(0,5)=="REST_") {
+      type.t[0]=type.t[0].substr(5,type.t[0].npos);
+      scaling[0]*=sqrt(system->msld->restScaling);
+    }
     for (j=0; j<vdwParameterCount; j++) {
       type.t[1]=typeList[j];
+      scaling[1]=scaling[0];
+      if (type.t[1].substr(0,5)=="REST_") {
+        type.t[1]=type.t[1].substr(5,type.t[1].npos);
+        scaling[1]*=sqrt(system->msld->restScaling);
+      }
       if (param->nbfixParameter.count(type)==1) {
         np=param->nbfixParameter[type];
       } else {
@@ -1060,6 +1124,7 @@ void Potential::initialize(System *system)
         np.eps=sqrt(npij[0].eps*npij[1].eps);
         np.sig=npij[0].sig+npij[1].sig;
         }
+      np.eps*=scaling[1];
       real sig6=np.sig*np.sig;
       sig6*=(sig6*sig6);
       vdwParameters[i*vdwParameterCount+j].c12=np.eps*sig6*sig6;

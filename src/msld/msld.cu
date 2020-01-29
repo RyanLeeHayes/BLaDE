@@ -1,3 +1,4 @@
+#include <mpi.h>
 #include <string.h>
 #include <cuda_runtime.h>
 
@@ -34,6 +35,9 @@ Msld::Msld() {
   blocksPerSite_d=NULL;
   siteBound=NULL;
   siteBound_d=NULL;
+
+  rest=NULL;
+  restScaling=1.0;
 
   gamma=1.0/PICOSECOND; // ps^-1
   fnex=5.5;
@@ -84,6 +88,8 @@ Msld::~Msld() {
   if (blocksPerSite_d) cudaFree(blocksPerSite_d);
   if (siteBound) free(siteBound);
   if (siteBound_d) cudaFree(siteBound_d);
+
+  if (rest) free(rest);
 
   if (atomRestraintBounds) free(atomRestraintBounds);
   if (atomRestraintBounds_d) cudaFree(atomRestraintBounds_d);
@@ -148,6 +154,16 @@ void parse_msld(char *line,System *system)
       if (system->selections->selectionMap[name].boolSelection[j]==1) {
         system->msld->atomBlock[j]=i;
       }
+    }
+  } else if (strcmp(token,"rest")==0) {
+    std::string name=io_nexts(line);
+    if (system->selections->selectionMap.count(name)==0) {
+      fatal(__FILE__,__LINE__,"Selection %s not found\n",name.c_str());
+    }
+    if (system->msld->rest) free(system->msld->rest);
+    system->msld->rest=(int*)calloc(system->structure->atomList.size(),sizeof(int));
+    for (i=0; i<system->structure->atomList.size(); i++) {
+      system->msld->rest[i]=system->selections->selectionMap[name].boolSelection[i];
     }
 // LDIN 3   0.4   0.0   20.0   5.0
 // CHARMM: LDIN BLOCK L0 LVEL LMASS LBIAS
@@ -226,6 +242,8 @@ void parse_msld(char *line,System *system)
       system->msld->softBondExponent=io_nextf(line);
     } else if (parameterToken=="softnotbondexponent") {
       system->msld->softNotBondExponent=io_nextf(line);
+    } else if (parameterToken=="restscaling") {
+      system->msld->restScaling=io_nextf(line);
     } else {
       fatal(__FILE__,__LINE__,"Unrecognized parameter name %s for msld parameter\n",parameterToken.c_str());
     }

@@ -4,7 +4,7 @@ project(blade LANGUAGES CXX CUDA)
 file(GLOB_RECURSE sources *.cxx *.cu *.h)
 
 find_package(CUDA 10.0)
-# find_package(MPI REQUIRED)
+find_package(MPI REQUIRED)
 
 find_package(OpenMP REQUIRED)
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")

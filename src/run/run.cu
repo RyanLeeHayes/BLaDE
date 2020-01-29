@@ -11,6 +11,10 @@
 #include "holonomic/rectify.h"
 #include "domdec/domdec.h"
 
+#ifdef REPLICAEXCHANGE
+#include <mpi.h>
+#endif
+
 
 
 // #warning "Hardcoded serial kernels"
@@ -74,6 +78,13 @@ Run::Run(System *system)
   for (int i=0; i<eeend; i++) {
     calcTermFlag[i]=true;
   }
+
+#ifdef REPLICAEXCHANGE
+  fnmREx="default.rex";
+  fpREx=NULL;
+  freqREx=-1;
+  MPI_Comm_rank(MPI_COMM_WORLD, &replica);
+#endif
 
 #ifdef PROFILESERIAL
   updateStream=0;
@@ -179,6 +190,8 @@ void Run::setup_parse_run()
   helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Available \"name\"s are: dt (time step in ps), nsteps (number of steps of dynamics to run), fnmxtc (filename for the coordinate output), fnmlmd (filename for the lambda output), fnmnrg (filename for the energy output)\n";
   parseRun["setterm"]=&Run::set_term;
   helpRun["setterm"]="?run setterm [term] [on|off]> Turn terms (including bond, angle, dihe, impr, nb14 nbdirect, nbrecip, nbrecipself, nbrecipexcl, lambda, and bias) on or off\n";
+  parseRun["energy"]=&Run::energy;
+  helpRun["energy"]="?run energy> Calculate energy of current conformation or from fnmcpi checkpoint in file\"\n";
   parseRun["test"]=&Run::test;
   helpRun["test"]="?run test [arguments]> Test first derivatives using finite differences. Valid arguments are \"alchemical [difference]\" and \"spatial [selection] [difference]\"\n";
   parseRun["dynamics"]=&Run::dynamics;
@@ -226,6 +239,10 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
   fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation);
   fprintf(stdout,"RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure);
+#ifdef REPLICAEXCHANGE
+  fprintf(stdout,"RUN PRINT> fnmrex=%s (file name for replica exchange)\n",fnmREx.c_str());
+  fprintf(stdout,"RUN PRINT> freqrex=%d (frequency of replica exchange attempts. Use {rexrank} (NYI) to access 0 ordinalized replica index in script)\n",freqREx);
+#endif
 }
 
 void Run::reset(char *line,char *token,System *system)
@@ -294,6 +311,14 @@ void Run::set_variable(char *line,char *token,System *system)
     volumeFluctuation=io_nextf(line)*ANGSTROM*ANGSTROM*ANGSTROM;
   } else if (strcmp(token,"pressure")==0) {
     pressure=io_nextf(line)*ATMOSPHERE;
+#ifdef REPLICAEXCHANGE
+  } else if (strcmp(token,"fnmrex")==0) {
+    if (fpREx) fclose(fpREx);
+    fpREx=NULL;
+    fnmREx=io_nexts(line);
+  } else if (strcmp(token,"freqrex")==0) {
+    freqREx=io_nexti(line);
+#endif
   } else {
     fatal(__FILE__,__LINE__,"Unrecognized token %s in run setvariable command\n",token);
   }
@@ -316,6 +341,15 @@ void shift_kernel(real *x,real dx)
   if (i==0) {
     x[0]+=dx;
   }
+}
+
+void Run::energy(char *line,char *token,System *system)
+{
+  dynamics_initialize(system);
+  system->potential->calc_force(0,system);
+  system->state->recv_energy();
+  print_nrg(0,system);
+  dynamics_finalize(system);
 }
 
 void Run::test(char *line,char *token,System *system)
@@ -426,6 +460,9 @@ void Run::dynamics_initialize(System *system)
     if (!fpXLMD) fpXLMD=xdrfile_open(fnmLMD.c_str(),"w");
   }
   if (!fpNRG) fpNRG=fpopen(fnmNRG.c_str(),"w");
+#ifdef REPLICAEXCHANGE
+  if (!fpREx && freqREx>0) fpREx=fpopen(fnmREx.c_str(),"w");
+#endif
 
   // Finish setting up MSLD
   system->msld->initialize(system); 
@@ -464,6 +501,7 @@ void Run::dynamics_finalize(System *system)
 {
   step0=step;
   write_checkpoint_file(fnmCPO.c_str(),system);
+  system->state->save_state(system);  
 }
 
 

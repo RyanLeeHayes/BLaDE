@@ -31,6 +31,9 @@ State::State(System *system) {
   // Lambda-Spatial-Theta buffers
   positionBuffer=(real*)calloc((2*nL+3*n),sizeof(real));
   cudaMalloc(&(positionBuffer_d),(2*nL+3*n)*sizeof(real));
+#ifdef REPLICAEXCHANGE
+  positionRExBuffer=(real*)calloc((2*nL+3*n),sizeof(real));
+#endif
   cudaMalloc(&(positionBackup_d),(2*nL+3*n)*sizeof(real));
   forceBuffer=(real*)calloc(rootFactor*(2*nL+3*n),sizeof(real));
   cudaMalloc(&(forceBuffer_d),rootFactor*(2*nL+3*n)*sizeof(real));
@@ -125,6 +128,9 @@ State::~State() {
   // Lambda-Spatial-Theta buffers
   if (positionBuffer) free(positionBuffer);
   if (positionBuffer_d) cudaFree(positionBuffer_d);
+#ifdef REPLICAEXCHANGE
+  if (positionRExBuffer) free(positionRExBuffer);
+#endif
   if (positionBackup_d) cudaFree(positionBackup_d);
   if (forceBuffer) free(forceBuffer);
   if (forceBuffer_d) cudaFree(forceBuffer_d);
@@ -174,6 +180,28 @@ void State::initialize(System *system)
   cudaMemset(forceBuffer_d,0,(nL+3*n)*sizeof(real));
   cudaMemcpy(invsqrtMassBuffer_d,invsqrtMassBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
   system->msld->calc_lambda_from_theta(0,system);
+}
+
+void State::save_state(System *system)
+{
+  int i,j;
+  int n=atomCount;
+  int nL=lambdaCount;
+
+  cudaMemcpy(positionBuffer,positionBuffer_d,(2*nL+3*n)*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(velocityBuffer,velocityBuffer_d,(nL+3*n)*sizeof(real),cudaMemcpyDeviceToHost);
+
+  for (i=0; i<atomCount; i++) {
+    for (j=0; j<3; j++) {
+       system->coordinates->particlePosition[i][j]=position[i][j];
+       system->coordinates->particleVelocity[i][j]=velocity[i][j];
+    }
+  }
+  system->coordinates->particleOrthBox=orthBox;
+  for (i=0; i<lambdaCount; i++) {
+    system->msld->theta[i]=theta[i];
+    system->msld->thetaVelocity[i]=thetaVelocity[i];
+  }
 }
 
 

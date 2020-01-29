@@ -59,6 +59,13 @@ class Run {
   std::map<std::string,int> termStringToInt;
   std::map<int,bool> calcTermFlag;
 
+#ifdef REPLICAEXCHANGE
+  std::string fnmREx;
+  FILE *fpREx;
+  int freqREx;
+  int replica;
+#endif
+
   cudaStream_t updateStream;
   cudaStream_t bondedStream;
   cudaStream_t biaspotStream;
@@ -87,6 +94,7 @@ class Run {
 
   void set_variable(char *line,char *token,System *system);
   void set_term(char *line,char *token,System *system);
+  void energy(char *line,char *token,System *system);
   void test(char *line,char *token,System *system);
   void dynamics(char *line,char *token,System *system);
 

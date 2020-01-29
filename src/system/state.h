@@ -47,6 +47,9 @@ class State {
   // Lambda-Spatial-Theta buffers
   real *positionBuffer;
   real *positionBuffer_d;
+#ifdef REPLICAEXCHANGE
+  real *positionRExBuffer; // For REx communication
+#endif
   real *positionBackup_d; // For NPT
   real *positionBuffer_omp;
   real *forceBuffer;
@@ -111,6 +114,7 @@ class State {
 
   // From system/state.cxx
   void initialize(System *system);
+  void save_state(System *system);
 
   struct LeapParms1* alloc_leapparms1(real dt,real gamma,real T);
   struct LeapParms2* alloc_leapparms2(real dt,real gamma,real T);

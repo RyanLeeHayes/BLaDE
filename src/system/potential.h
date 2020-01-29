@@ -174,6 +174,7 @@ class Potential {
   struct CmapPotential *softCmaps_d;
 
   std::map<TypeName8O,real(*)[4][4]> cmapTypeToPtr;
+  std::map<TypeName8O,real(*)[4][4]> cmapRestTypeToPtr;
 
   int nb14Count;
   std::vector<struct Nb14Potential> nb14s_tmp;

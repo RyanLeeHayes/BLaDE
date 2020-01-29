@@ -8,6 +8,8 @@
 #define USE_TEXTURE
 #endif
 
+// #define REPLICAEXCHANGE
+
 #define MAXLENGTHSTRING 1024
 
 // Units
@@ -78,6 +80,9 @@ typedef cufftDoubleComplex myCufftComplex;
 #define myCufftExecC2R cufftExecZ2D
 #define MYCUFFT_R2C CUFFT_D2Z
 #define MYCUFFT_C2R CUFFT_Z2D
+#ifdef REPLICAEXCHANGE
+#define MYMPI_REAL MPI_DOUBLE
+#endif
 #else
 typedef float real;
 typedef float4 real4;
@@ -89,6 +94,9 @@ typedef cufftComplex myCufftComplex;
 #define myCufftExecC2R cufftExecC2R
 #define MYCUFFT_R2C CUFFT_R2C
 #define MYCUFFT_C2R CUFFT_C2R
+#ifdef REPLICAEXCHANGE
+#define MYMPI_REAL MPI_FLOAT
+#endif
 #endif
 
 struct Int2 {

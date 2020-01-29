@@ -7,12 +7,24 @@
 
 #include "main/defines.h"
 
+#ifdef REPLICAEXCHANGE
+#include <mpi.h>
+#endif
+
 
 
 // Class constructors
 Variables::Variables()
 {
   setup_parse_variables();
+
+#ifdef REPLICAEXCHANGE
+  int rank;
+  char rankstring[10];
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  sprintf(rankstring,"%d",rank);
+  data["rexrank"]=rankstring;
+#endif
 }
 
 Variables::~Variables()

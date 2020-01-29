@@ -39,6 +39,9 @@ class Msld {
   int *siteBound;
   int *siteBound_d;
 
+  int *rest;
+  real restScaling;
+
   real gamma;
   real fnex;
 

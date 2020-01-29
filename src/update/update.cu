@@ -10,6 +10,7 @@
 #include "rng/rng_gpu.h"
 #include "holonomic/holonomic.h"
 #include "update/pressure.h"
+#include "update/rex.h"
 
 #include "main/real3.h"
 
@@ -233,6 +234,12 @@ void State::update(int step,System *system)
   if (system->run->freqNPT>0 && (system->run->step%system->run->freqNPT)==0) {
     pressure_coupling(system);
   }
+
+#ifdef REPLICAEXCHANGE
+  if (system->run->freqREx>0 && (system->run->step%system->run->freqREx)==0) {
+    replica_exchange(system);
+  }
+#endif
 
   cudaStreamWaitEvent(r->updateStream,r->forceComplete,0);
   if (system->id==0) {
