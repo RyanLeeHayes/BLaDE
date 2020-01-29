@@ -58,7 +58,7 @@ void replica_exchange(System *system)
       MPI_Sendrecv((real*)&s->orthBoxBackup,3,MYMPI_REAL,rankPartner,11,
         (real*)&s->orthBox,3,MYMPI_REAL,rankPartner,11,
         MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-      cudaMemcpy(s->positionBuffer_d,s->positionRExBuffer,
+      cudaMemcpy(s->positionBuffer_d,s->positionBuffer,
         n*sizeof(real),cudaMemcpyHostToDevice);
     }
     if (system->idCount>1) {
@@ -106,13 +106,15 @@ void replica_exchange(System *system)
         /*if (system->verbose>0) {
           fprintf(stdout,"Volume move accepted. New volume=%f\n",volumeNew);
         }*/
-        fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Accept, E %f %f %f %f %f %f\n",r->step,rank,r->replica,dW,E[0],E[1],E[2],E[3],E[4],E[5]);
+        // fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Accept, E %f %f %f %f %f %f\n",r->step,rank,r->replica,dW,E[0],E[1],E[2],E[3],E[4],E[5]);
+        fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Accept\n",r->step,rank,r->replica,dW);
         r->replica=newReplica;
       } else {
         /*if (system->verbose>0) {
           fprintf(stdout,"Volume move rejected. Old volume=%f\n",volumeOld);
         }*/
-        fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Reject, E %f %f %f %f %f %f\n",r->step,rank,r->replica,dW,E[0],E[1],E[2],E[3],E[4],E[5]);
+        // fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Reject, E %f %f %f %f %f %f\n",r->step,rank,r->replica,dW,E[0],E[1],E[2],E[3],E[4],E[5]);
+        fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Reject\n",r->step,rank,r->replica,dW);
         s->restore_position();
       }
     }

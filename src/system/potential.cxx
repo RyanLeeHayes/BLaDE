@@ -1362,6 +1362,11 @@ void Potential::calc_force(int step,System *system)
   if (system->run->freqNPT>0) {
     calcEnergy=(calcEnergy||(step%system->run->freqNPT==0));
   }
+#ifdef REPLICAEXCHANGE
+  if (system->run->freqREx>0) {
+    calcEnergy=(calcEnergy||(step%system->run->freqREx==0));
+  }
+#endif
   Run *r=system->run;
   State *s=system->state;
 
