@@ -630,7 +630,7 @@ void Msld::calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system)
   calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,s->lambdaForce_d,s->thetaForce_d,blockCount,lambdaSite_d,siteBound_d,fnex);
 }
 
-__global__ void getforce_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambdaForce,real *energy,int blockCount)
+__global__ void getforce_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambdaForce,real_e *energy,int blockCount)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   extern __shared__ real sEnergy[];
@@ -655,7 +655,7 @@ void Msld::getforce_fixedBias(System *system,bool calcEnergy)
   cudaStream_t stream=0;
   Run *r=system->run;
   State *s=system->state;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
   int shMem=0;
 
   if (r->calcTermFlag[eelambda]==false) return;
@@ -671,7 +671,7 @@ void Msld::getforce_fixedBias(System *system,bool calcEnergy)
   getforce_fixedBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,lambdaBias_d,s->lambdaForce_d,pEnergy,blockCount);
 }
 
-__global__ void getforce_variableBias_kernel(real *lambda,real *lambdaForce,real *energy,int variableBiasCount,struct VariableBias *variableBias)
+__global__ void getforce_variableBias_kernel(real *lambda,real *lambdaForce,real_e *energy,int variableBiasCount,struct VariableBias *variableBias)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct VariableBias vb;
@@ -717,7 +717,7 @@ void Msld::getforce_variableBias(System *system,bool calcEnergy)
   cudaStream_t stream=0;
   Run *r=system->run;
   State *s=system->state;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
   int shMem=0;
 
   if (r->calcTermFlag[eelambda]==false) return;
@@ -735,7 +735,7 @@ void Msld::getforce_variableBias(System *system,bool calcEnergy)
   }
 }
 
-__global__ void getforce_atomRestraints_kernel(real3 *position,real3 *force,real3 box,real *energy,int atomRestraintCount,int *atomRestraintBounds,int *atomRestraintIdx,real kRestraint)
+__global__ void getforce_atomRestraints_kernel(real3 *position,real3 *force,real3 box,real_e *energy,int atomRestraintCount,int *atomRestraintBounds,int *atomRestraintIdx,real kRestraint)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int bounds[2];
@@ -777,7 +777,7 @@ void Msld::getforce_atomRestraints(System *system,bool calcEnergy)
   cudaStream_t stream=0;
   Run *r=system->run;
   State *s=system->state;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
   int shMem=0;
 
   if (r->calcTermFlag[eebias]==false) return;
@@ -795,7 +795,7 @@ void Msld::getforce_atomRestraints(System *system,bool calcEnergy)
   }
 }
 
-__global__ void getforce_chargeRestraints_kernel(real *lambda,real *lambdaForce,real *energy,int blockCount,real kChargeRestraint,real *lambdaCharge)
+__global__ void getforce_chargeRestraints_kernel(real *lambda,real *lambdaForce,real_e *energy,int blockCount,real kChargeRestraint,real *lambdaCharge)
 {
   int i=threadIdx.x;
   int j;
@@ -831,7 +831,7 @@ __global__ void getforce_chargeRestraints_kernel(real *lambda,real *lambdaForce,
   if (threadIdx.x==0) {
     sEnergy[0]=netCharge;
     if (energy) {
-      atomicAdd(energy,0.5*kChargeRestraint*netCharge*netCharge);
+      atomicAdd(energy,(real_e)(0.5*kChargeRestraint*netCharge*netCharge));
     }
   }
   __syncthreads();
@@ -849,7 +849,7 @@ void Msld::getforce_chargeRestraints(System *system,bool calcEnergy)
   cudaStream_t stream=0;
   Run *r=system->run;
   State *s=system->state;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
   int shMem=0;
 
   if (r->calcTermFlag[eebias]==false) return;

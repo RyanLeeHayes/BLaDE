@@ -226,8 +226,9 @@ real3 real3_rotate(real3 *R,real3 in)
 
 
 
+template <typename real_type>
 __device__ static inline
-void real_sum_reduce(real input,real *shared,real *global)
+void real_sum_reduce(real input,real *shared,real_type *global)
 {
   real local=input;
   local+=__shfl_down_sync(0xFFFFFFFF,local,1);
@@ -252,12 +253,13 @@ void real_sum_reduce(real input,real *shared,real *global)
     if (blockDim.x>=1024) local+=__shfl_down_sync(0xFFFFFFFF,local,16);
   }
   if (threadIdx.x==0) {
-    atomicAdd(global,local);
+    atomicAdd(global,(real_type)local);
   }
 }
 
+template <typename real_type>
 __device__ static inline
-void real_sum_reduce(real input,real *global)
+void real_sum_reduce(real input,real_type *global)
 {
   real local=input;
   local+=__shfl_down_sync(0xFFFFFFFF,local,1);
@@ -267,7 +269,7 @@ void real_sum_reduce(real input,real *global)
   local+=__shfl_down_sync(0xFFFFFFFF,local,16);
   __syncthreads();
   if ((0x1F & threadIdx.x)==0) {
-    atomicAdd(global,local);
+    atomicAdd(global,(real_type)local);
   }
 }
 #endif

@@ -56,9 +56,9 @@ State::State(System *system) {
   } // OMP
 
   // Other buffers
-  energy=(real*)calloc(rootFactor*eeend,sizeof(real));
-  cudaMalloc(&(energy_d),rootFactor*eeend*sizeof(real));
-  cudaMalloc(&(energyBackup_d),eeend*sizeof(real));
+  energy=(real_e*)calloc(rootFactor*eeend,sizeof(real_e));
+  cudaMalloc(&(energy_d),rootFactor*eeend*sizeof(real_e));
+  cudaMalloc(&(energyBackup_d),eeend*sizeof(real_e));
 
   if (system->idCount>0) { // OMP
 #pragma omp barrier // OMP
@@ -71,7 +71,7 @@ State::State(System *system) {
     } else { // OMP
 #pragma omp barrier // everyone else's barrier // OMP
       orthBox_omp=(real3*)(system->message[0]); // OMP
-      energy_omp=(real*)(system->message[system->id]); // OMP
+      energy_omp=(real_e*)(system->message[system->id]); // OMP
     } // OMP
 #pragma omp barrier // OMP
   } // OMP
@@ -291,7 +291,7 @@ void State::recv_energy()
 {
   int i;
 
-  cudaMemcpy(energy,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(energy,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToHost);
 
   for (i=0; i<eepotential; i++) {
     energy[eepotential]+=energy[i];
@@ -304,7 +304,7 @@ void State::backup_position()
 {
   cudaMemcpy(positionBackup_d,positionBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
   cudaMemcpy(forceBackup_d,forceBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
-  cudaMemcpy(energyBackup_d,energy_d,eeend*sizeof(real),cudaMemcpyDeviceToDevice);
+  cudaMemcpy(energyBackup_d,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToDevice);
   orthBoxBackup=orthBox;
 }
 
@@ -312,7 +312,7 @@ void State::restore_position()
 {
   cudaMemcpy(positionBuffer_d,positionBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
   cudaMemcpy(forceBuffer_d,forceBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
-  cudaMemcpy(energy_d,energyBackup_d,eeend*sizeof(real),cudaMemcpyDeviceToDevice);
+  cudaMemcpy(energy_d,energyBackup_d,eeend*sizeof(real_e),cudaMemcpyDeviceToDevice);
   orthBox=orthBoxBackup;
 }
 
@@ -381,7 +381,7 @@ void State::gather_force(System *system,bool calcEnergy)
     // cudaMemcpyPeer(forceBuffer_omp,0,forceBuffer_d,system->id,N*sizeof(real)); // OMP
     cudaMemcpy(forceBuffer_omp,forceBuffer_d,N*sizeof(real),cudaMemcpyDefault); // OMP
     if (calcEnergy) { // OMP
-      cudaMemcpy(energy_omp,energy_d,eeend*sizeof(real),cudaMemcpyDefault); // OMP
+      cudaMemcpy(energy_omp,energy_d,eeend*sizeof(real_e),cudaMemcpyDefault); // OMP
     } // OMP
   } // OMP
 #pragma omp barrier // OMP

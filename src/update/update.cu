@@ -148,7 +148,7 @@ __global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
   }
 }
 
-__global__ void kinetic_energy_kernel(struct LeapState ls,real *energy)
+__global__ void kinetic_energy_kernel(struct LeapState ls,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real lEnergy=0;

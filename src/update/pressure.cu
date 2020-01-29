@@ -37,7 +37,7 @@ void pressure_coupling(System *system)
   State *s=system->state;
   Run *r=system->run;
   Potential *p=system->potential;
-  real energyOld, energyNew;
+  real_e energyOld, energyNew;
   real volumeOld, volumeNew;
   real scaleFactor;
   real N,kT,dW;

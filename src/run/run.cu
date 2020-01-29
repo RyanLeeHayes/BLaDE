@@ -359,7 +359,7 @@ void Run::test(char *line,char *token,System *system)
   real dx;
   int i,j,ij,s;
   int ij0,imax,jmax;
-  real F,E[2];
+  real_e F,E[2];
 
   // Initialize data structures
   dynamics_initialize(system);

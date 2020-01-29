@@ -120,7 +120,7 @@ __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,rea
 
 
 template <class PairPotential,bool useSoftCore>
-__global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
+__global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj;
@@ -217,7 +217,7 @@ void getforce_nb14(System *system,bool calcEnergy)
   Run *r=system->run;
   int N=p->nb14Count;
   int shMem=0;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
 
   if (r->calcTermFlag[eenb14]==false) return;
 
@@ -242,7 +242,7 @@ void getforce_nbex(System *system,bool calcEnergy)
   Run *r=system->run;
   int N=p->nbexCount;
   int shMem=0;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
 
   if (N==0) return;
 

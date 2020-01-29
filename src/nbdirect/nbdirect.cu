@@ -102,7 +102,7 @@ __global__ void getforce_nbdirect_kernel(
   real3 box,
   const real* __restrict__ lambda,
   real* __restrict__ lambdaForce,
-  real* __restrict__ energy)
+  real_e* __restrict__ energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -216,7 +216,6 @@ __global__ void getforce_nbdirect_kernel(
 
             // Geometry
             dr=real3_sub(xi,xjtmp);
-            // NOTE #warning "Unprotected sqrt"
             r=real3_mag(dr);
 
             if (r<cutoffs.rCut) {
@@ -378,7 +377,7 @@ __global__ void getforce_nbdirect_kernel(
   // Energy, if requested
   if (energy) {
     // Use of shared memory here causes error when getforce_nbrecip_gather is executed concurrently. Whatever CUDA...
-#warning "Using reduction without shared memory"
+    // #warning "Using reduction without shared memory"
     // real_sum_reduce(lEnergy,sEnergy,energy);
     real_sum_reduce(lEnergy,energy);
   }
@@ -398,12 +397,12 @@ void getforce_nbdirect(System *system,bool calcEnergy)
   int endBlock=d->blockCount[id+1];
   int N=endBlock-startBlock;
   int shMem=0;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
 
   if (r->calcTermFlag[eenbdirect]==false) return;
 
   if (calcEnergy) {
-    // shMem=BLNB*sizeof(real)/32;
+    // shMem=(1<<WARPSPERBLOCK)*sizeof(real);
     shMem=0;
     pEnergy=s->energy_d+eenbdirect;
   }
@@ -425,11 +424,12 @@ void getforce_nbdirect(System *system,bool calcEnergy)
   system->domdec->unpack_forces(system);
 }
 
-__global__ void getforce_nbdirect_reduce_kernel(int atomCount,int idCount,real *force)
+template <typename real_type>
+__global__ void getforce_nbdirect_reduce_kernel(int atomCount,int idCount,real_type *force)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int j;
-  real f=0;
+  real_type f=0;
 
   if (i<atomCount) {
     for (j=1; j<idCount; j++) {

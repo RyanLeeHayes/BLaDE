@@ -40,7 +40,7 @@ void upload_bonded_d(
 
 // getforce_bond_kernel<<<(N+BLBO-1)/BLBO,BLBO,0,p->bondedStream>>>(N,p->bonds,s->position_d,s->force_d,s->box,m->lambda_d,m->lambdaForce_d,NULL);
 template <bool soft>
-__global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softAlpha,real softExp,real *energy)
+__global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softAlpha,real softExp,real_e *energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -143,7 +143,7 @@ void getforce_bond(System *system,bool calcEnergy)
   real softExp=system->msld->softBondExponent;
   int N;
   int shMem=0;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
 
   if (r->calcTermFlag[eebond]==false) return;
 
@@ -162,7 +162,7 @@ void getforce_bond(System *system,bool calcEnergy)
 
 // getforce_angle_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->angles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
 template <bool soft>
-__global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angles,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softExp,real *energy)
+__global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angles,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softExp,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj,kk;
@@ -259,7 +259,7 @@ void getforce_angle(System *system,bool calcEnergy)
   real softExp=system->msld->softNotBondExponent;
   int N;
   int shMem=0;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
 
   if (r->calcTermFlag[eeangle]==false) return;
 
@@ -302,7 +302,7 @@ __device__ void function_torsion(ImprPotential ip,real phi,real *fphi,real *lE,b
 
 // getforce_dihe_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->dihes_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
 template <class TorsionPotential,bool soft>
-__global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsions,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softExp,real *energy)
+__global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsions,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softExp,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj,kk,ll;
@@ -419,7 +419,7 @@ void getforce_dihe(System *system,bool calcEnergy)
   real softExp=system->msld->softNotBondExponent;
   int N;
   int shMem=0;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
 
   if (r->calcTermFlag[eedihe]==false) return;
 
@@ -442,7 +442,7 @@ void getforce_impr(System *system,bool calcEnergy)
   real softExp=system->msld->softNotBondExponent;
   int N;
   int shMem=0;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
 
   if (r->calcTermFlag[eeimpr]==false) return;
 
@@ -461,7 +461,7 @@ void getforce_impr(System *system,bool calcEnergy)
 
 // getforce_cmap_kernel<<<(2*N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->cmaps_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
 template <bool soft>
-__global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softExp,real *energy)
+__global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real softExp,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj,kk,ll;
@@ -673,7 +673,7 @@ void getforce_cmap(System *system,bool calcEnergy)
   real softExp=system->msld->softNotBondExponent;
   int N;
   int shMem=0;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
 
   if (r->calcTermFlag[eecmap]==false) return;
 

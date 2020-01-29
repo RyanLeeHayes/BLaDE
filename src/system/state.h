@@ -58,10 +58,10 @@ class State {
   real *forceBuffer_omp;
 
   // Other buffers
-  real *energy;
-  real *energy_d;
-  real *energyBackup_d;
-  real *energy_omp;
+  real_e *energy;
+  real_e *energy_d;
+  real_e *energyBackup_d;
+  real_e *energy_omp;
 
   // Spatial-Theta buffers
   real *velocityBuffer;

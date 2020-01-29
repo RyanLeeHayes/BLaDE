@@ -1351,7 +1351,7 @@ void Potential::reset_force(System *system,bool calcEnergy)
 #warning "Also need to do something intelligent about localForce_d size here"
   cudaMemset(system->domdec->localForce_d,0,2*system->domdec->globalCount*sizeof(real3));
   if (calcEnergy) {
-    cudaMemset(system->state->energy_d,0,eeend*sizeof(real));
+    cudaMemset(system->state->energy_d,0,eeend*sizeof(real_e));
   }
 }
 

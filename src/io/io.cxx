@@ -310,7 +310,7 @@ void print_lmd(int step,System *system)
 void print_nrg(int step,System *system)
 {
   FILE *fp=system->run->fpNRG;
-  real *e=system->state->energy;
+  real_e *e=system->state->energy;
   int i;
 
   fprintf(fp,"%10d",step);

@@ -15,7 +15,7 @@
 
 
 // getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,p->bondedStream>>>(N,p->charge_d,prefactor,m->atomBlock_d,m->lambda_d,m->lambdaForce_d,pEnergy);
-__global__ void getforce_ewaldself_kernel(int atomCount,real *charge,real prefactor,int *atomBlock,real *lambda,real *lambdaForce,real *energy)
+__global__ void getforce_ewaldself_kernel(int atomCount,real *charge,real prefactor,int *atomBlock,real *lambda,real *lambdaForce,real_e *energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -60,7 +60,7 @@ void getforce_ewaldself(System *system,bool calcEnergy)
   Run *r=system->run;
   int N=p->atomCount;
   int shMem=0;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
   real prefactor=-system->run->betaEwald*(kELECTRIC/sqrt(M_PI));
 
   if (r->calcTermFlag[eenbrecipself]==false) return;
@@ -242,7 +242,7 @@ __global__ void getforce_ewald_gather_kernel(
   real3 box,
   real *lambda,
   real *lambdaForce,
-  real *energy)
+  real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real q;
@@ -419,9 +419,9 @@ __global__ void getforce_ewald_gather_kernel(
     } else {
       lEnergy=0;
     }
-#warning "Using reduction without shared memory"
-    // real_sum_reduce(lEnergy,sEnergy,energy);
-    real_sum_reduce(lEnergy,energy);
+    // note, had to use reduction without shared memory here for a while to avoid errors. That seems to have passed.
+    real_sum_reduce(lEnergy,sEnergy,energy);
+    // real_sum_reduce(lEnergy,energy);
   }
 }
 
@@ -433,7 +433,7 @@ void getforce_ewald(System *system,bool calcEnergy)
   Run *r=system->run;
   int N=p->atomCount;
   int shMem=0;
-  real *pEnergy=NULL;
+  real_e *pEnergy=NULL;
 
   if (r->calcTermFlag[eenbrecip]==false) return;
 

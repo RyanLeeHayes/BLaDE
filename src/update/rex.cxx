@@ -17,7 +17,7 @@ void replica_exchange(System *system)
   State *s=system->state;
   Run *r=system->run;
   Potential *p=system->potential;
-  real E[6]; // old master, new master, kT master, old slave, new slave, kT slave
+  real_e E[6]; // old master, new master, kT master, old slave, new slave, kT slave
   real dW;
   int accept, newReplica;
 
@@ -84,8 +84,8 @@ void replica_exchange(System *system)
       }*/
 
       E[2]=s->leapParms1->kT;
-      MPI_Sendrecv(E,3,MYMPI_REAL,rankPartner,12,
-        E+3,3,MYMPI_REAL,rankPartner,12,
+      MPI_Sendrecv(E,3,MYMPI_REAL_E,rankPartner,12,
+        E+3,3,MYMPI_REAL_E,rankPartner,12,
         MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 
       // Compare energy

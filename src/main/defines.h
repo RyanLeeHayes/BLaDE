@@ -69,6 +69,8 @@
 #define BLNB 256
 #define BLMS 256
 
+#define DOUBLE_E
+
 #ifdef DOUBLE
 typedef double real;
 typedef double4 real4;
@@ -96,6 +98,18 @@ typedef cufftComplex myCufftComplex;
 #define MYCUFFT_C2R CUFFT_C2R
 #ifdef REPLICAEXCHANGE
 #define MYMPI_REAL MPI_FLOAT
+#endif
+#endif
+
+#ifdef DOUBLE_E
+typedef double real_e;
+#ifdef REPLICAEXCHANGE
+#define MYMPI_REAL_E MPI_DOUBLE
+#endif
+#else
+typedef real real_e;
+#ifdef REPLICAEXCHANGE
+#define MYMPI_REAL_E MYMPI_REAL
 #endif
 #endif
 
