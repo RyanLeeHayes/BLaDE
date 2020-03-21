@@ -508,7 +508,8 @@ void Run::dynamics_finalize(System *system)
 
 void blade_init_run(System *system)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     if (system->run) {
       delete(system->run);
     }
@@ -519,7 +520,8 @@ void blade_init_run(System *system)
 
 void blade_dest_run(System *system)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     if (system->run) {
       delete(system->run);
     }
@@ -537,7 +539,8 @@ void blade_add_run_flags(System *system,
   int orderEwald,
   double shakeTolerance)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     system->run->gamma=gamma;
 
     system->run->betaEwald=betaEwald;
@@ -565,7 +568,8 @@ void blade_add_run_dynopts(System *system,
   double volumeFluctuation,
   double pressure)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     system->run->step=step; // current step
     system->run->step0=step0; // starting step
     system->run->nsteps=nsteps; // steps in next dynamics call

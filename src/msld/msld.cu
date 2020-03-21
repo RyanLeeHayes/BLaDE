@@ -354,13 +354,18 @@ bool Msld::check_restrained(int atom)
   return false;
 }
 
+#define NscMAX 3
 bool Msld::bonded_scaling(int *idx,int *siteBlock,int type,int Nat,int Nsc)
 {
   bool scale,soft;
   int i,j,k;
   int ab;
-  int block[Nsc+2]={0}; // First term is blockCount, last term is for error checking
+  int block[NscMAX+2]={0}; // First term is blockCount, last term is for error checking
   block[0]=blockCount;
+
+  if (Nsc>NscMAX) {
+    fatal(__FILE__,__LINE__,"Nsc=%d greater than NscMAX=%d\n",Nsc,NscMAX);
+  }
 
   // Sort into a descending list with no duplicates.
   scale=scaleTerms[type];
@@ -403,8 +408,12 @@ void Msld::nonbonded_scaling(int *idx,int *siteBlock,int Nat)
   int i,j;
   int ab;
   int Nsc=Nat;
-  int block[Nsc+2]={0}; // First term is blockCount, last term is for error checking
+  int block[NscMAX+2]={0}; // First term is blockCount, last term is for error checking
   block[0]=blockCount;
+
+  if (Nsc>NscMAX) {
+    fatal(__FILE__,__LINE__,"Nsc=%d greater than NscMAX=%d\n",Nsc,NscMAX);
+  }
 
   // Sort into a descending list with no duplicates.
   for (i=1; i<Nsc+2; i++) {
@@ -871,7 +880,8 @@ void Msld::getforce_chargeRestraints(System *system,bool calcEnergy)
 
 void blade_init_msld(System *system,int nblocks)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     if (system->msld) {
       delete(system->msld);
     }
@@ -899,7 +909,8 @@ void blade_init_msld(System *system,int nblocks)
 
 void blade_dest_msld(System *system)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     if (system->msld) {
       delete(system->msld);
     }
@@ -910,7 +921,8 @@ void blade_dest_msld(System *system)
 
 void blade_add_msld_atomassignment(System *system,int atomIdx,int blockIdx)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     system->msld->atomBlock[atomIdx-1]=blockIdx-1;
     system++;
   }
@@ -919,7 +931,8 @@ void blade_add_msld_atomassignment(System *system,int atomIdx,int blockIdx)
 void blade_add_msld_initialconditions(System *system,int blockIdx,int siteIdx,double theta0,double thetaVelocity,double thetaMass,double fixBias,double blockCharge)
 {
   blockIdx-=1;
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     system->msld->lambdaSite[blockIdx]=siteIdx-1;
     system->msld->theta[blockIdx]=theta0;
     system->msld->thetaVelocity[blockIdx]=thetaVelocity;
@@ -932,7 +945,8 @@ void blade_add_msld_initialconditions(System *system,int blockIdx,int siteIdx,do
 
 void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int scaleAngle,int scaleDihe,int scaleImpr,int scaleCmap)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     system->msld->scaleTerms[0]=scaleBond;
     system->msld->scaleTerms[1]=scaleUrey;
     system->msld->scaleTerms[2]=scaleAngle;
@@ -945,7 +959,8 @@ void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int s
 
 void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     system->msld->gamma=gamma;
     system->msld->fnex=fnex;
     system->msld->useSoftCore=useSoftCore;
@@ -962,7 +977,8 @@ void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCor
 
 void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     struct VariableBias vb;
     vb.i=i-1;
     vb.j=j-1;
@@ -980,7 +996,8 @@ void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,
 
 void blade_add_msld_softbond(System *system,int i,int j)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     Int2 i2;
     i2.i[0]=i;
     i2.i[1]=j;

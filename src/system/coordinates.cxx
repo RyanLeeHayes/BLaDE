@@ -225,7 +225,8 @@ void Coordinates::parse_velocity(char *line,char *token,System *system)
 
 void blade_init_coordinates(System *system,int n)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     if (system->coordinates) {
       delete(system->coordinates);
     }
@@ -236,7 +237,8 @@ void blade_init_coordinates(System *system,int n)
 
 void blade_dest_coordinates(System *system)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     if (system->coordinates) {
       delete(system->coordinates);
     }
@@ -247,7 +249,8 @@ void blade_dest_coordinates(System *system)
 
 void blade_add_coordinates_position(System *system,int i,double x,double y,double z)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     system->coordinates->particlePosition[i-1][0]=x;
     system->coordinates->particlePosition[i-1][1]=y;
     system->coordinates->particlePosition[i-1][2]=z;
@@ -257,7 +260,8 @@ void blade_add_coordinates_position(System *system,int i,double x,double y,doubl
 
 void blade_add_coordinates_velocity(System *system,int i,double vx,double vy,double vz)
 {
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     system->coordinates->particleVelocity[i-1][0]=vx;
     system->coordinates->particleVelocity[i-1][1]=vy;
     system->coordinates->particleVelocity[i-1][2]=vz;
@@ -268,7 +272,8 @@ void blade_add_coordinates_velocity(System *system,int i,double vx,double vy,dou
 void blade_add_coordinates_box(System *system,double ax,double ay,double az,double bx,double by,double bz,double cx,double cy,double cz)
 {
   int i,j;
-  for (int id=0; id<system->idCount; id++) {
+  int idCount=system->idCount;
+  for (int id=0; id<idCount; id++) {
     system->coordinates->particleBox[0][0]=ax;
     system->coordinates->particleBox[0][1]=ay;
     system->coordinates->particleBox[0][2]=az;
