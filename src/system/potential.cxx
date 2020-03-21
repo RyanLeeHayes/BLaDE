@@ -988,7 +988,7 @@ void Potential::initialize(System *system)
       Meven[l]=l*Modd[l]/(i+1)+(i+2-l)*Modd[i+2-l]/(i+1);
     }
   }
-  real invbx2[gridDimPME[0]];
+  real *invbx2=(real*)calloc(gridDimPME[0],sizeof(real));
   for (i=0; i<gridDimPME[0]; i++) {
     myCufftComplex bx;
     bx.x=0;
@@ -999,7 +999,7 @@ void Potential::initialize(System *system)
     }
     invbx2[i]=1.0/(bx.x*bx.x+bx.y*bx.y);
   }
-  real invby2[gridDimPME[1]];
+  real *invby2=(real*)calloc(gridDimPME[1],sizeof(real));
   for (i=0; i<gridDimPME[1]; i++) {
     myCufftComplex by;
     by.x=0;
@@ -1010,7 +1010,7 @@ void Potential::initialize(System *system)
     }
     invby2[i]=1.0/(by.x*by.x+by.y*by.y);
   }
-  real invbz2[gridDimPME[2]/2+1];
+  real *invbz2=(real*)calloc(gridDimPME[2]/2+1,sizeof(real));
   for (i=0; i<(gridDimPME[2]/2+1); i++) {
     myCufftComplex bz;
     bz.x=0;
@@ -1028,6 +1028,9 @@ void Potential::initialize(System *system)
       }
     }
   }
+  free(invbx2);
+  free(invby2);
+  free(invbz2);
   cudaMemcpy(bGridPME_d,bGridPME,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real),cudaMemcpyHostToDevice);
 
   cufftCreate(&planFFTPME);

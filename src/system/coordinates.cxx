@@ -23,6 +23,7 @@ Coordinates::Coordinates(int n,System *system) {
 }
 
 Coordinates::~Coordinates() {
+  if (particleBox) free(particleBox);
   if (particlePosition) free(particlePosition);
   if (particleVelocity) free(particleVelocity);
 }

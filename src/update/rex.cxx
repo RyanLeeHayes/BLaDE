@@ -19,7 +19,7 @@ void replica_exchange(System *system)
   Potential *p=system->potential;
   real_e E[6]; // old master, new master, kT master, old slave, new slave, kT slave
   real dW;
-  int accept, newReplica;
+  int n, accept, newReplica;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &rankCount);
@@ -31,7 +31,6 @@ void replica_exchange(System *system)
 
   // Only do the exchange if there is a partner
   if (rankPartner>=0 && rankPartner<rankCount) {
-    int n=2*s->lambdaCount+3*s->atomCount;
     if (system->id==0) {
       // Get old energy
       s->recv_energy();
@@ -49,6 +48,7 @@ void replica_exchange(System *system)
 
       // Swap systems
       // Both positions
+      n=2*s->lambdaCount+3*s->atomCount;
       cudaMemcpy(s->positionRExBuffer,s->positionBuffer_d,
         n*sizeof(real),cudaMemcpyDeviceToHost);
       MPI_Sendrecv(s->positionRExBuffer,n,MYMPI_REAL,rankPartner,10,
@@ -75,14 +75,6 @@ void replica_exchange(System *system)
       s->recv_energy();
       E[1]=s->energy[eepotential];
 
-      // and print it
-      /*if (system->verbose>0) {
-        for (int i=0; i<eeend; i++) {
-          fprintf(stdout," %12.4f",s->energy[i]);
-        }
-        fprintf(stdout,"\n");
-      }*/
-
       E[2]=s->leapParms1->kT;
       MPI_Sendrecv(E,3,MYMPI_REAL_E,rankPartner,12,
         E+3,3,MYMPI_REAL_E,rankPartner,12,
@@ -90,9 +82,6 @@ void replica_exchange(System *system)
 
       // Compare energy
       dW=(E[1]-E[0])/E[2]+(E[4]-E[3])/E[5];
-      /*if (system->verbose>0) {
-        fprintf(stdout,"dW= %f, (Boltzman Factor Exponent for Exchange)\n",dW);
-      }*/
       if (localMaster) {
         accept=(system->rngCPU->rand_uniform()<exp(-dW));
         MPI_Send(&accept,1,MPI_INT,rankPartner,13,MPI_COMM_WORLD);
@@ -100,27 +89,36 @@ void replica_exchange(System *system)
         MPI_Recv(&accept,1,MPI_INT,rankPartner,13,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
       }
       if (accept) { // accept move
+        // swap replica indices
         MPI_Sendrecv(&r->replica,1,MPI_INT,rankPartner,14,
           &newReplica,1,MPI_INT,rankPartner,14,
           MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        /*if (system->verbose>0) {
-          fprintf(stdout,"Volume move accepted. New volume=%f\n",volumeNew);
-        }*/
-        // fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Accept, E %f %f %f %f %f %f\n",r->step,rank,r->replica,dW,E[0],E[1],E[2],E[3],E[4],E[5]);
         fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Accept\n",r->step,rank,r->replica,dW);
         r->replica=newReplica;
+        // Swap velocities
+        n=s->lambdaCount+3*s->atomCount;
+        cudaMemcpy(s->positionRExBuffer,s->velocityBuffer_d,
+          n*sizeof(real),cudaMemcpyDeviceToHost);
+        MPI_Sendrecv(s->positionRExBuffer,n,MYMPI_REAL,rankPartner,15,
+          s->velocityBuffer,n,MYMPI_REAL,rankPartner,15,
+          MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        cudaMemcpy(s->velocityBuffer_d,s->velocityBuffer,
+          n*sizeof(real),cudaMemcpyHostToDevice);
       } else {
-        /*if (system->verbose>0) {
-          fprintf(stdout,"Volume move rejected. Old volume=%f\n",volumeOld);
-        }*/
-        // fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Reject, E %f %f %f %f %f %f\n",r->step,rank,r->replica,dW,E[0],E[1],E[2],E[3],E[4],E[5]);
+        // maintain replica indices
         fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Reject\n",r->step,rank,r->replica,dW);
+        // Restore positions
         s->restore_position();
       }
     }
     if (system->idCount>1) {
+      s->broadcast_position(system);
       system->state->broadcast_box(system);
     }
+    // Technically only need to do broadcasts and update domdec if we reject the
+    // swap, but that's typically more common anyways. Saves having to
+    // communicate between OpenMP threads since only master OpenMP thread knows.
+    system->domdec->update_domdec(system,true);
   }
 
   fprintf(r->fpREx,"%2d\n",r->replica);
