@@ -135,6 +135,8 @@ class State {
   void broadcast_box(System *system);
   void gather_force(System *system,bool calcEnergy);
 
+  void prettify_position(System *system);
+
   // From update/update.cu
   void update(int step,System *system);
 };

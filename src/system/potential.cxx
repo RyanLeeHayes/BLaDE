@@ -114,6 +114,8 @@ Potential::Potential() {
   branch3ConsCount=0;
   branch3Cons=NULL;
   branch3Cons_d=NULL;
+
+  prettifyPlan=NULL;
 }
 
 Potential::~Potential()
@@ -192,6 +194,8 @@ Potential::~Potential()
 
   if (planFFTPME) cufftDestroy(planFFTPME);
   if (planIFFTPME) cufftDestroy(planIFFTPME);
+
+  if (prettifyPlan) free(prettifyPlan);
 }
 
 
@@ -1346,6 +1350,35 @@ void Potential::initialize(System *system)
     branch3Cons[i]=branch3Cons_tmp[i];
   }
   cudaMemcpy(branch3Cons_d,branch3Cons,branch3ConsCount*sizeof(struct Branch3Cons),cudaMemcpyHostToDevice);
+
+  // Cleaning up output coordinates
+  prettifyPlan=(int(*)[2])malloc(atomCount*sizeof(int[2]));
+  std::set<int> prettifyFound, prettifyMissing;
+  prettifyFound.clear();
+  prettifyMissing.clear();
+  for (i=0; i<atomCount; i++) {
+    prettifyMissing.insert(i);
+  }
+  for (i=0; i<atomCount; i++) {
+    if (i==prettifyFound.size()) { // Get an element from prettifyMissing
+      k=-1;
+      j=*prettifyMissing.begin();
+      prettifyPlan[prettifyFound.size()][0]=j;
+      prettifyPlan[prettifyFound.size()][1]=k;
+      prettifyMissing.erase(j);
+      prettifyFound.insert(j);
+    }
+    k=prettifyPlan[i][0];
+    for (std::set<int>::iterator ii=bondExcl[k].begin(); ii!=bondExcl[k].end(); ii++) { 
+      j=*ii;
+      if (prettifyMissing.count(j)==1) {
+        prettifyPlan[prettifyFound.size()][0]=j;
+        prettifyPlan[prettifyFound.size()][1]=k;
+        prettifyMissing.erase(j);
+        prettifyFound.insert(j);
+      }
+    }
+  }
 }
 
 void Potential::reset_force(System *system,bool calcEnergy)

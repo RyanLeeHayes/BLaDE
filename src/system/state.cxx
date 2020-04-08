@@ -387,3 +387,27 @@ void State::gather_force(System *system,bool calcEnergy)
 #pragma omp barrier // OMP
   // nvtxRangePop();
 }
+
+void State::prettify_position(System *system)
+{
+  int i,j,k;
+  real3 pos, ref;
+  if (system->run->prettyXTC) {
+    for (i=0; i<atomCount; i++) {
+      j=system->potential->prettifyPlan[i][0];
+      k=system->potential->prettifyPlan[i][1];
+      if (k<0) { // Put it in the box
+        ref.x=0;
+        ref.y=0;
+        ref.z=0;
+      } else { // Put it next to particle k
+        ref=((real3*)position)[k];
+      }
+      pos=((real3*)position)[j];
+      pos.x+=orthBox.x*floor((ref.x-pos.x)/orthBox.x+((real)0.5));
+      pos.y+=orthBox.y*floor((ref.y-pos.y)/orthBox.y+((real)0.5));
+      pos.z+=orthBox.z*floor((ref.z-pos.z)/orthBox.z+((real)0.5));
+      ((real3*)position)[j]=pos;
+    }
+  }
+}

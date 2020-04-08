@@ -41,6 +41,7 @@ Run::Run(System *system)
   freqLMD=10;
   freqNRG=10;
   hrLMD=true;
+  prettyXTC=false;
 // Nonbonded options
   betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
@@ -284,6 +285,8 @@ void Run::set_variable(char *line,char *token,System *system)
     freqNRG=io_nexti(line);
   } else if (strcmp(token,"hrlmd")==0) {
     hrLMD=io_nextb(line);
+  } else if (strcmp(token,"prettyxtc")==0) {
+    prettyXTC=io_nextb(line);
   } else if (strcmp(token,"T")==0) {
     T=io_nextf(line);
   } else if (strcmp(token,"gamma")==0) {

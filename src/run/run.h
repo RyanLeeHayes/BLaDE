@@ -36,6 +36,7 @@ class Run {
   int freqLMD;
   int freqNRG;
   bool hrLMD;
+  bool prettyXTC;
 
   long int step; // current step
   long int step0; // starting step

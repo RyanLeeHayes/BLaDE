@@ -325,6 +325,7 @@ void print_dynamics_output(int step,System *system)
   if (system->id==0) {
     if (step % system->run->freqXTC == 0) {
       system->state->recv_position();
+      system->state->prettify_position(system);
       print_xtc(step,system);
     }
     if (step % system->run->freqLMD == 0) {

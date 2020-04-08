@@ -245,6 +245,8 @@ class Potential {
   struct Branch3Cons *branch3Cons;
   struct Branch3Cons *branch3Cons_d;
 
+  int (*prettifyPlan)[2];
+
   Potential();
   ~Potential();
 
