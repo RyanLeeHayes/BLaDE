@@ -260,8 +260,8 @@ void cmap_cubic_spline_setup(int ngrid,real *y,real *dy)
   offDiag[ngrid-1]=1;
 
   for (i=0; i<ngrid; i++) {
-    im1=(i-1)%ngrid;
-    ip1=(i+1)%ngrid;
+    im1=(i+ngrid-1)%ngrid;
+    ip1=(i+ngrid+1)%ngrid;
     dy[i]=3*(y[ip1]-y[im1]);
   }
 

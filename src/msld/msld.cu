@@ -999,8 +999,8 @@ void blade_add_msld_softbond(System *system,int i,int j)
   int idCount=system->idCount;
   for (int id=0; id<idCount; id++) {
     Int2 i2;
-    i2.i[0]=i;
-    i2.i[1]=j;
+    i2.i[0]=i-1;
+    i2.i[1]=j-1;
     system->msld->softBonds.emplace_back(i2);
     system++;
   }
