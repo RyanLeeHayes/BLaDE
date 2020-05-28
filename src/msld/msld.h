@@ -23,7 +23,7 @@ class Msld {
   int *atomBlock;
   int *lambdaSite;
   real *lambdaBias;
-  real *theta;
+  real_x *theta;
   real *thetaVelocity;
   real *thetaMass;
   real *lambdaCharge;

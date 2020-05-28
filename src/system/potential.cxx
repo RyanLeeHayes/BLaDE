@@ -1383,9 +1383,9 @@ void Potential::initialize(System *system)
 
 void Potential::reset_force(System *system,bool calcEnergy)
 {
-  cudaMemset(system->state->forceBuffer_d,0,(2*system->state->lambdaCount+3*system->state->atomCount)*sizeof(real));
+  cudaMemset(system->state->forceBuffer_d,0,(2*system->state->lambdaCount+3*system->state->atomCount)*sizeof(real_f));
 #warning "Also need to do something intelligent about localForce_d size here"
-  cudaMemset(system->domdec->localForce_d,0,2*system->domdec->globalCount*sizeof(real3));
+  cudaMemset(system->domdec->localForce_d,0,2*system->domdec->globalCount*sizeof(real3_f));
   if (calcEnergy) {
     cudaMemset(system->state->energy_d,0,eeend*sizeof(real_e));
   }
@@ -1406,6 +1406,7 @@ void Potential::calc_force(int step,System *system)
   Run *r=system->run;
   State *s=system->state;
 
+  s->set_fd(system);
   reset_force(system,calcEnergy);
 
   cudaEventRecord(r->forceBegin,r->updateStream);

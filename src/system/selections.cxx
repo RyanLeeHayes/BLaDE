@@ -125,7 +125,7 @@ Selection Selections::parse_selection_string(char *line,Structure *structure)
       s1.boolSelection[i]=(structure->atomList[i].segName==segid);
     }
   } else if (strcmp(token,"resid")==0) {
-    int resid=io_nexti(line);
+    std::string resid=io_nexts(line);
     for (i=0; i<N; i++) {
       s1.boolSelection[i]=(structure->atomList[i].resIdx==resid);
     }
@@ -133,7 +133,8 @@ Selection Selections::parse_selection_string(char *line,Structure *structure)
     int resid1=io_nexti(line);
     int resid2=io_nexti(line);
     for (i=0; i<N; i++) {
-      int resid=structure->atomList[i].resIdx;
+      int resid;
+      sscanf(structure->atomList[i].resIdx.c_str(),"%d",&resid);
       s1.boolSelection[i]=(resid>=resid1 && resid<=resid2);
     }
   } else if (strcmp(token,"resname")==0) {
@@ -157,7 +158,7 @@ Selection Selections::parse_selection_string(char *line,Structure *structure)
     }
   } else if (strcmp(token,"atom")==0) {
     std::string segid=io_nexts(line);
-    int resid=io_nexti(line);
+    std::string resid=io_nexts(line);
     std::string atomname=io_nexts(line);
     for (i=0; i<N; i++) {
       s1.boolSelection[i]=(structure->atomList[i].segName==segid &&

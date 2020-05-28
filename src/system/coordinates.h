@@ -14,7 +14,7 @@ class System;
 
 struct AtomCoordinates {
   std::string segName;
-  int resIdx;
+  std::string resIdx;
   std::string atomName;
 };
 bool operator<(const struct AtomCoordinates& a,const struct AtomCoordinates& b);
@@ -28,9 +28,9 @@ class Coordinates {
   std::map<struct AtomCoordinates,Real3> fileData;
 
   int atomCount;
-  real (*particleBox)[3]; // [3][3]
-  real3 particleOrthBox;
-  real (*particlePosition)[3];
+  real_x (*particleBox)[3]; // [3][3]
+  real3_x particleOrthBox;
+  real_x (*particlePosition)[3];
   real (*particleVelocity)[3];
 
   Coordinates(int n,System *system);
@@ -47,6 +47,7 @@ class Coordinates {
   void dump(char *line,char *token,System *system);
 
   void file_pdb(FILE *fp,System *system);
+  void file_crd(FILE *fp,System *system);
 };
 
 void parse_coordinates(char *line,System *system);

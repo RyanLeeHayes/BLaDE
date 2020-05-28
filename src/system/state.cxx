@@ -29,15 +29,20 @@ State::State(System *system) {
   // Buffers for transfer and reduction
 
   // Lambda-Spatial-Theta buffers
-  positionBuffer=(real*)calloc((2*nL+3*n),sizeof(real));
-  cudaMalloc(&(positionBuffer_d),(2*nL+3*n)*sizeof(real));
+  positionBuffer=(real_x*)calloc((2*nL+3*n),sizeof(real_x));
+  cudaMalloc(&(positionBuffer_d),(2*nL+3*n)*sizeof(real_x));
+  if (sizeof(real)==sizeof(real_x)) {
+    positionBuffer_fd=(real*)positionBuffer_d;
+  } else {
+    cudaMalloc(&(positionBuffer_fd),(2*nL+3*n)*sizeof(real));
+  }
 #ifdef REPLICAEXCHANGE
-  positionRExBuffer=(real*)calloc((2*nL+3*n),sizeof(real));
+  positionRExBuffer=(real*)calloc((2*nL+3*n),sizeof(real_x));
 #endif
-  cudaMalloc(&(positionBackup_d),(2*nL+3*n)*sizeof(real));
-  forceBuffer=(real*)calloc(rootFactor*(2*nL+3*n),sizeof(real));
-  cudaMalloc(&(forceBuffer_d),rootFactor*(2*nL+3*n)*sizeof(real));
-  cudaMalloc(&(forceBackup_d),(2*nL+3*n)*sizeof(real));
+  cudaMalloc(&(positionBackup_d),(2*nL+3*n)*sizeof(real_x));
+  forceBuffer=(real_f*)calloc(rootFactor*(2*nL+3*n),sizeof(real_f));
+  cudaMalloc(&(forceBuffer_d),rootFactor*(2*nL+3*n)*sizeof(real_f));
+  cudaMalloc(&(forceBackup_d),(2*nL+3*n)*sizeof(real_f));
 
   if (system->idCount>0) { // OMP
 #pragma omp barrier // OMP
@@ -49,8 +54,8 @@ State::State(System *system) {
 #pragma omp barrier // master barrier // OMP
     } else { // OMP
 #pragma omp barrier // everyone else's barrier // OMP
-      positionBuffer_omp=(real*)(system->message[0]); // OMP
-      forceBuffer_omp=(real*)(system->message[system->id]); // OMP
+      positionBuffer_omp=(real_x*)(system->message[0]); // OMP
+      forceBuffer_omp=(real_f*)(system->message[system->id]); // OMP
     } // OMP
 #pragma omp barrier // OMP
   } // OMP
@@ -70,7 +75,7 @@ State::State(System *system) {
 #pragma omp barrier // master barrier // OMP
     } else { // OMP
 #pragma omp barrier // everyone else's barrier // OMP
-      orthBox_omp=(real3*)(system->message[0]); // OMP
+      orthBox_omp=(real3_x*)(system->message[0]); // OMP
       energy_omp=(real_e*)(system->message[system->id]); // OMP
     } // OMP
 #pragma omp barrier // OMP
@@ -85,7 +90,7 @@ State::State(System *system) {
   // Constraint stuff
   positionCons_d=NULL;
   if (system->structure->shakeHbond) {
-    cudaMalloc(&(positionCons_d),(nL+3*n)*sizeof(real));
+    cudaMalloc(&(positionCons_d),(nL+3*n)*sizeof(real_x));
   }
 
   // The box
@@ -97,18 +102,21 @@ State::State(System *system) {
   // Labels (do not free)
   lambda=positionBuffer;
   lambda_d=positionBuffer_d;
-  position=(real(*)[3])(positionBuffer+nL);
-  position_d=(real(*)[3])(positionBuffer_d+nL);
+  lambda_fd=positionBuffer_fd;
+  position=(real_x(*)[3])(positionBuffer+nL);
+  position_d=(real_x(*)[3])(positionBuffer_d+nL);
+  position_fd=(real(*)[3])(positionBuffer_fd+nL);
   theta=positionBuffer+nL+3*n;
   theta_d=positionBuffer_d+nL+3*n;
+  theta_fd=positionBuffer_fd+nL+3*n;
   velocity=(real(*)[3])velocityBuffer;
   velocity_d=(real(*)[3])velocityBuffer_d;
   thetaVelocity=velocityBuffer+3*n;
   thetaVelocity_d=velocityBuffer_d+3*n;
   lambdaForce=forceBuffer;
   lambdaForce_d=forceBuffer_d;
-  force=(real(*)[3])(forceBuffer+nL);
-  force_d=(real(*)[3])(forceBuffer_d+nL);
+  force=(real_f(*)[3])(forceBuffer+nL);
+  force_d=(real_f(*)[3])(forceBuffer_d+nL);
   thetaForce=forceBuffer+nL+3*n;
   thetaForce_d=forceBuffer_d+nL+3*n;
   invsqrtMass=(real(*)[3])invsqrtMassBuffer;
@@ -121,13 +129,14 @@ State::State(System *system) {
   leapParms2=alloc_leapparms2(system->run->dt,system->run->gamma,system->run->T);
   lambdaLeapParms1=alloc_leapparms1(system->run->dt,system->msld->gamma,system->run->T);
   lambdaLeapParms2=alloc_leapparms2(system->run->dt,system->msld->gamma,system->run->T);
-  leapState=alloc_leapstate(3*atomCount,lambdaCount,(real*)position_d,velocityBuffer_d,(real*)force_d,invsqrtMassBuffer_d);
+  leapState=alloc_leapstate(3*atomCount,lambdaCount,(real_x*)position_d,velocityBuffer_d,(real_f*)force_d,invsqrtMassBuffer_d);
 }
 
 State::~State() {
   // Lambda-Spatial-Theta buffers
   if (positionBuffer) free(positionBuffer);
   if (positionBuffer_d) cudaFree(positionBuffer_d);
+  if ((void*)positionBuffer_fd!=(void*)positionBuffer_d) cudaFree(positionBuffer_fd);
 #ifdef REPLICAEXCHANGE
   if (positionRExBuffer) free(positionRExBuffer);
 #endif
@@ -175,9 +184,9 @@ void State::initialize(System *system)
     thetaInvsqrtMass[i]=1/sqrt(system->msld->thetaMass[i]);
   }
 
-  cudaMemcpy(positionBuffer_d,positionBuffer,(2*nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
+  cudaMemcpy(positionBuffer_d,positionBuffer,(2*nL+3*n)*sizeof(real_x),cudaMemcpyHostToDevice);
   cudaMemcpy(velocityBuffer_d,velocityBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
-  cudaMemset(forceBuffer_d,0,(nL+3*n)*sizeof(real));
+  cudaMemset(forceBuffer_d,0,(nL+3*n)*sizeof(real_f));
   cudaMemcpy(invsqrtMassBuffer_d,invsqrtMassBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
   system->msld->calc_lambda_from_theta(0,system);
 }
@@ -188,7 +197,7 @@ void State::save_state(System *system)
   int n=atomCount;
   int nL=lambdaCount;
 
-  cudaMemcpy(positionBuffer,positionBuffer_d,(2*nL+3*n)*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(positionBuffer,positionBuffer_d,(2*nL+3*n)*sizeof(real_x),cudaMemcpyDeviceToHost);
   cudaMemcpy(velocityBuffer,velocityBuffer_d,(nL+3*n)*sizeof(real),cudaMemcpyDeviceToHost);
 
   for (i=0; i<atomCount; i++) {
@@ -238,7 +247,7 @@ struct LeapParms2* State::alloc_leapparms2(real dt,real gamma,real T)
   return lp;
 }
 
-struct LeapState* State::alloc_leapstate(int N1,int N2,real *x,real *v,real *f,real *ism)
+struct LeapState* State::alloc_leapstate(int N1,int N2,real_x *x,real *v,real_f *f,real *ism)
 {
   struct LeapState *ls;
 
@@ -263,28 +272,28 @@ void State::free_leapstate(struct LeapState* ls)
 
 void State::recv_state()
 {
-  cudaMemcpy(theta,theta_d,lambdaCount*sizeof(real),cudaMemcpyDeviceToHost);
-  cudaMemcpy(position,position_d,3*atomCount*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(theta,theta_d,lambdaCount*sizeof(real_x),cudaMemcpyDeviceToHost);
+  cudaMemcpy(position,position_d,3*atomCount*sizeof(real_x),cudaMemcpyDeviceToHost);
   cudaMemcpy(thetaVelocity,thetaVelocity_d,lambdaCount*sizeof(real),cudaMemcpyDeviceToHost);
   cudaMemcpy(velocity,velocity_d,3*atomCount*sizeof(real),cudaMemcpyDeviceToHost);
 }
 
 void State::send_state()
 {
-  cudaMemcpy(theta_d,theta,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
-  cudaMemcpy(position_d,position,3*atomCount*sizeof(real),cudaMemcpyHostToDevice);
+  cudaMemcpy(theta_d,theta,lambdaCount*sizeof(real_x),cudaMemcpyHostToDevice);
+  cudaMemcpy(position_d,position,3*atomCount*sizeof(real_x),cudaMemcpyHostToDevice);
   cudaMemcpy(thetaVelocity_d,thetaVelocity,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
   cudaMemcpy(velocity_d,velocity,3*atomCount*sizeof(real),cudaMemcpyHostToDevice);
 }
 
 void State::recv_position()
 {
-  cudaMemcpy(position,position_d,3*atomCount*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(position,position_d,3*atomCount*sizeof(real_x),cudaMemcpyDeviceToHost);
 }
 
 void State::recv_lambda()
 {
-  cudaMemcpy(lambda,lambda_d,lambdaCount*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(lambda,lambda_d,lambdaCount*sizeof(real_x),cudaMemcpyDeviceToHost);
 }
 
 void State::recv_energy()
@@ -302,16 +311,16 @@ void State::recv_energy()
 
 void State::backup_position()
 {
-  cudaMemcpy(positionBackup_d,positionBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
-  cudaMemcpy(forceBackup_d,forceBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
+  cudaMemcpy(positionBackup_d,positionBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real_x),cudaMemcpyDeviceToDevice);
+  cudaMemcpy(forceBackup_d,forceBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real_f),cudaMemcpyDeviceToDevice);
   cudaMemcpy(energyBackup_d,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToDevice);
   orthBoxBackup=orthBox;
 }
 
 void State::restore_position()
 {
-  cudaMemcpy(positionBuffer_d,positionBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
-  cudaMemcpy(forceBuffer_d,forceBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real),cudaMemcpyDeviceToDevice);
+  cudaMemcpy(positionBuffer_d,positionBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real_x),cudaMemcpyDeviceToDevice);
+  cudaMemcpy(forceBuffer_d,forceBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real_f),cudaMemcpyDeviceToDevice);
   cudaMemcpy(energy_d,energyBackup_d,eeend*sizeof(real_e),cudaMemcpyDeviceToDevice);
   orthBox=orthBoxBackup;
 }
@@ -338,7 +347,7 @@ void State::broadcast_position(System *system)
 #pragma omp barrier
     cudaEventSynchronize(system->run->communicate_omp[0]);
     // cudaMemcpyPeer(positionBuffer_d,system->id,positionBuffer_omp,0,N*sizeof(real)); // OMP
-    cudaMemcpyAsync(positionBuffer_d,positionBuffer_omp,N*sizeof(real),cudaMemcpyDefault,system->run->updateStream); // OMP
+    cudaMemcpyAsync(positionBuffer_d,positionBuffer_omp,N*sizeof(real_x),cudaMemcpyDefault,system->run->updateStream); // OMP
   } // OMP
   // nvtxRangePop();
 }
@@ -379,7 +388,7 @@ void State::gather_force(System *system,bool calcEnergy)
 #pragma omp barrier // OMP
   if (system->id!=0) { // OMP
     // cudaMemcpyPeer(forceBuffer_omp,0,forceBuffer_d,system->id,N*sizeof(real)); // OMP
-    cudaMemcpy(forceBuffer_omp,forceBuffer_d,N*sizeof(real),cudaMemcpyDefault); // OMP
+    cudaMemcpy(forceBuffer_omp,forceBuffer_d,N*sizeof(real_f),cudaMemcpyDefault); // OMP
     if (calcEnergy) { // OMP
       cudaMemcpy(energy_omp,energy_d,eeend*sizeof(real_e),cudaMemcpyDefault); // OMP
     } // OMP
@@ -391,7 +400,7 @@ void State::gather_force(System *system,bool calcEnergy)
 void State::prettify_position(System *system)
 {
   int i,j,k;
-  real3 pos, ref;
+  real3_x pos, ref;
   if (system->run->prettyXTC) {
     for (i=0; i<atomCount; i++) {
       j=system->potential->prettifyPlan[i][0];
@@ -401,13 +410,13 @@ void State::prettify_position(System *system)
         ref.y=0;
         ref.z=0;
       } else { // Put it next to particle k
-        ref=((real3*)position)[k];
+        ref=((real3_x*)position)[k];
       }
-      pos=((real3*)position)[j];
-      pos.x+=orthBox.x*floor((ref.x-pos.x)/orthBox.x+((real)0.5));
-      pos.y+=orthBox.y*floor((ref.y-pos.y)/orthBox.y+((real)0.5));
-      pos.z+=orthBox.z*floor((ref.z-pos.z)/orthBox.z+((real)0.5));
-      ((real3*)position)[j]=pos;
+      pos=((real3_x*)position)[j];
+      pos.x+=orthBox.x*floor((ref.x-pos.x)/orthBox.x+((real_x)0.5));
+      pos.y+=orthBox.y*floor((ref.y-pos.y)/orthBox.y+((real_x)0.5));
+      pos.z+=orthBox.z*floor((ref.z-pos.z)/orthBox.z+((real_x)0.5));
+      ((real3_x*)position)[j]=pos;
     }
   }
 }

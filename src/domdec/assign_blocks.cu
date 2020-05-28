@@ -340,14 +340,14 @@ void Domdec::assign_blocks(System *system)
 
     // Get the tokens for sorting
 
-    real3 box=system->state->orthBox;
+    real3 box=system->state->orthBox_f;
     real V=box.x*box.y*box.z;
     real dr=exp(log(32*V/system->state->atomCount)/3); // Target block size
     int2 domainDiv;
     domainDiv.x=(int)ceil(box.x/(dr*gridDomdec.x));
     domainDiv.y=(int)ceil(box.y/(dr*gridDomdec.y));
 
-    assign_blocks_get_tokens_kernel<<<(globalCount+1+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,gridDomdec,domainDiv,domain_d,(real3*)system->state->position_d,box,blockToken_d);
+    assign_blocks_get_tokens_kernel<<<(globalCount+1+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,gridDomdec,domainDiv,domain_d,(real3*)system->state->position_fd,box,blockToken_d);
 
     // Make the tree structure
 
@@ -368,7 +368,7 @@ void Domdec::assign_blocks(System *system)
     assign_blocks_localNbonds_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,globalToLocal_d,system->potential->nbonds_d,localNbonds_d);
 
     // Redundant with pack_positions, needed for call to cull
-    assign_blocks_localPosition_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,(real3*)system->state->position_d,localPosition_d,blockVolume_d);
+    assign_blocks_localPosition_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,(real3*)system->state->position_fd,localPosition_d,blockVolume_d);
   }
 }
 
@@ -377,11 +377,11 @@ void Domdec::pack_positions(System *system)
   Run *r=system->run;
   int N=blockCount[idCount];
   if (id>=0) {
-    assign_blocks_localPosition_kernel<<<(32*N+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(N,blockBounds_d,localToGlobal_d,(real3*)system->state->position_d,localPosition_d,blockVolume_d);
+    assign_blocks_localPosition_kernel<<<(32*N+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(N,blockBounds_d,localToGlobal_d,(real3*)system->state->position_fd,localPosition_d,blockVolume_d);
   }
 }
 
-__global__ void unpack_forces_kernel(int blockCount,int *blockBounds,int *localToGlobal,real3 *force,real3 *localForce)
+__global__ void unpack_forces_kernel(int blockCount,int *blockBounds,int *localToGlobal,real3_f *force,real3_f *localForce)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int iBlock=i/32;
@@ -402,6 +402,6 @@ void Domdec::unpack_forces(System *system)
   Run *r=system->run;
   int N=blockCount[idCount];
   if (id>=0) {
-    unpack_forces_kernel<<<(32*N+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(N,blockBounds_d,localToGlobal_d,(real3*)system->state->force_d,localForce_d);
+    unpack_forces_kernel<<<(32*N+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(N,blockBounds_d,localToGlobal_d,(real3_f*)system->state->force_d,localForce_d);
   }
 }

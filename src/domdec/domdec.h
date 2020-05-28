@@ -57,7 +57,7 @@ class Domdec {
   int *localToGlobal_d;
   int *globalToLocal_d;
   real3 *localPosition_d;
-  real3 *localForce_d;
+  real3_f *localForce_d;
   struct NbondPotential *localNbonds_d;
 // For sorting atoms into blocks
   struct DomdecBlockSort *blockSort_d;

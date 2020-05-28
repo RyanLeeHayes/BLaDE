@@ -268,7 +268,7 @@ void print_xtc(int step,System *system)
   box[1][1]=system->state->orthBox.y/(10*ANGSTROM);
   box[2][2]=system->state->orthBox.z/(10*ANGSTROM);
 
-  real (*x)[3]=system->state->position;
+  real_x (*x)[3]=system->state->position;
   float (*xXTC)[3]=system->state->positionXTC;
   for (i=0; i<N; i++) {
     for (j=0; j<3; j++) {
@@ -278,25 +278,25 @@ void print_xtc(int step,System *system)
 //  extern int write_xtc(XDRFILE *xd,
 //                       int natoms,int step,real time,
 //                       matrix box,rvec *x,real prec);
-  write_xtc(fp,N,step,(float) (step*system->run->dt),box,xXTC,1000.0);
+  write_xtc(fp,N,step,(float) (step*system->run->dt*PICOSECOND),box,xXTC,1000.0);
 }
 
 void print_lmd(int step,System *system)
 {
-  real *l=system->state->lambda;
+  real_x *l=system->state->lambda;
   int i;
 
   if (system->run->hrLMD) {
     FILE *fp=system->run->fpLMD;
     fprintf(fp,"%10d",step);
     for (i=1; i<system->state->lambdaCount; i++) {
-      fprintf(fp," %8.6f",l[i]);
+      fprintf(fp," %8.6f",(real)l[i]);
     }
     fprintf(fp,"\n");
   } else {
     XDRFILE *fp=system->run->fpXLMD;
     xdrfile_write_int(&system->state->lambdaCount-1,1,fp);
-#ifdef DOUBLE
+#if defined DOUBLE || defined DOUBLE_X
     for (i=1; i<system->state->lambdaCount; i++) {
       float lf=l[i];
       xdrfile_write_float(&lf,1,fp);
@@ -345,7 +345,7 @@ void write_checkpoint_file(const char *fnm,System *system)
   int i;
 
   if (system->id==0) {
-    fp=fopen(fnm,"w");
+    fp=fpopen(fnm,"w");
 
     system->state->recv_state();
 
@@ -391,7 +391,7 @@ void read_checkpoint_file(const char *fnm,System *system)
   double v;
 
   if (system->id==0) {
-    fp=fopen(fnm,"r");
+    fp=fpopen(fnm,"r");
     fscanf(fp,"Step %ld\n",&system->run->step0);
 
     fscanf(fp,"Position %d\n",&i);

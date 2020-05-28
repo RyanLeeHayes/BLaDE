@@ -89,6 +89,7 @@ void Domdec::initialize(System *system)
 
   // Assume blocks are on average at least 1/3 full, and add some extra blocks for small systems.
   maxBlocks=3*globalCount/32+32;
+  // Note: orthBox_f not set yet
   real invDensity=(system->state->orthBox.x*system->state->orthBox.y*system->state->orthBox.z)/system->state->atomCount;
   real approxBlockBox=exp(log(32*invDensity)/3);
   real edge=3*approxBlockBox+2*system->run->cutoffs.rCut;
@@ -112,7 +113,7 @@ void Domdec::initialize(System *system)
   cudaMalloc(&globalToLocal_d,globalCount*sizeof(int));
 #warning "Arbitrarily doubled localPosition_d localForce_d and localNbonds_d size to account for padding. Won't work for small systems. Do something more intelligent."
   cudaMalloc(&localPosition_d,2*globalCount*sizeof(real3));
-  cudaMalloc(&localForce_d,2*globalCount*sizeof(real3));
+  cudaMalloc(&localForce_d,2*globalCount*sizeof(real3_f));
   cudaMalloc(&localNbonds_d,2*globalCount*sizeof(struct NbondPotential));
   cudaMalloc(&blockSort_d,(globalCount+1)*sizeof(struct DomdecBlockSort));
   cudaMalloc(&blockToken_d,(globalCount+1)*sizeof(struct DomdecBlockToken));

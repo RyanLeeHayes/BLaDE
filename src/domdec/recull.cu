@@ -114,5 +114,5 @@ void Domdec::recull_blocks(System *system)
   real rc2=system->run->cutoffs.rCut;
   rc2*=rc2;
 
-  recull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(beginBlock,endBlock,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,blockPartnerCount_d,blockPartners_d,blockVolume_d,system->state->orthBox,rc2);
+  recull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(beginBlock,endBlock,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,blockPartnerCount_d,blockPartners_d,blockVolume_d,system->state->orthBox_f,rc2);
 }

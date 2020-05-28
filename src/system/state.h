@@ -32,9 +32,9 @@ struct LeapState
 {
   int N1; // spatial dof
   int N; // spatial dof + alchemical dof
-  real *x;
+  real_x *x;
   real *v;
-  real *f;
+  real_f *f;
   real *ism; // 1/sqrt(m)
   real *random;
 };
@@ -45,17 +45,18 @@ class State {
   int lambdaCount;
 
   // Lambda-Spatial-Theta buffers
-  real *positionBuffer;
-  real *positionBuffer_d;
+  real_x *positionBuffer;
+  real_x *positionBuffer_d;
+  real *positionBuffer_fd; // floating precision device version
 #ifdef REPLICAEXCHANGE
-  real *positionRExBuffer; // For REx communication
+  real_x *positionRExBuffer; // For REx communication
 #endif
-  real *positionBackup_d; // For NPT
-  real *positionBuffer_omp;
-  real *forceBuffer;
-  real *forceBuffer_d;
-  real *forceBackup_d; // For NPT
-  real *forceBuffer_omp;
+  real_x *positionBackup_d; // For NPT
+  real_x *positionBuffer_omp;
+  real_f *forceBuffer;
+  real_f *forceBuffer_d;
+  real_f *forceBackup_d; // For NPT
+  real_f *forceBuffer_omp;
 
   // Other buffers
   real_e *energy;
@@ -70,33 +71,37 @@ class State {
   real *invsqrtMassBuffer_d;
 
   // Constraint stuff
-  real *positionCons_d;
+  real_x *positionCons_d;
 
   // The box
-  real3 orthBox;
-  real3 *orthBox_omp;
-  real3 orthBoxBackup;
+  real3_x orthBox;
+  real3 orthBox_f; // floating precision version
+  real3_x *orthBox_omp;
+  real3_x orthBoxBackup;
 
   // Buffer for floating point output
   float (*positionXTC)[3]; // intentional float
 
   // Labels (do not free)
-  real *lambda;
-  real *lambda_d;
-  real (*position)[3];
-  real (*position_d)[3];
-  real *theta;
-  real *theta_d;
+  real_x *lambda;
+  real_x *lambda_d;
+  real *lambda_fd;
+  real_x (*position)[3];
+  real_x (*position_d)[3];
+  real (*position_fd)[3];
+  real_x *theta;
+  real_x *theta_d;
+  real *theta_fd;
   real (*velocity)[3];
   real (*velocity_d)[3];
   real *thetaVelocity;
   real *thetaVelocity_d;
-  real *lambdaForce;
-  real *lambdaForce_d;
-  real (*force)[3];
-  real (*force_d)[3];
-  real *thetaForce;
-  real *thetaForce_d;
+  real_f *lambdaForce;
+  real_f *lambdaForce_d;
+  real_f (*force)[3];
+  real_f (*force_d)[3];
+  real_f *thetaForce;
+  real_f *thetaForce_d;
   real (*invsqrtMass)[3];
   real (*invsqrtMass_d)[3];
   real *thetaInvsqrtMass;
@@ -118,7 +123,7 @@ class State {
 
   struct LeapParms1* alloc_leapparms1(real dt,real gamma,real T);
   struct LeapParms2* alloc_leapparms2(real dt,real gamma,real T);
-  struct LeapState* alloc_leapstate(int N1,int N2,real *x,real *v,real *f,real *ism);
+  struct LeapState* alloc_leapstate(int N1,int N2,real_x *x,real *v,real_f *f,real *ism);
   void free_leapstate(struct LeapState *ls);
 
   void recv_state();
@@ -138,6 +143,7 @@ class State {
   void prettify_position(System *system);
 
   // From update/update.cu
+  void set_fd(System *system);
   void update(int step,System *system);
 };
 

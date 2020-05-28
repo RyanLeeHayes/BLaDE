@@ -26,6 +26,12 @@ double atomicAdd(double* address, double val)
 }
 #endif
 
+__device__ static inline
+double atomicAdd(double* address, float val)
+{
+  return atomicAdd(address,(double)val);
+}
+
 
 
 // Necessary because CUDA can't take modulus correctly reliably
@@ -57,38 +63,43 @@ int over_modulus(int a,int b)
 
 
 
+template<typename real3_out,typename real_in,typename real3_in>
 __device__ static inline
-void at_real3_scaleinc(real3 *a,real f,real3 x)
+void at_real3_scaleinc(real3_out *a,real_in f,real3_in x)
 {
   atomicAdd(&(a[0].x),f*x.x);
   atomicAdd(&(a[0].y),f*x.y);
   atomicAdd(&(a[0].z),f*x.z);
 }
 
+template<typename real3_out,typename real3_in>
 __device__ static inline
-void at_real3_inc(real3 *a,real3 x)
+void at_real3_inc(real3_out *a,real3_in x)
 {
   atomicAdd(&(a[0].x),x.x);
   atomicAdd(&(a[0].y),x.y);
   atomicAdd(&(a[0].z),x.z);
 }
 
+template<typename real_out,typename real3_in>
 __host__ __device__ static inline
-real real3_mag(real3 a)
+real_out real3_mag(real3_in a)
 {
   return sqrt(a.x*a.x+a.y*a.y+a.z*a.z);
 }
 
+template<typename real_out,typename real3_in>
 __host__ __device__ static inline
-real real3_mag2(real3 a)
+real_out real3_mag2(real3_in a)
 {
   return a.x*a.x+a.y*a.y+a.z*a.z;
 }
 
+template<typename real3_type>
 __host__ __device__ static inline
-real3 real3_subpbc(real3 a,real3 b,real3 box)
+real3_type real3_subpbc(real3_type a,real3_type b,real3_type box)
 {
-  real3 c;
+  real3_type c;
   c.x=a.x-b.x;
   c.y=a.y-b.y;
   c.z=a.z-b.z;
@@ -98,70 +109,78 @@ real3 real3_subpbc(real3 a,real3 b,real3 box)
   return c;
 }
 
+template<typename real3_type>
 __host__ __device__ static inline
-real3 real3_sub(real3 a,real3 b)
+real3_type real3_sub(real3_type a,real3_type b)
 {
-  real3 c;
+  real3_type c;
   c.x=a.x-b.x;
   c.y=a.y-b.y;
   c.z=a.z-b.z;
   return c;
 }
 
+template<typename real3_type>
 __host__ __device__ static inline
-real3 real3_add(real3 a,real3 b)
+real3_type real3_add(real3_type a,real3_type b)
 {
-  real3 c;
+  real3_type c;
   c.x=a.x+b.x;
   c.y=a.y+b.y;
   c.z=a.z+b.z;
   return c;
 }
 
+template<typename real_out,typename real3_a,typename real3_b>
 __host__ __device__ static inline
-real real3_dot(real3 a,real3 b)
+real_out real3_dot(real3_a a,real3_b b)
 {
   return a.x*b.x+a.y*b.y+a.z*b.z;
 }
 
+template<typename real3_type>
 __host__ __device__ static inline
-real3 real3_cross(real3 a,real3 b)
+real3_type real3_cross(real3_type a,real3_type b)
 {
-  real3 c;
+  real3_type c;
   c.x=a.y*b.z-a.z*b.y;
   c.y=a.z*b.x-a.x*b.z;
   c.z=a.x*b.y-a.y*b.x;
   return c;
 }
 
+template<typename real3_out,typename real_in,typename real3_in>
 __host__ __device__ static inline
-real3 real3_scale(real f,real3 a)
+real3_out real3_scale(real_in f,real3_in a)
 {
-  real3 c;
+  real3_out c;
   c.x=f*a.x;
   c.y=f*a.y;
   c.z=f*a.z;
   return c;
 }
 
+template<typename real3_out,typename real_in,typename real3_in>
 __host__ __device__ static inline
-void real3_scaleinc(real3 *a,real f,real3 x)
+void real3_scaleinc(real3_out *a,real_in f,real3_in x)
 {
   a[0].x+=f*x.x;
   a[0].y+=f*x.y;
   a[0].z+=f*x.z;
 }
 
+template<typename real3_type,typename real_type>
 __host__ __device__ static inline
-void real3_scaleself(real3 *a,real f)
+void real3_scaleself(real3_type *a,real_type f)
 {
   a[0].x*=f;
   a[0].y*=f;
   a[0].z*=f;
 }
 
+template<typename real3_type>
 __host__ __device__ static inline
-void real3_inc(real3 *a,real3 x)
+void real3_inc(real3_type *a,real3_type x)
 {
   a[0].x+=x.x;
   a[0].y+=x.y;
@@ -176,10 +195,11 @@ void real3_dec(real3 *a,real3 x)
   a[0].z-=x.z;
 }
 
+template<typename real3_type>
 __host__ __device__ static inline
-real3 real3_modulus(real3 a,real3 b)
+real3_type real3_modulus(real3_type a,real3_type b)
 {
-  real3 c;
+  real3_type c;
   c.x=fmod(a.x,b.x);
   c.y=fmod(a.y,b.y);
   c.z=fmod(a.z,b.z);
@@ -189,20 +209,22 @@ real3 real3_modulus(real3 a,real3 b)
   return c;
 }
 
+template<typename real3_type>
 __host__ __device__ static inline
-real3 real3_reset()
+real3_type real3_reset()
 {
-  real3 out;
+  real3_type out;
   out.x=0;
   out.y=0;
   out.z=0;
   return out;
 }
 
+template<typename real3_type,typename real_type>
 __host__ __device__ static inline
-void real3_rotation_matrix(real3 *R,real3 axis,real c,real s)
+void real3_rotation_matrix(real3_type *R,real3_type axis,real_type c,real_type s)
 {
-  real t=1-c;
+  real_type t=1-c;
   R[0].x=t*axis.x*axis.x + c;
   R[0].y=t*axis.x*axis.y - s*axis.z;
   R[0].z=t*axis.x*axis.z + s*axis.y;
@@ -214,13 +236,14 @@ void real3_rotation_matrix(real3 *R,real3 axis,real c,real s)
   R[2].z=t*axis.z*axis.z + c;
 }
 
+template<typename real3_out,typename real3_a,typename real3_b>
 __host__ __device__ static inline
-real3 real3_rotate(real3 *R,real3 in)
+real3_out real3_rotate(real3_a *R,real3_b in)
 {
-  real3 out;
-  out.x=real3_dot(R[0],in);
-  out.y=real3_dot(R[1],in);
-  out.z=real3_dot(R[2],in);
+  real3_out out;
+  out.x=real3_dot<decltype(out.x)>(R[0],in);
+  out.y=real3_dot<decltype(out.y)>(R[1],in);
+  out.z=real3_dot<decltype(out.z)>(R[2],in);
   return out;
 }
 

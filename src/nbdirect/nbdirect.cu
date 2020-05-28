@@ -98,10 +98,10 @@ __global__ void getforce_nbdirect_kernel(
   const int* __restrict__ blockExcls,
   struct Cutoffs cutoffs,
   const real3* __restrict__ position,
-  real3* __restrict__ force,
+  real3_f* __restrict__ force,
   real3 box,
   const real* __restrict__ lambda,
-  real* __restrict__ lambdaForce,
+  real_f* __restrict__ lambdaForce,
   real_e* __restrict__ energy)
 {
 // NYI - maybe energy should be a double
@@ -149,7 +149,7 @@ __global__ void getforce_nbdirect_kernel(
     }
     // iBlockVolume=blockVolume[iBlock];
 
-    fi=real3_reset();
+    fi=real3_reset<real3>();
     fli=0;
 
     // used i/32 instead of iBlock to shift to beginning of array
@@ -191,7 +191,7 @@ __global__ void getforce_nbdirect_kernel(
       }
       bool jFlag=check_proximity(iBlockVolume,xj,cutoffs.rCut*cutoffs.rCut);
 
-      fj=real3_reset();
+      fj=real3_reset<real3>();
       flj=0;
 
       for (jtmp=0; jtmp<jCount; jtmp++) {
@@ -204,7 +204,7 @@ __global__ void getforce_nbdirect_kernel(
           bjtmp=__shfl_sync(0xFFFFFFFF,bj,jtmp);
           ljtmp=__shfl_sync(0xFFFFFFFF,lj,jtmp);
 
-          fjtmp=real3_reset();
+          fjtmp=real3_reset<real3>();
           fljtmp=0;
           if (iThread<iCount && ((1<<jtmp)&exclMask)) {
 #ifdef USE_TEXTURE
@@ -216,7 +216,7 @@ __global__ void getforce_nbdirect_kernel(
 
             // Geometry
             dr=real3_sub(xi,xjtmp);
-            r=real3_mag(dr);
+            r=real3_mag<real>(dr);
 
             if (r<cutoffs.rCut) {
               // Scaling
@@ -319,7 +319,7 @@ __global__ void getforce_nbdirect_kernel(
                 fij*=dredr;
               }
               real3_scaleinc(&fi, fij*rinv,dr);
-              fjtmp=real3_scale(-fij*rinv,dr);
+              fjtmp=real3_scale<real3>(-fij*rinv,dr);
 
               // Energy, if requested
               if (energy) {
@@ -409,15 +409,15 @@ void getforce_nbdirect(System *system,bool calcEnergy)
 
   if (system->msld->useSoftCore) {
 #ifdef USE_TEXTURE
-    getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_tex,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+    getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_tex,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
 #else
-    getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+    getforce_nbdirect_kernel<true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
 #endif
   } else {
 #ifdef USE_TEXTURE
-    getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_tex,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+    getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_tex,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
 #else
-    getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox,s->lambda_d,s->lambdaForce_d,pEnergy);
+    getforce_nbdirect_kernel<false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
 #endif
   }
 

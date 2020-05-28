@@ -100,7 +100,7 @@ __global__ void update_VV(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   }
 }
 
-__global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real *bx)
+__global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real_x *bx)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct LeapParms2 lp;
@@ -114,7 +114,7 @@ __global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct Le
   if (i < ls.N) {
     // Force is dU/dx by convention in this program, not -dU/dx
     real v=ls.v[i];
-    real x=ls.x[i];
+    real_x x=ls.x[i];
     v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
     if (bx) bx[i]=x;
     x+=lp.fscale*v;
@@ -123,7 +123,7 @@ __global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct Le
   }
 }
 
-__global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real *bx)
+__global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real_x *bx)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct LeapParms2 lp;
@@ -137,7 +137,7 @@ __global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
   if (i < ls.N) {
     // Force is dU/dx by convention in this program, not -dU/dx
     real v=ls.v[i];
-    real x=ls.x[i];
+    real_x x=ls.x[i];
     // v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
     // v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
     v-=2*lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i]; // Let's just do both those lines in one step.
@@ -201,7 +201,7 @@ __global__ void update_OO(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   }
 }
 
-__global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real *bx)
+__global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real_x *bx)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct LeapParms2 lp;
@@ -214,7 +214,7 @@ __global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
 
   if (i < ls.N) {
     real v=ls.v[i];
-    real x=ls.x[i];
+    real_x x=ls.x[i];
     v=lp.sqrta*v+lp.noise*ls.ism[i]*ls.random[i];
     // Hamiltonian changes here
     v=lp.sqrta*v+lp.noise*ls.ism[i]*ls.random[ls.N+i];
@@ -289,3 +289,28 @@ void State::update(int step,System *system)
   system->msld->calc_lambda_from_theta(r->updateStream,system);
   }
 }
+
+
+__global__ void set_fd_kernel(int N,real *p_fd,real_x *p_d)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+
+  if (i<N) {
+    p_fd[i]=p_d[i];
+  }
+}
+
+void State::set_fd(System *system)
+{
+  int N=3*atomCount+2*lambdaCount;
+
+  orthBox_f.x=orthBox.x;
+  orthBox_f.y=orthBox.y;
+  orthBox_f.z=orthBox.z;
+
+  if ((void*)positionBuffer_fd != (void*)positionBuffer_d) {
+    set_fd_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N,positionBuffer_fd,positionBuffer_d);
+  }
+}
+
+

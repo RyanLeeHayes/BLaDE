@@ -14,9 +14,9 @@ Coordinates::Coordinates(int n,System *system) {
   int i,j;
 
   atomCount=n;
-  particleBox=(real(*)[3])calloc(3,sizeof(real[3]));
+  particleBox=(real_x(*)[3])calloc(3,sizeof(real_x[3]));
   particleBox[0][0]=NAN;
-  particlePosition=(real(*)[3])calloc(n,sizeof(real[3]));
+  particlePosition=(real_x(*)[3])calloc(n,sizeof(real_x[3]));
   particleVelocity=(real(*)[3])calloc(n,sizeof(real[3]));
 
   setup_parse_coordinates();
@@ -76,7 +76,7 @@ void Coordinates::setup_parse_coordinates()
   parseCoordinates["reset"]=&Coordinates::reset;
   helpCoordinates["reset"]="?coordinates reset> This deletes the coordinates data structure.\n";
   parseCoordinates["file"]=&Coordinates::file;
-  helpCoordinates["file"]="?coordinates file [filename]> This loads particle positions from the pdb filename\n";
+  helpCoordinates["file"]="?coordinates file [pdb|crd] [filename]> This loads particle positions from the pdb or charmm crd filename\n";
   parseCoordinates["box"]=&Coordinates::parse_box;
   helpCoordinates["box"]="?coordinates box [x1 y1 z1, x2 y2 z2, x3 y3 z3]> This loads the x y z cooridinates for the first, second, and third box vectors. Input in Angstroms.\n";
   parseCoordinates["velocity"]=&Coordinates::parse_velocity;
@@ -117,10 +117,16 @@ void Coordinates::reset(char *line,char *token,System *system)
 void Coordinates::file(char *line,char *token,System *system)
 {
   FILE *fp;
-
+  std::string fmt=io_nexts(line);
   io_nexta(line,token);
   fp=fpopen(token,"r");
-  file_pdb(fp,system);
+  if (fmt=="pdb") {
+    file_pdb(fp,system);
+  } else if (fmt=="crd") {
+    file_crd(fp,system);
+  } else {
+    fatal(__FILE__,__LINE__,"Unrecognized format %s. Options are pdb or crd.\n",fmt.c_str());
+  }
   fclose(fp);
 }
 
@@ -137,7 +143,7 @@ void Coordinates::dump(char *line,char *token,System *system)
 // 18-20 resName
 // 22 chain
 // 23-26 resIdx
-// 27?
+// 27 resIdx insertion letter code
 // 31-38 X 39-46 Y 47-54 Z
 // 55-60 occupancy
 // 61-66 temperature factor
@@ -160,8 +166,9 @@ void Coordinates::file_pdb(FILE *fp,System *system)
       io_strncpy(token1,line+12,4);
       if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
       as.atomName=token2;
-      if (sscanf(line+21,"%d",&i)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
-      as.resIdx=i;
+      io_strncpy(token1,line+22,5);
+      if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
+      as.resIdx=token2;
       io_strncpy(token1,line+72,4);
       if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"PDB error\n");
       as.segName=token2;
@@ -177,6 +184,69 @@ void Coordinates::file_pdb(FILE *fp,System *system)
       if (fileData.count(as)==0) {
         fileData[as]=xyz;
       }
+    }
+  }
+
+  for (i=0; i<system->structure->atomList.size(); i++) { 
+    as.segName=system->structure->atomList[i].segName;
+    as.resIdx=system->structure->atomList[i].resIdx;
+    as.atomName=system->structure->atomList[i].atomName;
+    if (fileData.count(as)==1) {
+      xyz=fileData[as];
+      particlePosition[i][0]=xyz.i[0];
+      particlePosition[i][1]=xyz.i[1];
+      particlePosition[i][2]=xyz.i[2];
+    }
+  }
+}
+
+// Charmm coor format
+//         title
+//         NATOM (I10)
+//         ATOMNO RESNO   RES  TYPE  X     Y     Z   SEGID RESID Weighting
+//           I10   I10 2X A8 2X A8       3F20.10     2X A8 2X A8 F20.10
+void Coordinates::file_crd(FILE *fp,System *system)
+{
+  char line[MAXLENGTHSTRING];
+  char token1[MAXLENGTHSTRING];
+  char token2[MAXLENGTHSTRING];
+  int i;
+  struct AtomCoordinates as;
+  double x; // Intentional double
+  struct Real3 xyz;
+
+  fileData.clear();
+  while (fgets(line, MAXLENGTHSTRING, fp)!=NULL) {
+    if (line[0]!='*') {
+      sscanf(line,"%d",&i);
+      if (i!=system->structure->atomCount) {
+        fatal(__FILE__,__LINE__,"Wrong number of atoms in crd file %d, psf file contained %d atoms\n",i,system->structure->atomCount);
+      }
+      break;
+    }
+  }
+  while (fgets(line, MAXLENGTHSTRING, fp)!=NULL) {
+    io_strncpy(token1,line+32,8);
+    if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"CRD error\n");
+    as.atomName=token2;
+    io_strncpy(token1,line+112,8);
+    if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"CRD error\n");
+    as.resIdx=token2;
+    io_strncpy(token1,line+102,8);
+    if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"CRD error\n");
+    as.segName=token2;
+
+    io_strncpy(token1,line+40,20);
+    if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"CRDerror\n");
+    xyz.i[0]=ANGSTROM*x;
+    io_strncpy(token1,line+60,20);
+    if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"CRDerror\n");
+    xyz.i[1]=ANGSTROM*x;
+    io_strncpy(token1,line+80,20);
+    if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"CRDerror\n");
+    xyz.i[2]=ANGSTROM*x;
+    if (fileData.count(as)==0) {
+      fileData[as]=xyz;
     }
   }
 

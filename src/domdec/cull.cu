@@ -254,6 +254,6 @@ void Domdec::cull_blocks(System *system)
     real rc2=system->run->cutoffs.rCut+cullPad;
     rc2*=rc2;
 
-    cull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(idDomdec,gridDomdec,blockCount_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,blockVolume_d,system->state->orthBox,rc2);
+    cull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(idDomdec,gridDomdec,blockCount_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,blockVolume_d,system->state->orthBox_f,rc2);
   }
 }

@@ -70,6 +70,8 @@
 #define BLMS 256
 
 #define DOUBLE_E
+// #define DOUBLE_F
+#define DOUBLE_X
 
 #ifdef DOUBLE
 typedef double real;
@@ -111,6 +113,22 @@ typedef real real_e;
 #ifdef REPLICAEXCHANGE
 #define MYMPI_REAL_E MYMPI_REAL
 #endif
+#endif
+
+#ifdef DOUBLE_F
+typedef double real_f;
+typedef double3 real3_f;
+#else
+typedef real real_f;
+typedef real3 real3_f;
+#endif
+
+#ifdef DOUBLE_X
+typedef double real_x;
+typedef double3 real3_x;
+#else
+typedef real real_x;
+typedef real3 real3_x;
 #endif
 
 struct Int2 {

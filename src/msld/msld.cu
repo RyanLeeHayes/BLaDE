@@ -128,7 +128,7 @@ void parse_msld(char *line,System *system)
     system->msld->atomBlock=(int*)calloc(system->structure->atomList.size(),sizeof(int));
     system->msld->lambdaSite=(int*)calloc(system->msld->blockCount,sizeof(int));
     system->msld->lambdaBias=(real*)calloc(system->msld->blockCount,sizeof(real));
-    system->msld->theta=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->theta=(real_x*)calloc(system->msld->blockCount,sizeof(real_x));
     system->msld->thetaVelocity=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaMass[0]=1;
@@ -585,19 +585,18 @@ void Msld::initialize(System *system)
   }
 }
 
-__global__ void calc_lambda_from_theta_kernel(real *lambda,real *theta,int siteCount,int *siteBound,real fnex)
+__global__ void calc_lambda_from_theta_kernel(real_x *lambda,real_x *theta,int siteCount,int *siteBound,real fnex)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int j,ji,jf;
-  real lLambda;
-  real norm=0;
+  real_x lLambda;
+  real_x norm=0;
 
   if (i<siteCount) {
     ji=siteBound[i];
     jf=siteBound[i+1];
     for (j=ji; j<jf; j++) {
-// NOTE #warning "Hardcoded in expf and sinf"
-      lLambda=expf(fnex*sinf(theta[j]*ANGSTROM));
+      lLambda=exp(fnex*sin(theta[j]*ANGSTROM));
       lambda[j]=lLambda;
       norm+=lLambda;
     }
@@ -614,7 +613,7 @@ void Msld::calc_lambda_from_theta(cudaStream_t stream,System *system)
   calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex);
 }
 
-__global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta,real *lambdaForce,real *thetaForce,int blockCount,int *lambdaSite,int *siteBound,real fnex)
+__global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta,real_f *lambdaForce,real_f *thetaForce,int blockCount,int *lambdaSite,int *siteBound,real fnex)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int j, ji, jf;
@@ -636,10 +635,10 @@ __global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta
 void Msld::calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system)
 {
   State *s=system->state;
-  calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,s->lambdaForce_d,s->thetaForce_d,blockCount,lambdaSite_d,siteBound_d,fnex);
+  calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_fd,s->theta_fd,s->lambdaForce_d,s->thetaForce_d,blockCount,lambdaSite_d,siteBound_d,fnex);
 }
 
-__global__ void getforce_fixedBias_kernel(real *lambda,real *lambdaBias,real *lambdaForce,real_e *energy,int blockCount)
+__global__ void getforce_fixedBias_kernel(real *lambda,real *lambdaBias,real_f *lambdaForce,real_e *energy,int blockCount)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   extern __shared__ real sEnergy[];
@@ -677,10 +676,10 @@ void Msld::getforce_fixedBias(System *system,bool calcEnergy)
     stream=system->run->biaspotStream;
   }
 
-  getforce_fixedBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,lambdaBias_d,s->lambdaForce_d,pEnergy,blockCount);
+  getforce_fixedBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_fd,lambdaBias_d,s->lambdaForce_d,pEnergy,blockCount);
 }
 
-__global__ void getforce_variableBias_kernel(real *lambda,real *lambdaForce,real_e *energy,int variableBiasCount,struct VariableBias *variableBias)
+__global__ void getforce_variableBias_kernel(real *lambda,real_f *lambdaForce,real_e *energy,int variableBiasCount,struct VariableBias *variableBias)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct VariableBias vb;
@@ -740,11 +739,11 @@ void Msld::getforce_variableBias(System *system,bool calcEnergy)
   }
 
   if (variableBiasCount>0) {
-    getforce_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_d,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
+    getforce_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
   }
 }
 
-__global__ void getforce_atomRestraints_kernel(real3 *position,real3 *force,real3 box,real_e *energy,int atomRestraintCount,int *atomRestraintBounds,int *atomRestraintIdx,real kRestraint)
+__global__ void getforce_atomRestraints_kernel(real3 *position,real3_f *force,real3 box,real_e *energy,int atomRestraintCount,int *atomRestraintBounds,int *atomRestraintIdx,real kRestraint)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int bounds[2];
@@ -757,11 +756,11 @@ __global__ void getforce_atomRestraints_kernel(real3 *position,real3 *force,real
     bounds[0]=atomRestraintBounds[i];
     bounds[1]=atomRestraintBounds[i+1];
     x0=position[atomRestraintIdx[bounds[0]]];
-    xCenter=real3_reset();
+    xCenter=real3_reset<real3>();
     for (j=bounds[0]+1; j<bounds[1]; j++) {
       real3_inc(&xCenter,real3_subpbc(position[atomRestraintIdx[j]],x0,box));
     }
-    real3_scaleself(&xCenter,1.0/(bounds[1]-bounds[0]));
+    real3_scaleself(&xCenter,((real)1.0)/(bounds[1]-bounds[0]));
     real3_inc(&xCenter,x0);
 
     for (j=bounds[0]; j<bounds[1]; j++) {
@@ -769,7 +768,7 @@ __global__ void getforce_atomRestraints_kernel(real3 *position,real3 *force,real
       dx=real3_subpbc(position[idx],xCenter,box);
       at_real3_scaleinc(&force[idx],kRestraint,dx);
       if (energy) {
-        lEnergy+=0.5*kRestraint*real3_mag2(dx);
+        lEnergy+=((real)0.5)*kRestraint*real3_mag2<real>(dx);
       }
     }
   }
@@ -800,11 +799,11 @@ void Msld::getforce_atomRestraints(System *system,bool calcEnergy)
   }
 
   if (atomRestraintCount) {
-    getforce_atomRestraints_kernel<<<(atomRestraintCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>((real3*)s->position_d,(real3*)s->force_d,s->orthBox,pEnergy,atomRestraintCount,atomRestraintBounds_d,atomRestraintIdx_d,kRestraint);
+    getforce_atomRestraints_kernel<<<(atomRestraintCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>((real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,pEnergy,atomRestraintCount,atomRestraintBounds_d,atomRestraintIdx_d,kRestraint);
   }
 }
 
-__global__ void getforce_chargeRestraints_kernel(real *lambda,real *lambdaForce,real_e *energy,int blockCount,real kChargeRestraint,real *lambdaCharge)
+__global__ void getforce_chargeRestraints_kernel(real *lambda,real_f *lambdaForce,real_e *energy,int blockCount,real kChargeRestraint,real *lambdaCharge)
 {
   int i=threadIdx.x;
   int j;
@@ -872,7 +871,7 @@ void Msld::getforce_chargeRestraints(System *system,bool calcEnergy)
   }
 
   if (kChargeRestraint>0) {
-    getforce_chargeRestraints_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_d,s->lambdaForce_d,pEnergy,blockCount,kChargeRestraint,lambdaCharge_d);
+    getforce_chargeRestraints_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,blockCount,kChargeRestraint,lambdaCharge_d);
   }
 }
 
@@ -891,7 +890,7 @@ void blade_init_msld(System *system,int nblocks)
     system->msld->atomBlock=(int*)calloc(system->structure->atomList.size(),sizeof(int));
     system->msld->lambdaSite=(int*)calloc(system->msld->blockCount,sizeof(int));
     system->msld->lambdaBias=(real*)calloc(system->msld->blockCount,sizeof(real));
-    system->msld->theta=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->theta=(real_x*)calloc(system->msld->blockCount,sizeof(real_x));
     system->msld->thetaVelocity=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaMass[0]=1;

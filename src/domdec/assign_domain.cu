@@ -9,10 +9,10 @@
 
 
 
-__global__ void assign_domain_kernel(int atomCount,real3 *position,real3 box,int3 gridDomdec,int *domain)
+__global__ void assign_domain_kernel(int atomCount,real3_x *position,real3_x box,int3 gridDomdec,int *domain)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  real3 xi;
+  real3_x xi;
   int3 idDomdec;
 
   if (i<atomCount) {
@@ -46,11 +46,13 @@ void Domdec::assign_domain(System *system)
 {
   Run *r=system->run;
   if (system->id==0) {
-    assign_domain_kernel<<<(system->state->atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(system->state->atomCount,(real3*)system->state->position_d,system->state->orthBox,gridDomdec,domain_d);
+    assign_domain_kernel<<<(system->state->atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(system->state->atomCount,(real3_x*)system->state->position_d,system->state->orthBox,gridDomdec,domain_d);
   }
 
   if (system->idCount!=1) {
     broadcast_domain(system);
     system->state->broadcast_position(system);
   }
+  // Copy to floating point buffers if using mixed precision
+  system->state->set_fd(system);
 }

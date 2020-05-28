@@ -13,7 +13,7 @@ class System;
 struct AtomStructure {
   int atomIdx;
   std::string segName;
-  int resIdx;
+  std::string resIdx;
   std::string resName;
   std::string atomName;
   std::string atomTypeName;
@@ -68,7 +68,7 @@ extern "C" {
   void blade_init_structure(System *system);
   void blade_dest_structure(System *system);
   void blade_add_atom(System *system,
-    int atomIdx,const char *segName,int resIdx,const char *resName,
+    int atomIdx,const char *segName,const char *resIdx,const char *resName,
     const char *atomName,const char *atomTypeName,double charge,double mass);
   void blade_add_bond(System *system,int i,int j);
   void blade_add_angle(System *system,int i,int j,int k);

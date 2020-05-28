@@ -11,7 +11,7 @@
 
 
 // scale_box_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N,scaleFactor,system->state->position_d);
-__global__ void scale_box_kernel(int N,real scaleFactor,real *position)
+__global__ void scale_box_kernel(int N,real_x scaleFactor,real_x *position)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   if (i<N) {
@@ -19,14 +19,14 @@ __global__ void scale_box_kernel(int N,real scaleFactor,real *position)
   }
 }
 
-void scale_box(System *system,real scaleFactor)
+void scale_box(System *system,real_x scaleFactor)
 {
   system->state->orthBox.x*=scaleFactor;
   system->state->orthBox.y*=scaleFactor;
   system->state->orthBox.z*=scaleFactor;
 
   int N=3*system->state->atomCount;
-  scale_box_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N,scaleFactor,(real*)system->state->position_d);
+  scale_box_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N,scaleFactor,(real_x*)system->state->position_d);
 
   // There might be better ways to rectify holonomic constraints after volume update, I just want to avoid having bonds change direction, which will mess with the velocities"
   holonomic_rectify(system);
@@ -38,8 +38,8 @@ void pressure_coupling(System *system)
   Run *r=system->run;
   Potential *p=system->potential;
   real_e energyOld, energyNew;
-  real volumeOld, volumeNew;
-  real scaleFactor;
+  real_x volumeOld, volumeNew;
+  real_x scaleFactor;
   real N,kT,dW;
 
   // nvtxRangePushA("pressure_coupling");

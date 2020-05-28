@@ -338,7 +338,7 @@ void Run::set_term(char *line,char *token,System *system)
 }
 
 __global__
-void shift_kernel(real *x,real dx)
+void shift_kernel(real_x *x,real_x dx)
 {
   int i=blockDim.x*blockIdx.x+threadIdx.x;
   if (i==0) {

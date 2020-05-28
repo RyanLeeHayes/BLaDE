@@ -156,7 +156,7 @@ void Structure::add_structure_psf_file(FILE *fp)
       fatal(__FILE__,__LINE__,"Found atom %d when atom %d expected\n",at.atomIdx,i);
     }
     at.segName=io_nexts(line);
-    at.resIdx=io_nexti(line);
+    at.resIdx=io_nexts(line);
     at.resName=io_nexts(line);
     at.atomName=io_nexts(line);
     at.atomTypeName=io_nexts(line);
@@ -324,7 +324,7 @@ void blade_dest_structure(System *system)
 }
 
 void blade_add_atom(System *system,
-  int atomIdx,const char *segName,int resIdx,const char *resName,
+  int atomIdx,const char *segName,const char *resIdx,const char *resName,
   const char *atomName,const char *atomTypeName,double charge,double mass)
 {
   struct AtomStructure at;
