@@ -129,7 +129,7 @@ void parse_msld(char *line,System *system)
     system->msld->lambdaSite=(int*)calloc(system->msld->blockCount,sizeof(int));
     system->msld->lambdaBias=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->theta=(real_x*)calloc(system->msld->blockCount,sizeof(real_x));
-    system->msld->thetaVelocity=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->thetaVelocity=(real_v*)calloc(system->msld->blockCount,sizeof(real_v));
     system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaMass[0]=1;
     system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
@@ -891,7 +891,7 @@ void blade_init_msld(System *system,int nblocks)
     system->msld->lambdaSite=(int*)calloc(system->msld->blockCount,sizeof(int));
     system->msld->lambdaBias=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->theta=(real_x*)calloc(system->msld->blockCount,sizeof(real_x));
-    system->msld->thetaVelocity=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->thetaVelocity=(real_v*)calloc(system->msld->blockCount,sizeof(real_v));
     system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaMass[0]=1;
     system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));

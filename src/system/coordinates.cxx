@@ -17,7 +17,7 @@ Coordinates::Coordinates(int n,System *system) {
   particleBox=(real_x(*)[3])calloc(3,sizeof(real_x[3]));
   particleBox[0][0]=NAN;
   particlePosition=(real_x(*)[3])calloc(n,sizeof(real_x[3]));
-  particleVelocity=(real(*)[3])calloc(n,sizeof(real[3]));
+  particleVelocity=(real_v(*)[3])calloc(n,sizeof(real_v[3]));
 
   setup_parse_coordinates();
 }

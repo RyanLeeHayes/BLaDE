@@ -72,6 +72,7 @@
 #define DOUBLE_E
 // #define DOUBLE_F
 #define DOUBLE_X
+// #define DOUBLE_V
 
 #ifdef DOUBLE
 typedef double real;
@@ -126,9 +127,21 @@ typedef real3 real3_f;
 #ifdef DOUBLE_X
 typedef double real_x;
 typedef double3 real3_x;
+#define MYMPI_REAL_X MPI_DOUBLE
 #else
 typedef real real_x;
 typedef real3 real3_x;
+#define MYMPI_REAL_X MYMPI_REAL
+#endif
+
+#ifdef DOUBLE_V
+typedef double real_v;
+typedef double3 real3_v;
+#define MYMPI_REAL_v MPI_DOUBLE
+#else
+typedef real real_v;
+typedef real3 real3_v;
+#define MYMPI_REAL_V MYMPI_REAL
 #endif
 
 struct Int2 {

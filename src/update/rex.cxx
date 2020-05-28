@@ -50,16 +50,16 @@ void replica_exchange(System *system)
       // Both positions
       n=2*s->lambdaCount+3*s->atomCount;
       cudaMemcpy(s->positionRExBuffer,s->positionBuffer_d,
-        n*sizeof(real),cudaMemcpyDeviceToHost);
-      MPI_Sendrecv(s->positionRExBuffer,n,MYMPI_REAL,rankPartner,10,
-        s->positionBuffer,n,MYMPI_REAL,rankPartner,10,
+        n*sizeof(real_x),cudaMemcpyDeviceToHost);
+      MPI_Sendrecv(s->positionRExBuffer,n,MYMPI_REAL_X,rankPartner,10,
+        s->positionBuffer,n,MYMPI_REAL_X,rankPartner,10,
         MPI_COMM_WORLD,MPI_STATUS_IGNORE);
       // And boxes
-      MPI_Sendrecv((real*)&s->orthBoxBackup,3,MYMPI_REAL,rankPartner,11,
-        (real*)&s->orthBox,3,MYMPI_REAL,rankPartner,11,
+      MPI_Sendrecv((real_x*)&s->orthBoxBackup,3,MYMPI_REAL_X,rankPartner,11,
+        (real_x*)&s->orthBox,3,MYMPI_REAL_X,rankPartner,11,
         MPI_COMM_WORLD,MPI_STATUS_IGNORE);
       cudaMemcpy(s->positionBuffer_d,s->positionBuffer,
-        n*sizeof(real),cudaMemcpyHostToDevice);
+        n*sizeof(real_x),cudaMemcpyHostToDevice);
     }
     if (system->idCount>1) {
       s->broadcast_position(system);
@@ -98,12 +98,12 @@ void replica_exchange(System *system)
         // Swap velocities
         n=s->lambdaCount+3*s->atomCount;
         cudaMemcpy(s->positionRExBuffer,s->velocityBuffer_d,
-          n*sizeof(real),cudaMemcpyDeviceToHost);
-        MPI_Sendrecv(s->positionRExBuffer,n,MYMPI_REAL,rankPartner,15,
-          s->velocityBuffer,n,MYMPI_REAL,rankPartner,15,
+          n*sizeof(real_v),cudaMemcpyDeviceToHost);
+        MPI_Sendrecv(s->positionRExBuffer,n,MYMPI_REAL_V,rankPartner,15,
+          s->velocityBuffer,n,MYMPI_REAL_V,rankPartner,15,
           MPI_COMM_WORLD,MPI_STATUS_IGNORE);
         cudaMemcpy(s->velocityBuffer_d,s->velocityBuffer,
-          n*sizeof(real),cudaMemcpyHostToDevice);
+          n*sizeof(real_v),cudaMemcpyHostToDevice);
       } else {
         // maintain replica indices
         fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Reject\n",r->step,rank,r->replica,dW);

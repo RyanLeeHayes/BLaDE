@@ -82,8 +82,8 @@ State::State(System *system) {
   } // OMP
 
   // Spatial-Theta buffers
-  velocityBuffer=(real*)calloc((nL+3*n),sizeof(real));
-  cudaMalloc(&(velocityBuffer_d),(nL+3*n)*sizeof(real));
+  velocityBuffer=(real_v*)calloc((nL+3*n),sizeof(real_v));
+  cudaMalloc(&(velocityBuffer_d),(nL+3*n)*sizeof(real_v));
   invsqrtMassBuffer=(real*)calloc((nL+3*n),sizeof(real));
   cudaMalloc(&(invsqrtMassBuffer_d),(nL+3*n)*sizeof(real));
 
@@ -109,8 +109,8 @@ State::State(System *system) {
   theta=positionBuffer+nL+3*n;
   theta_d=positionBuffer_d+nL+3*n;
   theta_fd=positionBuffer_fd+nL+3*n;
-  velocity=(real(*)[3])velocityBuffer;
-  velocity_d=(real(*)[3])velocityBuffer_d;
+  velocity=(real_v(*)[3])velocityBuffer;
+  velocity_d=(real_v(*)[3])velocityBuffer_d;
   thetaVelocity=velocityBuffer+3*n;
   thetaVelocity_d=velocityBuffer_d+3*n;
   lambdaForce=forceBuffer;
@@ -185,7 +185,7 @@ void State::initialize(System *system)
   }
 
   cudaMemcpy(positionBuffer_d,positionBuffer,(2*nL+3*n)*sizeof(real_x),cudaMemcpyHostToDevice);
-  cudaMemcpy(velocityBuffer_d,velocityBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
+  cudaMemcpy(velocityBuffer_d,velocityBuffer,(nL+3*n)*sizeof(real_v),cudaMemcpyHostToDevice);
   cudaMemset(forceBuffer_d,0,(nL+3*n)*sizeof(real_f));
   cudaMemcpy(invsqrtMassBuffer_d,invsqrtMassBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
   system->msld->calc_lambda_from_theta(0,system);
@@ -198,7 +198,7 @@ void State::save_state(System *system)
   int nL=lambdaCount;
 
   cudaMemcpy(positionBuffer,positionBuffer_d,(2*nL+3*n)*sizeof(real_x),cudaMemcpyDeviceToHost);
-  cudaMemcpy(velocityBuffer,velocityBuffer_d,(nL+3*n)*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(velocityBuffer,velocityBuffer_d,(nL+3*n)*sizeof(real_v),cudaMemcpyDeviceToHost);
 
   for (i=0; i<atomCount; i++) {
     for (j=0; j<3; j++) {
@@ -247,7 +247,7 @@ struct LeapParms2* State::alloc_leapparms2(real dt,real gamma,real T)
   return lp;
 }
 
-struct LeapState* State::alloc_leapstate(int N1,int N2,real_x *x,real *v,real_f *f,real *ism)
+struct LeapState* State::alloc_leapstate(int N1,int N2,real_x *x,real_v *v,real_f *f,real *ism)
 {
   struct LeapState *ls;
 
@@ -274,16 +274,16 @@ void State::recv_state()
 {
   cudaMemcpy(theta,theta_d,lambdaCount*sizeof(real_x),cudaMemcpyDeviceToHost);
   cudaMemcpy(position,position_d,3*atomCount*sizeof(real_x),cudaMemcpyDeviceToHost);
-  cudaMemcpy(thetaVelocity,thetaVelocity_d,lambdaCount*sizeof(real),cudaMemcpyDeviceToHost);
-  cudaMemcpy(velocity,velocity_d,3*atomCount*sizeof(real),cudaMemcpyDeviceToHost);
+  cudaMemcpy(thetaVelocity,thetaVelocity_d,lambdaCount*sizeof(real_v),cudaMemcpyDeviceToHost);
+  cudaMemcpy(velocity,velocity_d,3*atomCount*sizeof(real_v),cudaMemcpyDeviceToHost);
 }
 
 void State::send_state()
 {
   cudaMemcpy(theta_d,theta,lambdaCount*sizeof(real_x),cudaMemcpyHostToDevice);
   cudaMemcpy(position_d,position,3*atomCount*sizeof(real_x),cudaMemcpyHostToDevice);
-  cudaMemcpy(thetaVelocity_d,thetaVelocity,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
-  cudaMemcpy(velocity_d,velocity,3*atomCount*sizeof(real),cudaMemcpyHostToDevice);
+  cudaMemcpy(thetaVelocity_d,thetaVelocity,lambdaCount*sizeof(real_v),cudaMemcpyHostToDevice);
+  cudaMemcpy(velocity_d,velocity,3*atomCount*sizeof(real_v),cudaMemcpyHostToDevice);
 }
 
 void State::recv_position()

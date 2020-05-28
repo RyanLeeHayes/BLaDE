@@ -104,8 +104,8 @@ real3_type real3_subpbc(real3_type a,real3_type b,real3_type box)
   c.y=a.y-b.y;
   c.z=a.z-b.z;
   c.x-=box.x*floor(c.x/box.x+0.5);
-  c.y-=box.x*floor(c.y/box.y+0.5);
-  c.z-=box.x*floor(c.z/box.z+0.5);
+  c.y-=box.y*floor(c.y/box.y+0.5);
+  c.z-=box.z*floor(c.z/box.z+0.5);
   return c;
 }
 

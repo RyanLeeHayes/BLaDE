@@ -31,7 +31,7 @@ class Coordinates {
   real_x (*particleBox)[3]; // [3][3]
   real3_x particleOrthBox;
   real_x (*particlePosition)[3];
-  real (*particleVelocity)[3];
+  real_v (*particleVelocity)[3];
 
   Coordinates(int n,System *system);
   ~Coordinates();

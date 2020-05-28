@@ -278,7 +278,7 @@ void print_xtc(int step,System *system)
 //  extern int write_xtc(XDRFILE *xd,
 //                       int natoms,int step,real time,
 //                       matrix box,rvec *x,real prec);
-  write_xtc(fp,N,step,(float) (step*system->run->dt*PICOSECOND),box,xXTC,1000.0);
+  write_xtc(fp,N,step,(float) (step*system->run->dt/PICOSECOND),box,xXTC,1000.0);
 }
 
 void print_lmd(int step,System *system)

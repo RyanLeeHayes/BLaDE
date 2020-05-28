@@ -17,9 +17,9 @@ __global__ void holonomic_velocity_triangle_kernel(int N,struct TriangleCons *co
   real_x b[3];
   real_x lambda[3];
   // A*lambda=b, solve for lambda
-  real im[3];
+  real_x im[3];
   real3_x x[3];
-  real3 v[3];
+  real3_v v[3];
   // real b02[3];
   real3_x dx[3];
   int j,k,l,m,n,nSign;
@@ -27,7 +27,7 @@ __global__ void holonomic_velocity_triangle_kernel(int N,struct TriangleCons *co
   if (i<N) {
     for (j=0; j<3; j++) {
       x[j]=((real3_x*)ls.x)[cons[i].idx[j]];
-      v[j]=((real3*)ls.v)[cons[i].idx[j]];
+      v[j]=((real3_v*)ls.v)[cons[i].idx[j]];
       im[j]=ls.ism[3*cons[i].idx[j]];
       im[j]*=im[j];
       // b02[j]=cons[i].b0[j]*cons[i].b0[j];
@@ -73,7 +73,7 @@ __global__ void holonomic_velocity_triangle_kernel(int N,struct TriangleCons *co
       }
     }
     for (j=0; j<3; j++) {
-      ((real3*)ls.v)[cons[i].idx[j]]=v[j];
+      ((real3_v*)ls.v)[cons[i].idx[j]]=v[j];
     }
   }
 }
@@ -85,16 +85,16 @@ __global__ void holonomic_velocity_branch1_kernel(int N,struct Branch1Cons *cons
   real_x b;
   real_x lambda;
   // A*lambda=b, solve for lambda
-  real im[2];
+  real_x im[2];
   real3_x x[2];
-  real3 v[2];
+  real3_v v[2];
   real3_x dx;
   int j;
 
   if (i<N) {
     for (j=0; j<2; j++) {
       x[j]=((real3_x*)ls.x)[cons[i].idx[j]];
-      v[j]=((real3*)ls.v)[cons[i].idx[j]];
+      v[j]=((real3_v*)ls.v)[cons[i].idx[j]];
       im[j]=ls.ism[3*cons[i].idx[j]];
       im[j]*=im[j];
     }
@@ -105,7 +105,7 @@ __global__ void holonomic_velocity_branch1_kernel(int N,struct Branch1Cons *cons
     real3_scaleinc(&v[0], lambda*im[0],dx);
     real3_scaleinc(&v[1],-lambda*im[1],dx);
     for (j=0; j<2; j++) {
-      ((real3*)ls.v)[cons[i].idx[j]]=v[j];
+      ((real3_v*)ls.v)[cons[i].idx[j]]=v[j];
     }
   }
 }
@@ -117,16 +117,16 @@ __global__ void holonomic_velocity_branch2_kernel(int N,struct Branch2Cons *cons
   real_x b[2];
   real_x lambda[2];
   // A*lambda=b, solve for lambda
-  real im[3];
+  real_x im[3];
   real3_x x[3];
-  real3 v[3];
+  real3_v v[3];
   real3_x dx[2];
   int j,jp;
 
   if (i<N) {
     for (j=0; j<3; j++) {
       x[j]=((real3_x*)ls.x)[cons[i].idx[j]];
-      v[j]=((real3*)ls.v)[cons[i].idx[j]];
+      v[j]=((real3_v*)ls.v)[cons[i].idx[j]];
       im[j]=ls.ism[3*cons[i].idx[j]];
       im[j]*=im[j];
     }
@@ -149,7 +149,7 @@ __global__ void holonomic_velocity_branch2_kernel(int N,struct Branch2Cons *cons
       real3_scaleinc(&v[j+1],-lambda[j]*im[j+1],dx[j]);
     }
     for (j=0; j<3; j++) {
-      ((real3*)ls.v)[cons[i].idx[j]]=v[j];
+      ((real3_v*)ls.v)[cons[i].idx[j]]=v[j];
     }
   }
 }
@@ -161,16 +161,16 @@ __global__ void holonomic_velocity_branch3_kernel(int N,struct Branch3Cons *cons
   real_x b[3];
   real_x lambda[3];
   // A*lambda=b, solve for lambda
-  real im[4];
+  real_x im[4];
   real3_x x[4];
-  real3 v[4];
+  real3_v v[4];
   real3_x dx[3];
   int j,jp,jpp;
 
   if (i<N) {
     for (j=0; j<4; j++) {
       x[j]=((real3_x*)ls.x)[cons[i].idx[j]];
-      v[j]=((real3*)ls.v)[cons[i].idx[j]];
+      v[j]=((real3_v*)ls.v)[cons[i].idx[j]];
       im[j]=ls.ism[3*cons[i].idx[j]];
       im[j]*=im[j];
     }
@@ -200,7 +200,7 @@ __global__ void holonomic_velocity_branch3_kernel(int N,struct Branch3Cons *cons
       real3_scaleinc(&v[j+1],-lambda[j]*im[j+1],dx[j]);
     }
     for (j=0; j<4; j++) {
-      ((real3*)ls.v)[cons[i].idx[j]]=v[j];
+      ((real3_v*)ls.v)[cons[i].idx[j]]=v[j];
     }
   }
 }
@@ -233,8 +233,8 @@ void holonomic_velocity(System *system)
 __device__ inline void holonomic_position_triangle_kernel(int N,int B0,struct TriangleCons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
 {
   int i=(blockIdx.x-B0)*blockDim.x+threadIdx.x;
-  real invMass[3];
-  real mass[3];
+  real_x invMass[3];
+  real_x mass[3];
   real3_x xPrev[3];
   real3_x x[3];
   real3_x xNew[3];
@@ -266,7 +266,7 @@ __device__ inline void holonomic_position_triangle_kernel(int N,int B0,struct Tr
       real3_scaleinc(&comPrev,mass[j],xPrev[j]);
       real3_scaleinc(&com,mass[j],x[j]);
     }
-    real invM=1/(mass[0]+mass[1]+mass[2]);
+    real_x invM=1/(mass[0]+mass[1]+mass[2]);
     real3_scaleself(&comPrev,invM);
     real3_scaleself(&com,invM);
 
@@ -348,14 +348,9 @@ __device__ inline void holonomic_position_triangle_kernel(int N,int B0,struct Tr
 
     // Finish up
     for (j=0; j<3; j++) {
-      // Begin New
-      // at_real3_scaleinc(&((real3*)ls.v)[cons[i].idx[j]],1/lp.fscale,real3_sub(xNew[j],x[j]));
-      // End New
       real3_inc(&xPrev[j],comPrev);
       real3_inc(&xNew[j],com);
-      // Begin Replace
-      ((real3*)ls.v)[cons[i].idx[j]]=real3_scale<real3>(1/lp.fscale,real3_sub(xNew[j],xPrev[j]));
-      // End Replace
+      ((real3_v*)ls.v)[cons[i].idx[j]]=real3_scale<real3_v>(1/(real_x)lp.fscale,real3_sub(xNew[j],xPrev[j]));
       ((real3_x*)ls.x)[cons[i].idx[j]]=real3_sub(xNew[j],xShift[j]);
     }
   }
@@ -367,7 +362,7 @@ __device__ inline void holonomic_position_triangle_kernel(int N,int B0,struct Tr
 __device__ inline void holonomic_position_branch1_kernel(int N,int B0,struct Branch1Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
 {
   int i=(blockIdx.x-B0)*blockDim.x+threadIdx.x;
-  real invMass[2];
+  real_x invMass[2];
   real3_x xPrev[2];
   real3_x x[2];
   real3_x xShift[2];
@@ -401,7 +396,7 @@ __device__ inline void holonomic_position_branch1_kernel(int N,int B0,struct Bra
   
     // Finish up
     for (j=0; j<2; j++) {
-      ((real3*)ls.v)[cons[i].idx[j]]=real3_scale<real3>(1/lp.fscale,real3_sub(x[j],xPrev[j]));
+      ((real3_v*)ls.v)[cons[i].idx[j]]=real3_scale<real3_v>(1/(real_x)lp.fscale,real3_sub(x[j],xPrev[j]));
       ((real3_x*)ls.x)[cons[i].idx[j]]=real3_sub(x[j],xShift[j]);
     }
   }
@@ -413,7 +408,7 @@ __device__ inline void holonomic_position_branch1_kernel(int N,int B0,struct Bra
 __device__ inline void holonomic_position_branch2_kernel(int N,int B0,struct Branch2Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
 {
   int i=(blockIdx.x-B0)*blockDim.x+threadIdx.x;
-  real invMass[3];
+  real_x invMass[3];
   real3_x xPrev[3];
   real3_x x[3];
   real3_x xShift[3];
@@ -486,7 +481,7 @@ __device__ inline void holonomic_position_branch2_kernel(int N,int B0,struct Bra
 
     // Finish up
     for (j=0; j<3; j++) {
-      ((real3*)ls.v)[cons[i].idx[j]]=real3_scale<real3>(1/lp.fscale,real3_sub(x[j],xPrev[j]));
+      ((real3_v*)ls.v)[cons[i].idx[j]]=real3_scale<real3_v>(1/(real_x)lp.fscale,real3_sub(x[j],xPrev[j]));
       ((real3_x*)ls.x)[cons[i].idx[j]]=real3_sub(x[j],xShift[j]);
     }
   }
@@ -498,7 +493,7 @@ __device__ inline void holonomic_position_branch2_kernel(int N,int B0,struct Bra
 __device__ inline void holonomic_position_branch3_kernel(int N,int B0,struct Branch3Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
 {
   int i=(blockIdx.x-B0)*blockDim.x+threadIdx.x;
-  real invMass[4];
+  real_x invMass[4];
   real3_x xPrev[4];
   real3_x x[4];
   real3_x xShift[4];
@@ -575,7 +570,7 @@ __device__ inline void holonomic_position_branch3_kernel(int N,int B0,struct Bra
 
     // Finish up
     for (j=0; j<4; j++) {
-      ((real3*)ls.v)[cons[i].idx[j]]=real3_scale<real3>(1/lp.fscale,real3_sub(x[j],xPrev[j]));
+      ((real3_v*)ls.v)[cons[i].idx[j]]=real3_scale<real3_v>(1/(real_x)lp.fscale,real3_sub(x[j],xPrev[j]));
       ((real3_x*)ls.x)[cons[i].idx[j]]=real3_sub(x[j],xShift[j]);
     }
   }
@@ -588,7 +583,7 @@ __global__ void holonomic_position_alttriangle_kernel(int N,struct TriangleCons 
 // __device__ inline void holonomic_position_alttriangle_kernel(int N,int B0,struct TriangleCons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
 // {}
 //   int i=(blockIdx.x-B0)*blockDim.x+threadIdx.x;
-  real invMass[3];
+  real_x invMass[3];
   real3_x xPrev[3];
   real3_x x[3];
   real3_x xShift[3];
@@ -674,7 +669,7 @@ __global__ void holonomic_position_alttriangle_kernel(int N,struct TriangleCons 
 
     // Finish up
     for (j=0; j<3; j++) {
-      ((real3*)ls.v)[cons[i].idx[j]]=real3_scale<real3>(1/lp.fscale,real3_sub(x[j],xPrev[j]));
+      ((real3_v*)ls.v)[cons[i].idx[j]]=real3_scale<real3_v>(1/(real_x)lp.fscale,real3_sub(x[j],xPrev[j]));
       ((real3_x*)ls.x)[cons[i].idx[j]]=real3_sub(x[j],xShift[j]);
     }
   }

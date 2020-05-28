@@ -95,7 +95,7 @@ __global__ void update_VV(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
 
   if (i < ls.N) {
     // Force is dU/dx by convention in this program, not -dU/dx
-    real v=ls.v[i]-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    real_v v=ls.v[i]-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
     ls.v[i]=v-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
   }
 }
@@ -113,7 +113,7 @@ __global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct Le
 
   if (i < ls.N) {
     // Force is dU/dx by convention in this program, not -dU/dx
-    real v=ls.v[i];
+    real_v v=ls.v[i];
     real_x x=ls.x[i];
     v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
     if (bx) bx[i]=x;
@@ -136,7 +136,7 @@ __global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
 
   if (i < ls.N) {
     // Force is dU/dx by convention in this program, not -dU/dx
-    real v=ls.v[i];
+    real_v v=ls.v[i];
     real_x x=ls.x[i];
     // v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
     // v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
@@ -195,7 +195,7 @@ __global__ void update_OO(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   }
 
   if (i < ls.N) {
-    real v=lp.sqrta*ls.v[i]+lp.noise*ls.ism[i]*ls.random[i];
+    real_v v=lp.sqrta*ls.v[i]+lp.noise*ls.ism[i]*ls.random[i];
     // Hamiltonian changes here
     ls.v[i]=lp.sqrta*v+lp.noise*ls.ism[i]*ls.random[ls.N+i];
   }
@@ -213,7 +213,7 @@ __global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
   }
 
   if (i < ls.N) {
-    real v=ls.v[i];
+    real_v v=ls.v[i];
     real_x x=ls.x[i];
     v=lp.sqrta*v+lp.noise*ls.ism[i]*ls.random[i];
     // Hamiltonian changes here

@@ -24,7 +24,7 @@ class Msld {
   int *lambdaSite;
   real *lambdaBias;
   real_x *theta;
-  real *thetaVelocity;
+  real_v *thetaVelocity;
   real *thetaMass;
   real *lambdaCharge;
 

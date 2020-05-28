@@ -33,7 +33,7 @@ struct LeapState
   int N1; // spatial dof
   int N; // spatial dof + alchemical dof
   real_x *x;
-  real *v;
+  real_v *v;
   real_f *f;
   real *ism; // 1/sqrt(m)
   real *random;
@@ -65,8 +65,8 @@ class State {
   real_e *energy_omp;
 
   // Spatial-Theta buffers
-  real *velocityBuffer;
-  real *velocityBuffer_d;
+  real_v *velocityBuffer;
+  real_v *velocityBuffer_d;
   real *invsqrtMassBuffer;
   real *invsqrtMassBuffer_d;
 
@@ -92,10 +92,10 @@ class State {
   real_x *theta;
   real_x *theta_d;
   real *theta_fd;
-  real (*velocity)[3];
-  real (*velocity_d)[3];
-  real *thetaVelocity;
-  real *thetaVelocity_d;
+  real_v (*velocity)[3];
+  real_v (*velocity_d)[3];
+  real_v *thetaVelocity;
+  real_v *thetaVelocity_d;
   real_f *lambdaForce;
   real_f *lambdaForce_d;
   real_f (*force)[3];
@@ -123,7 +123,7 @@ class State {
 
   struct LeapParms1* alloc_leapparms1(real dt,real gamma,real T);
   struct LeapParms2* alloc_leapparms2(real dt,real gamma,real T);
-  struct LeapState* alloc_leapstate(int N1,int N2,real_x *x,real *v,real_f *f,real *ism);
+  struct LeapState* alloc_leapstate(int N1,int N2,real_x *x,real_v *v,real_f *f,real *ism);
   void free_leapstate(struct LeapState *ls);
 
   void recv_state();
