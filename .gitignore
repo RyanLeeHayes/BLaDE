@@ -1,6 +1,5 @@
 build*
 run/output*
-run/input_debug
 run/*.xtc
 run/*.lmd
 run/*.nrg

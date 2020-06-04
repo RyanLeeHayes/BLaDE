@@ -314,3 +314,7 @@ void State::set_fd(System *system)
 }
 
 
+void State::kinetic_energy(System *system)
+{
+  kinetic_energy_kernel<<<(leapState->N+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32,0>>>(*leapState,energy_d+eekinetic);
+}

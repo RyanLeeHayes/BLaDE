@@ -33,6 +33,8 @@ bool operator<(const CountType& a,const CountType& b)
 Potential::Potential() {
   atomCount=0;
   bondCount=0;
+  bond12Count=0;
+  bond13Count=0;
   bonds=NULL;
   bonds_d=NULL;
   angleCount=0;
@@ -500,6 +502,8 @@ void Potential::initialize(System *system)
       }
     }
   }
+  bond12Count=bonds_tmp.size();
+  softBond12Count=softBonds_tmp.size();
 
   for (i=0; i<struc->angleList.size(); i++) {
     TypeName3 type;
@@ -540,6 +544,8 @@ void Potential::initialize(System *system)
       }
     }
   }
+  bond13Count=bonds_tmp.size()-bond12Count;
+  softBond13Count=softBonds_tmp.size()-softBond12Count;
 
   for (i=0; i<struc->diheList.size(); i++) {
     TypeName4 type,typx;

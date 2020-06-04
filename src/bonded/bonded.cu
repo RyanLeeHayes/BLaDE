@@ -40,7 +40,7 @@ void upload_bonded_d(
 
 // getforce_bond_kernel<<<(N+BLBO-1)/BLBO,BLBO,0,p->bondedStream>>>(N,p->bonds,s->position_d,s->force_d,s->box,m->lambda_d,m->lambdaForce_d,NULL);
 template <bool soft>
-__global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,real3 *position,real3_f *force,real3 box,real *lambda,real_f *lambdaForce,real softAlpha,real softExp,real_e *energy)
+__global__ void getforce_bond_kernel(int bond12Count,int bondCount,struct BondPotential *bonds,real3 *position,real3_f *force,real3 box,real *lambda,real_f *lambdaForce,real softAlpha,real softExp,real_e *energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -130,7 +130,13 @@ __global__ void getforce_bond_kernel(int bondCount,struct BondPotential *bonds,r
   // Energy, if requested
   if (energy) {
     lEnergy*=l[0]*l[1];
-    real_sum_reduce(lEnergy,sEnergy,energy);
+    if (blockIdx.x*blockDim.x<bond12Count) {
+      real_sum_reduce((i<bond12Count?lEnergy:0),sEnergy,energy);
+      __syncthreads();
+    }
+    if (blockIdx.x*blockDim.x+blockDim.x>bond12Count) {
+      real_sum_reduce((i<bond12Count?0:lEnergy),sEnergy,energy+eeurey-eebond);
+    }
   }
 }
 
@@ -141,21 +147,27 @@ void getforce_bond(System *system,bool calcEnergy)
   Run *r=system->run;
   real softAlpha=1/(system->msld->softBondRadius*system->msld->softBondRadius);
   real softExp=system->msld->softBondExponent;
-  int N;
+  int N12,N;
+  struct BondPotential *bonds;
   int shMem=0;
   real_e *pEnergy=NULL;
 
-  if (r->calcTermFlag[eebond]==false) return;
+  if (r->calcTermFlag[eebond]==false && r->calcTermFlag[eeurey]==false) return;
 
   if (calcEnergy) {
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eebond;
   }
 
-  N=p->bondCount;
-  if (N>0) getforce_bond_kernel<false><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->bonds_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,0,1,pEnergy);
+  N12=(r->calcTermFlag[eebond]?p->bond12Count:0);
+  N=N12+(r->calcTermFlag[eeurey]?p->bond13Count:0);
+  bonds=p->bonds_d+(p->bond12Count-N12);
+  if (N>0) getforce_bond_kernel<false><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N12,N,bonds,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,0,1,pEnergy);
   N=p->softBondCount;
-  if (N>0) getforce_bond_kernel<true><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softBonds_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,softAlpha,softExp,pEnergy);
+  N12=(r->calcTermFlag[eebond]?p->softBond12Count:0);
+  N=N12+(r->calcTermFlag[eeurey]?p->softBond13Count:0);
+  bonds=p->softBonds_d+(p->softBond12Count-N12);
+  if (N>0) getforce_bond_kernel<true><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N12,N,bonds,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,softAlpha,softExp,pEnergy);
 }
 
 

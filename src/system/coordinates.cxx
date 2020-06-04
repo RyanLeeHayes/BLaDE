@@ -118,6 +118,7 @@ void Coordinates::file(char *line,char *token,System *system)
 {
   FILE *fp;
   std::string fmt=io_nexts(line);
+
   io_nexta(line,token);
   fp=fpopen(token,"r");
   if (fmt=="pdb") {

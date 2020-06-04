@@ -110,10 +110,12 @@ extern "C" {
   void blade_init_run(System *system);
   void blade_dest_run(System *system);
   void blade_add_run_flags(System *system,
-    double gamma, double betaEwald, double rCut, double rSwitch, double gridSpace, int orderEwald, double shakeTolerance);
+    double gamma, double betaEwald, double rCut, double rSwitch,
+    double gridSpace, int orderEwald, double shakeTolerance);
   void blade_add_run_dynopts(System *system,
     int step, int step0, int nsteps, double dt, double T,
     int freqNPT, double volumeFluctuation, double pressure);
+  void blade_run_energy(System *system);
 }
 
 #endif

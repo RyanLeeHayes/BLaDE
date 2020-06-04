@@ -20,6 +20,7 @@ bool operator<(const TypeName8O& a,const TypeName8O& b);
 typedef enum eeterm {
   eebond,
   eeangle,
+  eeurey,
   eedihe,
   eeimpr,
   eecmap,
@@ -132,6 +133,7 @@ class Potential {
   int atomCount;
 
   int bondCount;
+  int bond12Count, bond13Count;
   std::vector<struct BondPotential> bonds_tmp;
   struct BondPotential *bonds;
   struct BondPotential *bonds_d;
@@ -153,6 +155,7 @@ class Potential {
   struct CmapPotential *cmaps_d;
 
   int softBondCount;
+  int softBond12Count, softBond13Count;
   std::vector<struct BondPotential> softBonds_tmp;
   struct BondPotential *softBonds;
   struct BondPotential *softBonds_d;

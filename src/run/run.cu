@@ -62,6 +62,7 @@ Run::Run(System *system)
   termStringToInt.clear();
   termStringToInt["bond"]=eebond;
   termStringToInt["angle"]=eeangle;
+  termStringToInt["urey"]=eeurey;
   termStringToInt["dihe"]=eedihe;
   termStringToInt["impr"]=eeimpr;
   termStringToInt["cmap"]=eecmap;
@@ -585,4 +586,16 @@ void blade_add_run_dynopts(System *system,
 
     system++;
   }
+}
+
+void blade_run_energy(System *system)
+{
+  
+  if (!system->run) {
+    system->run=new Run(system);
+  }
+  system->run->dynamics_initialize(system);
+  system->potential->calc_force(0,system);
+  system->state->recv_energy();
+  system->run->dynamics_finalize(system);
 }

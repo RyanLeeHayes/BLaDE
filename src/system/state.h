@@ -145,6 +145,7 @@ class State {
   // From update/update.cu
   void set_fd(System *system);
   void update(int step,System *system);
+  void kinetic_energy(System *system);
 };
 
 #endif

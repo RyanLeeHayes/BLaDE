@@ -5,7 +5,8 @@ set xs1s1s1s2 =    -0.00
 set xs1s2s1s1 =    -0.00
 set ss1s1s1s2 =    -0.00
 set ss1s2s1s1 =    -0.00
-set sysname = "u64-68"
+set sysname = "u64-68
+trim sysname from 2
 set nnodes = 1
 set nreps = 1
 set ncentral = 0
