@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <omp.h>
 #include <string.h>
 #include <cuda_runtime.h>
 
@@ -879,128 +880,102 @@ void Msld::getforce_chargeRestraints(System *system,bool calcEnergy)
 
 void blade_init_msld(System *system,int nblocks)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    if (system->msld) {
-      delete(system->msld);
-    }
-    system->msld=new Msld();
-
-    system->msld->blockCount=nblocks+1;
-    system->msld->atomBlock=(int*)calloc(system->structure->atomList.size(),sizeof(int));
-    system->msld->lambdaSite=(int*)calloc(system->msld->blockCount,sizeof(int));
-    system->msld->lambdaBias=(real*)calloc(system->msld->blockCount,sizeof(real));
-    system->msld->theta=(real_x*)calloc(system->msld->blockCount,sizeof(real_x));
-    system->msld->thetaVelocity=(real_v*)calloc(system->msld->blockCount,sizeof(real_v));
-    system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
-    system->msld->thetaMass[0]=1;
-    system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
-
-    if (id>0) fatal(__FILE__,__LINE__,"Warning: blade_init_msld calls cudaMalloc, not thread safe yet\n");
-    cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
-    cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
-    cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
-    cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real));
-
-    system++;
+  system+=omp_get_thread_num();
+  if (system->msld) {
+    delete(system->msld);
   }
+  system->msld=new Msld();
+
+  system->msld->blockCount=nblocks+1;
+  system->msld->atomBlock=(int*)calloc(system->structure->atomList.size(),sizeof(int));
+  system->msld->lambdaSite=(int*)calloc(system->msld->blockCount,sizeof(int));
+  system->msld->lambdaBias=(real*)calloc(system->msld->blockCount,sizeof(real));
+  system->msld->theta=(real_x*)calloc(system->msld->blockCount,sizeof(real_x));
+  system->msld->thetaVelocity=(real_v*)calloc(system->msld->blockCount,sizeof(real_v));
+  system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
+  system->msld->thetaMass[0]=1;
+  system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
+
+  cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
+  cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
+  cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
+  cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real));
 }
 
 void blade_dest_msld(System *system)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    if (system->msld) {
-      delete(system->msld);
-    }
-    system->msld=NULL;
-    system++;
+  system+=omp_get_thread_num();
+  if (system->msld) {
+    delete(system->msld);
   }
+  system->msld=NULL;
 }
 
 void blade_add_msld_atomassignment(System *system,int atomIdx,int blockIdx)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    system->msld->atomBlock[atomIdx-1]=blockIdx-1;
-    system++;
-  }
+  system+=omp_get_thread_num();
+  system->msld->atomBlock[atomIdx-1]=blockIdx-1;
 }
 
 void blade_add_msld_initialconditions(System *system,int blockIdx,int siteIdx,double theta0,double thetaVelocity,double thetaMass,double fixBias,double blockCharge)
 {
   blockIdx-=1;
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    system->msld->lambdaSite[blockIdx]=siteIdx-1;
-    system->msld->theta[blockIdx]=theta0;
-    system->msld->thetaVelocity[blockIdx]=thetaVelocity;
-    system->msld->thetaMass[blockIdx]=thetaMass;
-    system->msld->lambdaBias[blockIdx]=fixBias;
-    system->msld->lambdaCharge[blockIdx]=blockCharge;
-    system++;
-  }
+  system+=omp_get_thread_num();
+  system->msld->lambdaSite[blockIdx]=siteIdx-1;
+  system->msld->theta[blockIdx]=theta0;
+  system->msld->thetaVelocity[blockIdx]=thetaVelocity;
+  system->msld->thetaMass[blockIdx]=thetaMass;
+  system->msld->lambdaBias[blockIdx]=fixBias;
+  system->msld->lambdaCharge[blockIdx]=blockCharge;
 }
 
 void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int scaleAngle,int scaleDihe,int scaleImpr,int scaleCmap)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    system->msld->scaleTerms[0]=scaleBond;
-    system->msld->scaleTerms[1]=scaleUrey;
-    system->msld->scaleTerms[2]=scaleAngle;
-    system->msld->scaleTerms[3]=scaleDihe;
-    system->msld->scaleTerms[4]=scaleImpr;
-    system->msld->scaleTerms[5]=scaleCmap;
-    system++;
-  }
+  system+=omp_get_thread_num();
+  system->msld->scaleTerms[0]=scaleBond;
+  system->msld->scaleTerms[1]=scaleUrey;
+  system->msld->scaleTerms[2]=scaleAngle;
+  system->msld->scaleTerms[3]=scaleDihe;
+  system->msld->scaleTerms[4]=scaleImpr;
+  system->msld->scaleTerms[5]=scaleCmap;
 }
 
 void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    system->msld->gamma=gamma;
-    system->msld->fnex=fnex;
-    system->msld->useSoftCore=useSoftCore;
-    system->msld->useSoftCore14=useSoftCore14;
-    system->msld->msldEwaldType=msldEwaldType;
-    system->msld->kRestraint=kRestraint;
-    system->msld->kChargeRestraint=kChargeRestraint;
-    system->msld->softBondRadius=softBondRadius;
-    system->msld->softBondExponent=softBondExponent;
-    system->msld->softNotBondExponent=softNotBondExponent;
-    system++;
-  }
+  system+=omp_get_thread_num();
+  system->msld->gamma=gamma;
+  system->msld->fnex=fnex;
+  system->msld->useSoftCore=useSoftCore;
+  system->msld->useSoftCore14=useSoftCore14;
+  system->msld->msldEwaldType=msldEwaldType;
+  system->msld->kRestraint=kRestraint;
+  system->msld->kChargeRestraint=kChargeRestraint;
+  system->msld->softBondRadius=softBondRadius;
+  system->msld->softBondExponent=softBondExponent;
+  system->msld->softNotBondExponent=softNotBondExponent;
 }
 
 void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    struct VariableBias vb;
-    vb.i=i-1;
-    vb.j=j-1;
-    vb.type=type;
-    if (vb.type!=6 && vb.type!=8 && vb.type!=10) {
-      fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type (6, 8, or 10)\n",vb.type);
-    }
-    vb.l0=l0;
-    vb.k=k;
-    vb.n=n;
-    system->msld->variableBias_tmp.emplace_back(vb);
-    system++;
+  system+=omp_get_thread_num();
+  struct VariableBias vb;
+  vb.i=i-1;
+  vb.j=j-1;
+  vb.type=type;
+  if (vb.type!=6 && vb.type!=8 && vb.type!=10) {
+    fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type (6, 8, or 10)\n",vb.type);
   }
+  vb.l0=l0;
+  vb.k=k;
+  vb.n=n;
+  system->msld->variableBias_tmp.emplace_back(vb);
 }
 
 void blade_add_msld_softbond(System *system,int i,int j)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    Int2 i2;
-    i2.i[0]=i-1;
-    i2.i[1]=j-1;
-    system->msld->softBonds.emplace_back(i2);
-    system++;
-  }
+  system+=omp_get_thread_num();
+  Int2 i2;
+  i2.i[0]=i-1;
+  i2.i[1]=j-1;
+  system->msld->softBonds.emplace_back(i2);
 }

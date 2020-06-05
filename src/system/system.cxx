@@ -265,3 +265,8 @@ void blade_dest_system(System *system)
 {
   dest_system(system);
 }
+
+void blade_set_device()
+{
+  cudaSetDevice(omp_get_thread_num());
+}

@@ -1,3 +1,4 @@
+#include <omp.h>
 #include <string.h>
 #include <math.h>
 
@@ -296,74 +297,59 @@ void Coordinates::parse_velocity(char *line,char *token,System *system)
 
 void blade_init_coordinates(System *system,int n)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    if (system->coordinates) {
-      delete(system->coordinates);
-    }
-    system->coordinates=new Coordinates(n,system);
-    system++;
+  system+=omp_get_thread_num();
+  if (system->coordinates) {
+    delete(system->coordinates);
   }
+  system->coordinates=new Coordinates(n,system);
 }
 
 void blade_dest_coordinates(System *system)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    if (system->coordinates) {
-      delete(system->coordinates);
-    }
-    system->coordinates=NULL;
-    system++;
+  system+=omp_get_thread_num();
+  if (system->coordinates) {
+    delete(system->coordinates);
   }
+  system->coordinates=NULL;
 }
 
 void blade_add_coordinates_position(System *system,int i,double x,double y,double z)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    system->coordinates->particlePosition[i-1][0]=x;
-    system->coordinates->particlePosition[i-1][1]=y;
-    system->coordinates->particlePosition[i-1][2]=z;
-    system++;
-  }
+  system+=omp_get_thread_num();
+  system->coordinates->particlePosition[i-1][0]=x;
+  system->coordinates->particlePosition[i-1][1]=y;
+  system->coordinates->particlePosition[i-1][2]=z;
 }
 
 void blade_add_coordinates_velocity(System *system,int i,double vx,double vy,double vz)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    system->coordinates->particleVelocity[i-1][0]=vx;
-    system->coordinates->particleVelocity[i-1][1]=vy;
-    system->coordinates->particleVelocity[i-1][2]=vz;
-    system++;
-  }
+  system+=omp_get_thread_num();
+  system->coordinates->particleVelocity[i-1][0]=vx;
+  system->coordinates->particleVelocity[i-1][1]=vy;
+  system->coordinates->particleVelocity[i-1][2]=vz;
 }
 
 void blade_add_coordinates_box(System *system,double ax,double ay,double az,double bx,double by,double bz,double cx,double cy,double cz)
 {
   int i,j;
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    system->coordinates->particleBox[0][0]=ax;
-    system->coordinates->particleBox[0][1]=ay;
-    system->coordinates->particleBox[0][2]=az;
-    system->coordinates->particleBox[1][0]=bx;
-    system->coordinates->particleBox[1][1]=by;
-    system->coordinates->particleBox[1][2]=bz;
-    system->coordinates->particleBox[2][0]=cx;
-    system->coordinates->particleBox[2][1]=cy;
-    system->coordinates->particleBox[2][2]=cz;
-    for (i=0; i<3; i++) {
-      for (j=0; j<3; j++) {
-        if (i!=j && system->coordinates->particleBox[i][j]!=0) {
-          fatal(__FILE__,__LINE__,"Non-orthogonal boxes are not yet implemented NYI\n");
-        }
+  system+=omp_get_thread_num();
+  system->coordinates->particleBox[0][0]=ax;
+  system->coordinates->particleBox[0][1]=ay;
+  system->coordinates->particleBox[0][2]=az;
+  system->coordinates->particleBox[1][0]=bx;
+  system->coordinates->particleBox[1][1]=by;
+  system->coordinates->particleBox[1][2]=bz;
+  system->coordinates->particleBox[2][0]=cx;
+  system->coordinates->particleBox[2][1]=cy;
+  system->coordinates->particleBox[2][2]=cz;
+  for (i=0; i<3; i++) {
+    for (j=0; j<3; j++) {
+      if (i!=j && system->coordinates->particleBox[i][j]!=0) {
+        fatal(__FILE__,__LINE__,"Non-orthogonal boxes are not yet implemented NYI\n");
       }
     }
-    system->coordinates->particleOrthBox.x=system->coordinates->particleBox[0][0];
-    system->coordinates->particleOrthBox.y=system->coordinates->particleBox[1][1];
-    system->coordinates->particleOrthBox.z=system->coordinates->particleBox[2][2];
-    system++;
   }
+  system->coordinates->particleOrthBox.x=system->coordinates->particleBox[0][0];
+  system->coordinates->particleOrthBox.y=system->coordinates->particleBox[1][1];
+  system->coordinates->particleOrthBox.z=system->coordinates->particleBox[2][2];
 }

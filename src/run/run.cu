@@ -1,3 +1,4 @@
+#include <omp.h>
 #include <cuda_runtime.h>
 #include <string.h>
 
@@ -512,26 +513,20 @@ void Run::dynamics_finalize(System *system)
 
 void blade_init_run(System *system)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    if (system->run) {
-      delete(system->run);
-    }
-    system->run=new Run(system);
-    system++;
+  system+=omp_get_thread_num();
+  if (system->run) {
+    delete(system->run);
   }
+  system->run=new Run(system);
 }
 
 void blade_dest_run(System *system)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    if (system->run) {
-      delete(system->run);
-    }
-    system->run=NULL;
-    system++;
+  system+=omp_get_thread_num();
+  if (system->run) {
+    delete(system->run);
   }
+  system->run=NULL;
 }
 
 void blade_add_run_flags(System *system,
@@ -543,23 +538,19 @@ void blade_add_run_flags(System *system,
   int orderEwald,
   double shakeTolerance)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    system->run->gamma=gamma;
+  system+=omp_get_thread_num();
+  system->run->gamma=gamma;
 
-    system->run->betaEwald=betaEwald;
-    system->run->rCut=rCut;
-    system->run->rSwitch=rSwitch;
-    system->run->gridSpace=gridSpace; // grid spacing for PME calculation
-    system->run->orderEwald=orderEwald; // interpolation order (4, 6, or 8 typically)
-    system->run->shakeTolerance=shakeTolerance;
+  system->run->betaEwald=betaEwald;
+  system->run->rCut=rCut;
+  system->run->rSwitch=rSwitch;
+  system->run->gridSpace=gridSpace; // grid spacing for PME calculation
+  system->run->orderEwald=orderEwald; // interpolation order (4, 6, or 8 typically)
+  system->run->shakeTolerance=shakeTolerance;
 
-    system->run->cutoffs.betaEwald=betaEwald;
-    system->run->cutoffs.rCut=rCut;
-    system->run->cutoffs.rSwitch=rSwitch;
-
-    system++;
-  }
+  system->run->cutoffs.betaEwald=betaEwald;
+  system->run->cutoffs.rCut=rCut;
+  system->run->cutoffs.rSwitch=rSwitch;
 }
 
 void blade_add_run_dynopts(System *system,
@@ -572,24 +563,21 @@ void blade_add_run_dynopts(System *system,
   double volumeFluctuation,
   double pressure)
 {
-  int idCount=system->idCount;
-  for (int id=0; id<idCount; id++) {
-    system->run->step=step; // current step
-    system->run->step0=step0; // starting step
-    system->run->nsteps=nsteps; // steps in next dynamics call
-    system->run->dt=dt;
-    system->run->T=T;
+  system+=omp_get_thread_num();
+  system->run->step=step; // current step
+  system->run->step0=step0; // starting step
+  system->run->nsteps=nsteps; // steps in next dynamics call
+  system->run->dt=dt;
+  system->run->T=T;
 
-    system->run->freqNPT=freqNPT;
-    system->run->volumeFluctuation=volumeFluctuation;
-    system->run->pressure=pressure;
-
-    system++;
-  }
+  system->run->freqNPT=freqNPT;
+  system->run->volumeFluctuation=volumeFluctuation;
+  system->run->pressure=pressure;
 }
 
 void blade_run_energy(System *system)
 {
+  system+=omp_get_thread_num();
   
   if (!system->run) {
     system->run=new Run(system);

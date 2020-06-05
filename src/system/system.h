@@ -82,6 +82,7 @@ class System {
 extern "C" {
   System* blade_init_system();
   void blade_dest_system(System *system);
+  void blade_set_device();
 }
 
 #endif
