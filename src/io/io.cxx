@@ -1,3 +1,4 @@
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -455,5 +456,6 @@ void read_checkpoint_file(const char *fnm,System *system)
 
 void blade_interpretter(const char *fnm,System *system)
 {
+  system+=omp_get_thread_num();
   interpretter(fnm,system);
 }
