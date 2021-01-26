@@ -69,6 +69,8 @@ Msld::Msld() {
   softBondRadius=1.0*ANGSTROM;
   softBondExponent=2.0;
   softNotBondExponent=1.0;
+
+  fix=false; // ffix
 }
 
 Msld::~Msld() {
@@ -309,6 +311,8 @@ void parse_msld(char *line,System *system)
     } else {
       fatal(__FILE__,__LINE__,"Unrecognized token %s used for atomrestraint selection name. Use selection print to see available tokens.\n",name.c_str());
     }
+  } else if (strcmp(token,"fix")==0) { // ffix
+    system->msld->fix=io_nextb(line); // ffix
 // NYI - charge restraints, put Q in initialize
   } else if (strcmp(token,"print")==0) {
     system->selections->dump();
@@ -611,7 +615,9 @@ __global__ void calc_lambda_from_theta_kernel(real_x *lambda,real_x *theta,int s
 void Msld::calc_lambda_from_theta(cudaStream_t stream,System *system)
 {
   State *s=system->state;
-  calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex);
+  if (!fix) { // ffix
+    calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex);
+  }
 }
 
 __global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta,real_f *lambdaForce,real_f *thetaForce,int blockCount,int *lambdaSite,int *siteBound,real fnex)
@@ -636,7 +642,9 @@ __global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta
 void Msld::calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system)
 {
   State *s=system->state;
-  calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_fd,s->theta_fd,s->lambdaForce_d,s->thetaForce_d,blockCount,lambdaSite_d,siteBound_d,fnex);
+  if (!fix) { // ffix
+    calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_fd,s->theta_fd,s->lambdaForce_d,s->thetaForce_d,blockCount,lambdaSite_d,siteBound_d,fnex);
+  }
 }
 
 __global__ void getforce_fixedBias_kernel(real *lambda,real *lambdaBias,real_f *lambdaForce,real_e *energy,int blockCount)

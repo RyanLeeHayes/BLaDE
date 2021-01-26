@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
       cudaDeviceEnablePeerAccess(0,0); // host 0, required 0
     }
   }
+  system->rngGPU=new RngGPU;
 
   // open input file
   if (argc < 2) {

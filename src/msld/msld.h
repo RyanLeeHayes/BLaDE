@@ -71,6 +71,8 @@ class Msld {
   real softBondExponent;
   real softNotBondExponent;
 
+  bool fix; // ffix
+
   Msld();
   ~Msld();
 

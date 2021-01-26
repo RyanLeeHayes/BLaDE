@@ -189,6 +189,10 @@ void State::initialize(System *system)
   cudaMemset(forceBuffer_d,0,(nL+3*n)*sizeof(real_f));
   cudaMemcpy(invsqrtMassBuffer_d,invsqrtMassBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
   system->msld->calc_lambda_from_theta(0,system);
+
+  if (system->msld->fix) { // ffix
+    cudaMemcpy(lambda_d,theta,nL*sizeof(real_x),cudaMemcpyHostToDevice);
+  }
 }
 
 void State::save_state(System *system)

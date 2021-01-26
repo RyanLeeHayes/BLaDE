@@ -32,7 +32,8 @@ System::System() {
   coordinates=NULL;
   run=NULL;
   rngCPU=new RngCPU;
-  rngGPU=new RngGPU;
+  // rngGPU=new RngGPU; // Have to be careful to allocate and free for correct GPU
+  rngGPU=NULL;
   potential=NULL;
   state=NULL;
   domdec=NULL;
@@ -245,6 +246,7 @@ System* init_system()
         cudaDeviceEnablePeerAccess(0,0); // host 0, required 0
       }
     }
+    system[id].rngGPU=new RngGPU;
   }
 
   return system;
@@ -252,7 +254,23 @@ System* init_system()
 
 void dest_system(System *system)
 {
+  int id;
+  int idCount=omp_get_max_threads(); // omp_get_num_threads();
+
   free(system->message);
+  for (id=0; id<idCount; id++) {
+    cudaSetDevice(id);
+    if (id!=0) {
+      int accessible;
+      cudaDeviceCanAccessPeer(&accessible, id, 0);
+      if (accessible) {
+        cudaDeviceDisablePeerAccess(0); // host 0, have to disable on free, otherwise an error is thrown on reallocation
+      }
+    }
+    delete(system[id].rngGPU);
+    system[id].rngGPU=NULL;
+  }
+
   delete[] system;
 }
 
