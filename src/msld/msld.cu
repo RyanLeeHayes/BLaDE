@@ -204,7 +204,7 @@ void parse_msld(char *line,System *system)
     vb.l0=io_nextf(line);
     vb.k=io_nextf(line);
     vb.n=io_nexti(line);
-    system->msld->variableBias_tmp.emplace_back(vb);
+    system->msld->variableBias_tmp.push_back(vb);
   } else if (strcmp(token,"removescaling")==0) {
     std::string name;
     while ((name=io_nexts(line))!="") {
@@ -260,12 +260,12 @@ void parse_msld(char *line,System *system)
       atoms.clear();
       for (i=0; i<system->selections->selectionMap[name].boolCount; i++) {
         if (system->selections->selectionMap[name].boolSelection[i]) {
-          atoms.emplace_back(i);
+          atoms.push_back(i);
         }
       }
       if (atoms.size()>0) {
         // NYI - checking for one atom per substituent
-        system->msld->atomRestraints.emplace_back(atoms);
+        system->msld->atomRestraints.push_back(atoms);
       }
     } else {
       fatal(__FILE__,__LINE__,"Selection %s not found for msld atom restraints\n");
@@ -288,7 +288,7 @@ void parse_msld(char *line,System *system)
         }
       }
       if (j==2) {
-        system->msld->softBonds.emplace_back(i2);
+        system->msld->softBonds.push_back(i2);
       } else {
         fatal(__FILE__,__LINE__,"Found soft bond selection with %d atoms when expected 2 atoms\n",j);
       }
@@ -304,10 +304,10 @@ void parse_msld(char *line,System *system)
     if (system->selections->selectionMap.count(name)==1) {
       for (i=0; i<system->selections->selectionMap[name].boolCount; i++) {
         if (system->selections->selectionMap[name].boolSelection[i]) {
-          ar.emplace_back(i);
+          ar.push_back(i);
         }
       }
-      system->msld->atomRestraints.emplace_back(ar);
+      system->msld->atomRestraints.push_back(ar);
     } else {
       fatal(__FILE__,__LINE__,"Unrecognized token %s used for atomrestraint selection name. Use selection print to see available tokens.\n",name.c_str());
     }
@@ -976,7 +976,7 @@ void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,
   vb.l0=l0;
   vb.k=k;
   vb.n=n;
-  system->msld->variableBias_tmp.emplace_back(vb);
+  system->msld->variableBias_tmp.push_back(vb);
 }
 
 void blade_add_msld_softbond(System *system,int i,int j)
@@ -985,5 +985,5 @@ void blade_add_msld_softbond(System *system,int i,int j)
   Int2 i2;
   i2.i[0]=i-1;
   i2.i[1]=j-1;
-  system->msld->softBonds.emplace_back(i2);
+  system->msld->softBonds.push_back(i2);
 }

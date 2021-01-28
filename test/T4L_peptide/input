@@ -51,7 +51,7 @@ msld removescaling bond angle ! scale urey dihe impr and cmap
 msld bias 1 2 6 0.0 0.0 0
 msld softcore on
 
-coordinates file {dir}/T4L_prep/minimized.pdb
+coordinates file pdb {dir}/T4L_prep/minimized.pdb
 coordinates box 41.271760 0 0   0 41.271760 0   0 0 41.271760
 coordinates velocity 300
 

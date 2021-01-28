@@ -1,5 +1,6 @@
 #include <cuda_runtime.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "system/potential.h"
 #include "system/system.h"
@@ -496,9 +497,9 @@ void Potential::initialize(System *system)
       if (system->structure->shakeHbond && (type.t[0][0]=='H' || type.t[1][0]=='H')) {
         fatal(__FILE__,__LINE__,"hbond constraints not yet implemented (NYI)\n");
       } else if (soft) {
-        softBonds_tmp.emplace_back(bond);
+        softBonds_tmp.push_back(bond);
       } else {
-        bonds_tmp.emplace_back(bond);
+        bonds_tmp.push_back(bond);
       }
     }
   }
@@ -531,16 +532,16 @@ void Potential::initialize(System *system)
     bond.kb=ap.kureyb;
     bond.b0=ap.ureyb0;
     if (soft) {
-      softAngles_tmp.emplace_back(angle);
+      softAngles_tmp.push_back(angle);
     } else {
-      angles_tmp.emplace_back(angle);
+      angles_tmp.push_back(angle);
     }
     // Only include urey bradley if it's nonzero
     if (bond.kb != 0) {
       if (softU) {
-        softBonds_tmp.emplace_back(bond);
+        softBonds_tmp.push_back(bond);
       } else {
-        bonds_tmp.emplace_back(bond);
+        bonds_tmp.push_back(bond);
       }
     }
   }
@@ -584,9 +585,9 @@ void Potential::initialize(System *system)
       dihe.dih0=dp[j].dih0;
       if (rest) dihe.kdih*=system->msld->restScaling;
       if (soft) {
-        softDihes_tmp.emplace_back(dihe);
+        softDihes_tmp.push_back(dihe);
       } else {
-        dihes_tmp.emplace_back(dihe);
+        dihes_tmp.push_back(dihe);
       }
     }
   }
@@ -643,9 +644,9 @@ void Potential::initialize(System *system)
     impr.imp0=ip.imp0;
     if (rest) impr.kimp*=system->msld->restScaling;
     if (soft) {
-      softImprs_tmp.emplace_back(impr);
+      softImprs_tmp.push_back(impr);
     } else {
-      imprs_tmp.emplace_back(impr);
+      imprs_tmp.push_back(impr);
     }
   }
 
@@ -686,9 +687,9 @@ void Potential::initialize(System *system)
       cmap.kcmapPtr=cmapTypeToPtr[type];
     }
     if (soft) {
-      softCmaps_tmp.emplace_back(cmap);
+      softCmaps_tmp.push_back(cmap);
     } else {
-      cmaps_tmp.emplace_back(cmap);
+      cmaps_tmp.push_back(cmap);
     }
   }
 
@@ -894,7 +895,7 @@ void Potential::initialize(System *system)
         sig6*=(sig6*sig6);
         nb14.c12=np.eps14*sig6*sig6;
         nb14.c6=2*np.eps14*sig6;
-        nb14s_tmp.emplace_back(nb14);
+        nb14s_tmp.push_back(nb14);
       }
     }
   }
@@ -910,7 +911,7 @@ void Potential::initialize(System *system)
         if (msld->nbex_scaling(nbex.idx,nbex.siteBlock)) {
           // Get their parameters
           nbex.qxq=charge[nbex.idx[0]]*charge[nbex.idx[1]];
-          nbexs_tmp.emplace_back(nbex);
+          nbexs_tmp.push_back(nbex);
         }
       }
     }
@@ -921,7 +922,7 @@ void Potential::initialize(System *system)
       ExclPotential excl;
       excl.idx[0]=i;
       excl.idx[1]=*jj;
-      excls_tmp.emplace_back(excl);
+      excls_tmp.push_back(excl);
     }
   }
 
@@ -1078,7 +1079,7 @@ void Potential::initialize(System *system)
   typeList.clear(); // number to string
   typeLookup.clear(); // string to number
   for (std::set<struct CountType>::iterator ii=typeSort.begin(); ii!=typeSort.end(); ii++) {
-    typeList.emplace_back(ii->type);
+    typeList.push_back(ii->type);
     typeLookup[ii->type]=i;
     i++;
   }
@@ -1171,15 +1172,15 @@ void Potential::initialize(System *system)
     std::vector<bool> consH;
     bool consBad=false;
     consIdx.clear();
-    consIdx.emplace_back(ii->first);
+    consIdx.push_back(ii->first);
     for (std::set<int>::iterator jj=ii->second.begin(); jj!=ii->second.end(); jj++) {
-      consIdx.emplace_back(*jj);
+      consIdx.push_back(*jj);
     }
     consType.clear();
     consH.clear();
     for (i=0; i<consIdx.size(); i++) {
-      consType.emplace_back(struc->atomList[consIdx[i]].atomTypeName);
-      consH.emplace_back(consType[i][0]=='H');
+      consType.push_back(struc->atomList[consIdx[i]].atomTypeName);
+      consH.push_back(consType[i][0]=='H');
     }
     // // Print it out for debugging purposes
     // fprintf(stdout,"CONS:");
@@ -1215,7 +1216,7 @@ void Potential::initialize(System *system)
               //   fprintf(stdout," %5d",consIdx[i]);
               // }
               // fprintf(stdout,"\n");
-              triangleCons_tmp.emplace_back(tc);
+              triangleCons_tmp.push_back(tc);
             } // else consIdx[2] should be in 0 position
           } // else consIdx[1] should be in 0 posiiton
         } else {
@@ -1247,7 +1248,7 @@ void Potential::initialize(System *system)
         //   fprintf(stdout," %5d",consIdx[i]);
         // }
         // fprintf(stdout,"\n");
-        branch2Cons_tmp.emplace_back(bc);
+        branch2Cons_tmp.push_back(bc);
       } else {
         consBad=true;
       }
@@ -1278,7 +1279,7 @@ void Potential::initialize(System *system)
         //   fprintf(stdout," %5d",consIdx[i]);
         // }
         // fprintf(stdout,"\n");
-        branch3Cons_tmp.emplace_back(bc);
+        branch3Cons_tmp.push_back(bc);
       } else {
         consBad=true;
       }
@@ -1310,7 +1311,7 @@ void Potential::initialize(System *system)
           //   fprintf(stdout," %5d",consIdx[i]);
           // }
           // fprintf(stdout,"\n");
-          branch1Cons_tmp.emplace_back(bc);
+          branch1Cons_tmp.push_back(bc);
         } // else consIdx[1] should be in position 0
       } // else consIdx[0] should be in position 0 because it has more partners
     } else {

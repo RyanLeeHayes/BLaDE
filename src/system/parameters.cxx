@@ -179,7 +179,7 @@ void Parameters::add_parameter_atoms(FILE *fp)
       io_nexti(line); // Ignore index
       name=io_nexts(line);
       atomTypeMap[name]=atomTypeCount;
-      atomType.emplace_back(name);
+      atomType.push_back(name);
       atomMass[name]=io_nextf(line);
       atomTypeCount++;
     } else {
@@ -278,10 +278,10 @@ void Parameters::add_parameter_dihes(FILE *fp)
       dp.ndih=io_nexti(line);
       dp.dih0=DEGREES*io_nextf(line);
       if (diheParameter.count(name)==1) {
-        diheParameter[name].emplace_back(dp);
+        diheParameter[name].push_back(dp);
       } else {
         dpv.clear();
-        dpv.emplace_back(dp);
+        dpv.push_back(dp);
         diheParameter[name]=dpv;
       }
       diheTerms=diheParameter[name].size();
@@ -506,7 +506,7 @@ void Parameters::dump()
   }
   fprintf(stdout,"%s\n",tag);
 
-  for (std::map<TypeName4,std::vector<struct DiheParameter>>::iterator ii=diheParameter.begin(); ii!=diheParameter.end(); ii++) {
+  for (std::map<TypeName4,std::vector<struct DiheParameter> >::iterator ii=diheParameter.begin(); ii!=diheParameter.end(); ii++) {
     TypeName4 name=ii->first;
     std::vector<struct DiheParameter> dpv=ii->second;
     char varName[45]; // 42+\0
@@ -587,7 +587,7 @@ void blade_add_parameter_atoms(System *system,const char *name,double mass)
 {
   system+=omp_get_thread_num();
   system->parameters->atomTypeMap[name]=system->parameters->atomTypeCount;
-  system->parameters->atomType.emplace_back(name);
+  system->parameters->atomType.push_back(name);
   system->parameters->atomMass[name]=mass;
   system->parameters->atomTypeCount++;
 }
@@ -638,10 +638,10 @@ void blade_add_parameter_dihes(System *system,const char *t1,const char *t2,cons
   dp.dih0=DEGREES*dih0;
   system+=omp_get_thread_num();
   if (system->parameters->diheParameter.count(name)==1) {
-    system->parameters->diheParameter[name].emplace_back(dp);
+    system->parameters->diheParameter[name].push_back(dp);
   } else {
     dpv.clear();
-    dpv.emplace_back(dp);
+    dpv.push_back(dp);
     system->parameters->diheParameter[name]=dpv;
   }
   diheTerms=system->parameters->diheParameter[name].size();

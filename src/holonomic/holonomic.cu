@@ -309,13 +309,13 @@ __device__ inline void holonomic_position_triangle_kernel(int N,int B0,struct Tr
     // Rotate by psi around Y=intCoord[1]
     real3_rotation_matrix(R,intCoord[1],cosPsi,sinPsi);
     for (j=0; j<3; j++) {
-      xNew[j]=real3_rotate<real3_x>(R,xPrev[j]);
+      xNew[j]=real3_rotate<real3_x,real_x>(R,xPrev[j]);
     }
 
     // Rotate by phi around X=intCoord[0]
     real3_rotation_matrix(R,intCoord[0],cosPhi,sinPhi);
     for (j=0; j<3; j++) {
-      xNew[j]=real3_rotate<real3_x>(R,xNew[j]);
+      xNew[j]=real3_rotate<real3_x,real_x>(R,xNew[j]);
     }
 
     // Find theta, use lambda_AB=lambda_BA
@@ -343,7 +343,7 @@ __device__ inline void holonomic_position_triangle_kernel(int N,int B0,struct Tr
     // Rotate by theta around Z=intCoord[2]
     real3_rotation_matrix(R,intCoord[2],cosTheta,sinTheta);
     for (j=0; j<3; j++) {
-      xNew[j]=real3_rotate<real3_x>(R,xNew[j]);
+      xNew[j]=real3_rotate<real3_x,real_x>(R,xNew[j]);
     }
 
     // Finish up

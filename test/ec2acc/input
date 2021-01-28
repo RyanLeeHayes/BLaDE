@@ -66,7 +66,7 @@ parameters file {dir}/../toppar_water_ions/par_water_ions.prm
 structure file psf {dir}/ec2acc_prep/minimized.psf
 structure shake hbond
 
-coordinates file {dir}/ec2acc_prep/minimized.pdb
+coordinates file pdb {dir}/ec2acc_prep/minimized.pdb
 coordinates box {box} 0 0   0 {box} 0   0 0 {box}
 coordinates velocity 300
 

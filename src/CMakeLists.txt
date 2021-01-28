@@ -4,6 +4,7 @@ project(blade LANGUAGES CXX CUDA)
 file(GLOB_RECURSE sources *.cxx *.cu *.h)
 
 find_package(CUDA 10.0)
+set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -ccbin ${CMAKE_CXX_COMPILER}")
 find_package(MPI REQUIRED)
 
 find_package(OpenMP REQUIRED)

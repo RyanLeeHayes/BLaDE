@@ -163,7 +163,7 @@ void Structure::add_structure_psf_file(FILE *fp)
     at.atomTypeName=io_nexts(line);
     at.charge=io_nextf(line);
     at.mass=io_nextf(line);
-    atomList.emplace_back(at);
+    atomList.push_back(at);
   }
 
   // Read bonds
@@ -181,7 +181,7 @@ void Structure::add_structure_psf_file(FILE *fp)
       }
       bond.i[j]=k;
     }
-    bondList.emplace_back(bond);
+    bondList.push_back(bond);
   }
   
   // Read angles
@@ -199,7 +199,7 @@ void Structure::add_structure_psf_file(FILE *fp)
       }
       angle.i[j]=k;
     }
-    angleList.emplace_back(angle);
+    angleList.push_back(angle);
   }
   
   // Read dihes
@@ -217,7 +217,7 @@ void Structure::add_structure_psf_file(FILE *fp)
       }
       dihe.i[j]=k;
     }
-    diheList.emplace_back(dihe);
+    diheList.push_back(dihe);
   }
   
   // Read imprs
@@ -235,7 +235,7 @@ void Structure::add_structure_psf_file(FILE *fp)
       }
       impr.i[j]=k;
     }
-    imprList.emplace_back(impr);
+    imprList.push_back(impr);
   }
   
   // Ignore donors
@@ -296,7 +296,7 @@ void Structure::add_structure_psf_file(FILE *fp)
       }
       cmap.i[j]=k;
     }
-    cmapList.emplace_back(cmap);
+    cmapList.push_back(cmap);
   }
 }
 
@@ -332,7 +332,7 @@ void blade_add_atom(System *system,
   at.charge=charge;
   at.mass=mass;
   system+=omp_get_thread_num();
-  system->structure->atomList.emplace_back(at);
+  system->structure->atomList.push_back(at);
   system->structure->atomCount=system->structure->atomList.size();
 }
 
@@ -342,7 +342,7 @@ void blade_add_bond(System *system,int i,int j)
   bond.i[0]=i-1;
   bond.i[1]=j-1;
   system+=omp_get_thread_num();
-  system->structure->bondList.emplace_back(bond);
+  system->structure->bondList.push_back(bond);
   system->structure->bondCount=system->structure->bondList.size();
 }
 
@@ -353,7 +353,7 @@ void blade_add_angle(System *system,int i,int j,int k)
   angle.i[1]=j-1;
   angle.i[2]=k-1;
   system+=omp_get_thread_num();
-  system->structure->angleList.emplace_back(angle);
+  system->structure->angleList.push_back(angle);
   system->structure->angleCount=system->structure->angleList.size();
 }
 
@@ -365,7 +365,7 @@ void blade_add_dihe(System *system,int i,int j,int k,int l)
   dihe.i[2]=k-1;
   dihe.i[3]=l-1;
   system+=omp_get_thread_num();
-  system->structure->diheList.emplace_back(dihe);
+  system->structure->diheList.push_back(dihe);
   system->structure->diheCount=system->structure->diheList.size();
 }
 
@@ -377,7 +377,7 @@ void blade_add_impr(System *system,int i,int j,int k,int l)
   impr.i[2]=k-1;
   impr.i[3]=l-1;
   system+=omp_get_thread_num();
-  system->structure->imprList.emplace_back(impr);
+  system->structure->imprList.push_back(impr);
   system->structure->imprCount=system->structure->imprList.size();
 }
 
@@ -393,7 +393,7 @@ void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int
   cmap.i[6]=k2-1;
   cmap.i[7]=l2-1;
   system+=omp_get_thread_num();
-  system->structure->cmapList.emplace_back(cmap);
+  system->structure->cmapList.push_back(cmap);
   system->structure->cmapCount=system->structure->cmapList.size();
 }
 

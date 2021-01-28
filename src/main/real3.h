@@ -236,14 +236,18 @@ void real3_rotation_matrix(real3_type *R,real3_type axis,real_type c,real_type s
   R[2].z=t*axis.z*axis.z + c;
 }
 
-template<typename real3_out,typename real3_a,typename real3_b>
+template<typename real3_out,typename real_out,typename real3_a,typename real3_b>
 __host__ __device__ static inline
 real3_out real3_rotate(real3_a *R,real3_b in)
 {
   real3_out out;
-  out.x=real3_dot<decltype(out.x)>(R[0],in);
-  out.y=real3_dot<decltype(out.y)>(R[1],in);
-  out.z=real3_dot<decltype(out.z)>(R[2],in);
+  // out.x=real3_dot<decltype(out.x)>(R[0],in);
+  // out.y=real3_dot<decltype(out.y)>(R[1],in);
+  // out.z=real3_dot<decltype(out.z)>(R[2],in);
+  // Intel wasn't smart enough to compile that...
+  out.x=real3_dot<real_out>(R[0],in);
+  out.y=real3_dot<real_out>(R[1],in);
+  out.z=real3_dot<real_out>(R[2],in);
   return out;
 }
 

@@ -28,18 +28,18 @@ void finish_control(System *system)
     frame.type=io_nexts(line);
     previousType=system->control[level-1].backtrace.back().type;
     if (frame.type=="if") {
-      system->control[level-1].backtrace.emplace_back(frame);
+      system->control[level-1].backtrace.push_back(frame);
     } else if (frame.type=="elseif") {
       if (previousType=="if" || previousType=="elseif") {
         system->control[level-1].backtrace.pop_back();
-        system->control[level-1].backtrace.emplace_back(frame);
+        system->control[level-1].backtrace.push_back(frame);
       } else {
         fatal(__FILE__,__LINE__,"Found unexpected elseif\n");
       }
     } else if (frame.type=="else") {
       if (previousType=="if" || previousType=="elseif") {
         system->control[level-1].backtrace.pop_back();
-        system->control[level-1].backtrace.emplace_back(frame);
+        system->control[level-1].backtrace.push_back(frame);
       } else {
         fatal(__FILE__,__LINE__,"Found unexpected else\n");
       }
@@ -50,7 +50,7 @@ void finish_control(System *system)
         fatal(__FILE__,__LINE__,"Found unexpected endif\n");
       }
     } else if (frame.type=="while") {
-      system->control[level-1].backtrace.emplace_back(frame);
+      system->control[level-1].backtrace.push_back(frame);
     } else if (frame.type=="endwhile") {
       if (previousType=="while") {
         system->control[level-1].backtrace.pop_back();
@@ -89,18 +89,18 @@ void find_next_if(System *system)
     }
     previousType=system->control[level-1].backtrace.back().type;
     if (frame.type=="if") {
-      system->control[level-1].backtrace.emplace_back(frame);
+      system->control[level-1].backtrace.push_back(frame);
     } else if (frame.type=="elseif") {
       if (previousType=="if" || previousType=="elseif") {
         system->control[level-1].backtrace.pop_back();
-        system->control[level-1].backtrace.emplace_back(frame);
+        system->control[level-1].backtrace.push_back(frame);
       } else {
         fatal(__FILE__,__LINE__,"Found unexpected elseif\n");
       }
     } else if (frame.type=="else") {
       if (previousType=="if" || previousType=="elseif") {
         system->control[level-1].backtrace.pop_back();
-        system->control[level-1].backtrace.emplace_back(frame);
+        system->control[level-1].backtrace.push_back(frame);
       } else {
         fatal(__FILE__,__LINE__,"Found unexpected else\n");
       }
@@ -111,7 +111,7 @@ void find_next_if(System *system)
         fatal(__FILE__,__LINE__,"Found unexpected endif\n");
       }
     } else if (frame.type=="while") {
-      system->control[level-1].backtrace.emplace_back(frame);
+      system->control[level-1].backtrace.push_back(frame);
     } else if (frame.type=="endwhile") {
       if (previousType=="while") {
         system->control[level-1].backtrace.pop_back();
@@ -138,7 +138,7 @@ void parse_if(char *line,System *system)
 
   frame.type="if";
   frame.fp_pos=system->control[level-1].fp_pos;
-  system->control[level-1].backtrace.emplace_back(frame);
+  system->control[level-1].backtrace.push_back(frame);
 
   condition=(bool)variables_calculate(line);
   while (condition==false) {
@@ -230,7 +230,7 @@ void parse_while(char *line,System *system)
   frame.type="while";
   int level=system->control.size();
   frame.fp_pos=system->control[level-1].fp_pos;
-  system->control[level-1].backtrace.emplace_back(frame);
+  system->control[level-1].backtrace.push_back(frame);
 
   evaluate_while(line,system);
 }

@@ -236,7 +236,7 @@ void interpretter(const char *fnm,System *system)
   FILE *fp;
   char line[MAXLENGTHSTRING];
   char token[MAXLENGTHSTRING];
-  system->control.emplace_back(Control());
+  system->control.push_back(Control());
   int level=system->control.size();
 
   fp=fpopen(fnm,"r");

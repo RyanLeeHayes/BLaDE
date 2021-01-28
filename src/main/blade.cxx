@@ -2,6 +2,7 @@
 #include <cuda_runtime.h>
 
 #include "system/system.h"
+#include "rng/rng_gpu.h"
 #include "io/io.h"
 
 #ifdef REPLICAEXCHANGE
