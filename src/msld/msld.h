@@ -115,6 +115,8 @@ extern "C" {
   void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent);
   void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n);
   void blade_add_msld_softbond(System *system,int i,int j);
+  void blade_add_msld_atomrestraint(System *system);
+  void blade_add_msld_atomrestraint_element(System *system,int i);
 }
 
 #endif

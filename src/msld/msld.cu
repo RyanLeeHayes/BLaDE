@@ -987,3 +987,17 @@ void blade_add_msld_softbond(System *system,int i,int j)
   i2.i[1]=j-1;
   system->msld->softBonds.push_back(i2);
 }
+
+void blade_add_msld_atomrestraint(System *system)
+{
+  system+=omp_get_thread_num();
+  std::vector<int> ar;
+  ar.clear();
+  system->msld->atomRestraints.push_back(ar);
+}
+
+void blade_add_msld_atomrestraint_element(System *system,int i)
+{
+  system+=omp_get_thread_num();
+  system->msld->atomRestraints.back().push_back(i-1);
+}
