@@ -102,13 +102,10 @@ void Domdec::initialize(System *system)
   freqDomdec=10;
   // How far two particles, each with hydrogen/unit mass can get in freqDomdec timesteps, if each has 30 kT of kinetic energy. Incredibly rare to violate this.
   cullPad=2*sqrt(30*kB*system->run->T/1)*freqDomdec*system->run->dt;
-  // maxBlockExclCount=4*system->potential->exclCount+1024; // only 32*exclCount is guaranteed
-  // maxBlockExclCount=32*system->potential->exclCount; // 4*system->potential->exclCount+1024; // only 32*exclCount is guaranteed (and not even that is guaranteed if box is small enough a block can see multiple candidate blocks with the same excluded atom.)
-  // maxBlockExclCount=4*system->potential->exclCount+8192; // Let's try this for the smaller boxes
-  maxBlockExclCount=4*system->potential->exclCount+65536; // Let's try this for the smaller boxes
+  maxBlockExclCount=(4*system->potential->exclCount+1024)/32; // only 32*exclCount is guaranteed, and that only if the box is large. Allocate dynamically
   fprintf(stdout,"freqDomdec=%d (how many steps before domain reset)\n",freqDomdec);
   fprintf(stdout,"cullPad=%g (spatial padding for considering which blocks could interact\n",cullPad);
-  fprintf(stdout,"maxBlockExclCount=%d\n",maxBlockExclCount);
+  fprintf(stdout,"maxBlockExclCount=%d (can reallocate dynamically with \"run setvariable domdecheuristic off\")\n",maxBlockExclCount);
 
   domain=(int*)calloc(globalCount,sizeof(int));
   cudaMalloc(&domain_d,globalCount*sizeof(int));
@@ -132,7 +129,7 @@ void Domdec::initialize(System *system)
   cudaMalloc(&localExcls_d,(system->potential->exclCount+1)*sizeof(struct ExclPotential));
   cudaMalloc(&exclSort_d,(system->potential->exclCount+1)*sizeof(struct DomdecBlockSort));
   cudaMalloc(&sortedExcls_d,system->potential->exclCount*sizeof(struct ExclPotential));
-  cudaMalloc(&blockExcls_d,maxBlockExclCount*sizeof(int));
+  cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int));
   cudaMalloc(&blockExclCount_d,sizeof(int));
 
 #ifdef USE_TEXTURE

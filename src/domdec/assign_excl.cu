@@ -164,7 +164,7 @@ __global__ void assign_excl_blockExcls_kernel(
 #else
   struct ExclPotential *sortedExcls,
 #endif
-  int *blockExclCount,int *blockExcls)
+  int *blockExclCount,int *blockExcls,int maxBlockExclCount)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int iBlock=(i/32)+beginBlock;
@@ -295,7 +295,12 @@ __global__ void assign_excl_blockExcls_kernel(
           blockCandidates[maxPartnersPerBlock*(i/32)+j].exclAddress=exclAddress;
         }
         exclAddress=__shfl_sync(0xFFFFFFFF,exclAddress,0);
-        blockExcls[32*exclAddress+(i&31)]=mask;
+        if (exclAddress < maxBlockExclCount) {
+          blockExcls[32*exclAddress+(i&31)]=mask;
+        } else if (exclAddress==maxBlockExclCount && (i&31)==0) {
+#warning "This printf adds registers to the kernel, but on 2080 TI does not affect occupancy or execution time."
+          printf("Error: Block exclusion overflow. Use \"run setvariable domdecheuristic off\"\n");
+        }
       }
     }
   }
@@ -328,16 +333,33 @@ void Domdec::setup_exclusions(System *system)
 
     // Use binary search to identify exclusions and load them into the candidate structure
 
-    cudaMemsetAsync(blockExclCount_d,0,sizeof(int),r->updateStream);
-    int beginBlock=blockCount[id];
-    int endBlock=blockCount[id+1];
-    int localBlockCount=endBlock-beginBlock;
-    assign_excl_blockExcls_kernel<<<(32*localBlockCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(beginBlock,endBlock,blockBounds_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,sortedExclCount,
+    for (int twiceIfNeeded=0; twiceIfNeeded<2; twiceIfNeeded++) {
+
+      cudaMemsetAsync(blockExclCount_d,0,sizeof(int),r->updateStream);
+      int beginBlock=blockCount[id];
+      int endBlock=blockCount[id+1];
+      int localBlockCount=endBlock-beginBlock;
+      assign_excl_blockExcls_kernel<<<(32*localBlockCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(beginBlock,endBlock,blockBounds_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,sortedExclCount,
 #ifdef USE_TEXTURE
-      sortedExcls_tex,
+        sortedExcls_tex,
 #else
-      sortedExcls_d,
+        sortedExcls_d,
 #endif
-      blockExclCount_d,blockExcls_d);
+        blockExclCount_d,blockExcls_d,maxBlockExclCount);
+
+      if (system->run->domdecHeuristic) {
+        break;
+      }
+      int blockExclCount;
+      cudaMemcpy(&blockExclCount,blockExclCount_d,sizeof(int),cudaMemcpyDeviceToHost);
+      if (blockExclCount > maxBlockExclCount) {
+        cudaFree(blockExcls_d);
+        fprintf(stdout,"Note: Updated maxBlockExclCount from %d to %d\n",maxBlockExclCount,blockExclCount+64);
+        maxBlockExclCount=blockExclCount+64;
+        cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int));
+      } else {
+        break;
+      }
+    }
   }
 }

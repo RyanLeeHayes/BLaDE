@@ -1,0 +1,31 @@
+variables set dir ../test/water216
+
+variables set box 18.856
+
+parameters file {dir}/../toppar/par_all36_prot.prm
+parameters file {dir}/../toppar_water_ions/par_water_ions.prm
+
+structure file psf {dir}/minimized.psf
+structure shake hbond
+
+coordinates file crd {dir}/minimized.crd
+coordinates box {box} 0 0   0 {box} 0   0 0 {box}
+coordinates velocity 300
+
+msld nblocks 0
+
+run setvariable nsteps 10000
+run setvariable dt  0.002
+run setvariable T 300
+run setvariable gamma 1
+run setvariable invbetaewald 3.125
+run setvariable orderewald 6
+run setvariable fnmxtc test.xtc
+run setvariable fnmlmd test.lmd
+! run setvariable fnmcpi eq.cpt
+run setvariable freqxtc 10000
+run setvariable freqnrg 100
+run setvariable freqlmd 10
+run setvariable freqnpt 0 ! 100
+run setvariable domdecheuristic off
+run dynamics

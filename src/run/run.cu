@@ -60,6 +60,8 @@ Run::Run(System *system)
   volumeFluctuation=100*ANGSTROM*ANGSTROM*ANGSTROM;
   pressure=1*ATMOSPHERE;
 
+  domdecHeuristic=true;
+
   termStringToInt.clear();
   termStringToInt["bond"]=eebond;
   termStringToInt["angle"]=eeangle;
@@ -242,6 +244,7 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
   fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation);
   fprintf(stdout,"RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure);
+  fprintf(stdout,"RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n",(int)domdecHeuristic);
 #ifdef REPLICAEXCHANGE
   fprintf(stdout,"RUN PRINT> fnmrex=%s (file name for replica exchange)\n",fnmREx.c_str());
   fprintf(stdout,"RUN PRINT> freqrex=%d (frequency of replica exchange attempts. Use {rexrank} (NYI) to access 0 ordinalized replica index in script)\n",freqREx);
@@ -316,6 +319,8 @@ void Run::set_variable(char *line,char *token,System *system)
     volumeFluctuation=io_nextf(line)*ANGSTROM*ANGSTROM*ANGSTROM;
   } else if (strcmp(token,"pressure")==0) {
     pressure=io_nextf(line)*ATMOSPHERE;
+  } else if (strcmp(token,"domdecheuristic")==0) {
+    domdecHeuristic=io_nextb(line);
 #ifdef REPLICAEXCHANGE
   } else if (strcmp(token,"fnmrex")==0) {
     if (fpREx) fclose(fpREx);
