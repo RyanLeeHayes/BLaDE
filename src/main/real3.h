@@ -103,9 +103,9 @@ real3_type real3_subpbc(real3_type a,real3_type b,real3_type box)
   c.x=a.x-b.x;
   c.y=a.y-b.y;
   c.z=a.z-b.z;
-  c.x-=box.x*floor(c.x/box.x+0.5);
-  c.y-=box.y*floor(c.y/box.y+0.5);
-  c.z-=box.z*floor(c.z/box.z+0.5);
+  c.x-=box.x*floor(c.x/box.x+0.5f); // Getting type of real3_type is hard on intel, 0.5f will cast up if necessary
+  c.y-=box.y*floor(c.y/box.y+0.5f);
+  c.z-=box.z*floor(c.z/box.z+0.5f);
   return c;
 }
 

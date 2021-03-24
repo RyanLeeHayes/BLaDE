@@ -198,6 +198,8 @@ void Coordinates::file_pdb(FILE *fp,System *system)
       particlePosition[i][0]=xyz.i[0];
       particlePosition[i][1]=xyz.i[1];
       particlePosition[i][2]=xyz.i[2];
+    } else {
+      fatal(__FILE__,__LINE__,"Atom segName %s resIdx %s atomName %s missing from pdb file.\n",as.segName.c_str(),as.resIdx.c_str(),as.atomName.c_str());
     }
   }
 }
@@ -222,7 +224,7 @@ void Coordinates::file_crd(FILE *fp,System *system)
     if (line[0]!='*') {
       sscanf(line,"%d",&i);
       if (i!=system->structure->atomCount) {
-        fatal(__FILE__,__LINE__,"Wrong number of atoms in crd file %d, psf file contained %d atoms\n",i,system->structure->atomCount);
+        fatal(__FILE__,__LINE__,"Wrong number of atoms in crd file %d, psf file contained %d atoms\nAtom count line says:\n%s\n",i,system->structure->atomCount,line);
       }
       break;
     }
@@ -261,6 +263,8 @@ void Coordinates::file_crd(FILE *fp,System *system)
       particlePosition[i][0]=xyz.i[0];
       particlePosition[i][1]=xyz.i[1];
       particlePosition[i][2]=xyz.i[2];
+    } else {
+      fatal(__FILE__,__LINE__,"Atom segName %s resIdx %s atomName %s missing from crd file.\n",as.segName.c_str(),as.resIdx.c_str(),as.atomName.c_str());
     }
   }
 }

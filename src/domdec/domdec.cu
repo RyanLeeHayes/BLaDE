@@ -102,7 +102,10 @@ void Domdec::initialize(System *system)
   freqDomdec=10;
   // How far two particles, each with hydrogen/unit mass can get in freqDomdec timesteps, if each has 30 kT of kinetic energy. Incredibly rare to violate this.
   cullPad=2*sqrt(30*kB*system->run->T/1)*freqDomdec*system->run->dt;
-  maxBlockExclCount=4*system->potential->exclCount+1024; // only 32*exclCount is guaranteed
+  // maxBlockExclCount=4*system->potential->exclCount+1024; // only 32*exclCount is guaranteed
+  // maxBlockExclCount=32*system->potential->exclCount; // 4*system->potential->exclCount+1024; // only 32*exclCount is guaranteed (and not even that is guaranteed if box is small enough a block can see multiple candidate blocks with the same excluded atom.)
+  // maxBlockExclCount=4*system->potential->exclCount+8192; // Let's try this for the smaller boxes
+  maxBlockExclCount=4*system->potential->exclCount+65536; // Let's try this for the smaller boxes
   fprintf(stdout,"freqDomdec=%d (how many steps before domain reset)\n",freqDomdec);
   fprintf(stdout,"cullPad=%g (spatial padding for considering which blocks could interact\n",cullPad);
   fprintf(stdout,"maxBlockExclCount=%d\n",maxBlockExclCount);

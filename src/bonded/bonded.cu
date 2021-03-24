@@ -86,7 +86,7 @@ __global__ void getforce_bond_kernel(int bond12Count,int bondCount,struct BondPo
       real dsfdle=softFactor*softFactor*softAlpha*(r-bp.b0)*(r-bp.b0);
       real dsfdr=-2*softFactor*softFactor*(1-lambdaExp)*softAlpha*(r-bp.b0);
       if (b[0] || energy) {
-        lEnergy=0.5*bp.kb*(r-bp.b0)*(r-bp.b0);
+        lEnergy=((real)0.5)*bp.kb*(r-bp.b0)*(r-bp.b0);
       }
       fbond=lambdaExp*(fbond*softFactor+lEnergy*dsfdr);
       real flambda=lEnergy*softExp*lambdaExpM1*(softFactor+lambdaExp*dsfdle);
@@ -108,7 +108,7 @@ __global__ void getforce_bond_kernel(int bond12Count,int bondCount,struct BondPo
       // interaction
       fbond=bp.kb*(r-bp.b0);
       if (b[0] || energy) {
-        lEnergy=0.5*bp.kb*(r-bp.b0)*(r-bp.b0);
+        lEnergy=((real)0.5)*bp.kb*(r-bp.b0)*(r-bp.b0);
       }
       fbond*=l[0]*l[1];
 
@@ -221,7 +221,7 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
     // Interaction
     fangle=ap.kangle*(t-ap.angle0);
     if (b[0] || energy) {
-      lEnergy=0.5*ap.kangle*(t-ap.angle0)*(t-ap.angle0);
+      lEnergy=((real)0.5)*ap.kangle*(t-ap.angle0)*(t-ap.angle0);
     }
     if (soft) {
       fangle*=pow(l[0]*l[1],softExp);
@@ -304,10 +304,10 @@ __device__ void function_torsion(ImprPotential ip,real phi,real *fphi,real *lE,b
   real dphi;
 
   dphi=phi-ip.imp0;
-  dphi-=(2*M_PI)*floor((dphi+M_PI)/(2*M_PI));
+  dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
   fphi[0]=ip.kimp*dphi;
   if (calcEnergy) {
-    lE[0]=0.5*ip.kimp*dphi*dphi;
+    lE[0]=((real)0.5)*ip.kimp*dphi*dphi;
   }
 }
 
