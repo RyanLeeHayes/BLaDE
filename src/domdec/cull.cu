@@ -242,6 +242,10 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
     if (laneIdx==0) {
       // use i/32 instead of iblock so it's at the start of the array
       blockPartnerCount[i/32]=partnerPos;
+      if (partnerPos>=maxPartnersPerBlock) {
+#warning "printf in kernel"
+        printf("Error: Overflow of maxPartnersPerBlock. Use \"run setvariable domdecheuristic off\" - except that reallocation is not implemented here\n");
+      }
     }
   }
 }

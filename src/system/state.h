@@ -23,9 +23,9 @@ struct LeapParms1
 
 struct LeapParms2
 {
-  real sqrta; // a=exp(-gamma*dt)
-  real noise; // sqrt((1-a)*kT) - still need to divide by sqrt(m)
-  real fscale; // 0.5*b*dt; b=sqrt(tanh(0.5*gamma*dt)/(0.5*gamma*dt));
+  real friction; // a2=exp(-gamma*dt)
+  real noise; // sqrt((1-a2*a2)*kT) - still need to divide by sqrt(m)
+  real halfdt; // 0.5*dt
 };
 
 struct LeapState

@@ -299,7 +299,7 @@ __global__ void assign_excl_blockExcls_kernel(
           blockExcls[32*exclAddress+(i&31)]=mask;
         } else if (exclAddress==maxBlockExclCount && (i&31)==0) {
 #warning "This printf adds registers to the kernel, but on 2080 TI does not affect occupancy or execution time."
-          printf("Error: Block exclusion overflow. Use \"run setvariable domdecheuristic off\"\n");
+          printf("Error: Overflow of maxBlockExclCount. Use \"run setvariable domdecheuristic off\"\n");
         }
       }
     }

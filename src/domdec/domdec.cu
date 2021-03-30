@@ -94,7 +94,9 @@ void Domdec::initialize(System *system)
   real approxBlockBox=exp(log(32*invDensity)/3);
   real edge=3*approxBlockBox+2*system->run->cutoffs.rCut;
   // edge*edge*edge is the largest volume that can interact with a typically sized box in the worst case. Typically, half these interactions will be taken care of by partner blocks rather than this block, multiplying this expression by 2 means we should have roughly 4 times as many partner spaces as necessary.
-  maxPartnersPerBlock=2*((int)(edge*edge*edge/(32*invDensity)));
+#warning "Increased maxPartnersPerBlock"
+  // maxPartnersPerBlock=2*((int)(edge*edge*edge/(32*invDensity)));
+  maxPartnersPerBlock=3*((int)(edge*edge*edge/(32*invDensity)));
   fprintf(stdout,"The following parameters are set heuristically at %s:%d, and can cause errors if set too low\n",__FILE__,__LINE__);
   fprintf(stdout,"maxBlocks=%d\n",maxBlocks);
   fprintf(stdout,"maxPartnersPerBlock=%d\n",maxPartnersPerBlock);
@@ -111,10 +113,15 @@ void Domdec::initialize(System *system)
   cudaMalloc(&domain_d,globalCount*sizeof(int));
   cudaMalloc(&localToGlobal_d,globalCount*sizeof(int));
   cudaMalloc(&globalToLocal_d,globalCount*sizeof(int));
-#warning "Arbitrarily doubled localPosition_d localForce_d and localNbonds_d size to account for padding. Won't work for small systems. Do something more intelligent."
-  cudaMalloc(&localPosition_d,2*globalCount*sizeof(real3));
-  cudaMalloc(&localForce_d,2*globalCount*sizeof(real3_f));
-  cudaMalloc(&localNbonds_d,2*globalCount*sizeof(struct NbondPotential));
+  // #warning "Arbitrarily doubled localPosition_d localForce_d and localNbonds_d size to account for padding. Won't work for small systems. Do something more intelligent."
+  // cudaMalloc(&localPosition_d,2*globalCount*sizeof(real3));
+  // cudaMalloc(&localForce_d,2*globalCount*sizeof(real3_f));
+  // cudaMalloc(&localNbonds_d,2*globalCount*sizeof(struct NbondPotential));
+  // Yup, eventually came back to bite me. Doing it right:
+  // See als localForce_d size in src/system/potential.cxx
+  cudaMalloc(&localPosition_d,32*maxBlocks*sizeof(real3));
+  cudaMalloc(&localForce_d,32*maxBlocks*sizeof(real3_f));
+  cudaMalloc(&localNbonds_d,32*maxBlocks*sizeof(struct NbondPotential));
   cudaMalloc(&blockSort_d,(globalCount+1)*sizeof(struct DomdecBlockSort));
   cudaMalloc(&blockToken_d,(globalCount+1)*sizeof(struct DomdecBlockToken));
   cudaMalloc(&blockBounds_d,maxBlocks*sizeof(int));

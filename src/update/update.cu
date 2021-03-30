@@ -22,48 +22,10 @@
 //
 // See also for integrator/bond constraints/thermostat
 // https://pubs.acs.org/doi/10.1021/jp411770f
+// http://dx.doi.org/10.1098/rspa.2016.0138
 
 // Molecular dynamics simulations of water and biomolecules with a Monte Carlo constant pressure algorithm
 // Johan A...vist *, Petra Wennerstro...m, Martin Nervall, Sinisa Bjelic, Bj...rn O. Brandsdal
-
-/*
-// Declarations for header
-#ifdef CUDAGRAPH
-  cudaGraph_t updateGraph, updateLambdaGraph;
-  cudaGraphExec_t updateGraphExec, updateLambdaGraphExec;
-#endif
-void State::initialize(System *system)
-{
-#ifdef CUDAGRAPH
-  cudaStreamBeginCapture(updateStream);
-  system->state->rngGPU->rand_normal(2*leapState->N,leapState->random,updateStream);
-  update_VO<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState,*leapParms2);
-  update_OV<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState,*leapParms2);
-  update_R<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState,*leapParms2);
-  reset_F<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,updateStream>>>(*leapState);
-  cudaStreamEndCapture(updateStream,&updateGraph);
-  cudaGraphInstantiate(&updateGraphExec,updateGraph,NULL,NULL,0);
-
-  cudaStreamBeginCapture(updateLambdaStream);
-  system->state->rngGPU->rand_normal(2*lambdaLeapState->N,lambdaLeapState->random,updateLambdaStream);
-  system->msld->calc_thetaForce_from_lambdaForce(updateLambdaStream);
-  update_VO<<<(lambdaLeapState->N+BLUP-1)/BLUP,BLUP,0,updateLambdaStream>>>(*lambdaLeapState,*lambdaLeapParms2);
-  update_OV<<<(lambdaLeapState->N+BLUP-1)/BLUP,BLUP,0,updateLambdaStream>>>(*lambdaLeapState,*lambdaLeapParms2);
-  update_R<<<(lambdaLeapState->N+BLUP-1)/BLUP,BLUP,0,updateLambdaStream>>>(*lambdaLeapState,*lambdaLeapParms2);
-  system->msld->calc_lambda_from_theta(updateLambdaStream);
-  reset_F<<<(lambdaLeapState->N+BLUP-1)/BLUP,BLUP,0,updateLambdaStream>>>(*lambdaLeapState);
-  cudaStreamEndCapture(updateLambdaStream,&updateLambdaGraph);
-  cudaGraphInstantiate(&updateLambdaGraphExec,updateLambdaGraph,NULL,NULL,0);
-#endif
-}
-// Calling the graph
-  cudaGraphLaunch(updateGraphExec,r->updateStream);
-// Cleaning up the graphs
-#ifdef CUDAGRAPH
-  cudaGraphExecDestroy(updateGraphExec);
-  cudaGraphDestroy(updateGraph);
-#endif
-*/
 
 __global__ void update_V(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2)
 {
@@ -78,7 +40,7 @@ __global__ void update_V(struct LeapState ls,struct LeapParms2 lp1,struct LeapPa
 
   if (i < ls.N) {
     // Force is dU/dx by convention in this program, not -dU/dx
-    ls.v[i]=ls.v[i]-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    ls.v[i]=ls.v[i]-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
   }
 }
 
@@ -95,8 +57,8 @@ __global__ void update_VV(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
 
   if (i < ls.N) {
     // Force is dU/dx by convention in this program, not -dU/dx
-    real_v v=ls.v[i]-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
-    ls.v[i]=v-lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    real_v v=ls.v[i]-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
+    ls.v[i]=v-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
   }
 }
 
@@ -115,9 +77,9 @@ __global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct Le
     // Force is dU/dx by convention in this program, not -dU/dx
     real_v v=ls.v[i];
     real_x x=ls.x[i];
-    v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
+    v-=lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
     if (bx) bx[i]=x;
-    x+=lp.fscale*v;
+    x+=lp.halfdt*v;
     ls.v[i]=v;
     ls.x[i]=x;
   }
@@ -138,11 +100,9 @@ __global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
     // Force is dU/dx by convention in this program, not -dU/dx
     real_v v=ls.v[i];
     real_x x=ls.x[i];
-    // v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
-    // v-=lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i];
-    v-=2*lp.fscale*ls.ism[i]*ls.ism[i]*ls.f[i]; // Let's just do both those lines in one step.
+    v-=2*lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
     if (bx) bx[i]=x;
-    x+=lp.fscale*v;
+    x+=lp.halfdt*v;
     ls.v[i]=v;
     ls.x[i]=x;
   }
@@ -157,7 +117,7 @@ __global__ void kinetic_energy_kernel(struct LeapState ls,real_e *energy)
   if (i<ls.N) {
     if (energy) {
       lEnergy=ls.v[i]/ls.ism[i];
-      lEnergy*=0.5*lEnergy;
+      lEnergy*=((real)0.5)*lEnergy;
     }
   }
 
@@ -167,7 +127,7 @@ __global__ void kinetic_energy_kernel(struct LeapState ls,real_e *energy)
   }
 }
 
-__global__ void update_R(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2)
+__global__ void update_hbpR(struct LeapState ls,struct LeapParms2 lp1,struct LeapParms2 lp2,real_x *bx)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct LeapParms2 lp;
@@ -179,7 +139,9 @@ __global__ void update_R(struct LeapState ls,struct LeapParms2 lp1,struct LeapPa
   }
 
   if (i < ls.N) {
-    ls.x[i]=ls.x[i]+lp.fscale*ls.v[i];
+    real_x x=ls.x[i];
+    if (bx) bx[i]=x;
+    ls.x[i]=x+lp.halfdt*ls.v[i];
   }
 }
 
@@ -195,9 +157,7 @@ __global__ void update_OO(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   }
 
   if (i < ls.N) {
-    real_v v=lp.sqrta*ls.v[i]+lp.noise*ls.ism[i]*ls.random[i];
-    // Hamiltonian changes here
-    ls.v[i]=lp.sqrta*v+lp.noise*ls.ism[i]*ls.random[ls.N+i];
+    ls.v[i]=lp.friction*ls.v[i]+lp.noise*ls.ism[i]*ls.random[i];
   }
 }
 
@@ -215,11 +175,9 @@ __global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
   if (i < ls.N) {
     real_v v=ls.v[i];
     real_x x=ls.x[i];
-    v=lp.sqrta*v+lp.noise*ls.ism[i]*ls.random[i];
-    // Hamiltonian changes here
-    v=lp.sqrta*v+lp.noise*ls.ism[i]*ls.random[ls.N+i];
+    v=lp.friction*v+lp.noise*ls.ism[i]*ls.random[i];
     if (bx) bx[i]=x;
-    x+=lp.fscale*v;
+    x+=lp.halfdt*v;
     ls.v[i]=v;
     ls.x[i]=x;
   }
@@ -260,10 +218,14 @@ void State::update(int step,System *system)
     kinetic_energy_kernel<<<(leapState->N+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32,r->updateStream>>>(*leapState,energy_d+eekinetic);
     // Update V for current step
     // update_V<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+    // holonomic_velocity(system);
+    // update_hbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
     update_VhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
   } else {
     // Update V from previous step and for current step
     // update_VV<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+    // holonomic_velocity(system);
+    // update_hbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
     update_VVhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
   }
   // Velocity Constraint
@@ -277,6 +239,8 @@ void State::update(int step,System *system)
   holonomic_position(system);
   // Apply random drift
   // update_OO<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+  // holonomic_velocity(system); // superfluous, I think
+  // update_hbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
   update_OOhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
   // Velocity Constraint
   // holonomic_velocity(system); // superfluous, I think

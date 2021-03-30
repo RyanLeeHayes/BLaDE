@@ -1391,8 +1391,10 @@ void Potential::initialize(System *system)
 void Potential::reset_force(System *system,bool calcEnergy)
 {
   cudaMemset(system->state->forceBuffer_d,0,(2*system->state->lambdaCount+3*system->state->atomCount)*sizeof(real_f));
-#warning "Also need to do something intelligent about localForce_d size here"
-  cudaMemset(system->domdec->localForce_d,0,2*system->domdec->globalCount*sizeof(real3_f));
+  // #warning "Also need to do something intelligent about localForce_d size here"
+  // cudaMemset(system->domdec->localForce_d,0,2*system->domdec->globalCount*sizeof(real3_f));
+  // Fixed. See also localForce_d in src/domdec/domdec.cu
+  cudaMemset(system->domdec->localForce_d,0,32*system->domdec->maxBlocks*sizeof(real3_f));
   if (calcEnergy) {
     cudaMemset(system->state->energy_d,0,eeend*sizeof(real_e));
   }
@@ -1435,7 +1437,7 @@ void Potential::calc_force(int step,System *system)
     cudaStreamWaitEvent(r->nbrecipStream,r->forceBegin,0);
     getforce_ewaldself(system,calcEnergy);
     getforce_ewald(system,calcEnergy);
-    system->rngGPU->rand_normal(2*s->leapState->N,s->leapState->random,r->nbrecipStream);
+    system->rngGPU->rand_normal(s->leapState->N,s->leapState->random,r->nbrecipStream);
     cudaEventRecord(r->nbrecipComplete,r->nbrecipStream);
     cudaStreamWaitEvent(r->updateStream,r->nbrecipComplete,0);
   }

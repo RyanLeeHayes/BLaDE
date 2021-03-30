@@ -226,7 +226,6 @@ struct LeapParms1* State::alloc_leapparms1(real dt,real gamma,real T)
 
   lp=(struct LeapParms1*) malloc(sizeof(struct LeapParms1));
 
-  // Integrator from https://pubs.acs.org/doi/10.1021/jp411770f
   lp->dt=dt;
   lp->gamma=gamma;
   lp->kT=kT;
@@ -238,15 +237,15 @@ struct LeapParms2* State::alloc_leapparms2(real dt,real gamma,real T)
 {
   struct LeapParms2 *lp;
   real kT=kB*T;
-  real a=exp(-gamma*dt);
-  real b=sqrt(tanh(0.5*gamma*dt)/(0.5*gamma*dt));
+  // Original integrator from https://pubs.acs.org/doi/10.1021/jp411770f
+  // Current integrator from http://dx.doi.org/10.1098/rspa.2016.0138
+  real a2=exp(-gamma*dt);
 
   lp=(struct LeapParms2*) malloc(sizeof(struct LeapParms2));
 
-  // Integrator from https://pubs.acs.org/doi/10.1021/jp411770f
-  lp->sqrta=sqrt(a);
-  lp->noise=sqrt((1-a)*kT);
-  lp->fscale=0.5*b*dt;
+  lp->friction=a2;
+  lp->noise=sqrt((1-a2*a2)*kT);
+  lp->halfdt=0.5*dt;
 
   return lp;
 }
@@ -257,7 +256,7 @@ struct LeapState* State::alloc_leapstate(int N1,int N2,real_x *x,real_v *v,real_
 
   ls=(struct LeapState*) malloc(sizeof(struct LeapState));
   real *random;
-  cudaMalloc(&random,2*(N1+N2)*sizeof(real));
+  cudaMalloc(&random,(N1+N2)*sizeof(real));
 
   ls->N1=N1;
   ls->N=N1+N2;

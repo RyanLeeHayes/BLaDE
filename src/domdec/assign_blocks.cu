@@ -177,7 +177,7 @@ __global__ void assign_blocks_localToGlobal_kernel(int globalCount,struct Domdec
 // Output
 // blockCount - pointer to a single int for the total number of blocks
 // blockBounds - indices (in the local indexing) of first atom in each block
-__global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,int globalCount,int *localToGlobal,struct DomdecBlockToken *tokens,int *blockCount,int *blockBounds)
+__global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,int globalCount,int *localToGlobal,struct DomdecBlockToken *tokens,int *blockCount,int *blockBounds,int maxBlocks)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int domain;
@@ -250,8 +250,13 @@ __global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,
     __syncthreads();
 
     int j0=blockCount[domain]+cumBlocks[i];
+    if (j0+blocksInColumn<=maxBlocks) {
     for (j=0; j<blocksInColumn; j++) {
       blockBounds[j+j0]=upperPos+32*j;
+    }
+    } else if (j0<maxBlocks) {
+#warning "printf in kernel, this doesn't affect occupancy of 93.8\% on 2080 TI."
+      printf("Error: Overflow of maxBlocks. Use \"run setvariable domdecheuristic off\" - except that reallocation is not implemented here\n");
     }
 
     if (i==domainDiv.x*domainDiv.y) {
@@ -361,7 +366,7 @@ void Domdec::assign_blocks(System *system)
     assign_blocks_localToGlobal_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,blockSort_d,localToGlobal_d);
 
     if (domainDiv.x*domainDiv.y>1024) fatal(__FILE__,__LINE__,"Need to rethink domain decomposition, that's nearing the boundary of what this decomposition can do. assign_blocks_blockBounds_kernel is probably going to fail.\n");
-    assign_blocks_blockBounds_kernel<<<1,domainDiv.x*domainDiv.y+1,2*(domainDiv.x*domainDiv.y+1)*sizeof(int),r->updateStream>>>(idCount,domainDiv,globalCount,localToGlobal_d,blockToken_d,blockCount_d,blockBounds_d);
+    assign_blocks_blockBounds_kernel<<<1,domainDiv.x*domainDiv.y+1,2*(domainDiv.x*domainDiv.y+1)*sizeof(int),r->updateStream>>>(idCount,domainDiv,globalCount,localToGlobal_d,blockToken_d,blockCount_d,blockBounds_d,maxBlocks);
 
     cudaMemcpy(blockCount,blockCount_d,(idCount+1)*sizeof(int),cudaMemcpyDeviceToHost);
 
