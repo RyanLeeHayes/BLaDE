@@ -431,10 +431,13 @@ void Run::test(char *line,char *token,System *system)
 
 void Run::dynamics(char *line,char *token,System *system)
 {
+  clock_t t1,t2;
+
   // Initialize data structures
   dynamics_initialize(system);
 
   // Run dynamics
+  t1=clock();
   for (step=step0; step<step0+nsteps; step++) {
     if (system->verbose>0) {
       fprintf(stdout,"Step %d\n",step);
@@ -451,6 +454,8 @@ void Run::dynamics(char *line,char *token,System *system)
       fatal(__FILE__,__LINE__,"GPU error code %d during run propogation of OMP rank %d\n%s\n",err,system->id,cudaGetErrorString(err));
     }
   }
+  t2=clock();
+  fprintf(stdout,"Elapsed dynamics time: %f\n",(t2-t1)*1.0/CLOCKS_PER_SEC);
 
   dynamics_finalize(system);
 }

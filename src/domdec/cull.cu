@@ -200,22 +200,35 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
               hits=__any_sync(0xFFFFFFFF,hit);
               if (hits) {
                 // see how many hits partner threads got
-                // __syncwarp();
-                cumHit=hit;
-                passHit=((i&1)?0:cumHit); // (i&1) receive
-                cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|0)-1);
-                passHit=((i&2)?0:cumHit); // (i&2) receive
-                cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|1)-2);
-                passHit=((i&4)?0:cumHit); // (i&4) receive
-                cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|3)-4);
-                passHit=((i&8)?0:cumHit); // (i&8) receive
-                cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|7)-8);
-                passHit=((i&16)?0:cumHit); // (i&16) receive
-                cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|15)-16);
-#warning "File bug report"
-                // Using __ballot_sync and __popc seems faster or at least cleaner, but CUDAs left shift doesn't work correctly
+                // Method 1
+                // // __syncwarp();
+                // cumHit=hit;
+                // passHit=((i&1)?0:cumHit); // (i&1) receive
+                // cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|0)-1);
+                // passHit=((i&2)?0:cumHit); // (i&2) receive
+                // cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|1)-2);
+                // passHit=((i&4)?0:cumHit); // (i&4) receive
+                // cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|3)-4);
+                // passHit=((i&8)?0:cumHit); // (i&8) receive
+                // cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|7)-8);
+                // passHit=((i&16)?0:cumHit); // (i&16) receive
+                // cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|15)-16);
+                // Method 2 - Using __ballot_sync and __popc seems faster or at least cleaner, but CUDAs left shift doesn't work correctly
+                // hits=__ballot_sync(0xFFFFFFFF,hit);
                 // cumHit=__popc(hits<<(31-(i&31)));
                 // if (cumHit!=__popc(hits<<(31-(i&31)))) printf("hits=0x%08X, hitsShift=0x%08X, cumHit1=%d, cumHit2=%d, lane=%d, hit=%d\n",hits,hits<<(31-(i&31)),cumHit,__popc(hits<<(31-(i&31))),i&31,hit);
+                // Method 3
+                // hits=__ballot_sync(0xFFFFFFFF,hit);
+                // cumHit=__popc(((1<<(i&31))-1)&hits)+hit;
+                // if (cumHit!=(__popc(((1<<(i&31))-1)&hits)+hit)) printf("hits=0x%08X, hitsShift=0x%08X, cumHit1=%d, cumHit2=%d, lane=%d, hit=%d, newCumHit=%d, newMask=0x%08X\n",hits,hits<<(31-(i&31)),cumHit,__popc(hits<<(31-(i&31))),i&31,hit,__popc(((1<<(i&31))-1)&hits)+hit,(1<<(i&31))-1);
+                // Method 4
+                cumHit=hit;
+                cumHit+=((i&31)>=1)*__shfl_up_sync(0xFFFFFFFF,cumHit,1);
+                cumHit+=((i&31)>=2)*__shfl_up_sync(0xFFFFFFFF,cumHit,2);
+                cumHit+=((i&31)>=4)*__shfl_up_sync(0xFFFFFFFF,cumHit,4);
+                cumHit+=((i&31)>=8)*__shfl_up_sync(0xFFFFFFFF,cumHit,8);
+                cumHit+=((i&31)>=16)*__shfl_up_sync(0xFFFFFFFF,cumHit,16);
+                // Method 4 is fastest, followed by method 1, then method 3. Method 2 doesn't work.
 
                 if (hit) {
                   blockPartner.jBlock=jBlock;

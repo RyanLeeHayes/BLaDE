@@ -295,6 +295,13 @@ __global__ void assign_excl_blockExcls_kernel(
           blockCandidates[maxPartnersPerBlock*(i/32)+j].exclAddress=exclAddress;
         }
         exclAddress=__shfl_sync(0xFFFFFFFF,exclAddress,0);
+        /* // Transpose the mask
+        int maskT=0xFFFFFFFF;
+        for (b=0; b<32; b++) {
+          int masktmp=__ballot_sync(0xFFFFFFFF,mask&(1<<b));
+          if ((i&31)==b) maskT=masktmp;
+        }
+        mask=maskT; */
         if (exclAddress < maxBlockExclCount) {
           blockExcls[32*exclAddress+(i&31)]=mask;
         } else if (exclAddress==maxBlockExclCount && (i&31)==0) {

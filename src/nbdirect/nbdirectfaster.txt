@@ -110,34 +110,38 @@ __global__ void getforce_nbdirect_kernel(
   int iThread=i-32*iWarp;
   int iBlock=(iWarp>>WARPSPERBLOCK)+startBlock;
   int jBlock;
-  int iCount,jCount;
+  int iCount,jCount,jtmpCount;
+  int jUsed, jtmpBlockThread;
   __shared__ struct DomdecBlockVolume iBlockVolume;
+  __shared__ struct DomdecBlockVolume jBlockVolume[1<<WARPSPERBLOCK];
+  __shared__ int jnext;
   int ii,jj;
   int j,jmax;
-  int jtmp;
+  int tmp;
   real r,rinv;
   char4 shift;
   real3 dr;
   NbondPotential inp,jnp;
-  real jtmpnp_q;
-  int jtmpnp_typeIdx;
+  real itmpnp_q,jtmpnp_q;
+  int itmpnp_typeIdx,jtmpnp_typeIdx;
   real fij,eij;
   real lEnergy=0;
   // extern __shared__ real sEnergy[];
-  real3 xi,xj,xjtmp;
-  real3 fi,fj,fjtmp;
-  real fli,flj,fljtmp;
-  int bi,bj,bjtmp;
-  real li,lj,ljtmp,lixljtmp;
+  real3 xi,xitmp,xj,xjtmp;
+  real3 fi,fitmp,fjtmp;
+  real fli,flitmp,fljtmp;
+  int bi,bitmp,bj,bjtmp;
+  real li,litmp,lj,ljtmp,lixljtmp;
   real rEff,dredr,dredll; // Soft core stuff
-  int exclAddress, exclMask;
+  int exclAddress, exclMask, tmpExclMask;
 
   if (iBlock<endBlock && threadIdx.x==0) iBlockVolume=blockVolume[iBlock];
+  if (iBlock<endBlock && threadIdx.x==0) jnext=0;
   __syncthreads();
   if (iBlock<endBlock) {
     ii=blockBounds[iBlock];
     iCount=blockBounds[iBlock+1]-ii;
-    ii+=(iThread);
+    // ii+=(iThread);
     if ((iThread)<iCount) {
       // inp=nbonds[ii];
       // xi=position[ii];
@@ -154,7 +158,21 @@ __global__ void getforce_nbdirect_kernel(
 
     // used i/32 instead of iBlock to shift to beginning of array
     jmax=blockPartnerCount[iWarp>>WARPSPERBLOCK];
-    for (j=rectify_modulus(iWarp,1<<WARPSPERBLOCK); j<jmax; j+=(1<<WARPSPERBLOCK)) {
+    jCount=32;
+    jUsed=32;
+    // j=recitfy_modulus(iWarp,1<<WARPSPERBLOCK);
+    if (iThread==0) j=atomicInc((unsigned int*)(&jnext),0xFFFFFFFF);
+    j=__shfl_sync(0xFFFFFFFF,j,0);
+    // for (j=rectify_modulus(iWarp,1<<WARPSPERBLOCK); (j<jmax)||(jUsed<jCount); j+=(1<<WARPSPERBLOCK))
+    for (; (j<jmax)||(jUsed<32);) {
+      // if (iThread==0 && iWarp < 2) printf("Line %d, iWarp=%d, j=%d, jmax=%d, jCount=%d, jUsed=%d, jtmpCount=%d\n",__LINE__,iWarp,j,jmax,jCount,jUsed,jtmpCount); // DEBUG
+      jtmpCount=0;
+      bool iFlag=false;
+      while ((jtmpCount<32)&&((j<jmax)||(jUsed<32))) {
+      // ----- Load new j data if necessary ----- //
+      // if (iThread==0 && iWarp < 2) printf("Line %d, iWarp=%d, j=%d, jmax=%d, jCount=%d, jUsed=%d, jtmpCount=%d\n",__LINE__,iWarp,j,jmax,jCount,jUsed,jtmpCount); // DEBUG
+      if (jUsed==32) {
+      // if (iThread==0 && iWarp < 2) printf("Line %d, iWarp=%d, j=%d, jmax=%d, jCount=%d, jUsed=%d, jtmpCount=%d\n",__LINE__,iWarp,j,jmax,jCount,jUsed,jtmpCount); // DEBUG
       jBlock=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].jBlock;
       shift=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].shift;
       // boxShift.x*=box.x;
@@ -172,7 +190,9 @@ __global__ void getforce_nbdirect_kernel(
       }
       jj=blockBounds[jBlock];
       jCount=blockBounds[jBlock+1]-jj;
-      jj+=(iThread);
+      // jj+=(iThread);
+      // jBlockThread=32*jBlock+iThread;
+      jUsed=0;
       if ((iThread)<jCount) {
         // jnp=nbonds[jj];
         // xj=position[jj];
@@ -189,52 +209,131 @@ __global__ void getforce_nbdirect_kernel(
         lj=1;
         if (bj) lj=lambda[0xFFFF & bj];
       }
+      if (iThread==0) {
+        jBlockVolume[threadIdx.x>>5]=blockVolume[jBlock];
+        jBlockVolume[threadIdx.x>>5].min.x+=shift.x*box.x;
+        jBlockVolume[threadIdx.x>>5].min.y+=shift.y*box.y;
+        jBlockVolume[threadIdx.x>>5].min.z+=shift.z*box.z;
+        jBlockVolume[threadIdx.x>>5].max.x+=shift.x*box.x;
+        jBlockVolume[threadIdx.x>>5].max.y+=shift.y*box.y;
+        jBlockVolume[threadIdx.x>>5].max.z+=shift.z*box.z;
+      }
+      __syncwarp();
+      }
+      // ----- Squeeze j - only load relevant j into jtmp ----- //
+      iFlag|=check_proximity(jBlockVolume[threadIdx.x>>5],xi,cutoffs.rCut*cutoffs.rCut);
+      // iFlag=true; // DEBUG
       bool jFlag=check_proximity(iBlockVolume,xj,cutoffs.rCut*cutoffs.rCut);
+      // jFlag=true; // DEBUG
+      jFlag&=(iThread<jCount);
+      jFlag&=(iThread>=jUsed);
+      // cumsum method 3
+      int jFlags=__ballot_sync(0xFFFFFFFF,jFlag);
+      // if (iThread==0 && (iWarp==100 || iWarp==101)) printf("iWarp=%d, jFlags=%08X, jCount=%d, jUsed=%d, j=%d, jmax=%d\n",iWarp,jFlags,jCount,jUsed,j,jmax);
+      int cumjFlag=__popc(((1<<iThread)-1)&jFlags)+jFlag;
+      int available=__popc(jFlags);
+      // if (iThread==31 && cumjFlag!=available) printf("Error in cumjFlag\n"); // DEBUG
+      // cumsum method 4
+      // int cumjFlag=jFlag;
+      // cumjFlag+=(iThread>=1)*__shfl_up_sync(0xFFFFFFFF,cumjFlag,1);
+      // cumjFlag+=(iThread>=2)*__shfl_up_sync(0xFFFFFFFF,cumjFlag,2);
+      // cumjFlag+=(iThread>=4)*__shfl_up_sync(0xFFFFFFFF,cumjFlag,4);
+      // cumjFlag+=(iThread>=8)*__shfl_up_sync(0xFFFFFFFF,cumjFlag,8);
+      // cumjFlag+=(iThread>=16)*__shfl_up_sync(0xFFFFFFFF,cumjFlag,16);
+      // int available=__shfl_sync(0xFFFFFFFF,cumjFlag,31);
+      // End cumsum
+      int target=iThread-jtmpCount;
+      if (target>=available) target=-1;
+      int targetThread=0;
+      targetThread+=16*(target>=__shfl_sync(0xFFFFFFFF,cumjFlag-jFlag,targetThread+16));
+      targetThread+=8*(target>=__shfl_sync(0xFFFFFFFF,cumjFlag-jFlag,targetThread+8));
+      targetThread+=4*(target>=__shfl_sync(0xFFFFFFFF,cumjFlag-jFlag,targetThread+4));
+      targetThread+=2*(target>=__shfl_sync(0xFFFFFFFF,cumjFlag-jFlag,targetThread+2));
+      targetThread+=(target>=__shfl_sync(0xFFFFFFFF,cumjFlag-jFlag,targetThread+1));
+      // if (iThread==0 && iWarp < 2) printf("Line %d, iWarp=%d.00, jFlags=0x%08X, cumjFlag=%d, target=%d, targetThread=%d\n",__LINE__,iWarp,jFlags,cumjFlag,target,targetThread); // DEBUG
+      // if (iThread==8 && iWarp < 2) printf("Line %d, iWarp=%d.08, jFlags=0x%08X, cumjFlag=%d, target=%d, targetThread=%d\n",__LINE__,iWarp,jFlags,cumjFlag,target,targetThread); // DEBUG
+      // if (iThread==16 && iWarp < 2) printf("Line %d, iWarp=%d.16, jFlags=0x%08X, cumjFlag=%d, target=%d, targetThread=%d\n",__LINE__,iWarp,jFlags,cumjFlag,target,targetThread); // DEBUG
+      // if (iThread==24 && iWarp < 2) printf("Line %d, iWarp=%d.24, jFlags=0x%08X, cumjFlag=%d, target=%d, targetThread=%d\n",__LINE__,iWarp,jFlags,cumjFlag,target,targetThread); // DEBUG
+      // int debugit1=__shfl_sync(0xFFFFFFFF,jFlag,targetThread); // DEBUG
+      // if (target>=0 && !debugit1) printf("Error, fetching a target with jFlag false\n"); // DEBUG
+      // int debugit2=__shfl_sync(0xFFFFFFFF,cumjFlag,targetThread); // DEBUG
+      // if (target>=0 && debugit2-1 != target) printf("Error, cumsum-self=%d is not equal to target=%d\n",debugit2-debugit1,target); // DEBUG
+      // ----- Actually fetch the data ----- //
+      real passnp_q=__shfl_sync(0xFFFFFFFF,jnp.q,targetThread);
+      if (target>=0) jtmpnp_q=passnp_q;
+      int passnp_typeIdx=__shfl_sync(0xFFFFFFFF,jnp.typeIdx,targetThread);
+      if (target>=0) jtmpnp_typeIdx=passnp_typeIdx;
+      real3 xpass;
+      xpass.x=__shfl_sync(0xFFFFFFFF,xj.x,targetThread);
+      xpass.y=__shfl_sync(0xFFFFFFFF,xj.y,targetThread);
+      xpass.z=__shfl_sync(0xFFFFFFFF,xj.z,targetThread);
+      if (target>=0) xjtmp=xpass;
+      int bpass=__shfl_sync(0xFFFFFFFF,bj,targetThread);
+      if (target>=0) bjtmp=bpass;
+      real lpass=__shfl_sync(0xFFFFFFFF,lj,targetThread);
+      if (target>=0) ljtmp=lpass;
+      int passExclMask=__shfl_sync(0xFFFFFFFF,exclMask,targetThread);
+      if (target>=0) tmpExclMask=passExclMask;
+      if (target>=0) jtmpBlockThread=32*jBlock+targetThread;
+      // ----- And update information on bounds... ----- //
+      jUsed=__popc(__ballot_sync(0xFFFFFFFF,cumjFlag<=(32-jtmpCount))); // 32-jtmpCount is available space
+      // if (jUsed != __popc(__ballot_sync(0xFFFFFFFF,target>=0))) printf("Whoops\n"); // DEBUG
+      // if (jUsed != __popc(__ballot_sync(0xFFFFFFFF,target>=0))) printf("Whoops: Line %d, iWarp=%d, iThread=%d, jFlags=0x%08X, cumjFlag=%d, target=%d, targetThread=%d, jUsed=%d, jUsed(alt)=%d\n",__LINE__,iWarp,iThread,jFlags,cumjFlag,target,targetThread,jUsed,__popc(__ballot_sync(0xFFFFFFFF,target>=0))); // DEBUG
+      // if (iWarp==100 || iWarp==101) printf("Whoops: Line %d, iWarp=%d, iThread=%d, jFlags=0x%08X, cumjFlag=%d, target=%d, targetThread=%d, jUsed=%d, jUsed(alt)=%d, jtmpCount=%d, fetchedthing=%08X\n",__LINE__,iWarp,iThread,jFlags,cumjFlag,target,targetThread,jUsed,__popc(__ballot_sync(0xFFFFFFFF,target>=0)),jtmpCount,__ballot_sync(0xFFFFFFFF,cumjFlag<=(32-jtmpCount))); // DEBUG
+      jtmpCount+=available;
+      if (jtmpCount>=32) jtmpCount=32;
+      if (jtmpCount<32) {
+        // We need more data, go on to next block
+        if (iThread==0) j=atomicInc((unsigned int*)(&jnext),0xFFFFFFFF);
+        j=__shfl_sync(0xFFFFFFFF,j,0);
+      }
+      // if (iThread==0 && iWarp < 2) printf("Line %d, iWarp=%d, j=%d, jmax=%d, jCount=%d, jUsed=%d, jtmpCount=%d\n",__LINE__,iWarp,j,jmax,jCount,jUsed,jtmpCount); // DEBUG
+      }
+        
+      fjtmp=real3_reset<real3>();
+      fljtmp=0;
 
-      fj=real3_reset<real3>();
-      flj=0;
+      for (tmp=0; tmp<iCount; tmp++) {
+        if (__shfl_sync(0xFFFFFFFF,iFlag,tmp)) {
+          itmpnp_q=__shfl_sync(0xFFFFFFFF,inp.q,tmp);
+          itmpnp_typeIdx=__shfl_sync(0xFFFFFFFF,inp.typeIdx,tmp);
+          xitmp.x=__shfl_sync(0xFFFFFFFF,xi.x,tmp);
+          xitmp.y=__shfl_sync(0xFFFFFFFF,xi.y,tmp);
+          xitmp.z=__shfl_sync(0xFFFFFFFF,xi.z,tmp);
+          bitmp=__shfl_sync(0xFFFFFFFF,bi,tmp);
+          litmp=__shfl_sync(0xFFFFFFFF,li,tmp);
 
-      for (jtmp=0; jtmp<jCount; jtmp++) {
-        if (__shfl_sync(0xFFFFFFFF,jFlag,jtmp)) {
-          jtmpnp_q=__shfl_sync(0xFFFFFFFF,jnp.q,jtmp);
-          jtmpnp_typeIdx=__shfl_sync(0xFFFFFFFF,jnp.typeIdx,jtmp);
-          xjtmp.x=__shfl_sync(0xFFFFFFFF,xj.x,jtmp);
-          xjtmp.y=__shfl_sync(0xFFFFFFFF,xj.y,jtmp);
-          xjtmp.z=__shfl_sync(0xFFFFFFFF,xj.z,jtmp);
-          bjtmp=__shfl_sync(0xFFFFFFFF,bj,jtmp);
-          ljtmp=__shfl_sync(0xFFFFFFFF,lj,jtmp);
-
-          fjtmp=real3_reset<real3>();
-          fljtmp=0;
-          if (iThread<iCount && ((1<<jtmp)&exclMask)) {
+          fitmp=real3_reset<real3>();
+          flitmp=0;
+          if (iThread<jtmpCount && ((1<<tmp)&tmpExclMask)) {
 #ifdef USE_TEXTURE
             struct VdwPotential vdwp;
-            ((real2*)(&vdwp))[0]=tex1Dfetch<real2>(vdwParameters,inp.typeIdx*vdwParameterCount+jtmpnp_typeIdx);
+            ((real2*)(&vdwp))[0]=tex1Dfetch<real2>(vdwParameters,jtmpnp_typeIdx*vdwParameterCount+itmpnp_typeIdx);
 #else
-            struct VdwPotential vdwp=vdwParameters[inp.typeIdx*vdwParameterCount+jtmpnp_typeIdx];
+            struct VdwPotential vdwp=vdwParameters[jtmpnp_typeIdx*vdwParameterCount+itmpnp_typeIdx];
 #endif
 
             // Geometry
-            dr=real3_sub(xi,xjtmp);
+            dr=real3_sub(xitmp,xjtmp);
             r=real3_mag<real>(dr);
 
             if (r<cutoffs.rCut) {
               // Scaling
-              if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
-                if (bi==bjtmp) {
-                  lixljtmp=li;
+              if ((bitmp&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
+                if (bitmp==bjtmp) {
+                  lixljtmp=litmp;
                 } else {
                   lixljtmp=0;
                 }
               } else {
-                lixljtmp=li*ljtmp;
+                lixljtmp=litmp*ljtmp;
               }
 
               rEff=r;
               if (useSoftCore) {
                 dredr=1; // d(rEff) / d(r)
                 dredll=0; // d(rEff) / d(lixljtmp)
-                if (bi || bjtmp) {
+                if (bitmp || bjtmp) {
                   // real rSoft=(2.0*ANGSTROM*sqrt(4.0))*(1.0-lixljtmp);
                   real rSoft=SOFTCORERADIUS*(1-lixljtmp);
                   if (r<rSoft) {
@@ -264,9 +363,9 @@ __global__ void getforce_nbdirect_kernel(
               // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
               // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+1.128379167095513f*cutoffs.betaEwald*expf(-br*br))*rinv;
               // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)(2/sqrt(M_PI)))*cutoffs.betaEwald*expf(-br*br))*rinv;
-              fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)1.128379167095513)*cutoffs.betaEwald*expf(-br*br))*rinv;
-              if (bi || bjtmp || energy) {
-                eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
+              fij=-kELECTRIC*itmpnp_q*jtmpnp_q*(erfcrinv+((real)1.128379167095513)*cutoffs.betaEwald*expf(-br*br))*rinv;
+              if (bitmp || bjtmp || energy) {
+                eij=kELECTRIC*itmpnp_q*jtmpnp_q*erfcrinv;
               }
                 // Van der Waals
               real rinv3=rinv*rinv*rinv;
@@ -280,7 +379,7 @@ __global__ void getforce_nbdirect_kernel(
               real rSwitch3=cutoffs.rSwitch*cutoffs.rSwitch*cutoffs.rSwitch;
               if (rEff<cutoffs.rSwitch) {
                 fij+=(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv;
-                if (bi || bjtmp || energy) {
+                if (bitmp || bjtmp || energy) {
                   real dv6=1/(rCut3*rSwitch3);
                   eij+=vdwp.c12*(rinv6*rinv6-dv6*dv6)-vdwp.c6*(rinv6-dv6);
                 }
@@ -289,27 +388,27 @@ __global__ void getforce_nbdirect_kernel(
                 real k12=rCut3*rCut3/(rCut3*rCut3-rSwitch3*rSwitch3);
                 real rCutinv3=1/rCut3;
                 fij+=(6*vdwp.c6*k6*(rinv3-rCutinv3)*rinv3-12*vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*rinv6)*rinv;
-                if (bi || bjtmp || energy) {
+                if (bitmp || bjtmp || energy) {
                   eij+=vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*(rinv6-rCutinv3*rCutinv3)-vdwp.c6*k6*(rinv3-rCutinv3)*(rinv3-rCutinv3);
                 }
               }
               fij*=lixljtmp;
 
               // Lambda force
-              if (bi || bjtmp) {
+              if (bitmp || bjtmp) {
                 if (useSoftCore) {
-                  fljtmp=eij+fij*dredll;
+                  flitmp=eij+fij*dredll;
                 } else {
-                  fljtmp=eij;
+                  flitmp=eij;
                 }
-                if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
-                  if (bi==bjtmp) {
-                    fli+=fljtmp;
+                if ((bitmp&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
+                  if (bitmp==bjtmp) {
+                    fljtmp+=flitmp;
                   }
-                  fljtmp=0;
+                  flitmp=0;
                 } else {
-                  fli+=ljtmp*fljtmp;
-                  fljtmp*=li;
+                  fljtmp+=litmp*flitmp;
+                  flitmp*=ljtmp;
                 }
               }
 
@@ -318,8 +417,8 @@ __global__ void getforce_nbdirect_kernel(
                 rinv=1/r;
                 fij*=dredr;
               }
-              real3_scaleinc(&fi, fij*rinv,dr);
-              fjtmp=real3_scale<real3>(-fij*rinv,dr);
+              real3_scaleinc(&fjtmp, -fij*rinv,dr);
+              fitmp=real3_scale<real3>(fij*rinv,dr);
 
               // Energy, if requested
               if (energy) {
@@ -329,41 +428,50 @@ __global__ void getforce_nbdirect_kernel(
             }
           }
           __syncwarp();
-          fjtmp.x+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.x,1);
-          fjtmp.x+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.x,2);
-          fjtmp.x+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.x,4);
-          fjtmp.x+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.x,8);
-          fjtmp.x+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.x,16);
-          if (iThread==jtmp) fj.x=fjtmp.x;
-          fjtmp.y+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.y,1);
-          fjtmp.y+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.y,2);
-          fjtmp.y+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.y,4);
-          fjtmp.y+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.y,8);
-          fjtmp.y+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.y,16);
-          if (iThread==jtmp) fj.y=fjtmp.y;
-          fjtmp.z+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.z,1);
-          fjtmp.z+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.z,2);
-          fjtmp.z+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.z,4);
-          fjtmp.z+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.z,8);
-          fjtmp.z+=__shfl_xor_sync(0xFFFFFFFF,fjtmp.z,16);
-          if (iThread==jtmp) fj.z=fjtmp.z;
-          if (bjtmp) {
-            fljtmp+=__shfl_xor_sync(0xFFFFFFFF,fljtmp,1);
-            fljtmp+=__shfl_xor_sync(0xFFFFFFFF,fljtmp,2);
-            fljtmp+=__shfl_xor_sync(0xFFFFFFFF,fljtmp,4);
-            fljtmp+=__shfl_xor_sync(0xFFFFFFFF,fljtmp,8);
-            fljtmp+=__shfl_xor_sync(0xFFFFFFFF,fljtmp,16);
-            if (iThread==jtmp) flj=fljtmp;
+          fitmp.x+=__shfl_xor_sync(0xFFFFFFFF,fitmp.x,1);
+          fitmp.x+=__shfl_xor_sync(0xFFFFFFFF,fitmp.x,2);
+          fitmp.x+=__shfl_xor_sync(0xFFFFFFFF,fitmp.x,4);
+          fitmp.x+=__shfl_xor_sync(0xFFFFFFFF,fitmp.x,8);
+          fitmp.x+=__shfl_xor_sync(0xFFFFFFFF,fitmp.x,16);
+          if (iThread==tmp) fi.x+=fitmp.x;
+          fitmp.y+=__shfl_xor_sync(0xFFFFFFFF,fitmp.y,1);
+          fitmp.y+=__shfl_xor_sync(0xFFFFFFFF,fitmp.y,2);
+          fitmp.y+=__shfl_xor_sync(0xFFFFFFFF,fitmp.y,4);
+          fitmp.y+=__shfl_xor_sync(0xFFFFFFFF,fitmp.y,8);
+          fitmp.y+=__shfl_xor_sync(0xFFFFFFFF,fitmp.y,16);
+          if (iThread==tmp) fi.y+=fitmp.y;
+          fitmp.z+=__shfl_xor_sync(0xFFFFFFFF,fitmp.z,1);
+          fitmp.z+=__shfl_xor_sync(0xFFFFFFFF,fitmp.z,2);
+          fitmp.z+=__shfl_xor_sync(0xFFFFFFFF,fitmp.z,4);
+          fitmp.z+=__shfl_xor_sync(0xFFFFFFFF,fitmp.z,8);
+          fitmp.z+=__shfl_xor_sync(0xFFFFFFFF,fitmp.z,16);
+          if (iThread==tmp) fi.z+=fitmp.z;
+          if (bitmp) {
+            flitmp+=__shfl_xor_sync(0xFFFFFFFF,flitmp,1);
+            flitmp+=__shfl_xor_sync(0xFFFFFFFF,flitmp,2);
+            flitmp+=__shfl_xor_sync(0xFFFFFFFF,flitmp,4);
+            flitmp+=__shfl_xor_sync(0xFFFFFFFF,flitmp,8);
+            flitmp+=__shfl_xor_sync(0xFFFFFFFF,flitmp,16);
+            if (iThread==tmp) fli+=flitmp;
           }
         }
       }
       __syncwarp();
-      if ((iThread)<jCount) {
-        if (bj) {
-          atomicAdd(&lambdaForce[0xFFFF & bj],flj);
+      if ((iThread)<jtmpCount) {
+        if (bjtmp) {
+          atomicAdd(&lambdaForce[0xFFFF & bjtmp],fljtmp);
         }
-        at_real3_inc(&force[32*jBlock+iThread],fj);
+        // at_real3_inc(&force[32*jBlock+iThread],fjtmp);
+        at_real3_inc(&force[jtmpBlockThread],fjtmp);
       }
+
+      // if (iThread==0 && iWarp < 2) printf("Line %d, iWarp=%d, j=%d, jmax=%d, jCount=%d, jUsed=%d, jtmpCount=%d\n",__LINE__,iWarp,j,jmax,jCount,jUsed,jtmpCount); // DEBUG
+      if (jUsed==32) {
+        // We need more data, go on to next block
+        if (iThread==0) j=atomicInc((unsigned int*)(&jnext),0xFFFFFFFF);
+        j=__shfl_sync(0xFFFFFFFF,j,0);
+      }
+      // if (iThread==0 && iWarp < 2) printf("Line %d, iWarp=%d, j=%d, jmax=%d, jCount=%d, jUsed=%d, jtmpCount=%d\n",__LINE__,iWarp,j,jmax,jCount,jUsed,jtmpCount); // DEBUG
     }
     __syncwarp();
     if ((iThread)<iCount) {
