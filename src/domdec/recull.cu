@@ -76,17 +76,24 @@ __global__ void recull_blocks_kernel(
 
       // see how many hits partner threads got
       __syncwarp();
+      // cumHit=hit;
+      // passHit=((i&1)?0:cumHit); // (i&1) receive
+      // cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|0)-1);
+      // passHit=((i&2)?0:cumHit); // (i&2) receive
+      // cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|1)-2);
+      // passHit=((i&4)?0:cumHit); // (i&4) receive
+      // cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|3)-4);
+      // passHit=((i&8)?0:cumHit); // (i&8) receive
+      // cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|7)-8);
+      // passHit=((i&16)?0:cumHit); // (i&16) receive
+      // cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|15)-16);
+      // Faster cumsum method from cull.cu - no difference here
       cumHit=hit;
-      passHit=((i&1)?0:cumHit); // (i&1) receive
-      cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|0)-1);
-      passHit=((i&2)?0:cumHit); // (i&2) receive
-      cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|1)-2);
-      passHit=((i&4)?0:cumHit); // (i&4) receive
-      cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|3)-4);
-      passHit=((i&8)?0:cumHit); // (i&8) receive
-      cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|7)-8);
-      passHit=((i&16)?0:cumHit); // (i&16) receive
-      cumHit+=__shfl_sync(0xFFFFFFFF,passHit,(i|15)-16);
+      cumHit+=((i&31)>=1)*__shfl_up_sync(0xFFFFFFFF,cumHit,1);
+      cumHit+=((i&31)>=2)*__shfl_up_sync(0xFFFFFFFF,cumHit,2);
+      cumHit+=((i&31)>=4)*__shfl_up_sync(0xFFFFFFFF,cumHit,4);
+      cumHit+=((i&31)>=8)*__shfl_up_sync(0xFFFFFFFF,cumHit,8);
+      cumHit+=((i&31)>=16)*__shfl_up_sync(0xFFFFFFFF,cumHit,16);
 
       if (hit) {
         // Use i/32 instead of iblock so it's at start of array.

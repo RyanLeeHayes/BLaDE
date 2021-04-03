@@ -180,13 +180,13 @@ __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *ato
   jys=(threadIdx.x&2)==2;
   jzs=(threadIdx.x&1);
   for (jx=0; jx<order/2; jx++) {
-    dIndex.x=__shfl_sync(0xFFFFFFFF,density.x,threadIdx.x-threadOfAtom+2*jx+jxs);
+    dIndex.x=__shfl_sync(0xFFFFFFFF,density.x,2*jx+jxs,8);
     index.x=over_modulus(u0.x+2*jx+jxs,gridDimPME.x);
     for (jy=0; jy<order/2; jy++) {
-      dIndex.y=__shfl_sync(0xFFFFFFFF,density.y,threadIdx.x-threadOfAtom+2*jy+jys);
+      dIndex.y=__shfl_sync(0xFFFFFFFF,density.y,2*jy+jys,8);
       index.y=index.x*gridDimPME.y+over_modulus(u0.y+2*jy+jys,gridDimPME.y);
       for (jz=0; jz<order/2; jz++) {
-        dIndex.z=__shfl_sync(0xFFFFFFFF,density.z,threadIdx.x-threadOfAtom+2*jz+jzs);
+        dIndex.z=__shfl_sync(0xFFFFFFFF,density.z,2*jz+jzs,8);
         index.z=index.y*gridDimPME.z+over_modulus(u0.z+2*jz+jzs,gridDimPME.z);
         if (iAtom<atomCount) {
           atomicAdd(&chargeGridPME[index.z],q*dIndex.x*dIndex.y*dIndex.z);
@@ -352,16 +352,16 @@ __global__ void getforce_ewald_gather_kernel(
   fi.y=0;
   fi.z=0;
   for (jx=0; jx<order/2; jx++) {
-    dIndex.x=__shfl_sync(0xFFFFFFFF,density.x,threadIdx.x-threadOfAtom+2*jx+jxs);
-    dDIndex.x=__shfl_sync(0xFFFFFFFF,dDensity.x,threadIdx.x-threadOfAtom+2*jx+jxs);
+    dIndex.x=__shfl_sync(0xFFFFFFFF,density.x,2*jx+jxs,8);
+    dDIndex.x=__shfl_sync(0xFFFFFFFF,dDensity.x,2*jx+jxs,8);
     index.x=over_modulus(u0.x+2*jx+jxs,gridDimPME.x);
     for (jy=0; jy<order/2; jy++) {
-      dIndex.y=__shfl_sync(0xFFFFFFFF,density.y,threadIdx.x-threadOfAtom+2*jy+jys);
-      dDIndex.y=__shfl_sync(0xFFFFFFFF,dDensity.y,threadIdx.x-threadOfAtom+2*jy+jys);
+      dIndex.y=__shfl_sync(0xFFFFFFFF,density.y,2*jy+jys,8);
+      dDIndex.y=__shfl_sync(0xFFFFFFFF,dDensity.y,2*jy+jys,8);
       index.y=index.x*gridDimPME.y+over_modulus(u0.y+2*jy+jys,gridDimPME.y);
       for (jz=0; jz<order/2; jz++) {
-        dIndex.z=__shfl_sync(0xFFFFFFFF,density.z,threadIdx.x-threadOfAtom+2*jz+jzs);
-        dDIndex.z=__shfl_sync(0xFFFFFFFF,dDensity.z,threadIdx.x-threadOfAtom+2*jz+jzs);
+        dIndex.z=__shfl_sync(0xFFFFFFFF,density.z,2*jz+jzs,8);
+        dDIndex.z=__shfl_sync(0xFFFFFFFF,dDensity.z,2*jz+jzs,8);
         index.z=index.y*gridDimPME.z+over_modulus(u0.z+2*jz+jzs,gridDimPME.z);
         if (iAtom<atomCount) {
 #ifdef USE_TEXTURE
