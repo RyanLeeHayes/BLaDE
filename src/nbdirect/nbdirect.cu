@@ -51,7 +51,7 @@ static __forceinline__ __device__ float fasterfc(float a)
 }
 #endif
 
-#define WARPSPERBLOCK 1
+#define WARPSPERBLOCK 2
 __host__ __device__ inline
 bool check_proximity(DomdecBlockVolume a,real3 b,real c2)
 {
@@ -112,6 +112,7 @@ __global__ void getforce_nbdirect_kernel(
   int jBlock;
   int iCount,jCount;
   __shared__ struct DomdecBlockVolume iBlockVolume;
+  __shared__ int jnext;
   int ii,jj;
   int j,jmax;
   int jtmp;
@@ -133,6 +134,7 @@ __global__ void getforce_nbdirect_kernel(
   int exclAddress, exclMask;
 
   if (iBlock<endBlock && threadIdx.x==0) iBlockVolume=blockVolume[iBlock];
+  if (iBlock<endBlock && threadIdx.x==0) jnext=0;
   __syncthreads();
   if (iBlock<endBlock) {
     ii=blockBounds[iBlock];
@@ -154,7 +156,10 @@ __global__ void getforce_nbdirect_kernel(
 
     // used i/32 instead of iBlock to shift to beginning of array
     jmax=blockPartnerCount[iWarp>>WARPSPERBLOCK];
-    for (j=rectify_modulus(iWarp,1<<WARPSPERBLOCK); j<jmax; j+=(1<<WARPSPERBLOCK)) {
+    if (iThread==0) j=atomicInc((unsigned int*)(&jnext),0xFFFFFFFF);
+    j=__shfl_sync(0xFFFFFFFF,j,0);
+    // for (j=rectify_modulus(iWarp,1<<WARPSPERBLOCK); j<jmax; j+=(1<<WARPSPERBLOCK))
+    for (; j<jmax;) {
       jBlock=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].jBlock;
       shift=blockPartners[maxPartnersPerBlock*(iWarp>>WARPSPERBLOCK)+j].shift;
       // boxShift.x*=box.x;
@@ -364,6 +369,8 @@ __global__ void getforce_nbdirect_kernel(
         }
         at_real3_inc(&force[32*jBlock+iThread],fj);
       }
+      if (iThread==0) j=atomicInc((unsigned int*)(&jnext),0xFFFFFFFF);
+      j=__shfl_sync(0xFFFFFFFF,j,0);
     }
     __syncwarp();
     if ((iThread)<iCount) {

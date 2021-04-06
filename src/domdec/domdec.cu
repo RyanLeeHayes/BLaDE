@@ -89,8 +89,8 @@ void Domdec::initialize(System *system)
 
   // Assume blocks are on average at least 1/3 full, and add some extra blocks for small systems.
   maxBlocks=3*globalCount/32+32;
-  // Note: orthBox_f not set yet
-  real invDensity=(system->state->orthBox.x*system->state->orthBox.y*system->state->orthBox.z)/system->state->atomCount;
+  // Note: orthBox_f not set yet - now it is, it's set by broadcast_box
+  real invDensity=(system->state->orthBox_f.x*system->state->orthBox_f.y*system->state->orthBox_f.z)/system->state->atomCount;
   real approxBlockBox=exp(log(32*invDensity)/3);
   real edge=3*approxBlockBox+2*system->run->cutoffs.rCut;
   // edge*edge*edge is the largest volume that can interact with a typically sized box in the worst case. Typically, half these interactions will be taken care of by partner blocks rather than this block, multiplying this expression by 2 means we should have roughly 4 times as many partner spaces as necessary.
@@ -182,7 +182,8 @@ void Domdec::update_domdec(System *system,bool resetFlag)
 {
   if (resetFlag) {
     system->domdec->reset_domdec(system);
-  } else if (system->idCount>1) {
+  } else {
+    // Call broadcast_position to call set_fd, even if only one node.
     system->state->broadcast_position(system);
   }
 }

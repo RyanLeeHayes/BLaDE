@@ -61,10 +61,9 @@ void replica_exchange(System *system)
       cudaMemcpy(s->positionBuffer_d,s->positionBuffer,
         n*sizeof(real_x),cudaMemcpyHostToDevice);
     }
-    if (system->idCount>1) {
-      s->broadcast_position(system);
-      s->broadcast_box(system);
-    }
+    // update_domdec calls broadcast_position
+    // Call broadcast_box to set orthBox_f, even if only one node
+    s->broadcast_box(system);
 
     // Evaluate new energy
     system->domdec->update_domdec(system,true);
@@ -111,10 +110,9 @@ void replica_exchange(System *system)
         s->restore_position();
       }
     }
-    if (system->idCount>1) {
-      s->broadcast_position(system);
-      system->state->broadcast_box(system);
-    }
+    // update_domdec calls broadcast_position
+    // Call broadcast_box to set orthBox_f, even if only one node
+    system->state->broadcast_box(system);
     // Technically only need to do broadcasts and update domdec if we reject the
     // swap, but that's typically more common anyways. Saves having to
     // communicate between OpenMP threads since only master OpenMP thread knows.

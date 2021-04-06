@@ -51,8 +51,8 @@ void Domdec::assign_domain(System *system)
 
   if (system->idCount!=1) {
     broadcast_domain(system);
-    system->state->broadcast_position(system);
   }
-  // Copy to floating point buffers if using mixed precision
-  system->state->set_fd(system);
+
+  // Call broadcast_position to call set_fd, even if only one node.
+  system->state->broadcast_position(system);
 }

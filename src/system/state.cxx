@@ -47,14 +47,14 @@ State::State(System *system) {
   if (system->idCount>0) { // OMP
 #pragma omp barrier // OMP
     if (system->id==0) { // OMP
-      system->message[0]=(void*)positionBuffer_d; // OMP
+      system->message[0]=(void*)positionBuffer_fd; // OMP
       for (i=1; i<system->idCount; i++) { // OMP
         system->message[i]=(void*)&forceBuffer_d[i*(2*nL+3*n)]; // OMP
       } // OMP
 #pragma omp barrier // master barrier // OMP
     } else { // OMP
 #pragma omp barrier // everyone else's barrier // OMP
-      positionBuffer_omp=(real_x*)(system->message[0]); // OMP
+      positionBuffer_omp=(real*)(system->message[0]); // OMP
       forceBuffer_omp=(real_f*)(system->message[system->id]); // OMP
     } // OMP
 #pragma omp barrier // OMP
@@ -68,14 +68,14 @@ State::State(System *system) {
   if (system->idCount>0) { // OMP
 #pragma omp barrier // OMP
     if (system->id==0) { // OMP
-      system->message[0]=(void*)&orthBox; // OMP
+      system->message[0]=(void*)&orthBox_f; // OMP
       for (i=1; i<system->idCount; i++) { // OMP
         system->message[i]=(void*)&energy_d[i*eeend]; // OMP
       } // OMP
 #pragma omp barrier // master barrier // OMP
     } else { // OMP
 #pragma omp barrier // everyone else's barrier // OMP
-      orthBox_omp=(real3_x*)(system->message[0]); // OMP
+      orthBox_omp=(real3*)(system->message[0]); // OMP
       energy_omp=(real_e*)(system->message[system->id]); // OMP
     } // OMP
 #pragma omp barrier // OMP
@@ -344,13 +344,14 @@ void State::broadcast_position(System *system)
     cudaMemcpy(positionBuffer_d,positionBuffer,N*sizeof(real),cudaMemcpyHostToDevice);
   }*/ // NOMPI
   if (system->id==0) {
+    set_fd(system);
     cudaEventRecord(system->run->communicate,system->run->updateStream);
 #pragma omp barrier
   } else { // OMP
 #pragma omp barrier
     cudaEventSynchronize(system->run->communicate_omp[0]);
     // cudaMemcpyPeer(positionBuffer_d,system->id,positionBuffer_omp,0,N*sizeof(real)); // OMP
-    cudaMemcpyAsync(positionBuffer_d,positionBuffer_omp,N*sizeof(real_x),cudaMemcpyDefault,system->run->updateStream); // OMP
+    cudaMemcpyAsync(positionBuffer_fd,positionBuffer_omp,N*sizeof(real),cudaMemcpyDefault,system->run->updateStream); // OMP
   } // OMP
   // nvtxRangePop();
 }
@@ -360,11 +361,15 @@ void State::broadcast_box(System *system)
   // int N=3; // NOMPI
   // MPI_Bcast(&orthBox,N,MPI_CREAL,0,MPI_COMM_WORLD); // NOMPI
   // nvtxRangePushA("broadcast_box");
+  if (system->id==0) {
+    orthBox_f.x=orthBox.x;
+    orthBox_f.y=orthBox.y;
+    orthBox_f.z=orthBox.z;
+  }
 #pragma omp barrier // OMP
   if (system->id!=0) { // OMP
-    orthBox=orthBox_omp[0]; // OMP
+    orthBox_f=orthBox_omp[0]; // OMP
   } // OMP
-#pragma omp barrier // OMP
   // nvtxRangePop();
 }
 

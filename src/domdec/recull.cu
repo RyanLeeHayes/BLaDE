@@ -47,7 +47,8 @@ __global__ void recull_blocks_kernel(
   struct DomdecBlockVolume volume, partnerVolume;
   int j,jmax;
   bool hit;
-  int cumHit, passHit;
+  // int cumHit, passHit;
+  int cumHit;
   int partnerPos;
   struct DomdecBlockPartners blockPartner;
 

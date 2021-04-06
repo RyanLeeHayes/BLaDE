@@ -66,9 +66,8 @@ void pressure_coupling(System *system)
     scale_box(system,scaleFactor);
     // nvtxRangePop();
   }
-  if (system->idCount>1) {
-    system->state->broadcast_box(system);
-  }
+  // Call broadcast_box to set orthBox_f, even if only one node
+  system->state->broadcast_box(system);
 
   // Evaluate new energy
   // nvtxRangePushA("update_domdec");
@@ -111,8 +110,7 @@ void pressure_coupling(System *system)
     }
     // nvtxRangePop();
   }
-  if (system->idCount>1) {
-    system->state->broadcast_box(system);
-  }
+  // Call broadcast_box to set orthBox_f, even if only one node
+  system->state->broadcast_box(system);
   // nvtxRangePop();
 }

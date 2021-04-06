@@ -953,7 +953,7 @@ void Potential::initialize(System *system)
   // Choose PME grid sizes
   int goodSizes[]={32,27,24,20,18,16};
   fprintf(stdout,"NYI - need orthogonal box for automatic grid determination\n");
-  real boxtmp[3][3]={{system->state->orthBox.x,0,0},{0,system->state->orthBox.y,0},{0,0,system->state->orthBox.z}};
+  real boxtmp[3][3]={{(real)(system->state->orthBox.x),0,0},{0,(real)(system->state->orthBox.y),0},{0,0,(real)(system->state->orthBox.z)}};
   for (i=0; i<3; i++) {
     // real minDim=system->state->box[i][i]/system->run->gridSpace;
     real minDim=boxtmp[i][i]/system->run->gridSpace;
@@ -1415,7 +1415,7 @@ void Potential::calc_force(int step,System *system)
   Run *r=system->run;
   State *s=system->state;
 
-  s->set_fd(system);
+  // s->set_fd(system); // should have already been called
   reset_force(system,calcEnergy);
 
   cudaEventRecord(r->forceBegin,r->updateStream);

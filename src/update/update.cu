@@ -268,9 +268,10 @@ void State::set_fd(System *system)
 {
   int N=3*atomCount+2*lambdaCount;
 
-  orthBox_f.x=orthBox.x;
-  orthBox_f.y=orthBox.y;
-  orthBox_f.z=orthBox.z;
+  // Call elsewhere
+  // orthBox_f.x=orthBox.x;
+  // orthBox_f.y=orthBox.y;
+  // orthBox_f.z=orthBox.z;
 
   if ((void*)positionBuffer_fd != (void*)positionBuffer_d) {
     set_fd_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N,positionBuffer_fd,positionBuffer_d);

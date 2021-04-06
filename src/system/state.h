@@ -52,7 +52,7 @@ class State {
   real_x *positionRExBuffer; // For REx communication
 #endif
   real_x *positionBackup_d; // For NPT
-  real_x *positionBuffer_omp;
+  real *positionBuffer_omp;
   real_f *forceBuffer;
   real_f *forceBuffer_d;
   real_f *forceBackup_d; // For NPT
@@ -76,7 +76,7 @@ class State {
   // The box
   real3_x orthBox;
   real3 orthBox_f; // floating precision version
-  real3_x *orthBox_omp;
+  real3 *orthBox_omp;
   real3_x orthBoxBackup;
 
   // Buffer for floating point output
@@ -136,7 +136,6 @@ class State {
   void restore_position();
 
   void broadcast_position(System *system);
-  void broadcast_velocity(System *system);
   void broadcast_box(System *system);
   void gather_force(System *system,bool calcEnergy);
 
