@@ -255,7 +255,7 @@ __global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,
       blockBounds[j+j0]=upperPos+32*j;
     }
     } else if (j0<maxBlocks) {
-#warning "printf in kernel, this doesn't affect occupancy of 93.8\% on 2080 TI."
+// #warning "printf in kernel, this doesn't affect occupancy of 93.8\% on 2080 TI."
       printf("Error: Overflow of maxBlocks. Use \"run setvariable domdecheuristic off\" - except that reallocation is not implemented here\n");
     }
 

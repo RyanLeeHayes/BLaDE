@@ -15,7 +15,7 @@
 #define fasterfc erfc
 #else
 // Directly from CHARMM source code, charmm/source/domdec_gpu/gpu_utils.h
-#warning "From CHARMM, not fully compatible"
+// #warning "From CHARMM, not fully compatible"
 static __forceinline__ __device__ float __internal_fmad(float a, float b, float c)
 {
 #if __CUDA_ARCH__ >= 200
@@ -452,10 +452,10 @@ void getforce_nbdirect_reduce(System *system,bool calcEnergy)
   Run *r=system->run;
   int N=3*s->atomCount+2*s->lambdaCount;
 
-  getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,r->nbdirectStream>>>(N,system->idCount,s->forceBuffer_d);
+  getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(N,system->idCount,s->forceBuffer_d);
 
   if (calcEnergy) {
     N=eeend;
-    getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,r->nbdirectStream>>>(N,system->idCount,s->energy_d);
+    getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(N,system->idCount,s->energy_d);
   }
 }

@@ -842,14 +842,30 @@ void Potential::initialize(System *system)
       }
     }
   }
-#warning "This is an N^2 algorithm, need to set up better data structures in Msld class to make it N"
-  for (i=0; i<atomCount; i++) {
+  // #warning "This is an N^2 algorithm, need to set up better data structures in Msld class to make it N"
+  /*for (i=0; i<atomCount; i++) {
     for (j=0; j<atomCount; j++) {
       if (!system->msld->interacting(i,j)) {
         msldExcl[i].insert(j);
         msldExcl[j].insert(i);
         allExcl[i].insert(j);
         allExcl[j].insert(i);
+      }
+    }
+  }*/
+  // This should no longer be N^2.
+  for (i=0; i<system->msld->siteCount; i++) {
+    for (j=system->msld->siteBound[i]; j<system->msld->siteBound[i+1]; j++) {
+      for (k=j+1; k<system->msld->siteBound[i+1]; k++) {
+        for (std::set<int>::iterator ii=system->msld->atomsByBlock[j].begin(); ii!=msld->atomsByBlock[j].end(); ii++) {
+          for (std::set<int>::iterator jj=system->msld->atomsByBlock[k].begin(); jj!=msld->atomsByBlock[k].end(); jj++) {
+            if (system->msld->interacting(*ii,*jj)) fatal(__FILE__,__LINE__,"Atoms %d and %d should not be in exclusions\n",*ii,*jj);
+            msldExcl[*ii].insert(*jj);
+            msldExcl[*jj].insert(*ii);
+            allExcl[*ii].insert(*jj);
+            allExcl[*jj].insert(*ii);
+          }
+        }
       }
     }
   }
@@ -1452,16 +1468,19 @@ void Potential::calc_force(int step,System *system)
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }
 
-  cudaStreamWaitEvent(r->nbdirectStream,r->forceBegin,0);
   if (system->domdec->id>=0) {
+    cudaStreamWaitEvent(r->nbdirectStream,r->forceBegin,0);
     getforce_nbdirect(system,calcEnergy);
+    cudaEventRecord(r->nbdirectComplete,r->nbdirectStream);
+    cudaStreamWaitEvent(r->updateStream,r->nbdirectComplete,0);
   }
-  system->state->gather_force(system,calcEnergy);
-  if (system->idCount>1 && system->id==0) {
-    getforce_nbdirect_reduce(system,calcEnergy);
+
+  if (system->idCount>1) {
+    system->state->gather_force(system,calcEnergy);
+    if (system->id==0) {
+      getforce_nbdirect_reduce(system,calcEnergy);
+    }
   }
-  cudaEventRecord(r->nbdirectComplete,r->nbdirectStream);
-  cudaStreamWaitEvent(r->updateStream,r->nbdirectComplete,0);
 
   cudaEventRecord(r->forceComplete,r->updateStream);
 }

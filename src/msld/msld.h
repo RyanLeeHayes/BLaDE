@@ -2,6 +2,7 @@
 #define MSLD_MSLD_H
 
 #include <vector>
+#include <set>
 
 #include "main/defines.h"
 
@@ -38,6 +39,8 @@ class Msld {
   int *blocksPerSite_d;
   int *siteBound;
   int *siteBound_d;
+
+  std::set<int> *atomsByBlock;
 
   int *rest;
   real restScaling;

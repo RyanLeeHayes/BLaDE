@@ -37,6 +37,8 @@ Msld::Msld() {
   siteBound=NULL;
   siteBound_d=NULL;
 
+  atomsByBlock=NULL;
+
   rest=NULL;
   restScaling=1.0;
 
@@ -91,6 +93,8 @@ Msld::~Msld() {
   if (blocksPerSite_d) cudaFree(blocksPerSite_d);
   if (siteBound) free(siteBound);
   if (siteBound_d) cudaFree(siteBound_d);
+
+  if (atomsByBlock) delete [] atomsByBlock;
 
   if (rest) free(rest);
 
@@ -587,6 +591,11 @@ void Msld::initialize(System *system)
     }
     cudaMemcpy(atomRestraintBounds_d,atomRestraintBounds,(atomRestraintCount+1)*sizeof(int),cudaMemcpyHostToDevice);
     cudaMemcpy(atomRestraintIdx_d,atomRestraintIdx,atomRestraintBounds[atomRestraintCount]*sizeof(int),cudaMemcpyHostToDevice);
+  }
+
+  atomsByBlock=new std::set<int>[blockCount];
+  for (i=0; i<system->structure->atomCount; i++) {
+    atomsByBlock[atomBlock[i]].insert(i);
   }
 }
 

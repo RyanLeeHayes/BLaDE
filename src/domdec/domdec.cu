@@ -81,7 +81,7 @@ void Domdec::initialize(System *system)
     id--;
     idCount--;
   }
-#warning "No 2d or 3d decomposition implemented"
+// #warning "No 2d or 3d decomposition implemented"
   gridDomdec=make_int3(1,1,idCount);
   idDomdec=make_int3(0,0,id);
 
@@ -94,7 +94,7 @@ void Domdec::initialize(System *system)
   real approxBlockBox=exp(log(32*invDensity)/3);
   real edge=3*approxBlockBox+2*system->run->cutoffs.rCut;
   // edge*edge*edge is the largest volume that can interact with a typically sized box in the worst case. Typically, half these interactions will be taken care of by partner blocks rather than this block, multiplying this expression by 2 means we should have roughly 4 times as many partner spaces as necessary.
-#warning "Increased maxPartnersPerBlock"
+// #warning "Increased maxPartnersPerBlock"
   // maxPartnersPerBlock=2*((int)(edge*edge*edge/(32*invDensity)));
   maxPartnersPerBlock=3*((int)(edge*edge*edge/(32*invDensity)));
   fprintf(stdout,"The following parameters are set heuristically at %s:%d, and can cause errors if set too low\n",__FILE__,__LINE__);

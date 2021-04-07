@@ -17,7 +17,7 @@
 #define fasterfc erfc
 #else
 // Directly from CHARMM source code, charmm/source/domdec_gpu/gpu_utils.h
-#warning "From CHARMM, not fully compatible"
+// #warning "From CHARMM, not fully compatible"
 static __forceinline__ __device__ float __internal_fmad(float a, float b, float c)
 {
 #if __CUDA_ARCH__ >= 200
