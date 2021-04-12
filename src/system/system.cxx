@@ -247,6 +247,7 @@ System* init_system()
     if (id!=0) {
       int accessible;
       cudaDeviceCanAccessPeer(&accessible, id, 0);
+      fprintf(stdout,"Device %d %s access device %d directly\n",id,(accessible?"can":"cannot"),0);
       if (accessible) {
         cudaDeviceEnablePeerAccess(0,0); // host 0, required 0
       }
