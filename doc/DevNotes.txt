@@ -1,5 +1,3 @@
-WORKING - a keyword marking a line for later attention
-TEMPNOTE - a note to self for later
 NYI - not yet implemented (use to comment out sections in development)
 
 Developers:

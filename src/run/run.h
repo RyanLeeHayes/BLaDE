@@ -80,7 +80,7 @@ class Run {
   cudaEvent_t biaspotComplete;
   cudaEvent_t nbdirectComplete;
   cudaEvent_t nbrecipComplete;
-  cudaEvent_t forceComplete;
+  // cudaEvent_t forceComplete;
   cudaEvent_t communicate;
   cudaEvent_t *communicate_omp;
 

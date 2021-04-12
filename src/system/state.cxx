@@ -188,6 +188,7 @@ void State::initialize(System *system)
   cudaMemcpy(velocityBuffer_d,velocityBuffer,(nL+3*n)*sizeof(real_v),cudaMemcpyHostToDevice);
   cudaMemset(forceBuffer_d,0,(nL+3*n)*sizeof(real_f));
   cudaMemcpy(invsqrtMassBuffer_d,invsqrtMassBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
+#warning "Running nvprof on 2080s causes seg faults in the next command and at later locations"
   system->msld->calc_lambda_from_theta(0,system);
 
   if (system->msld->fix) { // ffix
@@ -401,7 +402,7 @@ void State::gather_force(System *system,bool calcEnergy)
       cudaMemcpy(energy_d+eeend,energy+eeend,(system->idCount-1)*eeend*sizeof(real),cudaMemcpyHostToDevice);
     }
   }*/ // NOMPI
-#define ORIGINAL_GATHER
+// #define ORIGINAL_GATHER
 #ifdef ORIGINAL_GATHER
 #pragma omp barrier // OMP
   if (system->id!=0) { // OMP
@@ -422,7 +423,7 @@ void State::gather_force(System *system,bool calcEnergy)
       cudaMemcpyPeerAsync(energy_omp,0,energy_d,system->id,eeend*sizeof(real_e),system->run->updateStream);
     }
   }
-  // Binary wait tree
+  /* // Binary wait tree
   for (int i=0; (1<<i)<system->idCount; i++) {
     int eligible=(((system->id)&((1<<i)-1))==0);
     int send=((system->id)&(1<<i)); // senders equal 1<<i, receivers equal 0
@@ -435,6 +436,16 @@ void State::gather_force(System *system,bool calcEnergy)
     if (eligible && (!send) && partner<system->idCount) {
       // fprintf(stdout,"Step %d id %d receiving from partner %d\n",system->run->step,system->id,partner);
       cudaStreamWaitEvent(system->run->updateStream,system->run->communicate_omp[partner],0);
+    }
+  } */
+  // All to one naive wait - if there are enough nodes for the tree to matter, the copy, not the synchronization will be rate limiting. The tree structure may take longer anyways because more events have to be serially recorded.
+  if (system->id!=0) {
+    cudaEventRecord(system->run->communicate,system->run->updateStream);
+  }
+#pragma omp barrier
+  if (system->id==0) {
+    for (int i=1; i<system->idCount; i++) {
+      cudaStreamWaitEvent(system->run->updateStream,system->run->communicate_omp[i],0);
     }
   }
 #endif

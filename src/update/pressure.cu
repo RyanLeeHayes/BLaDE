@@ -42,6 +42,8 @@ void pressure_coupling(System *system)
   real_x scaleFactor;
   real N,kT,dW;
 
+  // cudaStreamWaitEvent(r->updateStream,r->forceComplete,0);
+
   // nvtxRangePushA("pressure_coupling");
   if (system->id==0) {
     // nvtxRangePushA("head node stuff...");

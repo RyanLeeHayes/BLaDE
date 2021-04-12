@@ -1482,6 +1482,6 @@ void Potential::calc_force(int step,System *system)
     }
   }
 
-  cudaEventRecord(r->forceComplete,r->updateStream);
+  // cudaEventRecord(r->forceComplete,r->updateStream);
 }
 

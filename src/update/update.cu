@@ -199,7 +199,7 @@ void State::update(int step,System *system)
   }
 #endif
 
-  cudaStreamWaitEvent(r->updateStream,r->forceComplete,0);
+  // cudaStreamWaitEvent(r->updateStream,r->forceComplete,0);
   if (system->id==0) {
   // https://pubs.acs.org/doi/10.1021/jp411770f equation 7
   // Use VRORV

@@ -114,7 +114,7 @@ Run::Run(System *system)
   cudaEventCreate(&biaspotComplete);
   cudaEventCreate(&nbdirectComplete);
   cudaEventCreate(&nbrecipComplete);
-  cudaEventCreate(&forceComplete);
+  // cudaEventCreate(&forceComplete);
   cudaEventCreate(&communicate);
 
   if (system->idCount>0) {
@@ -143,7 +143,7 @@ Run::~Run()
   cudaStreamDestroy(updateStream);
 #endif
   cudaEventDestroy(forceBegin);
-  cudaEventDestroy(forceComplete);
+  // cudaEventDestroy(forceComplete);
 
 #ifndef PROFILESERIAL
   cudaStreamDestroy(bondedStream);
@@ -506,10 +506,13 @@ void Run::dynamics_initialize(System *system)
   system->domdec->initialize(system);
 
   // NYI check gpu
+  cudaDeviceSynchronize();
+#pragma omp barrier
   if (cudaPeekAtLastError() != cudaSuccess) {
     cudaError_t err=cudaPeekAtLastError();
     fatal(__FILE__,__LINE__,"GPU error code %d during run initialization of OMP rank %d\n%s\n",err,system->id,cudaGetErrorString(err));
   }
+#pragma omp barrier
 }
 
 void Run::dynamics_finalize(System *system)

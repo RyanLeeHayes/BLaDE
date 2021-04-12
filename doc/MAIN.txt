@@ -1,1 +1,205 @@
+I. Purpose
+
 The goal of this program is to implement MSLD in a manner similar to CHARMM with better porting to GPU and better parallelization. Along those lines, many file formats will be borrowed from CHARMM, and the documentation may frequently reference the analogous CHARMM keywords.
+
+
+II. Quickstart
+
+To get started quickly, see some of the example files in test/*/input
+
+
+III. Compilation
+
+BLaDE is designed to run on GPUs, and should be compiled with an appropriate c++ compiler and cuda (minimum version 9). BLaDE parallelization is managed with OpenMP, so that library should also be available. BLaDE is compiled using cmake. For an example of how to compile blade on a particular cluster, see Compile.sh
+
+
+IV. Program usage
+
+Like CHARMM, BLaDE relies on a scripting language to set up a run. The scripting language is similar, but different. BLaDE runs a script with a command like
+
+../build/blade input
+
+where ../build/blade should be replaced with the path to the executable and input is the path to the script.
+
+BLaDE uses OpenMP for parallelization to multiple GPUs, each OMP thread manages one GPU. Therefore, before calling BLaDE, one should
+
+export OMP_NUM_THREADS=INT
+
+where INT is the number of GPUs available for use.
+
+
+V. BLaDE scripting language
+
+The BLaDE scripting language roughly follows the organization of the program into c++ classes. A script line begins with the name of the class the command invokes, followed by keywords that are passed to that class. Any text after the ! character is ignored as a comment. For a list of classes, include "help" in the script. For more details on how to use a class, include "classname help" in the script, where classname is the name of the class of interest. Sometimes help is also available on a subroutine of a class through "classname subroutinename help". BLaDE scripts are case sensitive.
+
+Classes should be set up in roughly the order listed. There is some flexibility, but later classes often depend on earlier ones, and commands may fail if required information is unavailable from a previous class.
+
+A. variables and miscellaneous script commands
+
+Scripts have the ability to save variables. To set a variable, use
+
+variables set name = value
+
+Where name is the name of the variable. To subseuently use a variable in the script, enclose its name in curly brackets {}, and the value will be substituted into the script before executing the command. Nested substitution is supported to arbitrary depth, if the value of one variable is part of the name of another variable.
+
+BLaDE can also perform rudimentary calculations using variables.
+
+variables calculate name type [expression]
+
+will calculate a value based on expression, and save it as a variable of type (which must be int or float). The systax parsing for expressions is not very advanced. Consequently, operators are always first, which means there is no need to define and order of operations. sin(x+y) is expressed as "sin + {x} {y}", while sin(x)+y is \"+ sin {x} {y}\". Currently supported operators are in flux, but should soon include + - * / sin cos sqrt log exp floor
+
+BLaDE is capable of rudimentary control flow. Both if/elseif/else/endif and while/endwhile constructs are supported. For loops are possible through careful use of the while construct. The condition for if/elseif/while uses the same synax for expressions as "variables calculate" (excluding the variable name and type). The condition is true if the expression evaluates to not zero and false if it evaluates to zero.
+
+BLaDE can also read a subscript using the "stream filename" command, where filename is the path to the file to be read as a subscript.
+
+B. paramters
+
+The parameters class reads in parameters for a molecular dynamics or MSLD simulation from one or more CHARMM parameter files. The parameters files are treated as read with the flex option from CHARMM. Minor editing of the parameter files may be required to satisfy BLaDE's requirements (e.g. BLaDE reads the parameter files in a case sensitive fashion). Read a parameter file with the following syntax:
+
+parameters file filename
+
+where filename is the path to the parameter file. To read multiple files, simply repeat the syntax with a new filename.
+
+To ensure the parameters were read correctly, one can call
+
+parameters print
+
+C. structure
+
+BLaDE cannot create protein structures from an RTF (CHARMM residue topology file) on its own. Instead the structure must be set up with CHARMM, a PSF (CHARMM protein structure file) written out, which is then read with the structure class. This PSF contains information on the ATOMS, BONDS, ANGLES, etc that are present in the system. Read a PSF with the following syntax
+
+structure file filename
+
+where filename is the path to the PSF.
+
+Structure is also where SHAKE constraints of hydrogen bond lengths are either turned on or off (default off). The syntax is
+
+structure shake hbond
+
+or
+
+structure shake none
+
+The shake tolerance is set with the run command.
+
+D. coordinates
+
+This class reads in initial conditions for the system. Particle positions may be read in with
+
+coordinates file type filename
+
+where type is either pdb for a CHARMM style PDB with SEGIDs in the element column or crd for a CHARMM extended format coordinate file, and filename is the path to the file.
+
+The periodic box (only periodic boundary conditions are supported) can be set up with
+
+coordinates box X 0 0   0 Y 0   0 0 Z
+
+where each group of three values gives the three box vectors, and X, Y, and Z are substituted by appropriate values. Currently only orthogonal boxes are supported, and they are scaled uniformly, not independently, by pressure coupling.
+
+Initial conditions for the velocity may be randomly set to the Boltzmann distribution for a particular temperature with
+
+coordinates velocity value
+
+where value is the temperature in Kelvin.
+
+E. selection
+
+Selections may be defined, and are essential for selecting alchemical atoms for MSLD. A selection may be defined with the following syntax:
+
+selection define name expression
+
+where name is the name of the selection and expression defines the selection. Selection expressions are evaluated much like calculate expressions, where operators like "and", "or", or "not" are listed before their operands. Viable operands include additional operators, none or all, hydrogen, segid (value), resid (value), resname (value), atomname (value), atomnames (values are processed until a known selection token is found), atom (segid, resid, name), and selection (name of a previously defined selection).
+
+selection delete name
+
+name be used to delete a selection.
+
+By default only 100 selections are allowed, this can be modified with
+
+selection limit value
+
+where value is the new number of allowed selections.
+
+The number of atoms in a selection may be counted and saved to a variable with
+
+selection count selectionname variablename
+
+F. msld
+
+The msld class sets up all alchemical information for the system. To set up the nmber of alchemical groups use
+
+msld nblocks value
+
+where value is the number of alchemical groups (not counting the unscale environment group). This msld command must be called first and instantiates the class. To run standard molecular dynamcs without alchemical groups, call "msld nblocks 0" and ignore the rest of the msld commands.
+
+msld call value name
+
+assigns the atoms in the selection named by name to the alchemical group for the 1-indexed group in value. See the CHARMM block call command.
+
+msld restrain name
+
+Restrains the atoms in the selection defined by name to their center of mass with a force constant defined by "msld parameter krestraint value". The bonded interactions of these atoms are scaled by lambda. See CHARMM block cats command.
+
+msld intitialize block site theta thetavelocity thetamass fixedbias charge
+
+sets the initial conditions for an alchemical group. block is the 1-indexed index of the group (set the environment with index 0), site is the 1-indexed site the alchemical group is assigned to (0 is the environment), theta is the starting position for the theta variable (lambda is calculated from theta using implicit constraints), thetavelocity is the starting velocity for theta, thetamass is the mass of theta (usually 5 AMU), fixedbias is the linear bias coefficient on lambda, and 0 is the charge of the group, which may be used in charge restraints. See CHARMM block ldin command.
+
+msld removescaling groups
+
+May be used to turn off scaling of various bonded interactions. At least bond and angle are recommended. Valid groups are bond urey angle dihe impr cmap. See CHARMM block rmla command.
+
+msld softcore on|off
+msld softcore14 on|off
+
+may be used to turn softcores and 14 softcores on and off. See CHARMM block soft command.
+
+msld bias lambda1 lambda2 type const coef power
+
+may be used to define a bias, where lambda1 and lambda2 are the two 1-indexed alchemical groups the bias operates on, type is the charmm type of the bias (only 6 for quadratic, 8 for endpoint, and 10 for skew are supported), and const, coef, and power are constants for that bias. See CHARMM block ldbv command.
+
+msld gamma value
+msld fnex value
+
+can be used to set the friction constant and the fnex value (usually 5.5) for msld. Only the fnex version of implicit constraints is supported.
+
+msld softbond name
+
+may be used to set up a soft bond between the two atoms in the selection refered to by name. Soft bond parameters may be set with "msld parameter softbondradius value", "msld parameter softbondexponent value", and "msld parameter softnotbondexponent". See CHARMM block sobo command.
+
+msld fix on|off
+
+may be used to fix lambda values for an FEP calculation. In this case, theta in the "msld initialize" command is the lambda value at which the simulation is fixed. See CHARMM block msld ffix option.
+
+G. run
+
+This command is used to set up and run dynamics.
+
+run setvariable name value
+
+Sets various parameters for the dynamics run. Call "run print" to view the variables and their current values. Several variables are listed below:
+
+dt (time step in ps)
+T (temperature in K)
+gamma (friction input in ps^-1)
+nsteps (number of time steps for dynamics)
+fnmxtc (file name for coordinate trajectory, in GROMACS XTC format)
+fnmlmd (file name for lambda trajectory)
+fnmnrg (file name for energy output)
+fnmcpi (file name for reading checkpoint in, null means start without checkpoint)
+fnmcpo (file name for writing out checkpoint file for later continuation)
+betaEwald (input invbetaewald in A - only PME electrostatics are supported)
+rcut (nonbonded cutoff distance input in A - a buffer beyond this distance is automatically maintained in the neighbor list by the domdec class)
+rswitch (input in A - vfswitch VDW interactions are used)
+gridspace (For PME - input in A - a reasonable grid will be chosen with at least this fine of spacing)
+orderewald (PME interpolation order, dimensionless. 4, 6, or 8 supported, 6 recommended)
+shaketolerance (For use with shake - dimensionless - do not go below 1e-7 with single precision)
+freqnpt (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)
+volumefluctuation (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))
+pressure (pressure for pressure coupling, input in atmospheres)
+domdecheuristic (use heuristics for domdec limits without checking their validity - "off" is safer)
+
+When you're ready to run dynamics, call
+
+run dynamics
+
+This may be called multiple times. Subsequent calls with use the ending coordinates, and the previous values of any paremeters not changed by "run setvariable". You can also calculate the energy of the current configuration with "run energy".
