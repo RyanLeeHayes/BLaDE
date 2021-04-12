@@ -231,6 +231,11 @@ System* init_system()
   int idCount=omp_get_max_threads(); // omp_get_num_threads();
   void **message; // OMP
 
+  int available;
+  int notAvailable=cudaGetDeviceCount(&available);
+  if (notAvailable==1) fatal(__FILE__,__LINE__,"No GPUs available\n");
+  if (available<omp_get_max_threads()) fatal(__FILE__,__LINE__,"Running with %d omp threads but only %d GPUs\n",omp_get_max_threads(),available);
+
   system=new System[idCount];
 
   message=(void**)calloc(idCount,sizeof(void*));

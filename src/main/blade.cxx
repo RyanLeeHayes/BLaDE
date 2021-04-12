@@ -17,16 +17,16 @@ int main(int argc, char *argv[])
   MPI_Init(&argc,&argv);
 #endif
 
+  int available;
+  int notAvailable=cudaGetDeviceCount(&available);
+  if (notAvailable==1) fatal(__FILE__,__LINE__,"No GPUs available\n");
+  if (available<omp_get_max_threads()) fatal(__FILE__,__LINE__,"Running with %d omp threads but only %d GPUs\n",omp_get_max_threads(),available);
+
   message=(void**)calloc(omp_get_max_threads(),sizeof(void*));
 #pragma omp parallel
   {
   System *system;
   FILE *fp;
-
-  int available;
-  int notAvailable=cudaGetDeviceCount(&available);
-  if (notAvailable==1) fatal(__FILE__,__LINE__,"No GPUs available\n");
-  if (available<omp_get_num_threads()) fatal(__FILE__,__LINE__,"Running with %d omp threads but only %d GPUs\n",omp_get_num_threads(),available);
 
   cudaSetDevice(omp_get_thread_num());
 
