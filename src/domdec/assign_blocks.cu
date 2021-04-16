@@ -38,12 +38,20 @@ __global__ void assign_blocks_get_tokens_kernel(int globalCount,int3 gridDomdec,
       xi=position[i];
       posInDomain=xi.x*gridDomdec.x/box.x-idDomdec.x;
       token.ix=(int)floor(posInDomain*domainDiv.x);
-      token.ix-=(token.ix>=domainDiv.x?domainDiv.x:0);
-      token.ix+=(token.ix<0?domainDiv.x:0);
+      // token.ix-=(token.ix>=domainDiv.x?domainDiv.x:0);
+      // token.ix+=(token.ix<0?domainDiv.x:0);
+      // No need to wrap, already in box. Fudge it in for rounding errors
+      token.ix=(token.ix>=domainDiv.x?(domainDiv.x-1):token.ix);
+      token.ix=(token.ix<0?0:token.ix);
+
       posInDomain=xi.y*gridDomdec.y/box.y-idDomdec.y;
       token.iy=(int)floor(posInDomain*domainDiv.y);
-      token.iy-=(token.iy>=domainDiv.y?domainDiv.y:0);
-      token.iy+=(token.iy<0?domainDiv.y:0);
+      // token.iy-=(token.iy>=domainDiv.y?domainDiv.y:0);
+      // token.iy+=(token.iy<0?domainDiv.y:0);
+      // No need to wrap, already in box. Fudge it in for rounding errors
+      token.iy=(token.iy>=domainDiv.y?(domainDiv.y-1):token.iy);
+      token.iy=(token.iy<0?0:token.iy);
+
       token.z=xi.z;
     }
     tokens[i]=token;

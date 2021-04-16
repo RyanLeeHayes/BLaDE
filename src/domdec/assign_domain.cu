@@ -21,11 +21,22 @@ __global__ void assign_domain_kernel(int atomCount,real3_x *position,real3_x box
     position[i]=xi;
 
     idDomdec.x=(int) floor(xi.x*gridDomdec.x/box.x);
-    idDomdec.x-=(idDomdec.x>=gridDomdec.x?gridDomdec.x:0);
+    // idDomdec.x-=(idDomdec.x>=gridDomdec.x?gridDomdec.x:0);
+    // No need to wrap, just did real3_modulus. Fudge it in for rounding errors
+    idDomdec.x=(idDomdec.x>=gridDomdec.x?(gridDomdec.x-1):idDomdec.x);
+    idDomdec.x=(idDomdec.x<0?0:idDomdec.x);
+
     idDomdec.y=(int) floor(xi.y*gridDomdec.y/box.y);
-    idDomdec.y-=(idDomdec.y>=gridDomdec.y?gridDomdec.y:0);
+    // idDomdec.y-=(idDomdec.y>=gridDomdec.y?gridDomdec.y:0);
+    // No need to wrap, just did real3_modulus. Fudge it in for rounding errors
+    idDomdec.y=(idDomdec.y>=gridDomdec.y?(gridDomdec.y-1):idDomdec.y);
+    idDomdec.y=(idDomdec.y<0?0:idDomdec.y);
+
     idDomdec.z=(int) floor(xi.z*gridDomdec.z/box.z);
-    idDomdec.z-=(idDomdec.z>=gridDomdec.z?gridDomdec.z:0);
+    // idDomdec.z-=(idDomdec.z>=gridDomdec.z?gridDomdec.z:0);
+    // No need to wrap, just did real3_modulus. Fudge it in for rounding errors
+    idDomdec.z=(idDomdec.z>=gridDomdec.z?(gridDomdec.z-1):idDomdec.z);
+    idDomdec.z=(idDomdec.z<0?0:idDomdec.z);
 
     domain[i]=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
   }
