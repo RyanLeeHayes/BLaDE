@@ -6,3 +6,4 @@ run/*.nrg
 run/*.cpt
 run/*.profile
 run/slurm-*
+githubnotes
