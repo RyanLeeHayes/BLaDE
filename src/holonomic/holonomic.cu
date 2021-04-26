@@ -389,7 +389,7 @@ __device__ inline void holonomic_position_branch1_kernel(int N,int B0,struct Bra
     real3_x r12Prev=real3_sub(xPrev[0],xPrev[1]);
     real3_x r12=real3_sub(x[0],x[1]);
     real_x r12PrevDotR12=real3_dot<real_x>(r12Prev,r12);
-    real_x lambda=(-r12PrevDotR12+sqrt(r12PrevDotR12*r12PrevDotR12-real3_mag2<real_x>(r12Prev)*(real3_mag2<real_x>(r12)-b02)))/(real3_mag2<real_x>(r12)*(invMass[0]+invMass[1]));
+    real_x lambda=(-r12PrevDotR12+sqrt(r12PrevDotR12*r12PrevDotR12-real3_mag2<real_x>(r12Prev)*(real3_mag2<real_x>(r12)-b02)))/(real3_mag2<real_x>(r12Prev)*(invMass[0]+invMass[1]));
 
     real3_scaleinc(&x[0], invMass[0]*lambda,r12Prev);
     real3_scaleinc(&x[1],-invMass[1]*lambda,r12Prev);
