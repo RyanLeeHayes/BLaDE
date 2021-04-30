@@ -19,6 +19,16 @@ __global__ void scale_box_kernel(int N,real_x scaleFactor,real_x *position)
   }
 }
 
+__global__ void shift_box_kernel(int N,real3_x shift,real3_x *position)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  if (i<N) {
+    position[i].x+=shift.x;
+    position[i].y+=shift.y;
+    position[i].z+=shift.z;
+  }
+}
+
 void scale_box(System *system,real_x scaleFactor)
 {
   system->state->orthBox.x*=scaleFactor;
@@ -27,6 +37,16 @@ void scale_box(System *system,real_x scaleFactor)
 
   int N=3*system->state->atomCount;
   scale_box_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N,scaleFactor,(real_x*)system->state->position_d);
+
+  // Nudge the system to remain centered on absolute harmonic restraints
+  if (system->potential->harmCount) {
+    int N3=system->state->atomCount;
+    real3_x shift;
+    shift.x=(1-scaleFactor)*system->potential->harmCenter.x;
+    shift.y=(1-scaleFactor)*system->potential->harmCenter.y;
+    shift.z=(1-scaleFactor)*system->potential->harmCenter.z;
+    shift_box_kernel<<<(N3+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N3,shift,(real3_x*)system->state->position_d);
+  }
 
   // There might be better ways to rectify holonomic constraints after volume update, I just want to avoid having bonds change direction, which will mess with the velocities"
   holonomic_rectify(system);

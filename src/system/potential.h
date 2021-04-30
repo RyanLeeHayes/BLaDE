@@ -128,6 +128,13 @@ struct Branch3Cons {
   real b0[3];
 };
 
+struct HarmonicPotential {
+  int idx;
+  real k;
+  real n;
+  real3 r0;
+};
+
 class Potential {
   public:
   int atomCount;
@@ -247,6 +254,12 @@ class Potential {
   std::vector<struct Branch3Cons> branch3Cons_tmp;
   struct Branch3Cons *branch3Cons;
   struct Branch3Cons *branch3Cons_d;
+
+  // And restraints
+  int harmCount;
+  struct HarmonicPotential *harms;
+  struct HarmonicPotential *harms_d;
+  real3_x harmCenter;
 
   int (*prettifyPlan)[2];
 

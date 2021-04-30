@@ -16,6 +16,7 @@
 #include "bonded/pair.h"
 #include "nbrecip/nbrecip.h"
 #include "nbdirect/nbdirect.h"
+#include "restrain/restrain.h"
 
 #ifdef USE_TEXTURE
 #include <string.h> // for memset
@@ -118,6 +119,10 @@ Potential::Potential() {
   branch3Cons=NULL;
   branch3Cons_d=NULL;
 
+  harmCount=0;
+  harms=NULL;
+  harms_d=NULL;
+
   prettifyPlan=NULL;
 }
 
@@ -197,6 +202,9 @@ Potential::~Potential()
 
   if (planFFTPME) cufftDestroy(planFFTPME);
   if (planIFFTPME) cufftDestroy(planIFFTPME);
+
+  if (harms) free(harms);
+  if (harms_d) cudaFree(harms_d);
 
   if (prettifyPlan) free(prettifyPlan);
 }
@@ -1374,6 +1382,28 @@ void Potential::initialize(System *system)
   }
   cudaMemcpy(branch3Cons_d,branch3Cons,branch3ConsCount*sizeof(struct Branch3Cons),cudaMemcpyHostToDevice);
 
+  // Harmonic restraints
+  harmCount=system->structure->harmCount;
+  harms=(struct HarmonicPotential*)calloc(harmCount,sizeof(struct HarmonicPotential));
+  cudaMalloc(&harms_d,harmCount*sizeof(struct HarmonicPotential));
+  real_x harmCenterNorm=0;
+  harmCenter.x=0;
+  harmCenter.y=0;
+  harmCenter.z=0;
+  for (i=0; i<harmCount; i++) {
+    harms[i]=system->structure->harmList[i];
+    harmCenterNorm+=harms[i].k;
+    harmCenter.x+=harms[i].k*harms[i].r0.x;
+    harmCenter.y+=harms[i].k*harms[i].r0.y;
+    harmCenter.z+=harms[i].k*harms[i].r0.z;
+  }
+  if (harmCount) {
+    harmCenter.x/=harmCenterNorm;
+    harmCenter.y/=harmCenterNorm;
+    harmCenter.z/=harmCenterNorm;
+  }
+  cudaMemcpy(harms_d,harms,harmCount*sizeof(struct HarmonicPotential),cudaMemcpyHostToDevice);
+
   // Cleaning up output coordinates
   prettifyPlan=(int(*)[2])malloc(atomCount*sizeof(int[2]));
   std::set<int> prettifyFound, prettifyMissing;
@@ -1464,6 +1494,7 @@ void Potential::calc_force(int step,System *system)
     system->msld->getforce_variableBias(system,calcEnergy);
     system->msld->getforce_atomRestraints(system,calcEnergy);
     system->msld->getforce_chargeRestraints(system,calcEnergy);
+    getforce_harm(system,calcEnergy);
     cudaEventRecord(r->biaspotComplete,r->biaspotStream);
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }

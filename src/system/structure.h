@@ -9,6 +9,7 @@
 
 // Forward declarations:
 class System;
+struct HarmonicPotential;
 
 struct AtomStructure {
   int atomIdx;
@@ -47,6 +48,9 @@ class Structure {
   std::vector<struct Int8> cmapList;
 
   bool shakeHbond;
+
+  int harmCount;
+  std::vector<struct HarmonicPotential> harmList;
   
   Structure();
   ~Structure();
@@ -57,6 +61,7 @@ class Structure {
   void reset(char *line,char *token,System *system);
   void file(char *line,char *token,System *system);
   void parse_shake(char *line,char *token,System *system);
+  void parse_harmonic(char *line,char *token,System *system);
   void dump(char *line,char *token,System *system);
   void add_structure_psf_file(FILE *fp);
 };
@@ -76,6 +81,7 @@ extern "C" {
   void blade_add_impr(System *system,int i,int j,int k,int l);
   void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int k2,int l2);
   void blade_add_shake(System *system,int shakeHbond);
+  void blade_add_harmonic(System *system,int i,real k,real x0,real y0,real z0,real n);
 }
 
 #endif

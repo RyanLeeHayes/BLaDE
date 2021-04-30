@@ -78,6 +78,8 @@ Selection Selections::parse_selection_string(char *line,Structure *structure)
   knownTokens.insert("hydrogen");
   knownTokens.insert("segid");
   knownTokens.insert("resid");
+  knownTokens.insert("resids");
+  knownTokens.insert("residrange");
   knownTokens.insert("resname");
   knownTokens.insert("atomname");
   knownTokens.insert("atomnames");
@@ -128,6 +130,15 @@ Selection Selections::parse_selection_string(char *line,Structure *structure)
     std::string resid=io_nexts(line);
     for (i=0; i<N; i++) {
       s1.boolSelection[i]=(structure->atomList[i].resIdx==resid);
+    }
+  } else if (strcmp(token,"resids")==0) {
+    std::set<std::string> resids;
+    resids.clear();
+    while (knownTokens.count(io_peeks(line))==0) { // still a resid
+      resids.insert(io_nexts(line));
+    }
+    for (i=0; i<N; i++) {
+      s1.boolSelection[i]=(resids.count(structure->atomList[i].resIdx));
     }
   } else if (strcmp(token,"residrange")==0) {
     int resid1=io_nexti(line);

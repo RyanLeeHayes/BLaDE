@@ -218,35 +218,41 @@ void Coordinates::file_crd(FILE *fp,System *system)
   struct AtomCoordinates as;
   double x; // Intentional double
   struct Real3 xyz;
+  int extFmt=1; // no is 1, yes is 2
+  char extStr[MAXLENGTHSTRING];
+  extStr[0]=0;
 
   fileData.clear();
   while (fgets(line, MAXLENGTHSTRING, fp)!=NULL) {
     if (line[0]!='*') {
-      sscanf(line,"%d",&i);
+      sscanf(line,"%d %s",&i,extStr);
       if (i!=system->structure->atomCount) {
         fatal(__FILE__,__LINE__,"Wrong number of atoms in crd file %d, psf file contained %d atoms\nAtom count line says:\n%s\n",i,system->structure->atomCount,line);
+      }
+      if (strncmp(extStr,"EXT",3)==0) {
+        extFmt=2;
       }
       break;
     }
   }
   while (fgets(line, MAXLENGTHSTRING, fp)!=NULL) {
-    io_strncpy(token1,line+32,8);
+    io_strncpy(token1,line+16*extFmt,4*extFmt); // 16-4 or 32-8
     if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"CRD error\n");
     as.atomName=token2;
-    io_strncpy(token1,line+112,8);
+    io_strncpy(token1,line+56*extFmt,4*extFmt); // 56-4 or 112-8
     if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"CRD error\n");
     as.resIdx=token2;
-    io_strncpy(token1,line+102,8);
+    io_strncpy(token1,line+51*extFmt,4*extFmt); // 51-4 or 102-8
     if (sscanf(token1,"%s",token2)!=1) fatal(__FILE__,__LINE__,"CRD error\n");
     as.segName=token2;
 
-    io_strncpy(token1,line+40,20);
+    io_strncpy(token1,line+20*extFmt,10*extFmt); // 20-10 or 40-20
     if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"CRDerror\n");
     xyz.i[0]=ANGSTROM*x;
-    io_strncpy(token1,line+60,20);
+    io_strncpy(token1,line+30*extFmt,10*extFmt); // 30-10 or 60-20
     if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"CRDerror\n");
     xyz.i[1]=ANGSTROM*x;
-    io_strncpy(token1,line+80,20);
+    io_strncpy(token1,line+40*extFmt,10*extFmt); // 40-10 or 80-20
     if (sscanf(token1,"%lf",&x)!=1) fatal(__FILE__,__LINE__,"CRDerror\n");
     xyz.i[2]=ANGSTROM*x;
     if (fileData.count(as)==0) {

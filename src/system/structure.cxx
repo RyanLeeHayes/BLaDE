@@ -4,6 +4,9 @@
 #include "system/system.h"
 #include "system/parameters.h"
 #include "system/structure.h"
+#include "system/selections.h"
+#include "system/coordinates.h"
+#include "system/potential.h"
 #include "main/defines.h"
 #include "io/io.h"
 
@@ -20,6 +23,9 @@ Structure::Structure() {
   cmapCount=0;
 
   shakeHbond=false;
+
+  harmCount=0;
+  harmList.clear();
 
   setup_parse_structure();
 }
@@ -40,6 +46,8 @@ void Structure::setup_parse_structure()
   helpStructure["file"]="?structure file psf [filename]> This loads the system structure from the CHARMM PSF (protein structure file)\n";
   parseStructure["shake"]=&Structure::parse_shake;
   helpStructure["shake"]="?structure shake [hbond/none]> Turn hydrogen bond length constraints on or off.\n";
+  parseStructure["harmonic"]=&Structure::parse_harmonic;
+  helpStructure["harmonic"]="?structure harmonic [selection] [mass|none] [k real] [n real]> Apply harmonic restraints of k*(x-x0)^n to each atom in selection. x0 is taken from the current coordinates read in by coordinates. For none, k has units of kcal/mol/A^n, for mass, k is multiplied by the mass, and has units of kcal/mol/A^n/amu. structure harmonic reset clears all restraints\n";
   parseStructure["print"]=&Structure::dump;
   helpStructure["print"]="?structure print> This prints selected contents of the structure data structure to standard out\n";
   parseStructure["help"]=&Structure::help;
@@ -117,6 +125,47 @@ void Structure::parse_shake(char *line,char *token,System *system)
   } else {
     fatal(__FILE__,__LINE__,"Unrecognized token %s for structure shake selection. Try hbond or none\n",token);
   }
+}
+
+void Structure::parse_harmonic(char *line,char *token,System *system)
+{
+  io_nexta(line,token);
+  if (strcmp(token,"reset")==0) {
+    harmList.clear();
+  } else if (system->selections->selectionMap.count(token)==1) {
+    std::string name=token;
+    std::string massToken=io_nexts(line);
+    bool massFlag;
+    if (massToken=="mass") {
+      massFlag=true;
+    } else if (massToken=="none") {
+      massFlag=false;
+    } else {
+      fatal(__FILE__,__LINE__,"Use mass or none for mass weighting scheme. Found unrecognized token %s\n",massToken.c_str());
+    }
+    real k=io_nextf(line);
+    real n=io_nextf(line);
+    int i;
+    struct HarmonicPotential h;
+    for (i=0; i<system->selections->selectionMap[name].boolCount; i++) {
+      if (system->selections->selectionMap[name].boolSelection[i]) {
+        h.idx=i;
+        h.n=n;
+        h.k=k*KCAL_MOL;
+        h.k/=exp(n*log(ANGSTROM));
+        if (massFlag) {
+          h.k*=atomList[i].mass;
+        }
+        h.r0.x=system->coordinates->particlePosition[i][0];
+        h.r0.y=system->coordinates->particlePosition[i][1];
+        h.r0.z=system->coordinates->particlePosition[i][2];
+        harmList.push_back(h);
+      }
+    }
+  } else {
+    fatal(__FILE__,__LINE__,"Unrecognized selection name %s for harmonic restraints\n",token);
+  }
+  harmCount=harmList.size();
 }
 
 void Structure::dump(char *line,char *token,System *system)
@@ -401,4 +450,18 @@ void blade_add_shake(System *system,int shakeHbond)
 {
   system+=omp_get_thread_num();
   system->structure->shakeHbond=shakeHbond;
+}
+
+void blade_add_harmonic(System *system,int i,real k,real x0,real y0,real z0,real n)
+{
+  system+=omp_get_thread_num();
+  struct HarmonicPotential h;
+  h.idx=i;
+  h.k=k;
+  h.n=n;
+  h.r0.x=x0;
+  h.r0.y=y0;
+  h.r0.z=z0;
+  system->structure->harmList.push_back(h);
+  system->structure->harmCount=system->structure->harmList.size();
 }
