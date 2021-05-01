@@ -81,7 +81,7 @@ extern "C" {
   void blade_add_impr(System *system,int i,int j,int k,int l);
   void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int k2,int l2);
   void blade_add_shake(System *system,int shakeHbond);
-  void blade_add_harmonic(System *system,int i,real k,real x0,real y0,real z0,real n);
+  void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double z0,double n);
 }
 
 #endif

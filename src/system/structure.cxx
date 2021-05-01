@@ -452,11 +452,11 @@ void blade_add_shake(System *system,int shakeHbond)
   system->structure->shakeHbond=shakeHbond;
 }
 
-void blade_add_harmonic(System *system,int i,real k,real x0,real y0,real z0,real n)
+void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double z0,double n)
 {
   system+=omp_get_thread_num();
   struct HarmonicPotential h;
-  h.idx=i;
+  h.idx=i-1;
   h.k=k;
   h.n=n;
   h.r0.x=x0;

@@ -31,7 +31,7 @@ __global__ void getforce_harm_kernel(int harmCount,struct HarmonicPotential *har
 // NOTE #warning "Unprotected division"
     dr=real3_subpbc(xi,x0,box);
     r2=real3_mag2<real>(dr);
-    krnm2=hp.k*pow(r2,((real)0.5)*hp.n-1);
+    krnm2=(r2 ? (hp.k*pow(r2,((real)0.5)*hp.n-1)) : 0); // NaN guard it
     
     if (energy) {
       lEnergy=krnm2*r2;
