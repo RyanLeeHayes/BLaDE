@@ -450,6 +450,9 @@ void read_checkpoint_file(const char *fnm,System *system)
     fclose(fp);
 
     system->state->send_state();
+    if (system->msld->fix) { // ffix
+      cudaMemcpy(system->state->lambda_d,system->state->theta,system->state->lambdaCount*sizeof(real_x),cudaMemcpyHostToDevice);
+    }
     system->msld->calc_lambda_from_theta(0,system);
   }
 }

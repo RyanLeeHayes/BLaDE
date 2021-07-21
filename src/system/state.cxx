@@ -188,12 +188,12 @@ void State::initialize(System *system)
   cudaMemcpy(velocityBuffer_d,velocityBuffer,(nL+3*n)*sizeof(real_v),cudaMemcpyHostToDevice);
   cudaMemset(forceBuffer_d,0,(nL+3*n)*sizeof(real_f));
   cudaMemcpy(invsqrtMassBuffer_d,invsqrtMassBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
-#warning "Running nvprof on 2080s causes seg faults in the next command and at later locations"
-  system->msld->calc_lambda_from_theta(0,system);
 
   if (system->msld->fix) { // ffix
     cudaMemcpy(lambda_d,theta,nL*sizeof(real_x),cudaMemcpyHostToDevice);
   }
+#warning "Running nvprof on 2080s causes seg faults in the next command and at later locations"
+  system->msld->calc_lambda_from_theta(0,system);
 }
 
 void State::save_state(System *system)

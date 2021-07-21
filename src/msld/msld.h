@@ -115,7 +115,7 @@ extern "C" {
   void blade_add_msld_atomassignment(System *system,int atomIdx,int blockIdx);
   void blade_add_msld_initialconditions(System *system,int blockIdx,int siteIdx,double theta0,double thetaVelocity,double thetaMass,double fixBias,double blockCharge);
   void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int scaleAngle,int scaleDihe,int scaleImpr,int scaleCmap);
-  void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent);
+  void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent,int fix);
   void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n);
   void blade_add_msld_softbond(System *system,int i,int j);
   void blade_add_msld_atomrestraint(System *system);

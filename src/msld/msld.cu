@@ -626,6 +626,8 @@ void Msld::calc_lambda_from_theta(cudaStream_t stream,System *system)
   State *s=system->state;
   if (!fix) { // ffix
     calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex);
+  } else {
+    cudaMemcpy(s->theta_d,s->lambda_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice);
   }
 }
 
@@ -957,7 +959,7 @@ void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int s
   system->msld->scaleTerms[5]=scaleCmap;
 }
 
-void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent)
+void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent,int fix)
 {
   system+=omp_get_thread_num();
   system->msld->gamma=gamma;
@@ -970,6 +972,7 @@ void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCor
   system->msld->softBondRadius=softBondRadius;
   system->msld->softBondExponent=softBondExponent;
   system->msld->softNotBondExponent=softNotBondExponent;
+  system->msld->fix=fix;
 }
 
 void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n)
