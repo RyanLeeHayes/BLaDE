@@ -37,7 +37,7 @@ State::State(System *system) {
     cudaMalloc(&(positionBuffer_fd),(2*nL+3*n)*sizeof(real));
   }
 #ifdef REPLICAEXCHANGE
-  positionRExBuffer=(real*)calloc((2*nL+3*n),sizeof(real_x));
+  positionRExBuffer=(real_x*)calloc((2*nL+3*n),sizeof(real_x));
 #endif
   cudaMalloc(&(positionBackup_d),(2*nL+3*n)*sizeof(real_x));
   forceBuffer=(real_f*)calloc(rootFactor*(2*nL+3*n),sizeof(real_f));

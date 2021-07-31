@@ -979,15 +979,18 @@ void Potential::initialize(System *system)
   fprintf(stdout,"NYI - need orthogonal box for automatic grid determination\n");
   real boxtmp[3][3]={{(real)(system->state->orthBox.x),0,0},{0,(real)(system->state->orthBox.y),0},{0,0,(real)(system->state->orthBox.z)}};
   for (i=0; i<3; i++) {
-    // real minDim=system->state->box[i][i]/system->run->gridSpace;
-    real minDim=boxtmp[i][i]/system->run->gridSpace;
-    for (j=1; minDim>=32*j; j*=2) {
-      ;
+    if (system->run->gridSpace>0) {
+      real minDim=boxtmp[i][i]/system->run->gridSpace;
+      for (j=1; minDim>=32*j; j*=2) {
+        ;
+      }
+      for (k=0; k<5 && minDim<j*goodSizes[k]; k++) { // guaranteed to pass k=0
+        ;
+      }
+      gridDimPME[i]=j*goodSizes[k-1];
+    } else {
+      gridDimPME[i]=system->run->grid[i];
     }
-    for (k=0; k<5 && minDim<j*goodSizes[k]; k++) { // guaranteed to pass k=0
-      ;
-    }
-    gridDimPME[i]=j*goodSizes[k-1];
     fprintf(stdout,"PME grid(%d) size: %d\n",i,gridDimPME[i]);
   }
 

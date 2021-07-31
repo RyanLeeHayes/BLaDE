@@ -48,6 +48,9 @@ Run::Run(System *system)
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
   gridSpace=1.0*ANGSTROM;
+  grid[0]=-1;
+  grid[1]=-1;
+  grid[2]=-1;
   orderEwald=6;
 
   cutoffs.betaEwald=betaEwald;
@@ -239,6 +242,7 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut);
   fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch);
   fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace);
+  fprintf(stdout,"RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n",grid[0],grid[1],grid[2]);
   fprintf(stdout,"RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwald);
   fprintf(stdout,"RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n",shakeTolerance);
   fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
@@ -307,6 +311,11 @@ void Run::set_variable(char *line,char *token,System *system)
     cutoffs.rSwitch=rSwitch;
   } else if (strcmp(token,"gridspace")==0) {
     gridSpace=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"grid")==0) {
+    grid[0]=io_nexti(line);
+    grid[1]=io_nexti(line);
+    grid[2]=io_nexti(line);
+    gridSpace=-1;
   } else if (strcmp(token,"orderewald")==0) {
     orderEwald=io_nexti(line);
     if ((orderEwald/2)*2!=orderEwald) fatal(__FILE__,__LINE__,"orderEwald (%d) must be even\n",orderEwald);
@@ -548,6 +557,9 @@ void blade_add_run_flags(System *system,
   double rCut,
   double rSwitch,
   double gridSpace,
+  int gridx,
+  int gridy,
+  int gridz,
   int orderEwald,
   double shakeTolerance)
 {
@@ -558,6 +570,9 @@ void blade_add_run_flags(System *system,
   system->run->rCut=rCut;
   system->run->rSwitch=rSwitch;
   system->run->gridSpace=gridSpace; // grid spacing for PME calculation
+  system->run->grid[0]=gridx; // if gridSpace is negative, use these values
+  system->run->grid[1]=gridy; // if gridSpace is negative, use these values
+  system->run->grid[2]=gridz; // if gridSpace is negative, use these values
   system->run->orderEwald=orderEwald; // interpolation order (4, 6, or 8 typically)
   system->run->shakeTolerance=shakeTolerance;
 

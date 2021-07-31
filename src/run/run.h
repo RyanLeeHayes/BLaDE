@@ -49,6 +49,7 @@ class Run {
   real rCut;
   real rSwitch;
   real gridSpace; // grid spacing for PME calculation
+  int grid[3];
   int orderEwald; // interpolation order (4, 6, or 8 typically)
   struct Cutoffs cutoffs;
   real shakeTolerance;
@@ -113,7 +114,8 @@ extern "C" {
   void blade_dest_run(System *system);
   void blade_add_run_flags(System *system,
     double gamma, double betaEwald, double rCut, double rSwitch,
-    double gridSpace, int orderEwald, double shakeTolerance);
+    double gridSpace, int gridx, int gridy, int gridz,
+    int orderEwald, double shakeTolerance);
   void blade_add_run_dynopts(System *system,
     int step, int step0, int nsteps, double dt, double T,
     int freqNPT, double volumeFluctuation, double pressure);
