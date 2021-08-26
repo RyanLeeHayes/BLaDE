@@ -1,4 +1,3 @@
-#include <mpi.h>
 #include <omp.h>
 #include <string.h>
 #include <cuda_runtime.h>
