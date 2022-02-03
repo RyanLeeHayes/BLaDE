@@ -84,7 +84,7 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
       real fsw=(r<rc.rSwitch?1:riju*riju*(riju-3*rijl)/rul3);
       real dfsw=(r<rc.rSwitch?0:rijl*riju*rul12);
       fpair[0]=fsw*(6*pp.c6-12*pp.c12*rinv6)*rinv6*rinv	\
-	+dfsw*(pp.c12*rinv6-pp.c6)*rinv6;
+        +dfsw*(pp.c12*rinv6-pp.c6)*rinv6;
       if (calcEnergy){lE[0]=fsw*(pp.c12*rinv6-pp.c6)*rinv6;}
     } else {
       real A6=(r<rc.rSwitch?1:k6);
@@ -94,15 +94,15 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
 
       fpair[0]=6*pp.c6*A6*(rinv3-B6)*rinv3*rinv-12*pp.c12*A12*(rinv6-B12)*rinv6*rinv;
       if (calcEnergy) {
-	real dv6=-1/rCut6;
-	real dv12=-1/(rCut6*rCut6);
+        real dv6=-1/rCut6;
+        real dv12=-1/(rCut6*rCut6);
 
-	real CC6=(r<rc.rSwitch?dv6:0);
-	real CC12=(r<rc.rSwitch?dv12:0);
-	real rinv3_B6_sq=(rinv3-B6)*(rinv3-B6);
-	real rinv6_B12_sq=(rinv6-B12)*(rinv6-B12);
+        real CC6=(r<rc.rSwitch?dv6:0);
+        real CC12=(r<rc.rSwitch?dv12:0);
+        real rinv3_B6_sq=(rinv3-B6)*(rinv3-B6);
+        real rinv6_B12_sq=(rinv6-B12)*(rinv6-B12);
 
-	lE[0]=pp.c12*(A12*rinv6_B12_sq+CC12)-pp.c6*(A6*rinv3_B6_sq+CC6);
+        lE[0]=pp.c12*(A12*rinv6_B12_sq+CC12)-pp.c6*(A6*rinv3_B6_sq+CC6);
       }
     }
     

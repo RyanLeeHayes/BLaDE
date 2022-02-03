@@ -283,7 +283,7 @@ __global__ void getforce_nbdirect_kernel(
               // See charmm/source/domdec/enbxfast.F90, functions calc_vdw_constants, vdw_attraction, vdw_repulsion
               real rCut3=cutoffs.rCut*cutoffs.rCut*cutoffs.rCut;
               real rSwitch3=cutoffs.rSwitch*cutoffs.rSwitch*cutoffs.rSwitch;
-		
+
               if (rEff<cutoffs.rSwitch) {
                 fij+=(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv;
                 if (bi || bjtmp || energy) {
@@ -291,31 +291,31 @@ __global__ void getforce_nbdirect_kernel(
                   eij+=vdwp.c12*(rinv6*rinv6-dv6*dv6)-vdwp.c6*(rinv6-dv6);
                 }
               } else {
-		if ( !usevdWSwitch ) {
-		  real k6=rCut3/(rCut3-rSwitch3);
-		  real k12=rCut3*rCut3/(rCut3*rCut3-rSwitch3*rSwitch3);
-		  real rCutinv3=1/rCut3;
-		  fij+=(6*vdwp.c6*k6*(rinv3-rCutinv3)*rinv3-12*vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*rinv6)*rinv;
-		  if (bi || bjtmp || energy) {
-		    eij+=vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*(rinv6-rCutinv3*rCutinv3)-vdwp.c6*k6*(rinv3-rCutinv3)*(rinv3-rCutinv3);
-		  }
-		} else {
-		  real c2ofnb=cutoffs.rCut*cutoffs.rCut;
-		  real c2onnb=cutoffs.rSwitch*cutoffs.rSwitch;
-		  real rul3=(c2ofnb-c2onnb)*(c2ofnb-c2onnb)*(c2ofnb-c2onnb);
-		  real rul12 = 12/rul3;
-		  real rijl = c2onnb - r * r;
-		  real riju = c2ofnb - r * r;
-		  real fsw = riju*riju*(riju-3*rijl)/rul3;
-		  real dfsw = rijl*riju*rul12;
-		  fij+=fsw*(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv\
-		    +dfsw*(vdwp.c12*rinv6-vdwp.c6)*rinv6;
-		  if (bi || bjtmp || energy) {
-		    eij+=fsw*(vdwp.c12*rinv6-vdwp.c6)*rinv6;
-		  }
-		}
-	      }
-	      fij*=lixljtmp;
+                if ( !usevdWSwitch ) {
+                  real k6=rCut3/(rCut3-rSwitch3);
+                  real k12=rCut3*rCut3/(rCut3*rCut3-rSwitch3*rSwitch3);
+                  real rCutinv3=1/rCut3;
+                  fij+=(6*vdwp.c6*k6*(rinv3-rCutinv3)*rinv3-12*vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*rinv6)*rinv;
+                  if (bi || bjtmp || energy) {
+                    eij+=vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*(rinv6-rCutinv3*rCutinv3)-vdwp.c6*k6*(rinv3-rCutinv3)*(rinv3-rCutinv3);
+                  }
+                } else {
+                  real c2ofnb=cutoffs.rCut*cutoffs.rCut;
+                  real c2onnb=cutoffs.rSwitch*cutoffs.rSwitch;
+                  real rul3=(c2ofnb-c2onnb)*(c2ofnb-c2onnb)*(c2ofnb-c2onnb);
+                  real rul12 = 12/rul3;
+                  real rijl = c2onnb - r * r;
+                  real riju = c2ofnb - r * r;
+                  real fsw = riju*riju*(riju-3*rijl)/rul3;
+                  real dfsw = rijl*riju*rul12;
+                  fij+=fsw*(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv\
+                    +dfsw*(vdwp.c12*rinv6-vdwp.c6)*rinv6;
+                  if (bi || bjtmp || energy) {
+                    eij+=fsw*(vdwp.c12*rinv6-vdwp.c6)*rinv6;
+                  }
+                }
+              }
+              fij*=lixljtmp;
 
               // Lambda force
               if (bi || bjtmp) {
