@@ -47,6 +47,7 @@ Run::Run(System *system)
   betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
+  vfSwitch=true;
   gridSpace=1.0*ANGSTROM;
   grid[0]=-1;
   grid[1]=-1;
@@ -241,6 +242,7 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> betaEwald=%f (input invbetaewald in A)\n",betaEwald);
   fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut);
   fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch);
+  fprintf(stdout,"RUN PRINT> vfswitch=%d \n",vfSwitch);
   fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace);
   fprintf(stdout,"RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n",grid[0],grid[1],grid[2]);
   fprintf(stdout,"RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwald);
@@ -309,6 +311,8 @@ void Run::set_variable(char *line,char *token,System *system)
   } else if (strcmp(token,"rswitch")==0) {
     rSwitch=io_nextf(line)*ANGSTROM;
     cutoffs.rSwitch=rSwitch;
+  } else if (strcmp(token,"vfswitch")==0) {
+    vfSwitch=io_nextb(line);
   } else if (strcmp(token,"gridspace")==0) {
     gridSpace=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"grid")==0) {
@@ -556,6 +560,7 @@ void blade_add_run_flags(System *system,
   double betaEwald,
   double rCut,
   double rSwitch,
+  int vdWfSwitch,
   double gridSpace,
   int gridx,
   int gridy,
@@ -569,6 +574,7 @@ void blade_add_run_flags(System *system,
   system->run->betaEwald=betaEwald;
   system->run->rCut=rCut;
   system->run->rSwitch=rSwitch;
+  system->run->vfSwitch=vdWfSwitch==1;
   system->run->gridSpace=gridSpace; // grid spacing for PME calculation
   system->run->grid[0]=gridx; // if gridSpace is negative, use these values
   system->run->grid[1]=gridy; // if gridSpace is negative, use these values

@@ -1,3 +1,110 @@
+// If this is a CHARMM compilation
+#if KEY_BLADE == 1
+
+#include "rng_gpu.h"
+#include <ctime>
+#include <cstdio>
+#include <cstdlib>
+
+static const char *curandGetErrorString(curandStatus_t error)
+{
+  switch (error)
+    {
+    case CURAND_STATUS_SUCCESS:
+      return "CURAND_STATUS_SUCCESS";
+
+    case CURAND_STATUS_VERSION_MISMATCH:
+      return "CURAND_STATUS_VERSION_MISMATCH";
+
+    case CURAND_STATUS_NOT_INITIALIZED:
+      return "CURAND_STATUS_NOT_INITIALIZED";
+
+    case CURAND_STATUS_ALLOCATION_FAILED:
+      return "CURAND_STATUS_ALLOCATION_FAILED";
+
+    case CURAND_STATUS_TYPE_ERROR:
+      return "CURAND_STATUS_TYPE_ERROR";
+
+    case CURAND_STATUS_OUT_OF_RANGE:
+      return "CURAND_STATUS_OUT_OF_RANGE";
+
+    case CURAND_STATUS_LENGTH_NOT_MULTIPLE:
+      return "CURAND_STATUS_LENGTH_NOT_MULTIPLE";
+
+    case CURAND_STATUS_DOUBLE_PRECISION_REQUIRED:
+      return "CURAND_STATUS_DOUBLE_PRECISION_REQUIRED";
+
+    case CURAND_STATUS_LAUNCH_FAILURE:
+      return "CURAND_STATUS_LAUNCH_FAILURE";
+
+    case CURAND_STATUS_PREEXISTING_FAILURE:
+      return "CURAND_STATUS_PREEXISTING_FAILURE";
+    case CURAND_STATUS_INITIALIZATION_FAILED:
+      return "CURAND_STATUS_INITIALIZATION_FAILED";
+
+    case CURAND_STATUS_ARCH_MISMATCH:
+      return "CURAND_STATUS_ARCH_MISMATCH";
+
+    case CURAND_STATUS_INTERNAL_ERROR:
+      return "CURAND_STATUS_INTERNAL_ERROR";
+    }
+
+  return "<unknown>";
+}
+
+#define curandCheck(stmt) do {                                           \
+        curandStatus_t err = stmt;                                       \
+        if (err != CURAND_STATUS_SUCCESS) {                              \
+	  fprintf(stderr, "Error running %s in file %s, function %s, line %d\n", \
+                 #stmt, __FILE__, __FUNCTION__, __LINE__);               \
+	  fprintf(stderr, "Error string: %s\n", curandGetErrorString(err)); \
+	  exit(1);						         \
+        }                                                                \
+    } while(0)
+
+RngGPU::RngGPU()
+{
+  unsigned long long seed = time(NULL);
+
+  /* Create pseudo-random number generator */
+  curandCheck(curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_MTGP32));
+  
+  /* Set seed */
+  curandCheck(curandSetPseudoRandomGeneratorSeed(gen, seed));
+
+  rngStream=NULL;
+  curandCheck(curandSetStream(gen,rngStream));
+}
+
+RngGPU::~RngGPU()
+{
+    curandCheck(curandDestroyGenerator(gen));
+}
+
+// Generate n random numbers in the pointer p
+void RngGPU::rand_normal(int n,real *p,cudaStream_t s)
+{
+  if (rngStream!=s) {
+    rngStream=s;
+    curandCheck(curandSetStream(gen,rngStream));
+  }
+
+  curandCheck(curandGenerateNormal(gen, p, n, 0.0f, 1.0f));
+}
+
+// Generate n random numbers in the pointer p
+void RngGPU::rand_uniform(int n,real *p,cudaStream_t s)
+{
+  if (rngStream!=s) {
+    rngStream=s;
+    curandCheck(curandSetStream(gen,rngStream));
+  }
+
+  curandCheck(curandGenerateUniform(gen, p, n));
+}
+
+#else
+
 /* include MTGP host helper functions */
 #include <curand_mtgp32_host.h>
 /* include MTGP pre-computed parameter sets */
@@ -55,3 +162,5 @@ void RngGPU::rand_uniform(int n,real *p,cudaStream_t s)
   nblocks=(nblocks>200)?200:nblocks;
   kernel_uniform<<<nblocks,256,0,s>>>(devStates,n,p);
 }
+
+#endif

@@ -16,6 +16,11 @@
 // At least this is uncontroversial...
 #define DEGREES ((real)0.017453292519943)
 
+// If this is a CHARMM compilation
+#if KEY_BLADE == 1
+#define CHARMM_UNITS
+#endif
+
 #ifdef CHARMM_UNITS
 
 // Use CHARMM units, energy: kcal/mol, distance: A, time: A/sqrt(kcal/mol/amu), mass: amu

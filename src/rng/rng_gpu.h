@@ -1,6 +1,34 @@
 #ifndef RNG_RNG_GPU_H
 #define RNG_RNG_GPU_H
 
+// If this is a CHARMM compilation
+#if KEY_BLADE == 1
+
+#include <curand.h>
+#include "main/defines.h"
+
+// See
+// https://docs.nvidia.com/cuda/curand
+// for details
+
+class RngGPU
+{
+private:
+  curandGenerator_t gen;
+  cudaStream_t rngStream;
+  
+public:
+
+  RngGPU(); // (unnsigned long long seed)
+  ~RngGPU();
+
+  // Generate n random numbers in the pointer p
+  void rand_normal(int n,real *p,cudaStream_t s);
+  void rand_uniform(int n,real *p,cudaStream_t s);
+};
+
+#else
+
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <curand_kernel.h>
@@ -33,6 +61,8 @@ class RngGPU
   void rand_normal(int n,real *p,cudaStream_t s);
   void rand_uniform(int n,real *p,cudaStream_t s);
 };
+
+#endif
 
 #endif
 

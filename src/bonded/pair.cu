@@ -58,7 +58,7 @@ static __forceinline__ __device__ float fasterfc(float a)
 // r*fpair=6*c6*r^-6*(rc^3-r^3)/(rc^3-rs^3) - 12*c12*r^-12*(rc^6-r^6)/(rc^6-rs^6)   rs<r<rc
 // lE=integral(fpair)
 // Use charmm shortcuts to calculate those
-__device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy)
+__device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy, bool usevdWSwitch)
 {
   real rinv=1/r;
 
@@ -70,28 +70,42 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
 
     real k6=rCut3/(rCut3-rSwitch3);
     real k12=rCut6/(rCut6-rSwitch6);
-
+    
     real rinv3=rinv*rinv*rinv;
     real rinv6=rinv3*rinv3;
 
-    real A6=(r<rc.rSwitch?1:k6);
-    real A12=(r<rc.rSwitch?1:k12);
-    real B6=(r<rc.rSwitch?0:1/rCut3);
-    real B12=(r<rc.rSwitch?0:1/rCut6);
+    if(usevdWSwitch){
+      real c2ofnb=rc.rCut*rc.rCut;
+      real c2onnb=rc.rSwitch*rc.rSwitch;
+      real rul3=(c2ofnb-c2onnb)*(c2ofnb-c2onnb)*(c2ofnb-c2onnb);
+      real rul12=12/rul3;
+      real rijl=c2onnb - r * r;
+      real riju=c2ofnb - r * r;
+      real fsw=(r<rc.rSwitch?1:riju*riju*(riju-3*rijl)/rul3);
+      real dfsw=(r<rc.rSwitch?0:rijl*riju*rul12);
+      fpair[0]=fsw*(6*pp.c6-12*pp.c12*rinv6)*rinv6*rinv	\
+	+dfsw*(pp.c12*rinv6-pp.c6)*rinv6;
+      if (calcEnergy){lE[0]=fsw*(pp.c12*rinv6-pp.c6)*rinv6;}
+    } else {
+      real A6=(r<rc.rSwitch?1:k6);
+      real A12=(r<rc.rSwitch?1:k12);
+      real B6=(r<rc.rSwitch?0:1/rCut3);
+      real B12=(r<rc.rSwitch?0:1/rCut6);
 
-    fpair[0]=6*pp.c6*A6*(rinv3-B6)*rinv3*rinv-12*pp.c12*A12*(rinv6-B12)*rinv6*rinv;
-    if (calcEnergy) {
-      real dv6=-1/rCut6;
-      real dv12=-1/(rCut6*rCut6);
+      fpair[0]=6*pp.c6*A6*(rinv3-B6)*rinv3*rinv-12*pp.c12*A12*(rinv6-B12)*rinv6*rinv;
+      if (calcEnergy) {
+	real dv6=-1/rCut6;
+	real dv12=-1/(rCut6*rCut6);
 
-      real CC6=(r<rc.rSwitch?dv6:0);
-      real CC12=(r<rc.rSwitch?dv12:0);
-      real rinv3_B6_sq=(rinv3-B6)*(rinv3-B6);
-      real rinv6_B12_sq=(rinv6-B12)*(rinv6-B12);
+	real CC6=(r<rc.rSwitch?dv6:0);
+	real CC12=(r<rc.rSwitch?dv12:0);
+	real rinv3_B6_sq=(rinv3-B6)*(rinv3-B6);
+	real rinv6_B12_sq=(rinv6-B12)*(rinv6-B12);
 
-      lE[0]=pp.c12*(A12*rinv6_B12_sq+CC12)-pp.c6*(A6*rinv3_B6_sq+CC6);
+	lE[0]=pp.c12*(A12*rinv6_B12_sq+CC12)-pp.c6*(A6*rinv3_B6_sq+CC6);
+      }
     }
-
+    
     real br=rc.betaEwald*r;
     real kqq=kELECTRIC*pp.qxq;
 
@@ -103,8 +117,9 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
     }
   }
 }
+  
 
-__device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy)
+__device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy,bool usevdWSwitch)
 {
   real rinv=1/r;
   real br=rc.betaEwald*r;
@@ -119,7 +134,7 @@ __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,rea
 }
 
 
-template <class PairPotential,bool useSoftCore>
+template <class PairPotential,bool useSoftCore,bool usevdWSwitch>
 __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs cutoffs,real3 *position,real3_f *force,real3 box,real *lambda,real_f *lambdaForce,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -175,7 +190,7 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
     }
 
     // Interaction
-    function_pair(pp,cutoffs,rEff,&fpair,&lEnergy, b[0] || energy);
+    function_pair(pp,cutoffs,rEff,&fpair,&lEnergy, b[0] || energy, usevdWSwitch);
     fpair*=l[0]*l[1];
 
     // Lambda force
@@ -227,13 +242,24 @@ void getforce_nb14(System *system,bool calcEnergy)
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eenb14;
   }
+  if(system->run->vfSwitch) {
 
-  if (system->msld->useSoftCore14) {
-    getforce_pair_kernel <Nb14Potential,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+    if (system->msld->useSoftCore14) {
+      getforce_pair_kernel <Nb14Potential,true,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+    } else {
+      getforce_pair_kernel <Nb14Potential,false,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+    }
+  
   } else {
-    getforce_pair_kernel <Nb14Potential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+    if (system->msld->useSoftCore14) {
+      getforce_pair_kernel <Nb14Potential,true,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+    } else {
+      getforce_pair_kernel <Nb14Potential,false,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+    }
   }
 }
+
+
 
 void getforce_nbex(System *system,bool calcEnergy)
 {
@@ -254,5 +280,5 @@ void getforce_nbex(System *system,bool calcEnergy)
   }
 
   // Never use soft cores for nbex, they're already soft.
-  getforce_pair_kernel <NbExPotential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  getforce_pair_kernel <NbExPotential,false,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
 }
