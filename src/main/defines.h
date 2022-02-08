@@ -17,7 +17,7 @@
 #define DEGREES ((real)0.017453292519943)
 
 // If this is a CHARMM compilation
-#if KEY_BLADE == 1
+#ifdef BLADE_IN_CHARMM
 #define CHARMM_UNITS
 #endif
 

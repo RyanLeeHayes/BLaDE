@@ -2,7 +2,7 @@
 #define RNG_RNG_GPU_H
 
 // If this is a CHARMM compilation
-#if KEY_BLADE == 1
+#ifdef BLADE_IN_CHARMM
 
 #include <curand.h>
 #include "main/defines.h"

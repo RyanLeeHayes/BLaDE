@@ -1,5 +1,5 @@
 // If this is a CHARMM compilation
-#if KEY_BLADE == 1
+#ifdef BLADE_IN_CHARMM
 
 #include "rng_gpu.h"
 #include <ctime>
