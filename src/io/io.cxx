@@ -125,9 +125,9 @@ bool io_nextb(char *line)
 {
   std::string booleanString=io_nexts(line);
 
-  if (booleanString=="on" || booleanString=="true" || booleanString=="yes" || booleanString=="1") {
+  if (booleanString=="on" || booleanString=="true" || booleanString=="yes" || booleanString=="1" || booleanString=="T") {
     return true;
-  } else if (booleanString=="off" || booleanString=="false" || booleanString=="no" || booleanString=="0") {
+  } else if (booleanString=="off" || booleanString=="false" || booleanString=="no" || booleanString=="0" || booleanString=="F") {
     return false;
   } else {
     fatal(__FILE__,__LINE__,"Error: could not convert string %s to boolean value\n",booleanString.c_str());

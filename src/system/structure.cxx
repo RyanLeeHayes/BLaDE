@@ -22,6 +22,8 @@ Structure::Structure() {
   imprCount=0;
   cmapCount=0;
 
+  virt2Count=0;
+
   shakeHbond=false;
 
   harmCount=0;
@@ -322,12 +324,53 @@ void Structure::add_structure_psf_file(FILE *fp)
     io_nexti(line,fp,"psf molnt???");
   }
 
-  // ignore lone pairs
+  // Read lone pairs
   fgets(line, MAXLENGTHSTRING, fp);
   i=io_nexti(line,fp,"psf lone pairs");
-  j=io_nexti(line,fp,"psf lone pair hydrogrens");
+  j=io_nexti(line,fp,"psf lone pair hosts");
   if (i!=0 || j!=0) {
-    fatal(__FILE__,__LINE__,"Program is not set up to treat lone pairs. Found NUMLP=%d NUMLPH=%d in psf\n",i,j);
+    int virtCount;
+    int virtHostCount;
+    bool w;
+    real a,b,c;
+    std::vector<int> virtHostList;
+    // fatal(__FILE__,__LINE__,"Program is not set up to treat lone pairs. Found NUMLP=%d NUMLPH=%d in psf\n",i,j);
+    virtCount=i;
+    virtHostCount=j;
+    virtHostList.clear();
+    virt2List.clear();
+    for (i=0; i<virtCount; i++) {
+      j=io_nexti(line,fp,"psf lone pair host count");
+      k=io_nexti(line,fp,"psf lone pair host pointer");
+      w=io_nextb(line); // "psf lone pair host weighting"
+      a=io_nextf(line,fp,"psf lone pair value1");
+      b=io_nextf(line,fp,"psf lone pair value2");
+      c=io_nextf(line,fp,"psf lone pair value3");
+      if (j==2 && w==0) { // Colinear lone pair
+        struct VirtualSite2 virt2;
+        virt2.vidx=k-1; // Stick the pointer to the host list here temporarily
+        virt2.dist=a;
+        virt2.scale=b;
+        virt2List.push_back(virt2);
+      } else {
+        fatal(__FILE__,__LINE__,"Program found unsupported virtual site / lone pair type with %d hosts, and %d %d %f %f %f\n",j,k,(int)w,a,b,c);
+      }
+    }
+    for (i=0; i<virtHostCount; i++) {
+      j=io_nexti(line,fp,"psf lone pair host atom idx");
+      if (j>=atomCount || j<0) {
+        fatal(__FILE__,__LINE__,"Atom %d in virtual site host %d is out of range\n",j,i);
+      }
+      virtHostList.push_back(j);
+    }
+    // Now collect all the atom indices
+    virt2Count=virt2List.size();
+    for (i=0; i<virt2Count; i++) {
+      j=virt2List[i].vidx;
+      virt2List[i].vidx=virtHostList[j];
+      virt2List[i].hidx[0]=virtHostList[j+1];
+      virt2List[i].hidx[1]=virtHostList[j+2];
+    }
   }
   
   // Read cmaps
@@ -444,6 +487,19 @@ void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int
   system+=omp_get_thread_num();
   system->structure->cmapList.push_back(cmap);
   system->structure->cmapCount=system->structure->cmapList.size();
+}
+
+void blade_add_virt2(System *system,int v,int h1,int h2,double dist,double scale)
+{
+  struct VirtualSite2 virt2;
+  virt2.vidx=v;
+  virt2.hidx[0]=h1;
+  virt2.hidx[1]=h2;
+  virt2.dist=dist;
+  virt2.scale=scale;
+  system+=omp_get_thread_num();
+  system->structure->virt2List.push_back(virt2);
+  system->structure->virt2Count=system->structure->virt2List.size();
 }
 
 void blade_add_shake(System *system,int shakeHbond)

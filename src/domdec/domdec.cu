@@ -5,6 +5,7 @@
 #include "system/state.h"
 #include "run/run.h"
 #include "system/potential.h"
+#include "holonomic/virtual.h"
 
 #ifdef USE_TEXTURE
 #include <string.h> // for memset
@@ -72,6 +73,7 @@ Domdec::~Domdec()
 
 void Domdec::initialize(System *system)
 {
+  calc_virtual_position(system,true); // Virtual sites / lone pairs
   system->state->broadcast_position(system);
   system->state->broadcast_box(system);
 
@@ -180,6 +182,7 @@ void Domdec::reset_domdec(System *system)
 
 void Domdec::update_domdec(System *system,bool resetFlag)
 {
+  calc_virtual_position(system,resetFlag); // Virtual sites / lone pairs
   if (resetFlag) {
     system->domdec->reset_domdec(system);
   } else {

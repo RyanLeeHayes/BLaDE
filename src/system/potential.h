@@ -128,6 +128,13 @@ struct Branch3Cons {
   real b0[3];
 };
 
+struct VirtualSite2 { // Colinear
+  int vidx;
+  int hidx[2];
+  real dist;
+  real scale;
+};
+
 struct HarmonicPotential {
   int idx;
   real k;
@@ -254,6 +261,10 @@ class Potential {
   std::vector<struct Branch3Cons> branch3Cons_tmp;
   struct Branch3Cons *branch3Cons;
   struct Branch3Cons *branch3Cons_d;
+
+  int virtualSite2Count;
+  struct VirtualSite2 *virtualSite2;
+  struct VirtualSite2 *virtualSite2_d;
 
   // And restraints
   int harmCount;

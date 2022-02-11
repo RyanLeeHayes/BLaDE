@@ -17,6 +17,7 @@
 #include "nbrecip/nbrecip.h"
 #include "nbdirect/nbdirect.h"
 #include "restrain/restrain.h"
+#include "holonomic/virtual.h"
 
 #ifdef USE_TEXTURE
 #include <string.h> // for memset
@@ -1385,6 +1386,15 @@ void Potential::initialize(System *system)
   }
   cudaMemcpy(branch3Cons_d,branch3Cons,branch3ConsCount*sizeof(struct Branch3Cons),cudaMemcpyHostToDevice);
 
+  // Virtual sites 2
+  virtualSite2Count=system->structure->virt2List.size();
+  virtualSite2=(struct VirtualSite2*)calloc(virtualSite2Count,sizeof(struct VirtualSite2));
+  cudaMalloc(&virtualSite2_d,virtualSite2Count*sizeof(struct VirtualSite2));
+  for (i=0; i<virtualSite2Count; i++) {
+    virtualSite2[i]=system->structure->virt2List[i];
+  }
+  cudaMemcpy(virtualSite2_d,virtualSite2,virtualSite2Count*sizeof(struct VirtualSite2),cudaMemcpyHostToDevice);
+
   // Harmonic restraints
   harmCount=system->structure->harmCount;
   harms=(struct HarmonicPotential*)calloc(harmCount,sizeof(struct HarmonicPotential));
@@ -1515,6 +1525,8 @@ void Potential::calc_force(int step,System *system)
       getforce_nbdirect_reduce(system,calcEnergy);
     }
   }
+
+  calc_virtual_force(system);
 
   // cudaEventRecord(r->forceComplete,r->updateStream);
 }
