@@ -46,9 +46,9 @@ void calc_virtual_position(System *system,bool rectify)
   if (p->virtualSite2Count==0) return;
 
   if (rectify) {
-    calc_virtualSite2_position_kernel<true><<<(p->virtualSite2Count*BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],s->orthBox);
+    calc_virtualSite2_position_kernel<true><<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],s->orthBox);
   } else {
-    calc_virtualSite2_position_kernel<false><<<(p->virtualSite2Count*BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],s->orthBox);
+    calc_virtualSite2_position_kernel<false><<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],s->orthBox);
   }
 }
 
@@ -92,5 +92,5 @@ void calc_virtual_force(System *system)
   if (system->id) return; // head process only
   if (p->virtualSite2Count==0) return;
 
-  calc_virtualSite2_force_kernel<<<(p->virtualSite2Count*BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],s->orthBox);
+  calc_virtualSite2_force_kernel<<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],s->orthBox);
 }

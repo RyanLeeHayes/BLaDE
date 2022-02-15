@@ -806,8 +806,24 @@ void Potential::initialize(System *system)
   msldExcl=new std::set<int>[atomCount];
   allExcl=new std::set<int>[atomCount];
 
+  std::vector<struct Int2> bondList_tmp;
+  bondList_tmp.clear();
   for (i=0; i<struc->bondList.size(); i++) {
     Int2 ij=struc->bondList[i];
+    bondList_tmp.push_back(ij);
+  }
+  for (i=0; i<struc->virt2List.size(); i++) { // Have to set up exclusions for virtual sites / lone pairs too.
+    Int2 ij;
+    ij.i[0]=struc->virt2List[i].vidx;
+    for (j=0; j<2; j++) {
+      ij.i[1]=struc->virt2List[i].hidx[j];
+      bondList_tmp.push_back(ij);
+    }
+  }
+
+  // replaced struc->bondList with bondList_tmp
+  for (i=0; i<bondList_tmp.size(); i++) {
+    Int2 ij=bondList_tmp[i];
     for (j=0; j<2; j++) {
       if (allExcl[ij.i[j]].count(ij.i[1-j]) == 0 && system->msld->interacting(ij.i[0],ij.i[1])) {
         bondExcl[ij.i[j]].insert(ij.i[1-j]);
@@ -815,8 +831,8 @@ void Potential::initialize(System *system)
       }
     }
   }
-  for (i=0; i<struc->bondList.size(); i++) {
-    Int2 ij=struc->bondList[i];
+  for (i=0; i<bondList_tmp.size(); i++) {
+    Int2 ij=bondList_tmp[i];
     for (j=0; j<2; j++) {
       for (std::set<int>::iterator kk=bondExcl[ij.i[1-j]].begin(); kk!=bondExcl[ij.i[1-j]].end(); kk++) {
         Int2 jk;
@@ -833,8 +849,8 @@ void Potential::initialize(System *system)
       }
     }
   }
-  for (i=0; i<struc->bondList.size(); i++) {
-    Int2 ij=struc->bondList[i];
+  for (i=0; i<bondList_tmp.size(); i++) {
+    Int2 ij=bondList_tmp[i];
     for (j=0; j<2; j++) {
       for (std::set<int>::iterator kk=angleExcl[ij.i[1-j]].begin(); kk!=angleExcl[ij.i[1-j]].end(); kk++) {
         Int2 jk;

@@ -341,14 +341,14 @@ void Structure::add_structure_psf_file(FILE *fp)
     virt2List.clear();
     for (i=0; i<virtCount; i++) {
       j=io_nexti(line,fp,"psf lone pair host count");
-      k=io_nexti(line,fp,"psf lone pair host pointer");
+      k=io_nexti(line,fp,"psf lone pair host pointer")-1;
       w=io_nextb(line); // "psf lone pair host weighting"
-      a=io_nextf(line,fp,"psf lone pair value1");
+      a=io_nextf(line,fp,"psf lone pair value1")*ANGSTROM;
       b=io_nextf(line,fp,"psf lone pair value2");
       c=io_nextf(line,fp,"psf lone pair value3");
       if (j==2 && w==0) { // Colinear lone pair
         struct VirtualSite2 virt2;
-        virt2.vidx=k-1; // Stick the pointer to the host list here temporarily
+        virt2.vidx=k; // Stick the pointer to the host list here temporarily
         virt2.dist=a;
         virt2.scale=b;
         virt2List.push_back(virt2);
@@ -357,7 +357,7 @@ void Structure::add_structure_psf_file(FILE *fp)
       }
     }
     for (i=0; i<virtHostCount; i++) {
-      j=io_nexti(line,fp,"psf lone pair host atom idx");
+      j=io_nexti(line,fp,"psf lone pair host atom idx")-1;
       if (j>=atomCount || j<0) {
         fatal(__FILE__,__LINE__,"Atom %d in virtual site host %d is out of range\n",j,i);
       }
@@ -492,10 +492,10 @@ void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int
 void blade_add_virt2(System *system,int v,int h1,int h2,double dist,double scale)
 {
   struct VirtualSite2 virt2;
-  virt2.vidx=v;
-  virt2.hidx[0]=h1;
-  virt2.hidx[1]=h2;
-  virt2.dist=dist;
+  virt2.vidx=v-1;
+  virt2.hidx[0]=h1-1;
+  virt2.hidx[1]=h2-1;
+  virt2.dist=dist*ANGSTROM;
   virt2.scale=scale;
   system+=omp_get_thread_num();
   system->structure->virt2List.push_back(virt2);
