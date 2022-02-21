@@ -173,9 +173,9 @@ void State::initialize(System *system)
 
   for (i=0; i<atomCount; i++) {
     for (j=0; j<3; j++) {
-       position[i][j]=system->coordinates->particlePosition[i][j];
-       velocity[i][j]=system->coordinates->particleVelocity[i][j];
-       invsqrtMass[i][j]=1/sqrt(system->structure->atomList[i].mass);
+      position[i][j]=system->coordinates->particlePosition[i][j];
+      velocity[i][j]=system->coordinates->particleVelocity[i][j];
+      invsqrtMass[i][j]=1/sqrt(system->structure->atomList[i].mass);
     }
   }
   for (i=0; i<lambdaCount; i++) {

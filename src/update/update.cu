@@ -39,8 +39,10 @@ __global__ void update_V(struct LeapState ls,struct LeapParms2 lp1,struct LeapPa
   }
 
   if (i < ls.N) {
-    // Force is dU/dx by convention in this program, not -dU/dx
-    ls.v[i]=ls.v[i]-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
+    if (isfinite(ls.ism[i])) {
+      // Force is dU/dx by convention in this program, not -dU/dx
+      ls.v[i]=ls.v[i]-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
+    }
   }
 }
 
@@ -56,9 +58,11 @@ __global__ void update_VV(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   }
 
   if (i < ls.N) {
-    // Force is dU/dx by convention in this program, not -dU/dx
-    real_v v=ls.v[i]-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
-    ls.v[i]=v-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
+    if (isfinite(ls.ism[i])) {
+      // Force is dU/dx by convention in this program, not -dU/dx
+      real_v v=ls.v[i]-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
+      ls.v[i]=v-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
+    }
   }
 }
 
@@ -79,9 +83,11 @@ __global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct Le
     real_x x=ls.x[i];
     v-=lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
     if (bx) bx[i]=x;
-    x+=lp.halfdt*v;
-    ls.v[i]=v;
-    ls.x[i]=x;
+    if (isfinite(ls.ism[i])) {
+      x+=lp.halfdt*v;
+      ls.v[i]=v;
+      ls.x[i]=x;
+    }
   }
 }
 
@@ -102,9 +108,11 @@ __global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
     real_x x=ls.x[i];
     v-=2*lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
     if (bx) bx[i]=x;
-    x+=lp.halfdt*v;
-    ls.v[i]=v;
-    ls.x[i]=x;
+    if (isfinite(ls.ism[i])) {
+      x+=lp.halfdt*v;
+      ls.v[i]=v;
+      ls.x[i]=x;
+    }
   }
 }
 
@@ -116,8 +124,10 @@ __global__ void kinetic_energy_kernel(struct LeapState ls,real_e *energy)
 
   if (i<ls.N) {
     if (energy) {
-      lEnergy=ls.v[i]/ls.ism[i];
-      lEnergy*=((real)0.5)*lEnergy;
+      if (isfinite(ls.ism[i])) {
+        lEnergy=ls.v[i]/ls.ism[i];
+        lEnergy*=((real)0.5)*lEnergy;
+      }
     }
   }
 
@@ -141,7 +151,9 @@ __global__ void update_hbpR(struct LeapState ls,struct LeapParms2 lp1,struct Lea
   if (i < ls.N) {
     real_x x=ls.x[i];
     if (bx) bx[i]=x;
-    ls.x[i]=x+lp.halfdt*ls.v[i];
+    if (isfinite(ls.ism[i])) {
+      ls.x[i]=x+lp.halfdt*ls.v[i];
+    }
   }
 }
 
@@ -157,7 +169,9 @@ __global__ void update_OO(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   }
 
   if (i < ls.N) {
-    ls.v[i]=lp.friction*ls.v[i]+lp.noise*ls.ism[i]*ls.random[i];
+    if (isfinite(ls.ism[i])) {
+      ls.v[i]=lp.friction*ls.v[i]+lp.noise*ls.ism[i]*ls.random[i];
+    }
   }
 }
 
@@ -177,9 +191,11 @@ __global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
     real_x x=ls.x[i];
     v=lp.friction*v+lp.noise*ls.ism[i]*ls.random[i];
     if (bx) bx[i]=x;
-    x+=lp.halfdt*v;
-    ls.v[i]=v;
-    ls.x[i]=x;
+    if (isfinite(ls.ism[i])) {
+      x+=lp.halfdt*v;
+      ls.v[i]=v;
+      ls.x[i]=x;
+    }
   }
 }
 

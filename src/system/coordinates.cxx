@@ -299,6 +299,7 @@ void Coordinates::parse_velocity(char *line,char *token,System *system)
     for (j=0; j<3; j++) {
       real m=system->structure->atomList[i].mass;
       particleVelocity[i][j]=sqrt(kB*T/m)*system->rngCPU->rand_normal();
+      if (m==0) particleVelocity[i][j]=0;
     }
   }
 }
