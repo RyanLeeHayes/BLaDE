@@ -11,6 +11,7 @@
 class System;
 struct HarmonicPotential;
 struct VirtualSite2; // Colinear lone pair
+struct VirtualSite3; // Colinear lone pair
 
 struct AtomStructure {
   int atomIdx;
@@ -51,6 +52,9 @@ class Structure {
   int virt2Count;
   std::vector<struct VirtualSite2> virt2List;
 
+  int virt3Count;
+  std::vector<struct VirtualSite3> virt3List;
+
   bool shakeHbond;
 
   int harmCount;
@@ -85,6 +89,7 @@ extern "C" {
   void blade_add_impr(System *system,int i,int j,int k,int l);
   void blade_add_cmap(System *system,int i1,int j1,int k1,int l1,int i2,int j2,int k2,int l2);
   void blade_add_virt2(System *system,int v,int h1,int h2,double dist,double scale);
+  void blade_add_virt3(System *system,int v,int h1,int h2,int h3,double dist,double theta,double phi);
   void blade_add_shake(System *system,int shakeHbond);
   void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double z0,double n);
 }

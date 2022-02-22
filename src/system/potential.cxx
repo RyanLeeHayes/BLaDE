@@ -79,6 +79,7 @@ Potential::Potential() {
   nbexs=NULL;
   nbexs_d=NULL;
 
+  virtExcl=NULL;
   bondExcl=NULL;
   angleExcl=NULL;
   diheExcl=NULL;
@@ -168,6 +169,7 @@ Potential::~Potential()
   if (nbexs) free(nbexs);
   if (nbexs_d) cudaFree(nbexs_d);
 
+  delete [] virtExcl;
   delete [] bondExcl;
   delete [] angleExcl;
   delete [] diheExcl;
@@ -800,37 +802,71 @@ void Potential::initialize(System *system)
   cudaMemcpy(charge_d,charge,atomCount*sizeof(real),cudaMemcpyHostToDevice);
 
   // Set up exclusions
+  virtExcl=new std::set<int>[atomCount];
   bondExcl=new std::set<int>[atomCount];
   angleExcl=new std::set<int>[atomCount];
   diheExcl=new std::set<int>[atomCount];
   msldExcl=new std::set<int>[atomCount];
   allExcl=new std::set<int>[atomCount];
 
+  // replaced struc->bondList with bondList_tmp
   std::vector<struct Int2> bondList_tmp;
   bondList_tmp.clear();
   for (i=0; i<struc->bondList.size(); i++) {
     Int2 ij=struc->bondList[i];
     bondList_tmp.push_back(ij);
   }
-  for (i=0; i<struc->virt2List.size(); i++) { // Have to set up exclusions for virtual sites / lone pairs too.
+  // Set virtExcl
+  for (i=0; i<struc->virt2List.size(); i++) {
     Int2 ij;
     ij.i[0]=struc->virt2List[i].vidx;
-    for (j=0; j<2; j++) {
-      ij.i[1]=struc->virt2List[i].hidx[j];
-      bondList_tmp.push_back(ij);
-    }
-  }
-
-  // replaced struc->bondList with bondList_tmp
-  for (i=0; i<bondList_tmp.size(); i++) {
-    Int2 ij=bondList_tmp[i];
+    ij.i[1]=struc->virt2List[i].hidx[0];
     for (j=0; j<2; j++) {
       if (allExcl[ij.i[j]].count(ij.i[1-j]) == 0 && system->msld->interacting(ij.i[0],ij.i[1])) {
+        virtExcl[ij.i[j]].insert(ij.i[1-j]);
         bondExcl[ij.i[j]].insert(ij.i[1-j]);
         allExcl[ij.i[j]].insert(ij.i[1-j]);
       }
     }
   }
+  for (i=0; i<struc->virt3List.size(); i++) {
+    Int2 ij;
+    ij.i[0]=struc->virt3List[i].vidx;
+    ij.i[1]=struc->virt3List[i].hidx[0];
+    for (j=0; j<2; j++) {
+      if (allExcl[ij.i[j]].count(ij.i[1-j]) == 0 && system->msld->interacting(ij.i[0],ij.i[1])) {
+        virtExcl[ij.i[j]].insert(ij.i[1-j]);
+        bondExcl[ij.i[j]].insert(ij.i[1-j]);
+        allExcl[ij.i[j]].insert(ij.i[1-j]);
+      }
+    }
+  }
+  // Set bondExcl
+  for (i=0; i<bondList_tmp.size(); i++) {
+    Int2 ij=bondList_tmp[i];
+    for (j=0; j<2; j++) {
+      // Put in bonds first
+      if (allExcl[ij.i[j]].count(ij.i[1-j]) == 0 && system->msld->interacting(ij.i[0],ij.i[1])) {
+        bondExcl[ij.i[j]].insert(ij.i[1-j]);
+        allExcl[ij.i[j]].insert(ij.i[1-j]);
+      }
+      // Then copy any exclusions for virtual sites too
+      for (std::set<int>::iterator kk=virtExcl[ij.i[1-j]].begin(); kk!=virtExcl[ij.i[1-j]].end(); kk++) {
+        Int2 jk;
+        jk.i[0]=ij.i[j];
+        jk.i[1]=*kk;
+        if (jk.i[0]!=jk.i[1]) {
+          for (l=0; l<2; l++) {
+            if (allExcl[jk.i[l]].count(jk.i[1-l]) == 0 && system->msld->interacting(jk.i[0],jk.i[1])) {
+              bondExcl[jk.i[l]].insert(jk.i[1-l]);
+              allExcl[jk.i[l]].insert(jk.i[1-l]);
+            }
+          }
+        }
+      }
+    }
+  }
+  // Set angleExcl
   for (i=0; i<bondList_tmp.size(); i++) {
     Int2 ij=bondList_tmp[i];
     for (j=0; j<2; j++) {
@@ -849,6 +885,7 @@ void Potential::initialize(System *system)
       }
     }
   }
+  // Set diheExcl
   for (i=0; i<bondList_tmp.size(); i++) {
     Int2 ij=bondList_tmp[i];
     for (j=0; j<2; j++) {
@@ -867,6 +904,7 @@ void Potential::initialize(System *system)
       }
     }
   }
+  // Set msldExcl
   // #warning "This is an N^2 algorithm, need to set up better data structures in Msld class to make it N"
   /*for (i=0; i<atomCount; i++) {
     for (j=0; j<atomCount; j++) {
@@ -1410,6 +1448,15 @@ void Potential::initialize(System *system)
     virtualSite2[i]=system->structure->virt2List[i];
   }
   cudaMemcpy(virtualSite2_d,virtualSite2,virtualSite2Count*sizeof(struct VirtualSite2),cudaMemcpyHostToDevice);
+
+  // Virtual sites 3
+  virtualSite3Count=system->structure->virt3List.size();
+  virtualSite3=(struct VirtualSite3*)calloc(virtualSite3Count,sizeof(struct VirtualSite3));
+  cudaMalloc(&virtualSite3_d,virtualSite3Count*sizeof(struct VirtualSite3));
+  for (i=0; i<virtualSite3Count; i++) {
+    virtualSite3[i]=system->structure->virt3List[i];
+  }
+  cudaMemcpy(virtualSite3_d,virtualSite3,virtualSite3Count*sizeof(struct VirtualSite3),cudaMemcpyHostToDevice);
 
   // Harmonic restraints
   harmCount=system->structure->harmCount;

@@ -23,6 +23,7 @@ Structure::Structure() {
   cmapCount=0;
 
   virt2Count=0;
+  virt3Count=0;
 
   shakeHbond=false;
 
@@ -339,19 +340,28 @@ void Structure::add_structure_psf_file(FILE *fp)
     virtHostCount=j;
     virtHostList.clear();
     virt2List.clear();
+    virt3List.clear();
     for (i=0; i<virtCount; i++) {
       j=io_nexti(line,fp,"psf lone pair host count");
       k=io_nexti(line,fp,"psf lone pair host pointer")-1;
       w=io_nextb(line); // "psf lone pair host weighting"
-      a=io_nextf(line,fp,"psf lone pair value1")*ANGSTROM;
+      a=io_nextf(line,fp,"psf lone pair value1");
       b=io_nextf(line,fp,"psf lone pair value2");
       c=io_nextf(line,fp,"psf lone pair value3");
       if (j==2 && w==0) { // Colinear lone pair
         struct VirtualSite2 virt2;
         virt2.vidx=k; // Stick the pointer to the host list here temporarily
-        virt2.dist=a;
+        virt2.dist=a*ANGSTROM;
         virt2.scale=b;
         virt2List.push_back(virt2);
+      } else if (j==3 && a!=0 && (b==0 || b==180)) {
+        // CHARMM lonepair.F90 currently has a bug for sin(b)!=0 2022-02-22
+        struct VirtualSite3 virt3;
+        virt3.vidx=k;
+        virt3.dist=a*ANGSTROM;
+        virt3.theta=b*DEGREES;
+        virt3.phi=c*DEGREES;
+        virt3List.push_back(virt3);
       } else {
         fatal(__FILE__,__LINE__,"Program found unsupported virtual site / lone pair type with %d hosts, and %d %d %f %f %f\n",j,k,(int)w,a,b,c);
       }
@@ -370,6 +380,14 @@ void Structure::add_structure_psf_file(FILE *fp)
       virt2List[i].vidx=virtHostList[j];
       virt2List[i].hidx[0]=virtHostList[j+1];
       virt2List[i].hidx[1]=virtHostList[j+2];
+    }
+    virt3Count=virt3List.size();
+    for (i=0; i<virt3Count; i++) {
+      j=virt3List[i].vidx;
+      virt3List[i].vidx=virtHostList[j];
+      virt3List[i].hidx[0]=virtHostList[j+1];
+      virt3List[i].hidx[1]=virtHostList[j+2];
+      virt3List[i].hidx[2]=virtHostList[j+3];
     }
   }
   
@@ -500,6 +518,21 @@ void blade_add_virt2(System *system,int v,int h1,int h2,double dist,double scale
   system+=omp_get_thread_num();
   system->structure->virt2List.push_back(virt2);
   system->structure->virt2Count=system->structure->virt2List.size();
+}
+
+void blade_add_virt3(System *system,int v,int h1,int h2,int h3,double dist,double theta,double phi)
+{
+  struct VirtualSite3 virt3;
+  virt3.vidx=v-1;
+  virt3.hidx[0]=h1-1;
+  virt3.hidx[1]=h2-1;
+  virt3.hidx[2]=h3-1;
+  virt3.dist=dist*ANGSTROM;
+  virt3.theta=theta*DEGREES;
+  virt3.phi=phi*DEGREES;
+  system+=omp_get_thread_num();
+  system->structure->virt3List.push_back(virt3);
+  system->structure->virt3Count=system->structure->virt3List.size();
 }
 
 void blade_add_shake(System *system,int shakeHbond)

@@ -135,6 +135,14 @@ struct VirtualSite2 { // Colinear
   real scale;
 };
 
+struct VirtualSite3 { // Bisector is dist is negative
+  int vidx;
+  int hidx[3];
+  real dist;
+  real theta;
+  real phi;
+};
+
 struct HarmonicPotential {
   int idx;
   real k;
@@ -202,6 +210,7 @@ class Potential {
   struct NbExPotential *nbexs;
   struct NbExPotential *nbexs_d;
 
+  std::set<int> *virtExcl;
   std::set<int> *bondExcl;
   std::set<int> *angleExcl;
   std::set<int> *diheExcl;
@@ -265,6 +274,9 @@ class Potential {
   int virtualSite2Count;
   struct VirtualSite2 *virtualSite2;
   struct VirtualSite2 *virtualSite2_d;
+  int virtualSite3Count;
+  struct VirtualSite3 *virtualSite3;
+  struct VirtualSite3 *virtualSite3_d;
 
   // And restraints
   int harmCount;
