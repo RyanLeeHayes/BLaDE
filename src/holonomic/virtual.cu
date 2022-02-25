@@ -57,7 +57,7 @@ __global__ void calc_virtualSite3_position_kernel(int N,struct VirtualSite3 *vir
       real3_scaleself(&b,(real_x)(0.5));
       real3_inc(&hostx[1],b);
     }
-    a=real3_subpbc(hostx[0],hostx[1],box);
+    a=real3_subpbc(hostx[1],hostx[0],box);
     real3_scaleself(&a,1/real3_mag<real_x>(a));
     c=real3_cross(b,a);
     real3_scaleself(&c,1/real3_mag<real_x>(c));
