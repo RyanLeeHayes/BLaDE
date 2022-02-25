@@ -170,7 +170,7 @@ __global__ void calc_virtualSite3_force_kernel(int N,struct VirtualSite3 *virt3,
       real3_scaleself(&t,(real_x)(0.5));
       real3_inc(&hostx[1],t);
     }
-    s=real3_subpbc(hostx[0],hostx[1],box);
+    s=real3_subpbc(hostx[1],hostx[0],box);
 
     // p=real3_cross(r,s);
     // q=real3_cross(s,t);
