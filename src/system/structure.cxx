@@ -27,6 +27,8 @@ Structure::Structure() {
 
   shakeHbond=false;
 
+  noeCount=0;
+  noeList.clear();
   harmCount=0;
   harmList.clear();
 
@@ -49,6 +51,8 @@ void Structure::setup_parse_structure()
   helpStructure["file"]="?structure file psf [filename]> This loads the system structure from the CHARMM PSF (protein structure file)\n";
   parseStructure["shake"]=&Structure::parse_shake;
   helpStructure["shake"]="?structure shake [hbond/none]> Turn hydrogen bond length constraints on or off.\n";
+  parseStructure["noe"]=&Structure::parse_noe;
+  helpStructure["noe"]="?structure noe [selection] [selection] [rmin] [kmin] [rmax] [kmax] [rpeak] [rswitch] [nswitch]> Apply a CHARMM-style NOE restraint between a pair of atoms\n";
   parseStructure["harmonic"]=&Structure::parse_harmonic;
   helpStructure["harmonic"]="?structure harmonic [selection] [mass|none] [k real] [n real]> Apply harmonic restraints of k*(x-x0)^n to each atom in selection. x0 is taken from the current coordinates read in by coordinates. For none, k has units of kcal/mol/A^n, for mass, k is multiplied by the mass, and has units of kcal/mol/A^n/amu. structure harmonic reset clears all restraints\n";
   parseStructure["print"]=&Structure::dump;
@@ -128,6 +132,52 @@ void Structure::parse_shake(char *line,char *token,System *system)
   } else {
     fatal(__FILE__,__LINE__,"Unrecognized token %s for structure shake selection. Try hbond or none\n",token);
   }
+}
+
+void Structure::parse_noe(char *line,char *token,System *system)
+{
+  io_nexta(line,token);
+  if (strcmp(token,"reset")==0) {
+    noeList.clear();
+  } else {
+    std::string iselection=token;
+    std::string jselection=io_nexts(line);
+    int is,ns,i,j;
+    if (system->selections->selectionMap.count(iselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized first selection name %s for noe restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[iselection].boolCount; is++) {
+      if (system->selections->selectionMap[iselection].boolSelection[is]) {
+        i=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in first selection, found %d\n",ns);
+    if (system->selections->selectionMap.count(jselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized second selection name %s for noe restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[jselection].boolCount; is++) {
+      if (system->selections->selectionMap[jselection].boolSelection[is]) {
+        j=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in second selection, found %d\n",ns);
+    struct NoePotential noe;
+    noe.i=i;
+    noe.j=j;
+    noe.rmin=io_nextf(line)*ANGSTROM;
+    noe.kmin=io_nextf(line)*KCAL_MOL/(ANGSTROM*ANGSTROM);
+    noe.rmax=io_nextf(line)*ANGSTROM;
+    noe.kmax=io_nextf(line)*KCAL_MOL/(ANGSTROM*ANGSTROM);
+    noe.rpeak=io_nextf(line)*ANGSTROM;
+    noe.rswitch=io_nextf(line)*ANGSTROM;
+    noe.nswitch=io_nextf(line);
+    noeList.push_back(noe);
+  }
+  noeCount=noeList.size();
 }
 
 void Structure::parse_harmonic(char *line,char *token,System *system)
@@ -539,6 +589,23 @@ void blade_add_shake(System *system,int shakeHbond)
 {
   system+=omp_get_thread_num();
   system->structure->shakeHbond=shakeHbond;
+}
+
+void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rmax,double kmax,double rpeak,double rswitch,double nswitch)
+{
+  system+=omp_get_thread_num();
+  struct NoePotential noe;
+  noe.i=i-1;
+  noe.j=j-1;
+  noe.rmin=rmin*ANGSTROM;
+  noe.kmin=kmin*KCAL_MOL/(ANGSTROM*ANGSTROM);
+  noe.rmax=rmax*ANGSTROM;
+  noe.kmax=kmax*KCAL_MOL/(ANGSTROM*ANGSTROM);
+  noe.rpeak=rpeak*ANGSTROM;
+  noe.rswitch=rswitch*ANGSTROM;
+  noe.nswitch=nswitch;
+  system->structure->noeList.push_back(noe);
+  system->structure->noeCount=system->structure->noeList.size();
 }
 
 void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double z0,double n)

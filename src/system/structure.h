@@ -9,6 +9,7 @@
 
 // Forward declarations:
 class System;
+struct NoePotential;
 struct HarmonicPotential;
 struct VirtualSite2; // Colinear lone pair
 struct VirtualSite3; // Colinear lone pair
@@ -57,6 +58,9 @@ class Structure {
 
   bool shakeHbond;
 
+  int noeCount;
+  std::vector<struct NoePotential> noeList;
+
   int harmCount;
   std::vector<struct HarmonicPotential> harmList;
   
@@ -69,6 +73,7 @@ class Structure {
   void reset(char *line,char *token,System *system);
   void file(char *line,char *token,System *system);
   void parse_shake(char *line,char *token,System *system);
+  void parse_noe(char *line,char *token,System *system);
   void parse_harmonic(char *line,char *token,System *system);
   void dump(char *line,char *token,System *system);
   void add_structure_psf_file(FILE *fp);
@@ -91,6 +96,7 @@ extern "C" {
   void blade_add_virt2(System *system,int v,int h1,int h2,double dist,double scale);
   void blade_add_virt3(System *system,int v,int h1,int h2,int h3,double dist,double theta,double phi);
   void blade_add_shake(System *system,int shakeHbond);
+  void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rmax,double kmax,double rpeak,double rswitch,double nswitch);
   void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double z0,double n);
 }
 

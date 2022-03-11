@@ -121,6 +121,9 @@ Potential::Potential() {
   branch3Cons=NULL;
   branch3Cons_d=NULL;
 
+  noeCount=0;
+  noes=NULL;
+  noes_d=NULL;
   harmCount=0;
   harms=NULL;
   harms_d=NULL;
@@ -206,6 +209,8 @@ Potential::~Potential()
   if (planFFTPME) cufftDestroy(planFFTPME);
   if (planIFFTPME) cufftDestroy(planIFFTPME);
 
+  if (noes) free(noes);
+  if (noes_d) cudaFree(noes_d);
   if (harms) free(harms);
   if (harms_d) cudaFree(harms_d);
 
@@ -1458,6 +1463,15 @@ void Potential::initialize(System *system)
   }
   cudaMemcpy(virtualSite3_d,virtualSite3,virtualSite3Count*sizeof(struct VirtualSite3),cudaMemcpyHostToDevice);
 
+  // NOE restraints
+  noeCount=system->structure->noeCount;
+  noes=(struct NoePotential*)calloc(noeCount,sizeof(struct NoePotential));
+  cudaMalloc(&noes_d,noeCount*sizeof(struct NoePotential));
+  for (i=0; i<noeCount; i++) {
+    noes[i]=system->structure->noeList[i];
+  }
+  cudaMemcpy(noes_d,noes,noeCount*sizeof(struct NoePotential),cudaMemcpyHostToDevice);
+
   // Harmonic restraints
   harmCount=system->structure->harmCount;
   harms=(struct HarmonicPotential*)calloc(harmCount,sizeof(struct HarmonicPotential));
@@ -1570,6 +1584,7 @@ void Potential::calc_force(int step,System *system)
     system->msld->getforce_variableBias(system,calcEnergy);
     system->msld->getforce_atomRestraints(system,calcEnergy);
     system->msld->getforce_chargeRestraints(system,calcEnergy);
+    getforce_noe(system,calcEnergy);
     getforce_harm(system,calcEnergy);
     cudaEventRecord(r->biaspotComplete,r->biaspotStream);
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);

@@ -201,8 +201,9 @@ void parse_msld(char *line,System *system)
       fatal(__FILE__,__LINE__,"Error, tried to edit block %d of %d which does not exist.\n",i,system->msld->blockCount-1);
     }
     vb.type=io_nexti(line);
-    if (vb.type!=6 && vb.type!=8 && vb.type!=10) {
-      fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type (6, 8, or 10)\n",vb.type);
+    // if (vb.type!=6 && vb.type!=8 && vb.type!=10)
+    if (vb.type<=0 || vb.type>10) {
+      fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type\n",vb.type);
     }
     vb.l0=io_nextf(line);
     vb.k=io_nextf(line);
@@ -723,13 +724,43 @@ __global__ void getforce_variableBias_kernel(real *lambda,real_f *lambdaForce,re
       lEnergy=vb.k*lj*(1-expf(vb.l0*li));
       fi=vb.k*lj*(-vb.l0*expf(vb.l0*li));
       fj=vb.k*(1-expf(vb.l0*li));
+    } else if (vb.type==1) {
+      lEnergy=((li<vb.l0)?(vb.k*pow(li-vb.l0,vb.n)):0);
+      fi=((li<vb.l0)?(vb.n*vb.k*pow(li-vb.l0,vb.n-1)):0);
+      fj=0;
+    } else if (vb.type==2) {
+      lEnergy=((li>vb.l0)?(vb.k*pow(li-vb.l0,vb.n)):0);
+      fi=((li>vb.l0)?(vb.n*vb.k*pow(li-vb.l0,vb.n-1)):0);
+      fj=0;
+    } else if (vb.type==3) {
+      lEnergy=vb.k*pow(li-lj,vb.n);
+      fi=vb.n*vb.k*pow(li-lj,vb.n-1);
+      fj=-fi;
+    } else if (vb.type==4) {
+      real bicut=0.8;
+      real bicut2in=1.5625; // 1/(bicut*bicut)
+      lEnergy=((li>bicut)?(-vb.k):(-vb.k*(1-bicut2in*(li-bicut)*(li-bicut))));
+      fi=((li>bicut)?0:(2*vb.k*bicut2in*(li-bicut)));
+      fj=0;
+    } else if (vb.type==5) {
+      lEnergy=-vb.k*li;
+      fi=-vb.k;
+      fj=0;
+    } else if (vb.type==7) {
+      lEnergy=vb.k*li*(1-li)/(li+vb.l0);
+      fi=vb.k*(vb.l0*(1+vb.l0)/((li+vb.l0)*(li+vb.l0))-1);
+      fj=0;
+    } else if (vb.type==9) {
+      lEnergy=vb.k*lj*(1-pow((li+vb.l0)/vb.l0,vb.n));
+      fi=-vb.k*lj*pow((li+vb.l0)/vb.l0,vb.n-1)/vb.l0;
+      fj=vb.k*(1-pow((li+vb.l0)/vb.l0,vb.n));
     } else {
       lEnergy=0;
       fi=0;
       fj=0;
     }
     atomicAdd(&lambdaForce[vb.i],fi);
-    atomicAdd(&lambdaForce[vb.j],fj);
+    if (fj) atomicAdd(&lambdaForce[vb.j],fj);
   }
 
   // Energy, if requested
@@ -981,8 +1012,9 @@ void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,
   vb.i=i-1;
   vb.j=j-1;
   vb.type=type;
-  if (vb.type!=6 && vb.type!=8 && vb.type!=10) {
-    fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type (6, 8, or 10)\n",vb.type);
+  // if (vb.type!=6 && vb.type!=8 && vb.type!=10)
+  if (vb.type<=0 || vb.type>10) {
+    fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type\n",vb.type);
   }
   vb.l0=l0;
   vb.k=k;

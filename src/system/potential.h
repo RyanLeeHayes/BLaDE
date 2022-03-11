@@ -143,6 +143,18 @@ struct VirtualSite3 { // Bisector is dist is negative
   real phi;
 };
 
+struct NoePotential {
+  int i;
+  int j;
+  real rmin;
+  real kmin;
+  real rmax;
+  real kmax;
+  real rpeak;
+  real rswitch;
+  real nswitch;
+};
+
 struct HarmonicPotential {
   int idx;
   real k;
@@ -279,6 +291,9 @@ class Potential {
   struct VirtualSite3 *virtualSite3_d;
 
   // And restraints
+  int noeCount;
+  struct NoePotential *noes;
+  struct NoePotential *noes_d;
   int harmCount;
   struct HarmonicPotential *harms;
   struct HarmonicPotential *harms_d;
