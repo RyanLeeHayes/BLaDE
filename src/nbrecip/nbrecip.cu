@@ -63,6 +63,7 @@ void getforce_ewaldself(System *system,bool calcEnergy)
   real_e *pEnergy=NULL;
   real prefactor=-system->run->betaEwald*(kELECTRIC/sqrt(M_PI));
 
+  if (r->usePME==false) return;
   if (r->calcTermFlag[eenbrecipself]==false) return;
 
   if (calcEnergy) {
@@ -435,6 +436,7 @@ void getforce_ewald(System *system,bool calcEnergy)
   int shMem=0;
   real_e *pEnergy=NULL;
 
+  if (r->usePME==false) return;
   if (r->calcTermFlag[eenbrecip]==false) return;
 
   if (calcEnergy) {

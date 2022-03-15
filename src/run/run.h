@@ -49,6 +49,7 @@ class Run {
   real rCut;
   real rSwitch;
   bool vfSwitch;   //added by clb3
+  bool usePME;
   real gridSpace; // grid spacing for PME calculation
   int grid[3];
   int orderEwald; // interpolation order (4, 6, or 8 typically)
@@ -115,7 +116,7 @@ extern "C" {
   void blade_dest_run(System *system);
   void blade_add_run_flags(System *system,
     double gamma, double betaEwald, double rCut, double rSwitch,
-    int vdWfSwitch,
+    int vdWfSwitch, int elecPME,
     double gridSpace, int gridx, int gridy, int gridz,
     int orderEwald, double shakeTolerance);
   void blade_add_run_dynopts(System *system,

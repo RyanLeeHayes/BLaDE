@@ -58,7 +58,7 @@ static __forceinline__ __device__ float fasterfc(float a)
 // r*fpair=6*c6*r^-6*(rc^3-r^3)/(rc^3-rs^3) - 12*c12*r^-12*(rc^6-r^6)/(rc^6-rs^6)   rs<r<rc
 // lE=integral(fpair)
 // Use charmm shortcuts to calculate those
-__device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy, bool usevdWSwitch)
+__device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy,bool usevdWSwitch,bool usePME)
 {
   real rinv=1/r;
 
@@ -106,20 +106,42 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
       }
     }
     
-    real br=rc.betaEwald*r;
     real kqq=kELECTRIC*pp.qxq;
+    if (usePME) {
+      real br=rc.betaEwald*r;
 
-    real erfcrinv=fasterfc(br)*rinv;
-    // fpair[0]+=kqq*(-erfcf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
-    fpair[0]+=kqq*(-erfcrinv-((real)1.128379167095513)*rc.betaEwald*expf(-br*br))*rinv;
-    if (calcEnergy) {
-      lE[0]+=kqq*erfcrinv;
+      real erfcrinv=fasterfc(br)*rinv;
+      // fpair[0]+=kqq*(-erfcf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
+      fpair[0]+=kqq*(-erfcrinv-((real)1.128379167095513)*rc.betaEwald*expf(-br*br))*rinv;
+      if (calcEnergy) {
+        lE[0]+=kqq*erfcrinv;
+      }
+    } else {
+      real roff2=rc.rCut*rc.rCut;
+      real ron2=rc.rSwitch*rc.rSwitch;
+      real ginv=1/((roff2-ron2)*(roff2-ron2)*(roff2-ron2));
+      real Aconst=roff2*roff2*(roff2-3*ron2)*ginv;
+      real Bconst=6*roff2*ron2*ginv;
+      real Cconst=-(ron2+roff2)*ginv;
+      real Dconst=2*ginv/5;
+      real dvc=8*(ron2*roff2*(rc.rCut-rc.rSwitch)-(roff2*roff2*rc.rCut-ron2*ron2*rc.rSwitch)/5)*ginv;
+      real r2=r*r;
+      real r3=r2*r;
+      real r5=r3*r2;
+      fpair[0]+=(r<=rc.rSwitch)?
+        -kqq*rinv*rinv:
+        -kqq*rinv*(Aconst*rinv+Bconst*r+3*Cconst*r3+5*Dconst*r5);
+      if (calcEnergy) {
+        lE[0]+=(r<=rc.rSwitch)?
+          kqq*(rinv+dvc):
+          kqq*(Aconst*(rinv-1/rc.rCut)+Bconst*(rc.rCut-r)+Cconst*(roff2*rc.rCut-r3)+Dconst*(roff2*roff2*rc.rCut-r5));
+      }
     }
   }
 }
   
 
-__device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy,bool usevdWSwitch)
+__device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy,bool usevdWSwitch,bool usePME)
 {
   real rinv=1/r;
   real br=rc.betaEwald*r;
@@ -134,7 +156,7 @@ __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,rea
 }
 
 
-template <class PairPotential,bool useSoftCore,bool usevdWSwitch>
+template <class PairPotential,bool useSoftCore,bool usevdWSwitch,bool usePME>
 __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs cutoffs,real3 *position,real3_f *force,real3 box,real *lambda,real_f *lambdaForce,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -190,7 +212,7 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
     }
 
     // Interaction
-    function_pair(pp,cutoffs,rEff,&fpair,&lEnergy, b[0] || energy, usevdWSwitch);
+    function_pair(pp,cutoffs,rEff,&fpair,&lEnergy, b[0] || energy,usevdWSwitch,usePME);
     fpair*=l[0]*l[1];
 
     // Lambda force
@@ -225,7 +247,8 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
   }
 }
 
-void getforce_nb14(System *system,bool calcEnergy)
+template <bool useSoftCore,bool usevdWSwitch,bool usePME>
+void getforce_nb14TTT(System *system,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -242,20 +265,36 @@ void getforce_nb14(System *system,bool calcEnergy)
     shMem=BLBO*sizeof(real)/32;
     pEnergy=s->energy_d+eenb14;
   }
-  if(system->run->vfSwitch) {
 
-    if (system->msld->useSoftCore14) {
-      getforce_pair_kernel <Nb14Potential,true,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
-    } else {
-      getforce_pair_kernel <Nb14Potential,false,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
-    }
-  
+  getforce_pair_kernel <Nb14Potential,useSoftCore,usevdWSwitch,usePME> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+}
+
+template <bool useSoftCore,bool usevdWSwitch>
+void getforce_nb14TT(System *system,bool calcEnergy)
+{
+  if (system->run->usePME) {
+    getforce_nb14TTT<useSoftCore,usevdWSwitch,true>(system,calcEnergy);
   } else {
-    if (system->msld->useSoftCore14) {
-      getforce_pair_kernel <Nb14Potential,true,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
-    } else {
-      getforce_pair_kernel <Nb14Potential,false,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
-    }
+    getforce_nb14TTT<useSoftCore,usevdWSwitch,false>(system,calcEnergy);
+  }
+}
+
+template <bool useSoftCore>
+void getforce_nb14T(System *system,bool calcEnergy)
+{
+  if (!system->run->vfSwitch) {
+    getforce_nb14TT<useSoftCore,true>(system,calcEnergy);
+  } else {
+    getforce_nb14TT<useSoftCore,false>(system,calcEnergy);
+  }
+}
+
+void getforce_nb14(System *system,bool calcEnergy)
+{
+  if (system->msld->useSoftCore14) {
+    getforce_nb14T<true>(system,calcEnergy);
+  } else {
+    getforce_nb14T<false>(system,calcEnergy);
   }
 }
 
@@ -272,6 +311,7 @@ void getforce_nbex(System *system,bool calcEnergy)
 
   if (N==0) return;
 
+  if (r->usePME==false) return;
   if (r->calcTermFlag[eenbrecipexcl]==false) return;
 
   if (calcEnergy) {
@@ -280,5 +320,5 @@ void getforce_nbex(System *system,bool calcEnergy)
   }
 
   // Never use soft cores for nbex, they're already soft.
-  getforce_pair_kernel <NbExPotential,false,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  getforce_pair_kernel <NbExPotential,false,false,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
 }

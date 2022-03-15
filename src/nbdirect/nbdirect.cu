@@ -78,7 +78,7 @@ bool check_proximity(DomdecBlockVolume a,real3 b,real c2)
   return buffer2<=c2;
 }
 
-template <bool useSoftCore,bool usevdWSwitch>
+template <bool useSoftCore,bool usevdWSwitch,bool usePME>
 // __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 __global__ void getforce_nbdirect_kernel(
   int startBlock,
@@ -263,15 +263,37 @@ __global__ void getforce_nbdirect_kernel(
               if (bi || bjtmp || energy) {
                 eij=kELECTRIC*inp.q*jtmpnp_q*rinv;
               }*/
-              real br=cutoffs.betaEwald*rEff;
-              // real erfcrinv=erfcf(br)*rinv;
-              real erfcrinv=fasterfc(br)*rinv;
-              // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
-              // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+1.128379167095513f*cutoffs.betaEwald*expf(-br*br))*rinv;
-              // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)(2/sqrt(M_PI)))*cutoffs.betaEwald*expf(-br*br))*rinv;
-              fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)1.128379167095513)*cutoffs.betaEwald*expf(-br*br))*rinv;
-              if (bi || bjtmp || energy) {
-                eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
+              if (usePME) {
+                real br=cutoffs.betaEwald*rEff;
+                // real erfcrinv=erfcf(br)*rinv;
+                real erfcrinv=fasterfc(br)*rinv;
+                // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
+                // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+1.128379167095513f*cutoffs.betaEwald*expf(-br*br))*rinv;
+                // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)(2/sqrt(M_PI)))*cutoffs.betaEwald*expf(-br*br))*rinv;
+                fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)1.128379167095513)*cutoffs.betaEwald*expf(-br*br))*rinv;
+                if (bi || bjtmp || energy) {
+                  eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
+                }
+              } else {
+                real roff2=cutoffs.rCut*cutoffs.rCut;
+                real ron2=cutoffs.rSwitch*cutoffs.rSwitch;
+                real ginv=1/((roff2-ron2)*(roff2-ron2)*(roff2-ron2));
+                real Aconst=roff2*roff2*(roff2-3*ron2)*ginv;
+                real Bconst=6*roff2*ron2*ginv;
+                real Cconst=-(ron2+roff2)*ginv;
+                real Dconst=2*ginv/5;
+                real dvc=8*(ron2*roff2*(cutoffs.rCut-cutoffs.rSwitch)-(roff2*roff2*cutoffs.rCut-ron2*ron2*cutoffs.rSwitch)/5)*ginv;
+                real r2=rEff*rEff;
+                real r3=r2*rEff;
+                real r5=r3*r2;
+                fij=(rEff<=cutoffs.rSwitch)?
+                  -kELECTRIC*inp.q*jtmpnp_q*rinv*rinv:
+                  -kELECTRIC*inp.q*jtmpnp_q*rinv*(Aconst*rinv+Bconst*rEff+3*Cconst*r3+5*Dconst*r5);
+                if (bi || bjtmp || energy) {
+                  eij=(rEff<=cutoffs.rSwitch)?
+                    kELECTRIC*inp.q*jtmpnp_q*(rinv+dvc):
+                    kELECTRIC*inp.q*jtmpnp_q*(Aconst*(rinv-1/cutoffs.rCut)+Bconst*(cutoffs.rCut-rEff)+Cconst*(roff2*cutoffs.rCut-r3)+Dconst*(roff2*roff2*cutoffs.rCut-r5));
+                }
               }
                 // Van der Waals
               real rinv3=rinv*rinv*rinv;
@@ -304,8 +326,8 @@ __global__ void getforce_nbdirect_kernel(
                   real c2onnb=cutoffs.rSwitch*cutoffs.rSwitch;
                   real rul3=(c2ofnb-c2onnb)*(c2ofnb-c2onnb)*(c2ofnb-c2onnb);
                   real rul12 = 12/rul3;
-                  real rijl = c2onnb - r * r;
-                  real riju = c2ofnb - r * r;
+                  real rijl = c2onnb - rEff * rEff;
+                  real riju = c2ofnb - rEff * rEff;
                   real fsw = riju*riju*(riju-3*rijl)/rul3;
                   real dfsw = rijl*riju*rul12;
                   fij+=fsw*(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv\
@@ -407,7 +429,8 @@ __global__ void getforce_nbdirect_kernel(
   }
 }
 
-void getforce_nbdirect(System *system,bool calcEnergy)
+template <bool useSoftCore,bool usevdWSwitch,bool usePME>
+void getforce_nbdirectTTT(System *system,bool calcEnergy)
 {
   system->domdec->pack_positions(system);
   system->domdec->recull_blocks(system);
@@ -430,38 +453,44 @@ void getforce_nbdirect(System *system,bool calcEnergy)
     shMem=0;
     pEnergy=s->energy_d+eenbdirect;
   }
-  if (!system->run->vfSwitch) {
-    if (system->msld->useSoftCore) {
+  getforce_nbdirect_kernel<useSoftCore,usevdWSwitch,usePME><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,
 #ifdef USE_TEXTURE
-      getforce_nbdirect_kernel<true,true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_tex,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+    p->vdwParameters_tex,
 #else
-      getforce_nbdirect_kernel<true,true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+    p->vdwParameters_d,
 #endif
-    } else {
-#ifdef USE_TEXTURE
-      getforce_nbdirect_kernel<false,true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_tex,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
-#else
-      getforce_nbdirect_kernel<false,true><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
-#endif
-    }
-    
-  } else {
-    if (system->msld->useSoftCore) {
-#ifdef USE_TEXTURE
-      getforce_nbdirect_kernel<true, false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_tex,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
-#else
-      getforce_nbdirect_kernel<true,false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
-#endif
-    } else {
-#ifdef USE_TEXTURE
-      getforce_nbdirect_kernel<false,false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_tex,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
-#else
-      getforce_nbdirect_kernel<false,false><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,p->vdwParameters_d,system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
-#endif
-    }
-  }
+    system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
 
   system->domdec->unpack_forces(system);
+}
+
+template <bool useSoftCore,bool usevdWSwitch>
+void getforce_nbdirectTT(System *system,bool calcEnergy)
+{
+  if (system->run->usePME) {
+    getforce_nbdirectTTT<useSoftCore,usevdWSwitch,true>(system,calcEnergy);
+  } else {
+    getforce_nbdirectTTT<useSoftCore,usevdWSwitch,false>(system,calcEnergy);
+  }
+}
+
+template <bool useSoftCore>
+void getforce_nbdirectT(System *system,bool calcEnergy)
+{
+  if (!system->run->vfSwitch) {
+    getforce_nbdirectTT<useSoftCore,true>(system,calcEnergy);
+  } else {
+    getforce_nbdirectTT<useSoftCore,false>(system,calcEnergy);
+  }
+}
+
+void getforce_nbdirect(System *system,bool calcEnergy)
+{
+  if (system->msld->useSoftCore) {
+    getforce_nbdirectT<true>(system,calcEnergy);
+  } else {
+    getforce_nbdirectT<false>(system,calcEnergy);
+  }
 }
 
 template <typename real_type>

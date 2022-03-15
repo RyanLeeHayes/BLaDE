@@ -984,6 +984,8 @@ void Potential::initialize(System *system)
     }
   }
 
+  if (system->run->usePME) {
+
   for (i=0; i<atomCount; i++) {
     for (std::set<int>::iterator jj=allExcl[i].begin(); jj!=allExcl[i].end(); jj++) {
       if (i<*jj && diheExcl[i].count(*jj)==0) {
@@ -999,6 +1001,8 @@ void Potential::initialize(System *system)
         }
       }
     }
+  }
+
   }
 
   for (i=0; i<atomCount; i++) {
@@ -1018,6 +1022,8 @@ void Potential::initialize(System *system)
   }
   cudaMemcpy(nb14s_d,nb14s,nb14Count*sizeof(struct Nb14Potential),cudaMemcpyHostToDevice);
 
+  if (system->run->usePME) {
+
   nbexCount=nbexs_tmp.size();
   nbexs=(struct NbExPotential*)calloc(nbexCount,sizeof(struct NbExPotential));
   cudaMalloc(&(nbexs_d),nbexCount*sizeof(struct NbExPotential));
@@ -1026,6 +1032,8 @@ void Potential::initialize(System *system)
   }
   cudaMemcpy(nbexs_d,nbexs,nbexCount*sizeof(struct NbExPotential),cudaMemcpyHostToDevice);
 
+  }
+
   exclCount=excls_tmp.size();
   excls=(struct ExclPotential*)calloc(exclCount,sizeof(struct ExclPotential));
   cudaMalloc(&(excls_d),exclCount*sizeof(struct ExclPotential));
@@ -1033,6 +1041,8 @@ void Potential::initialize(System *system)
     excls[i]=excls_tmp[i];
   }
   cudaMemcpy(excls_d,excls,exclCount*sizeof(struct ExclPotential),cudaMemcpyHostToDevice);
+
+  if (system->run->usePME) {
 
   // Choose PME grid sizes
   int goodSizes[]={32,27,24,20,18,16};
@@ -1137,6 +1147,8 @@ void Potential::initialize(System *system)
   cufftCreate(&planIFFTPME);
   cufftMakePlan3d(planIFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],MYCUFFT_C2R,&bufferSizeIFFTPME);
   cufftSetStream(planIFFTPME,system->run->nbrecipStream);
+
+  }
 
   // Count each nonbonded type
   typeCount.clear();
