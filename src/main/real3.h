@@ -81,6 +81,15 @@ void at_real3_inc(real3_out *a,real3_in x)
   atomicAdd(&(a[0].z),x.z);
 }
 
+template<typename real3_out,typename real3_in>
+__device__ static inline
+void at_real3_dec(real3_out *a,real3_in x)
+{
+  atomicAdd(&(a[0].x),-x.x);
+  atomicAdd(&(a[0].y),-x.y);
+  atomicAdd(&(a[0].z),-x.z);
+}
+
 template<typename real_out,typename real3_in>
 __host__ __device__ static inline
 real_out real3_mag(real3_in a)
@@ -138,6 +147,17 @@ real_out real3_dot(real3_a a,real3_b b)
   return a.x*b.x+a.y*b.y+a.z*b.z;
 }
 
+template<typename real3_out,typename real3_in>
+__host__ __device__ static inline
+real3_out real3_cast(real3_in a)
+{
+  real3_out c;
+  c.x=a.x;
+  c.y=a.y;
+  c.z=a.z;
+  return c;
+}
+
 template<typename real3_type>
 __host__ __device__ static inline
 real3_type real3_cross(real3_type a,real3_type b)
@@ -187,8 +207,9 @@ void real3_inc(real3_type *a,real3_type x)
   a[0].z+=x.z;
 }
 
+template<typename real3_type>
 __host__ __device__ static inline
-void real3_dec(real3 *a,real3 x)
+void real3_dec(real3_type *a,real3_type x)
 {
   a[0].x-=x.x;
   a[0].y-=x.y;

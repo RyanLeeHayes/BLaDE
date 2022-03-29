@@ -404,7 +404,7 @@ void Structure::add_structure_psf_file(FILE *fp)
         virt2.dist=a*ANGSTROM;
         virt2.scale=b;
         virt2List.push_back(virt2);
-      } else if (j==3 && a!=0 && (b==0 || b==180)) {
+      } else if (j==3 && a!=0) { // (j==3 && a!=0 && (b==0 || b==180))
         // CHARMM lonepair.F90 currently has a bug for sin(b)!=0 2022-02-22
         struct VirtualSite3 virt3;
         virt3.vidx=k;

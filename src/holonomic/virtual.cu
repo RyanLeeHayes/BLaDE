@@ -129,9 +129,9 @@ __global__ void calc_virtualSite2_force_kernel(int N,struct VirtualSite2 *virt2,
     s=virt2[i].dist*dxinv+virt2[i].scale;
 
     df=real3_scale<real3_f>(s-virt2[i].dist*dxinv*dxinv*dxinv*real3_dot<real>(dx,virtf),virtf);
-    real3_dec(&((real3_f*)ls.f)[virt2[i].hidx[1]],df);
+    at_real3_dec(&((real3_f*)ls.f)[virt2[i].hidx[1]],df);
     real3_inc(&df,virtf);
-    real3_inc(&((real3_f*)ls.f)[virt2[i].hidx[0]],df);
+    at_real3_inc(&((real3_f*)ls.f)[virt2[i].hidx[0]],df);
   }
 }
 
@@ -141,19 +141,22 @@ __global__ void calc_virtualSite3_force_kernel(int N,struct VirtualSite3 *virt3,
   real3_x virtx;
   real3_x hostx[3];
   real3_x r,s,t;
-  real_x rmag,smag;
+  real3_x p,q,rr,tt;
+  real_x sinv2,st;
   real3_f virtf;
-  real3_f rf,tf,pf;
+  real3_f tfresult,pfresult; // angular and torsional results, respectively
+  real_f pfmag;
   real3_f hostf[3];
 
   if (i<N) {
     // r = radial vector
-    // p = out-of-plane vector (unnormalized)
     // s = j-k vector
     // t = k-l vector
-    // rf = radial force
-    // pf = torsional force
-    // tf = angular force
+    // p = r x s out-of-plane vector (unnormalized)
+    // q = s x t
+    // rr = r component perpendicular to s
+    // tt = t component perpendicular to s
+    // pfmag = torsional force magnitude
     virtx=((real3_x*)ls.x)[virt3[i].vidx];
     virtf=((real3_f*)ls.f)[virt3[i].vidx];
     for (int j=0; j<3; j++) {
@@ -162,33 +165,42 @@ __global__ void calc_virtualSite3_force_kernel(int N,struct VirtualSite3 *virt3,
     }
 
     r=real3_subpbc(virtx,hostx[0],box);
-    rf=real3_scale<real3_f>(real3_dot<real_x>(r,virtf)/real3_mag2<real_x>(r),r);
-    real3_inc(&hostf[0],rf);
-
-    t=real3_subpbc(hostx[2],hostx[1],box);
+    t=real3_subpbc(hostx[1],hostx[2],box);
     if (virt3[i].dist<0) { // Negative distance is used as a bisector flag (indicating to use the bisector of 1 and 2 as the 1 position)
       real3_scaleself(&t,(real_x)(0.5));
-      real3_inc(&hostx[1],t);
+      real3_dec(&hostx[1],t);
     }
-    s=real3_subpbc(hostx[1],hostx[0],box);
+    s=real3_subpbc(hostx[0],hostx[1],box);
+    sinv2=1/real3_mag2<real_x>(s);
 
-    // p=real3_cross(r,s);
-    // q=real3_cross(s,t);
+    real3_inc(&hostf[0],virtf);
 
-    // Assume no torsional force (there are input guards)
-    rmag=real3_mag<real_x>(r);
-    smag=real3_mag<real_x>(s);
-    tf=real3_sub(virtf,rf);
-    real3_scaleinc(&hostf[0],(smag-rmag)/smag,tf);
+    tfresult=real3_scale<real3_f>((real_f)sinv2,real3_cross(real3_cast<real3_f>(s),real3_cross(real3_cast<real3_f>(r),virtf))); // (s x (r x f)) / (s^2)
+    real3_inc(&hostf[1],tfresult);
+    real3_dec(&hostf[0],tfresult);
+
+    if (sin(virt3[i].theta)>((real)1e-6)) {
+      p=real3_cross(r,s);
+      q=real3_cross(s,t);
+      rr=real3_scale<real3_x>(sinv2,real3_cross<real3_x>(s,p));
+      tt=real3_scale<real3_x>(sinv2,real3_cross<real3_x>(q,s));
+
+      pfmag=real3_dot<real_f>(p,virtf)/real3_mag<real_f>(p);
+      pfresult=real3_scale<real3_f>((real3_mag<real_f>(rr)*(pfmag))/
+        (real3_mag<real_f>(tt)*real3_mag<real_f>(q)),q);
+      st=real3_dot<real_x>(s,t)*sinv2;
+      real3_inc(&hostf[2],pfresult);
+      real3_scaleinc(&hostf[0],st,pfresult);
+      real3_scaleinc(&hostf[1],-1-st,pfresult);
+    }
+
     if (virt3[i].dist<0) {
-      real3_scaleinc(&hostf[1],((real_x)(0.5))*rmag/smag,tf);
-      real3_scaleinc(&hostf[2],((real_x)(0.5))*rmag/smag,tf);
-    } else {
-      real3_scaleinc(&hostf[1],rmag/smag,tf);
+      real3_scaleself(&hostf[1],(real_f)0.5);
+      real3_inc(&hostf[2],hostf[1]);
     }
 
     for (int j=0; j<3; j++) {
-      real3_inc(&((real3_f*)ls.f)[virt3[i].hidx[j]],hostf[j]);
+      at_real3_inc(&((real3_f*)ls.f)[virt3[i].hidx[j]],hostf[j]);
     }
   }
 }
