@@ -1,0 +1,44 @@
+*  ** preliminary developmental parameters; please treat as confidential **
+*  nbfix for carboxylate =O, ester =O, phosphate =O from Yun Luo
+*  based on Noskov and Roux ion params, JMB 377:804; for APPEND use with
+*  \\\\\\\ CHARMM36 All-Hydrogen Lipid Parameter File ///////
+*
+
+BONDS
+
+ANGLES
+
+DIHEDRALS
+
+IMPROPER
+
+NONBONDED nbxmod  5 atom cdiel fshift vatom vdistance vfswitch -
+ cutnb 14.0 ctofnb 12.0 ctonnb 10.0 eps 1.0 e14fac 1.0 wmin 1.5
+!
+!V(Lennard-Jones) = Eps,i,j[(Rmin,i,j/ri,j)**12 - 2(Rmin,i,j/ri,j)**6]
+!
+!epsilon: kcal/mole, Eps,i,j = sqrt(eps,i * eps,j)
+!Rmin/2: A, Rmin,i,j = Rmin/2,i + Rmin/2,j
+!
+!atom  ignored    epsilon      Rmin/2   ignored   eps,1-4       Rmin/2,1-4
+!
+
+NBFIX
+!               Emin        Rmin
+!            (kcal/mol)     (A)
+
+
+! NBFIX for SOD CLA already in parent PARAM file; J. Phys.Chem.Lett. 1:183-189
+
+! yun luo; ylna at uchicago.edu jan 2010
+SOD    OCL      -0.07502    3.19    ! yun luo, osmotic P; carboxylate =O
+
+SOD    OBL      -0.07502    3.13    ! yun luo, POPC optim.; ester =O 
+
+SOD    O2L      -0.07502    3.16    ! yun luo, POPC optim.; phosphate =O 
+
+HBOND CUTHB 0.5  ! If you want to do hbond analysis (only), then use
+                 ! READ PARAM APPEND CARD
+                 ! to append hbond parameters from the file: par_hbond.inp
+
+END

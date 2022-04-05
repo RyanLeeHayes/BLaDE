@@ -1,0 +1,116 @@
+variables set box 71.6297564
+
+variables set s1seq1 nat
+variables set s1seq2 cys
+variables set s1seq3 ile
+variables set s1seq4 met
+variables set s1seq5 ser
+variables set s1seq6 thr
+variables set segid PROT
+variables set resid1 149
+
+parameters file prep/toppar/par_all36_msld.prm
+parameters file prep/toppar/par_all36_cgenff.prm
+
+structure file psf prep/minimized.psf
+structure shake hbond
+
+coordinates file pdb prep/minimized.pdb
+coordinates box {box} 0 0   0 {box} 0   0 0 {box}
+coordinates velocity 300
+
+selection limit 200
+
+
+variables set ii 1
+while <= {ii} {nsites}
+   variables set resid {resid{ii}}
+   variables set site {ii}
+
+   selection define site{resid}suball and segid {segid} resid {resid}
+
+   selection define site{resid}subbb and selection site{resid}suball atomnames N   HN  CA  HA  C   O   HT1 HT2 HT3 OXT
+
+   selection define site{site}sub1 and selection site{resid}suball not selection site{resid}subbb
+
+   variables set jj 2
+   while <= {jj} {nsubs{ii}}
+
+      variables set sub {jj}
+      stream prep/aa_stream/sele_{s{ii}seq{jj}}.str
+
+      selection define site{site}sub1 and selection site{site}sub1 not selection site{site}sub{sub}
+
+      variables calculate jj int + {jj} 1
+   endwhile
+
+   variables calculate ii int + {ii} 1
+endwhile
+
+
+msld nblocks {nblocks}
+
+variables set prevblock 0
+variables set ii 1
+while <= {ii} {nsites}
+   variables set jj 1
+   while <= {jj} {nsubs{ii}}
+      variables calculate jp0 int + {jj} {prevblock}
+
+      msld call {jp0} site{ii}sub{jj}
+
+      variables calculate jj int + {jj} 1
+   endwhile
+   variables calculate prevblock int + {prevblock} {nsubs{ii}}
+   variables calculate ii int + {ii} 1
+endwhile
+
+!               B S   t0  tv  tm  fb   q
+   msld initialize 0 0 0 0 5 0 0
+
+variables set blockassign 0
+variables set prevblock 0
+variables set ii 1
+while <= {ii} {nsites}
+   variables set jj 1
+   variables set theta0 1
+   while <= {jj} {nsubs{ii}}
+      variables calculate jp0 int + {jj} {prevblock}
+
+!               B S   t0  tv  tm  fb   q
+      msld initialize {jp0} {ii} {theta0} 0 5 {lams{ii}s{jj}} 0
+
+      variables set theta0 -1
+      variables calculate jj int + {jj} 1
+   endwhile
+   variables calculate prevblock int + {prevblock} {nsubs{ii}}
+   variables calculate ii int + {ii} 1
+endwhile
+   msld removescaling bond urey angle impr 
+
+   msld softcore on
+   msld softcore14 off
+   ! pmel ex ! msld ewaldtype 2 ! default
+
+variables set prevblock 0
+variables set ii 1
+while <= {ii} {nsites}
+   variables set jj 1
+   while <= {jj} {nsubs{ii}}
+      variables calculate jp0 int + {jj} {prevblock}
+      variables calculate kk int + {jj} 1
+      while <= {kk} {nsubs{ii}}
+         variables calculate kp0 int + {kk} {prevblock}
+
+         msld bias {jp0} {kp0} 6 0.0 {cs{ii}s{jj}s{ii}s{kk}} 0
+         msld bias {jp0} {kp0} 10 -5.56 {xs{ii}s{jj}s{ii}s{kk}} 0
+         msld bias {jp0} {kp0} 8 0.017 {ss{ii}s{jj}s{ii}s{kk}} 0
+         msld bias {kp0} {jp0} 10 -5.56 {xs{ii}s{kk}s{ii}s{jj}} 0
+         msld bias {kp0} {jp0} 8 0.017 {ss{ii}s{kk}s{ii}s{jj}} 0
+         variables calculate kk int + {kk} 1
+      endwhile
+      variables calculate jj int + {jj} 1
+   endwhile
+   variables calculate prevblock int + {prevblock} {nsubs{ii}}
+   variables calculate ii int + {ii} 1
+endwhile

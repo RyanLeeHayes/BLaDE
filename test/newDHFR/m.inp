@@ -1,0 +1,45 @@
+! *  Benchmark dynamics for DHFR in a cubic box of
+! *  solvent using PBC w/ PME.  Total system contains 23,558 atoms,
+! *  21,069 atoms associated with water molecules and 2589 protein atoms.
+! *
+
+verbose 0
+
+parameters file par_all22_prot.inp
+
+structure file psf 5dfr.psf
+structure shake hbond
+
+coordinates file crd 5dfr.crd
+coordinates box 62.23 0 0  0 62.23 0  0 0 62.23
+coordinates velocity 298
+
+msld nblocks 0
+
+structure shake hbond
+run setvariable gamma 5
+
+run setvariable fnmxtc prod.xtc
+run setvariable fnmnrg prod.nrg
+run setvariable fnmlmd prod.lmd_0
+
+run setvariable nsteps 500000
+run setvariable T 298
+run setvariable freqxtc 500000
+run setvariable freqnrg 50000 ! 200 ! charmm does it every 200 because of ntrfrq
+run setvariable freqnpt 0
+run setvariable freqlmd 500000
+run setvariable hrlmd no
+
+! Set nonbonded options
+run setvariable rswitch 7.5
+run setvariable rcut 9.0
+run setvariable invbetaewald 3.125
+run setvariable orderewald 4
+run setvariable gridspace 1.1 ! A is max grid spacing, should give 64x64x64
+
+run setvariable shaketolerance 0.00000001
+
+run setvariable dt 0.002
+
+run dynamics
