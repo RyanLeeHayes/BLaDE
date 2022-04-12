@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "domdec/domdec.h"
 #include "system/potential.h"
 #include "run/run.h"

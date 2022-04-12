@@ -12,8 +12,6 @@
 
 // Class constructors
 Coordinates::Coordinates(int n,System *system) {
-  int i,j;
-
   atomCount=n;
   particleBox=(real_x(*)[3])calloc(3,sizeof(real_x[3]));
   particleBox[0][0]=NAN;

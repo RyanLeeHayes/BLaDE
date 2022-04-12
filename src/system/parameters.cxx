@@ -336,8 +336,6 @@ void Parameters::add_parameter_cmaps(FILE *fp)
   TypeName8O name;
   CmapParameter cp;
   int i,j;
-  real k;
-  char *escape;
 
   fgetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
@@ -670,9 +668,6 @@ void blade_add_parameter_cmaps(System *system,
 {
   TypeName8O name;
   CmapParameter cp;
-  int i,j;
-  real k;
-  char *escape;
 
   name.t[0]=t1;
   name.t[1]=t2;

@@ -17,7 +17,7 @@
 
 // Class constructors
 State::State(System *system) {
-  int i,j;
+  int i;
 
   atomCount=system->coordinates->atomCount;
   lambdaCount=system->msld->blockCount;

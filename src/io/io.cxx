@@ -37,7 +37,7 @@ void fatal(const char* fnm,int i,const char* format, ...)
 }
 
 void arrested_development(System *system,int howLong) {
-  int i, id=0, nid=1;
+  int i;
   char hostname[MAXLENGTHSTRING];
   for (i=0; i<system->idCount; i++) {
 #pragma omp barrier
@@ -262,7 +262,6 @@ void print_xtc(int step,System *system)
   XDRFILE *fp=system->run->fpXTC;
   float box[3][3]={{0,0,0},{0,0,0},{0,0,0}};
   int i,j,N;
-  char fnm[100];
 
   N=system->state->atomCount;
   box[0][0]=system->state->orthBox.x/(10*ANGSTROM);

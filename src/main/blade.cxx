@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
 #pragma omp parallel
   {
   System *system;
-  FILE *fp;
 
   cudaSetDevice(omp_get_thread_num());
 
