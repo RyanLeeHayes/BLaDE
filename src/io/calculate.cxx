@@ -11,27 +11,49 @@ real variables_calculate(char *line)
   std::string token=io_nexts(line);
 
   if (token=="+") {
-    return variables_calculate(line) + variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1+r2;
   } else if (token=="-") {
-    return variables_calculate(line) - variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1-r2;
   } else if (token=="*") {
-    return variables_calculate(line) * variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1*r2;
   } else if (token=="/") {
-    return variables_calculate(line) / variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1/r2;
   } else if (token=="==") {
-    return variables_calculate(line) == variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1==r2;
   } else if (token==">=") {
-    return variables_calculate(line) >= variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1>=r2;
   } else if (token=="<=") {
-    return variables_calculate(line) <= variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1<=r2;
   } else if (token==">") {
-    return variables_calculate(line) > variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1>r2;
   } else if (token=="<") {
-    return variables_calculate(line) < variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1<r2;
   } else if (token=="&&") {
-    return variables_calculate(line) && variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1&&r2;
   } else if (token=="||") {
-    return variables_calculate(line) || variables_calculate(line);
+    real r1=variables_calculate(line);
+    real r2=variables_calculate(line);
+    return r1||r2;
   } else if (token=="not") {
     return variables_calculate(line)==0;
   } else if (token=="sqrt") {
