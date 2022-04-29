@@ -1,0 +1,12 @@
+Purpose:
+BLaDE is a Basic Lambda Dynamics Engine for molecular dynamics based alchemical free energy calculations using multisite lambda dynamics on graphical processor units.
+
+Citation:
+Please read and cite the following manuscript when using BLaDE.
+Hayes, R. L.; Buckner, J.; Brooks III, C. L.
+BLaDE: A Basic Lambda Dynamics Engine for GPU Accelerated Molecular Dynamics Free Energy Calculations
+Journal of Chemical Theory and Computation, 2021, 17, 6799-6807
+https://pubs.acs.org/doi/10.1021/acs.jctc.1c00833
+
+Usage:
+For installation and usage instructions, see doc/MAIN.txt.
