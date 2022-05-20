@@ -7,14 +7,14 @@
 #include "system/system.h"
 #include "system/structure.h"
 #include "rng/rng_cpu.h"
+#include "system/state.h"
 
 
 
 // Class constructors
 Coordinates::Coordinates(int n,System *system) {
   atomCount=n;
-  particleBox=(real_x(*)[3])calloc(3,sizeof(real_x[3]));
-  particleBox[0][0]=NAN;
+  particleBoxABC.x=NAN;
   particlePosition=(real_x(*)[3])calloc(n,sizeof(real_x[3]));
   particleVelocity=(real_v(*)[3])calloc(n,sizeof(real_v[3]));
 
@@ -22,7 +22,6 @@ Coordinates::Coordinates(int n,System *system) {
 }
 
 Coordinates::~Coordinates() {
-  if (particleBox) free(particleBox);
   if (particlePosition) free(particlePosition);
   if (particleVelocity) free(particleVelocity);
 }
@@ -77,7 +76,7 @@ void Coordinates::setup_parse_coordinates()
   parseCoordinates["file"]=&Coordinates::file;
   helpCoordinates["file"]="?coordinates file [pdb|crd] [filename]> This loads particle positions from the pdb or charmm crd filename\n";
   parseCoordinates["box"]=&Coordinates::parse_box;
-  helpCoordinates["box"]="?coordinates box [x1 y1 z1, x2 y2 z2, x3 y3 z3]> This loads the x y z cooridinates for the first, second, and third box vectors. Input in Angstroms.\n";
+  helpCoordinates["box"]="?coordinates box [name] [a b c alpha beta gamma]> This sets up the lattice vectors for the box. Acceptable names include cubi (cubic), tetr (tetragonal), orth (orthorhombic), mono (monoclinic), tric (triclinic), hexa (hexagonal), rhom (rhombohedral), octa (truncated octahedron), and rhdo (rhombic dodecahedron), see charmm crystal.doc for details. a is placed along the x axis, and b in the xy plane. alpha is the angle between b and c, beta is the angle between a and c, gamma is the angle between a and b. Units are angstroms and degrees.\n";
   parseCoordinates["velocity"]=&Coordinates::parse_velocity;
   helpCoordinates["velocity"]="?coordinates velocity [temperature]> This sets the velocities to a distribution centered on the specified temperature (in Kelvin)\n";
   parseCoordinates["print"]=&Coordinates::dump;
@@ -276,17 +275,34 @@ void Coordinates::file_crd(FILE *fp,System *system)
 void Coordinates::parse_box(char *line,char *token,System *system)
 {
   int i,j;
-  for (i=0; i<3; i++) {
-    for (j=0; j<3; j++) {
-      particleBox[i][j]=ANGSTROM*io_nextf(line);
-      if (i!=j && particleBox[i][j]!=0) {
-        fatal(__FILE__,__LINE__,"Non-orthogonal boxes are not yet implemented NYI\n");
-      }
-    }
+  std::string nameString=io_nexts(line);
+  if (nameString=="cubi") {
+    particleBoxName=ebcubi;
+  } else if (nameString=="tetr") {
+    particleBoxName=ebtetr;
+  } else if (nameString=="orth") {
+    particleBoxName=eborth;
+  } else if (nameString=="mono") {
+    particleBoxName=ebmono;
+  } else if (nameString=="tric") {
+    particleBoxName=ebtric;
+  } else if (nameString=="hexa") {
+    particleBoxName=ebhexa;
+  } else if (nameString=="rhom") {
+    particleBoxName=ebrhom;
+  } else if (nameString=="octa") {
+    particleBoxName=ebocta;
+  } else if (nameString=="rhdo") {
+    particleBoxName=ebrhdo;
+  } else {
+    fatal(__FILE__,__LINE__,"Unrecognized box name: %s\n",nameString.c_str());
   }
-  particleOrthBox.x=particleBox[0][0];
-  particleOrthBox.y=particleBox[1][1];
-  particleOrthBox.z=particleBox[2][2];
+  particleBoxABC.x=ANGSTROM*io_nextf(line);
+  particleBoxABC.y=ANGSTROM*io_nextf(line);
+  particleBoxABC.z=ANGSTROM*io_nextf(line);
+  particleBoxAlBeGa.x=io_nextf(line);
+  particleBoxAlBeGa.y=io_nextf(line);
+  particleBoxAlBeGa.z=io_nextf(line);
 }
 
 void Coordinates::parse_velocity(char *line,char *token,System *system)
@@ -338,27 +354,15 @@ void blade_add_coordinates_velocity(System *system,int i,double vx,double vy,dou
   system->coordinates->particleVelocity[i-1][2]=vz;
 }
 
-void blade_add_coordinates_box(System *system,double ax,double ay,double az,double bx,double by,double bz,double cx,double cy,double cz)
+void blade_add_coordinates_box(System *system,int name,double a,double b,double c,double alpha,double beta,double gamma)
 {
   int i,j;
   system+=omp_get_thread_num();
-  system->coordinates->particleBox[0][0]=ax;
-  system->coordinates->particleBox[0][1]=ay;
-  system->coordinates->particleBox[0][2]=az;
-  system->coordinates->particleBox[1][0]=bx;
-  system->coordinates->particleBox[1][1]=by;
-  system->coordinates->particleBox[1][2]=bz;
-  system->coordinates->particleBox[2][0]=cx;
-  system->coordinates->particleBox[2][1]=cy;
-  system->coordinates->particleBox[2][2]=cz;
-  for (i=0; i<3; i++) {
-    for (j=0; j<3; j++) {
-      if (i!=j && system->coordinates->particleBox[i][j]!=0) {
-        fatal(__FILE__,__LINE__,"Non-orthogonal boxes are not yet implemented NYI\n");
-      }
-    }
-  }
-  system->coordinates->particleOrthBox.x=system->coordinates->particleBox[0][0];
-  system->coordinates->particleOrthBox.y=system->coordinates->particleBox[1][1];
-  system->coordinates->particleOrthBox.z=system->coordinates->particleBox[2][2];
+  system->coordinates->particleBoxName=name;
+  system->coordinates->particleBoxABC.x=a;
+  system->coordinates->particleBoxABC.y=b;
+  system->coordinates->particleBoxABC.z=c;
+  system->coordinates->particleBoxAlBeGa.x=alpha;
+  system->coordinates->particleBoxAlBeGa.y=beta;
+  system->coordinates->particleBoxAlBeGa.z=gamma;
 }

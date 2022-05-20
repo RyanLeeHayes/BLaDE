@@ -28,8 +28,9 @@ class Coordinates {
   std::map<struct AtomCoordinates,Real3> fileData;
 
   int atomCount;
-  real_x (*particleBox)[3]; // [3][3]
-  real3_x particleOrthBox;
+  int particleBoxName;
+  real3_x particleBoxABC;
+  real3_x particleBoxAlBeGa;
   real_x (*particlePosition)[3];
   real_v (*particleVelocity)[3];
 
@@ -58,7 +59,7 @@ extern "C" {
   void blade_dest_coordinates(System *system);
   void blade_add_coordinates_position(System *system,int i,double x,double y,double z);
   void blade_add_coordinates_velocity(System *system,int i,double vx,double vy,double vz);
-  void blade_add_coordinates_box(System *system,double ax,double ay,double az,double bx,double by,double bz,double cx,double cy,double cz);
+  void blade_add_coordinates_box(System *system,int name,double a,double b,double c,double alpha,double beta,double gamma);
 }
 
 #endif

@@ -78,7 +78,7 @@ bool check_proximity(DomdecBlockVolume a,real3 b,real c2)
   return buffer2<=c2;
 }
 
-template <bool useSoftCore,bool usevdWSwitch,bool usePME>
+template <bool flagBox,bool useSoftCore,bool usevdWSwitch,bool usePME,typename box_type>
 // __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 __global__ void getforce_nbdirect_kernel(
   int startBlock,
@@ -99,7 +99,7 @@ __global__ void getforce_nbdirect_kernel(
   struct Cutoffs cutoffs,
   const real3* __restrict__ position,
   real3_f* __restrict__ force,
-  real3 box,
+  box_type box,
   const real* __restrict__ lambda,
   real_f* __restrict__ lambdaForce,
   real_e* __restrict__ energy)
@@ -187,9 +187,15 @@ __global__ void getforce_nbdirect_kernel(
         // xj.x+=boxShift.x;
         // xj.y+=boxShift.y;
         // xj.z+=boxShift.z;
-        xj.x+=shift.x*box.x;
-        xj.y+=shift.y*box.y;
-        xj.z+=shift.z*box.z;
+        if (flagBox) {
+          xj.x+=shift.z*boxzx(box)+shift.y*boxyx(box)+shift.x*boxxx(box);
+          xj.y+=shift.z*boxzy(box)+shift.y*boxyy(box);
+          xj.z+=shift.z*boxzz(box);
+        } else {
+          xj.x+=shift.x*boxxx(box);
+          xj.y+=shift.y*boxyy(box);
+          xj.z+=shift.z*boxzz(box);
+        }
         bj=jnp.siteBlock;
         lj=1;
         if (bj) lj=lambda[0xFFFF & bj];
@@ -429,8 +435,8 @@ __global__ void getforce_nbdirect_kernel(
   }
 }
 
-template <bool useSoftCore,bool usevdWSwitch,bool usePME>
-void getforce_nbdirectTTT(System *system,bool calcEnergy)
+template <bool flagBox,bool useSoftCore,bool usevdWSwitch,bool usePME,typename box_type>
+void getforce_nbdirectTTTT(System *system,box_type box,bool calcEnergy)
 {
   system->domdec->pack_positions(system);
   system->domdec->recull_blocks(system);
@@ -453,43 +459,53 @@ void getforce_nbdirectTTT(System *system,bool calcEnergy)
     shMem=0;
     pEnergy=s->energy_d+eenbdirect;
   }
-  getforce_nbdirect_kernel<useSoftCore,usevdWSwitch,usePME><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,
+  getforce_nbdirect_kernel<flagBox,useSoftCore,usevdWSwitch,usePME><<<((32<<WARPSPERBLOCK)*N+(32<<WARPSPERBLOCK)-1)/(32<<WARPSPERBLOCK),(32<<WARPSPERBLOCK),shMem,r->nbdirectStream>>>(startBlock,endBlock,d->maxPartnersPerBlock,d->blockBounds_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,d->localNbonds_d,p->vdwParameterCount,
 #ifdef USE_TEXTURE
     p->vdwParameters_tex,
 #else
     p->vdwParameters_d,
 #endif
-    system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+    system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
 
   system->domdec->unpack_forces(system);
 }
 
-template <bool useSoftCore,bool usevdWSwitch>
-void getforce_nbdirectTT(System *system,bool calcEnergy)
+template <bool flagBox,bool useSoftCore,bool usevdWSwitch,typename box_type>
+void getforce_nbdirectTTT(System *system,box_type box,bool calcEnergy)
 {
   if (system->run->usePME) {
-    getforce_nbdirectTTT<useSoftCore,usevdWSwitch,true>(system,calcEnergy);
+    getforce_nbdirectTTTT<flagBox,useSoftCore,usevdWSwitch,true>(system,box,calcEnergy);
   } else {
-    getforce_nbdirectTTT<useSoftCore,usevdWSwitch,false>(system,calcEnergy);
+    getforce_nbdirectTTTT<flagBox,useSoftCore,usevdWSwitch,false>(system,box,calcEnergy);
   }
 }
 
-template <bool useSoftCore>
-void getforce_nbdirectT(System *system,bool calcEnergy)
+template <bool flagBox,bool useSoftCore,typename box_type>
+void getforce_nbdirectTT(System *system,box_type box,bool calcEnergy)
 {
   if (!system->run->vfSwitch) {
-    getforce_nbdirectTT<useSoftCore,true>(system,calcEnergy);
+    getforce_nbdirectTTT<flagBox,useSoftCore,true>(system,box,calcEnergy);
   } else {
-    getforce_nbdirectTT<useSoftCore,false>(system,calcEnergy);
+    getforce_nbdirectTTT<flagBox,useSoftCore,false>(system,box,calcEnergy);
+  }
+}
+
+template <bool flagBox,typename box_type>
+void getforce_nbdirectT(System *system,box_type box,bool calcEnergy)
+{
+  if (system->msld->useSoftCore) {
+    getforce_nbdirectTT<flagBox,true>(system,box,calcEnergy);
+  } else {
+    getforce_nbdirectTT<flagBox,false>(system,box,calcEnergy);
   }
 }
 
 void getforce_nbdirect(System *system,bool calcEnergy)
 {
-  if (system->msld->useSoftCore) {
-    getforce_nbdirectT<true>(system,calcEnergy);
+  if (system->state->typeBox) {
+    getforce_nbdirectT<true>(system,system->state->tricBox_f,calcEnergy);
   } else {
-    getforce_nbdirectT<false>(system,calcEnergy);
+    getforce_nbdirectT<false>(system,system->state->orthBox_f,calcEnergy);
   }
 }
 

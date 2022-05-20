@@ -84,6 +84,7 @@ typedef double real;
 typedef double4 real4;
 typedef double3 real3;
 typedef double2 real2;
+typedef double1 real1;
 typedef cufftDoubleReal myCufftReal;
 typedef cufftDoubleComplex myCufftComplex;
 #define myCufftExecR2C cufftExecD2Z
@@ -98,6 +99,7 @@ typedef float real;
 typedef float4 real4;
 typedef float3 real3;
 typedef float2 real2;
+typedef float1 real1;
 typedef cufftReal myCufftReal;
 typedef cufftComplex myCufftComplex;
 #define myCufftExecR2C cufftExecR2C
@@ -108,6 +110,9 @@ typedef cufftComplex myCufftComplex;
 #define MYMPI_REAL MPI_FLOAT
 #endif
 #endif
+typedef struct real33 {real3 a; real3 b;} real33;
+typedef struct real321 {real3 a; real2 b; real1 c;} real321;
+typedef struct real123 {real1 a; real2 b; real3 c;} real123;
 
 #ifdef DOUBLE_E
 typedef double real_e;
@@ -132,12 +137,19 @@ typedef real3 real3_f;
 #ifdef DOUBLE_X
 typedef double real_x;
 typedef double3 real3_x;
+typedef double2 real2_x;
+typedef double1 real1_x;
 #define MYMPI_REAL_X MPI_DOUBLE
 #else
 typedef real real_x;
 typedef real3 real3_x;
+typedef real2 real2_x;
+typedef real1 real1_x;
 #define MYMPI_REAL_X MYMPI_REAL
 #endif
+typedef struct real33_x {real3_x a; real3_x b;} real33_x;
+typedef struct real321_x {real3_x a; real2_x b; real1_x c;} real321_x;
+typedef struct real123_x {real1_x a; real2_x b; real3_x c;} real123_x;
 
 #ifdef DOUBLE_V
 typedef double real_v;

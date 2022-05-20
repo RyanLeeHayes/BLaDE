@@ -1046,11 +1046,10 @@ void Potential::initialize(System *system)
 
   // Choose PME grid sizes
   int goodSizes[]={32,27,24,20,18,16};
-  fprintf(stdout,"NYI - need orthogonal box for automatic grid determination\n");
-  real boxtmp[3][3]={{(real)(system->state->orthBox.x),0,0},{0,(real)(system->state->orthBox.y),0},{0,0,(real)(system->state->orthBox.z)}};
+  real boxtmp[3]={(real)(system->state->box.a.x),(real)(system->state->box.a.y),(real)(system->state->box.a.z)};
   for (i=0; i<3; i++) {
     if (system->run->gridSpace>0) {
-      real minDim=boxtmp[i][i]/system->run->gridSpace;
+      real minDim=boxtmp[i]/system->run->gridSpace;
       for (j=1; minDim>=32*j; j*=2) {
         ;
       }

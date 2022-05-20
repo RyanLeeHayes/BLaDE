@@ -793,7 +793,8 @@ void Msld::getforce_variableBias(System *system,bool calcEnergy)
   }
 }
 
-__global__ void getforce_atomRestraints_kernel(real3 *position,real3_f *force,real3 box,real_e *energy,int atomRestraintCount,int *atomRestraintBounds,int *atomRestraintIdx,real kRestraint)
+template <bool flagBox,typename box_type>
+__global__ void getforce_atomRestraints_kernel(real3 *position,real3_f *force,box_type box,real_e *energy,int atomRestraintCount,int *atomRestraintBounds,int *atomRestraintIdx,real kRestraint)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int bounds[2];
@@ -808,14 +809,14 @@ __global__ void getforce_atomRestraints_kernel(real3 *position,real3_f *force,re
     x0=position[atomRestraintIdx[bounds[0]]];
     xCenter=real3_reset<real3>();
     for (j=bounds[0]+1; j<bounds[1]; j++) {
-      real3_inc(&xCenter,real3_subpbc(position[atomRestraintIdx[j]],x0,box));
+      real3_inc(&xCenter,real3_subpbc<flagBox>(position[atomRestraintIdx[j]],x0,box));
     }
     real3_scaleself(&xCenter,((real)1.0)/(bounds[1]-bounds[0]));
     real3_inc(&xCenter,x0);
 
     for (j=bounds[0]; j<bounds[1]; j++) {
       idx=atomRestraintIdx[j];
-      dx=real3_subpbc(position[idx],xCenter,box);
+      dx=real3_subpbc<flagBox>(position[idx],xCenter,box);
       at_real3_scaleinc(&force[idx],kRestraint,dx);
       if (energy) {
         lEnergy+=((real)0.5)*kRestraint*real3_mag2<real>(dx);
@@ -830,12 +831,14 @@ __global__ void getforce_atomRestraints_kernel(real3 *position,real3_f *force,re
   }
 }
 
-void Msld::getforce_atomRestraints(System *system,bool calcEnergy)
+template <bool flagBox,typename box_type>
+void getforce_atomRestraintsT(System *system,box_type box,bool calcEnergy)
 {
   cudaStream_t stream=0;
   Run *r=system->run;
   State *s=system->state;
   real_e *pEnergy=NULL;
+  Msld *m=system->msld;
   int shMem=0;
 
   if (r->calcTermFlag[eebias]==false) return;
@@ -848,8 +851,17 @@ void Msld::getforce_atomRestraints(System *system,bool calcEnergy)
     stream=system->run->biaspotStream;
   }
 
-  if (atomRestraintCount) {
-    getforce_atomRestraints_kernel<<<(atomRestraintCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>((real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,pEnergy,atomRestraintCount,atomRestraintBounds_d,atomRestraintIdx_d,kRestraint);
+  if (m->atomRestraintCount) {
+    getforce_atomRestraints_kernel<flagBox><<<(m->atomRestraintCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>((real3*)s->position_fd,(real3_f*)s->force_d,box,pEnergy,m->atomRestraintCount,m->atomRestraintBounds_d,m->atomRestraintIdx_d,m->kRestraint);
+  }
+}
+
+void Msld::getforce_atomRestraints(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_atomRestraintsT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_atomRestraintsT<false>(system,system->state->orthBox_f,calcEnergy);
   }
 }
 

@@ -79,6 +79,14 @@ State::State(System *system) {
       energy_omp=(real_e*)(system->message[system->id]); // OMP
     } // OMP
 #pragma omp barrier // OMP
+    if (system->id==0) { // OMP
+      system->message[0]=(void*)&tricBox_f; // OMP
+    }
+#pragma omp barrier
+    if (system->id!=0) { // OMP
+      tricBox_omp=(real123*)(system->message[0]); // OMP
+    } // OMP
+#pragma omp barrier // OMP
   } // OMP
 
   // Spatial-Theta buffers
@@ -94,7 +102,11 @@ State::State(System *system) {
   }
 
   // The box
-  orthBox=system->coordinates->particleOrthBox;
+  nameBox=system->coordinates->particleBoxName;
+  box.a=system->coordinates->particleBoxABC;
+  box.b=system->coordinates->particleBoxAlBeGa;
+  typeBox=(nameBox!=ebcubi && nameBox!=ebtetr && nameBox!=eborth);
+  check_box(system);
 
   // Buffer for floating point output
   positionXTC=(float(*)[3])calloc(n,sizeof(float[3])); // intentional float
@@ -106,6 +118,7 @@ State::State(System *system) {
   position=(real_x(*)[3])(positionBuffer+nL);
   position_d=(real_x(*)[3])(positionBuffer_d+nL);
   position_fd=(real(*)[3])(positionBuffer_fd+nL);
+  positionb_d=(real_x(*)[3])(positionBackup_d+nL);
   theta=positionBuffer+nL+3*n;
   theta_d=positionBuffer_d+nL+3*n;
   theta_fd=positionBuffer_fd+nL+3*n;
@@ -211,7 +224,8 @@ void State::save_state(System *system)
        system->coordinates->particleVelocity[i][j]=velocity[i][j];
     }
   }
-  system->coordinates->particleOrthBox=orthBox;
+  system->coordinates->particleBoxABC=box.a;
+  system->coordinates->particleBoxAlBeGa=box.b;
   for (i=0; i<lambdaCount; i++) {
     system->msld->theta[i]=theta[i];
     system->msld->thetaVelocity[i]=thetaVelocity[i];
@@ -318,7 +332,12 @@ void State::backup_position()
   cudaMemcpy(positionBackup_d,positionBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real_x),cudaMemcpyDeviceToDevice);
   cudaMemcpy(forceBackup_d,forceBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real_f),cudaMemcpyDeviceToDevice);
   cudaMemcpy(energyBackup_d,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToDevice);
-  orthBoxBackup=orthBox;
+  boxBackup=box;
+  if (typeBox) {
+    tricBoxBackup=tricBox;
+  } else {
+    orthBoxBackup=orthBox;
+  }
 }
 
 void State::restore_position()
@@ -326,7 +345,12 @@ void State::restore_position()
   cudaMemcpy(positionBuffer_d,positionBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real_x),cudaMemcpyDeviceToDevice);
   cudaMemcpy(forceBuffer_d,forceBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real_f),cudaMemcpyDeviceToDevice);
   cudaMemcpy(energy_d,energyBackup_d,eeend*sizeof(real_e),cudaMemcpyDeviceToDevice);
-  orthBox=orthBoxBackup;
+  box=boxBackup;
+  if (typeBox) {
+    tricBox=tricBoxBackup;
+  } else {
+    orthBox=orthBoxBackup;
+  }
 }
 
 // CUDA AWARE MPI // NOMPI
@@ -371,13 +395,47 @@ void State::broadcast_box(System *system)
   // MPI_Bcast(&orthBox,N,MPI_CREAL,0,MPI_COMM_WORLD); // NOMPI
   // nvtxRangePushA("broadcast_box");
   if (system->id==0) {
-    orthBox_f.x=orthBox.x;
-    orthBox_f.y=orthBox.y;
-    orthBox_f.z=orthBox.z;
+    if (typeBox) {
+      tricBox.a.x=box.a.x;
+      tricBox.b.x=box.a.y*cos(box.b.z*DEGREES);
+      tricBox.b.y=box.a.y*sin(box.b.z*DEGREES);
+      tricBox.c.x=box.a.z*cos(box.b.y*DEGREES);
+      tricBox.c.y=box.a.z*(cos(box.b.x*DEGREES)-cos(box.b.y*DEGREES)*cos(box.b.z*DEGREES))/sin(box.b.z*DEGREES);
+      tricBox.c.z=sqrt(box.a.z*box.a.z-tricBox.c.x*tricBox.c.x-tricBox.c.y*tricBox.c.y);
+
+      tricBox_f.a.x=tricBox.a.x;
+      tricBox_f.b.x=tricBox.b.x;
+      tricBox_f.b.y=tricBox.b.y;
+      tricBox_f.c.x=tricBox.c.x;
+      tricBox_f.c.y=tricBox.c.y;
+      tricBox_f.c.z=tricBox.c.z;
+
+      real Vinv=1/(tricBox_f.a.x*tricBox_f.b.y*tricBox_f.c.z);
+      kTricBox_f.a.x=tricBox_f.b.y*tricBox_f.c.z*Vinv;
+      kTricBox_f.a.y=-tricBox_f.b.x*tricBox_f.c.z*Vinv;
+      kTricBox_f.a.z=(tricBox_f.b.x*tricBox_f.c.y-tricBox_f.b.y*tricBox_f.c.x)*Vinv;
+      kTricBox_f.b.x=tricBox_f.c.z*tricBox_f.a.x*Vinv; // actually b.y
+      kTricBox_f.b.y=-tricBox_f.c.y*tricBox_f.a.x*Vinv; // actually b.z
+      kTricBox_f.c.x=tricBox_f.a.x*tricBox_f.b.y*Vinv; // actually c.z
+    } else {
+      orthBox=box.a;
+
+      orthBox_f.x=orthBox.x;
+      orthBox_f.y=orthBox.y;
+      orthBox_f.z=orthBox.z;
+
+      kOrthBox_f.x=1/orthBox_f.x;
+      kOrthBox_f.y=1/orthBox_f.y;
+      kOrthBox_f.z=1/orthBox_f.z;
+    }
   }
 #pragma omp barrier // OMP
   if (system->id!=0) { // OMP
-    orthBox_f=orthBox_omp[0]; // OMP
+    if (typeBox) {
+      orthBox_f=orthBox_omp[0]; // OMP
+    } else {
+      tricBox_f=tricBox_omp[0]; // OMP
+    }
   } // OMP
   // nvtxRangePop();
 }
@@ -467,10 +525,68 @@ void State::prettify_position(System *system)
         ref=((real3_x*)position)[k];
       }
       pos=((real3_x*)position)[j];
-      pos.x+=orthBox.x*floor((ref.x-pos.x)/orthBox.x+((real_x)0.5));
-      pos.y+=orthBox.y*floor((ref.y-pos.y)/orthBox.y+((real_x)0.5));
-      pos.z+=orthBox.z*floor((ref.z-pos.z)/orthBox.z+((real_x)0.5));
+      if (typeBox) {
+        real_x shift;
+        shift=floor((ref.z-pos.z)/tricBox.c.z+((real_x)0.5));
+        pos.x+=tricBox.c.x*shift;
+        pos.y+=tricBox.c.y*shift;
+        pos.z+=tricBox.c.z*shift;
+        shift=floor((ref.y-pos.y)/tricBox.b.y+((real_x)0.5));
+        pos.x+=tricBox.b.x*shift;
+        pos.y+=tricBox.b.y*shift;
+        shift=floor((ref.x-pos.x)/tricBox.a.x+((real_x)0.5));
+        pos.x+=tricBox.a.x*shift;
+      } else {
+        pos.x+=orthBox.x*floor((ref.x-pos.x)/orthBox.x+((real_x)0.5));
+        pos.y+=orthBox.y*floor((ref.y-pos.y)/orthBox.y+((real_x)0.5));
+        pos.z+=orthBox.z*floor((ref.z-pos.z)/orthBox.z+((real_x)0.5));
+      }
       ((real3_x*)position)[j]=pos;
+    }
+  }
+}
+
+void State::check_box(System *system)
+{
+  // Check angles
+  if (nameBox==ebcubi || nameBox==ebtetr || nameBox==eborth) {
+    if (box.b.x!=90 || box.b.y!=90 || box.b.z!=90) {
+      fatal(__FILE__,__LINE__,"Fatal, cubic, tetragonal, or orthorhombic box does not have all 90 degree angles\n");
+    }
+  } else if (nameBox==ebmono) {
+    if (box.b.x!=90 || box.b.z!=90) {
+      fatal(__FILE__,__LINE__,"Fatal, monoclinic box must have alpha and gamma equal to 90 degrees\n");
+    }
+  } else if (nameBox==ebhexa) {
+    if (box.b.x!=90 || box.b.y!=90 || box.b.z!=120) {
+      fatal(__FILE__,__LINE__,"Fatal, hexagonal box must have 90, 90, 120 degree angles in that order\n");
+    }
+  } else if (nameBox==ebocta) {
+    real_x alpha=acos(-1./3.)/DEGREES;
+    if (abs((box.b.x-alpha)/alpha)>1e-6 || abs((box.b.y-alpha)/alpha)>1e-6 || abs((box.b.z-alpha)/alpha)>1e-6) {
+      fatal(__FILE__,__LINE__,"Fatal, octahedral box must have 109.471220634 degree angles\n");
+    }
+  } else if (nameBox==ebrhdo) {
+    if (box.b.x!=60 || box.b.y!=90 || box.b.z!=60) {
+      fatal(__FILE__,__LINE__,"Fatal, rhombic dodecahedron box must have 60, 90, 60 degree angles in that order\n");
+    }
+  }
+  // Check lengths
+  if (nameBox==ebcubi || nameBox==ebrhom || nameBox==ebocta || nameBox==ebrhdo) {
+    if (box.a.x!=box.a.y || box.a.x!=box.a.z) {
+      fatal(__FILE__,__LINE__,"Fatal, all three box vectors must have the same length for cubic, rhombohedral, trucated octahedron, and rhombic dodecahedron boxes\n");
+    }
+  } else if (nameBox==ebtetr || nameBox==ebhexa) {
+    if (box.a.x!=box.a.y) {
+      fatal(__FILE__,__LINE__,"Fatal, first two box vectors must have the same length for tetragonal and hexagonal boxes\n");
+    }
+  }
+
+  broadcast_box(system);
+
+  if (nameBox!=ebcubi && nameBox!=ebtetr && nameBox!=eborth) {
+    if (abs(tricBox.b.x)>tricBox.a.x*0.5000005 || abs(tricBox.c.x)>tricBox.a.x*0.5000005 || abs(tricBox.c.y)>tricBox.b.y*0.5000005) {
+      fatal(__FILE__,__LINE__,"Fatal, non-orthogonal box must be in a minimal lattice near orthogonal for the PBC assumptions underlying BLaDE to hold.\n");
     }
   }
 }

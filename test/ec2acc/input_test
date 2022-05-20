@@ -67,7 +67,7 @@ structure file psf {dir}/ec2acc_prep/minimized.psf
 ! structure shake hbond
 
 coordinates file {dir}/ec2acc_prep/minimized.pdb
-coordinates box {box} 0 0   0 {box} 0   0 0 {box}
+coordinates box cubi {box} {box} {box} 90 90 90
 coordinates velocity 300
 
 selection limit 200

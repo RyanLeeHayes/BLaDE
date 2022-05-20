@@ -264,9 +264,18 @@ void print_xtc(int step,System *system)
   int i,j,N;
 
   N=system->state->atomCount;
-  box[0][0]=system->state->orthBox.x/(10*ANGSTROM);
-  box[1][1]=system->state->orthBox.y/(10*ANGSTROM);
-  box[2][2]=system->state->orthBox.z/(10*ANGSTROM);
+  if (system->state->typeBox) {
+    box[0][0]=system->state->tricBox.a.x/(10*ANGSTROM);
+    box[1][0]=system->state->tricBox.b.x/(10*ANGSTROM);
+    box[1][1]=system->state->tricBox.b.y/(10*ANGSTROM);
+    box[2][0]=system->state->tricBox.c.x/(10*ANGSTROM);
+    box[2][1]=system->state->tricBox.c.y/(10*ANGSTROM);
+    box[2][2]=system->state->tricBox.c.z/(10*ANGSTROM);
+  } else {
+    box[0][0]=system->state->orthBox.x/(10*ANGSTROM);
+    box[1][1]=system->state->orthBox.y/(10*ANGSTROM);
+    box[2][2]=system->state->orthBox.z/(10*ANGSTROM);
+  }
 
   real_x (*x)[3]=system->state->position;
   float (*xXTC)[3]=system->state->positionXTC;
@@ -376,9 +385,8 @@ void write_checkpoint_file(const char *fnm,System *system)
     }
 
     fprintf(fp,"Box\n");
-    fprintf(fp,"%f 0 0\n",system->state->orthBox.x);
-    fprintf(fp,"0 %f 0\n",system->state->orthBox.y);
-    fprintf(fp,"0 0 %f\n",system->state->orthBox.z);
+    fprintf(fp,"%f %f %f\n",system->state->box.a.x,system->state->box.a.y,system->state->box.a.z);
+    fprintf(fp,"%f %f %f\n",system->state->box.b.x,system->state->box.b.y,system->state->box.b.z);
 
     fclose(fp);
   }
@@ -439,12 +447,18 @@ void read_checkpoint_file(const char *fnm,System *system)
     }
 
     fscanf(fp,"Box\n");
-    fscanf(fp,"%lf 0 0\n",&v);
-    system->state->orthBox.x=v;
-    fscanf(fp,"0 %lf 0\n",&v);
-    system->state->orthBox.y=v;
-    fscanf(fp,"0 0 %lf\n",&v);
-    system->state->orthBox.z=v;
+    fscanf(fp,"%lf\n",&v);
+    system->state->box.a.x=v;
+    fscanf(fp,"%lf\n",&v);
+    system->state->box.a.y=v;
+    fscanf(fp,"%lf\n",&v);
+    system->state->box.a.z=v;
+    fscanf(fp,"%lf\n",&v);
+    system->state->box.b.x=v;
+    fscanf(fp,"%lf\n",&v);
+    system->state->box.b.y=v;
+    fscanf(fp,"%lf\n",&v);
+    system->state->box.b.z=v;
 
     fclose(fp);
 

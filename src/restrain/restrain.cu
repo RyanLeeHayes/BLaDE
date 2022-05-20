@@ -10,7 +10,8 @@
 
 #include "main/real3.h"
 
-__global__ void getforce_noe_kernel(int noeCount,struct NoePotential *noes,real3 *position,real3_f *force,real3 box,real_e *energy)
+template <bool flagBox,typename box_type>
+__global__ void getforce_noe_kernel(int noeCount,struct NoePotential *noes,real3 *position,real3_f *force,box_type box,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   NoePotential noep;
@@ -26,7 +27,7 @@ __global__ void getforce_noe_kernel(int noeCount,struct NoePotential *noes,real3
     noep=noes[i];
     xi=position[noep.i];
     xj=position[noep.j];
-    dr=real3_subpbc(xi,xj,box);
+    dr=real3_subpbc<flagBox>(xi,xj,box);
     r=real3_mag<real>(dr);
     if (r<noep.rmin) {
       r_r0=r-noep.rmin;
@@ -55,7 +56,8 @@ __global__ void getforce_noe_kernel(int noeCount,struct NoePotential *noes,real3
   }
 }
 
-void getforce_noe(System *system,bool calcEnergy)
+template <bool flagBox,typename box_type>
+void getforce_noeT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -72,10 +74,20 @@ void getforce_noe(System *system,bool calcEnergy)
   }
 
   N=p->noeCount;
-  if (N>0) getforce_noe_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->noes_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,pEnergy);
+  if (N>0) getforce_noe_kernel<flagBox><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->noes_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,pEnergy);
 }
 
-__global__ void getforce_harm_kernel(int harmCount,struct HarmonicPotential *harms,real3 *position,real3_f *force,real3 box,real_e *energy)
+void getforce_noe(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_noeT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_noeT<false>(system,system->state->orthBox_f,calcEnergy);
+  }
+}
+
+template <bool flagBox,typename box_type>
+__global__ void getforce_harm_kernel(int harmCount,struct HarmonicPotential *harms,real3 *position,real3_f *force,box_type box,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii;
@@ -94,7 +106,7 @@ __global__ void getforce_harm_kernel(int harmCount,struct HarmonicPotential *har
     xi=position[ii];
     x0=hp.r0;
 // NOTE #warning "Unprotected division"
-    dr=real3_subpbc(xi,x0,box);
+    dr=real3_subpbc<flagBox>(xi,x0,box);
     r2=real3_mag2<real>(dr);
     krnm2=(r2 ? (hp.k*pow(r2,((real)0.5)*hp.n-1)) : 0); // NaN guard it
     
@@ -110,7 +122,8 @@ __global__ void getforce_harm_kernel(int harmCount,struct HarmonicPotential *har
   }
 }
 
-void getforce_harm(System *system,bool calcEnergy)
+template <bool flagBox,typename box_type>
+void getforce_harmT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -127,5 +140,14 @@ void getforce_harm(System *system,bool calcEnergy)
   }
 
   N=p->harmCount;
-  if (N>0) getforce_harm_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->harms_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,pEnergy);
+  if (N>0) getforce_harm_kernel<flagBox><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->harms_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,pEnergy);
+}
+
+void getforce_harm(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_harmT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_harmT<false>(system,system->state->orthBox_f,calcEnergy);
+  }
 }

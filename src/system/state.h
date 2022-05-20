@@ -39,6 +39,18 @@ struct LeapState
   real *random;
 };
 
+typedef enum ebox {
+  ebcubi, // cubic
+  ebtetr, // tetragonal
+  eborth, // orthorhombic
+  ebmono, // monoclinic
+  ebtric, // triclinic
+  ebhexa, // hexagonal
+  ebrhom, // rhombohedral
+  ebocta, // truncated octahedron
+  ebrhdo, // rhombic dodecahedron
+  ebend} EBox;
+
 class State {
   public:
   int atomCount;
@@ -74,10 +86,20 @@ class State {
   real_x *positionCons_d;
 
   // The box
+  int nameBox;
+  bool typeBox; // false is orthographic, true is triclinic
+  real33_x box;
+  real33_x boxBackup;
   real3_x orthBox;
+  real3_x orthBoxBackup;
   real3 orthBox_f; // floating precision version
   real3 *orthBox_omp;
-  real3_x orthBoxBackup;
+  real3 kOrthBox_f;
+  real123_x tricBox;
+  real123_x tricBoxBackup;
+  real123 tricBox_f;
+  real123 *tricBox_omp;
+  real321 kTricBox_f;
 
   // Buffer for floating point output
   float (*positionXTC)[3]; // intentional float
@@ -89,6 +111,7 @@ class State {
   real_x (*position)[3];
   real_x (*position_d)[3];
   real (*position_fd)[3];
+  real_x (*positionb_d)[3];
   real_x *theta;
   real_x *theta_d;
   real *theta_fd;
@@ -140,6 +163,7 @@ class State {
   void gather_force(System *system,bool calcEnergy);
 
   void prettify_position(System *system);
+  void check_box(System *system);
 
   // From update/update.cu
   void set_fd(System *system);

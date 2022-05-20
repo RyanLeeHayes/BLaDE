@@ -7,8 +7,8 @@
 
 
 
-template <bool rectify>
-__global__ void calc_virtualSite2_position_kernel(int N,struct VirtualSite2 *virt2,struct LeapState ls,real3_x box)
+template <bool flagBox,bool rectify,typename box_type>
+__global__ void calc_virtualSite2_position_kernel(int N,struct VirtualSite2 *virt2,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real3_x virtx;
@@ -20,7 +20,7 @@ __global__ void calc_virtualSite2_position_kernel(int N,struct VirtualSite2 *vir
     // virtx=((real3_x*)ls.x)[virt2[i].vidx];
     hostx[0]=((real3_x*)ls.x)[virt2[i].hidx[0]];
     hostx[1]=((real3_x*)ls.x)[virt2[i].hidx[1]];
-    dx=real3_subpbc(hostx[0],hostx[1],box);
+    dx=real3_subpbc<flagBox>(hostx[0],hostx[1],box);
 
     dxinv=1/real3_mag<real>(dx);
     s=virt2[i].dist*dxinv+virt2[i].scale;
@@ -29,15 +29,15 @@ __global__ void calc_virtualSite2_position_kernel(int N,struct VirtualSite2 *vir
 
     if (!rectify) { // put it close to where it was before
       real3_x prevx=((real3_x*)ls.x)[virt2[i].vidx]; // Where it was
-      dx=real3_sub(real3_subpbc(virtx,prevx,box),real3_sub(virtx,prevx));
+      dx=real3_sub(real3_subpbc<flagBox>(virtx,prevx,box),real3_sub(virtx,prevx));
       real3_inc(&virtx,dx);
     }
     ((real3_x*)ls.x)[virt2[i].vidx]=virtx;
   }
 }
 
-template <bool rectify>
-__global__ void calc_virtualSite3_position_kernel(int N,struct VirtualSite3 *virt3,struct LeapState ls,real3_x box)
+template <bool flagBox,bool rectify,typename box_type>
+__global__ void calc_virtualSite3_position_kernel(int N,struct VirtualSite3 *virt3,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real3_x virtx;
@@ -52,12 +52,12 @@ __global__ void calc_virtualSite3_position_kernel(int N,struct VirtualSite3 *vir
     }
 
     // Set up coordinate axes: a is along 0 to 1 bond, b is perpendicular to a and away from 2, c is bxa (why the left handed coordinate system charmm?)
-    b=real3_subpbc(hostx[2],hostx[1],box);
+    b=real3_subpbc<flagBox>(hostx[2],hostx[1],box);
     if (virt3[i].dist<0) { // Negative distance is used as a bisector flag (indicating to use the bisector of 1 and 2 as the 1 position)
       real3_scaleself(&b,(real_x)(0.5));
       real3_inc(&hostx[1],b);
     }
-    a=real3_subpbc(hostx[1],hostx[0],box);
+    a=real3_subpbc<flagBox>(hostx[1],hostx[0],box);
     real3_scaleself(&a,1/real3_mag<real_x>(a));
     c=real3_cross(b,a);
     real3_scaleself(&c,1/real3_mag<real_x>(c));
@@ -72,14 +72,15 @@ __global__ void calc_virtualSite3_position_kernel(int N,struct VirtualSite3 *vir
 
     if (!rectify) { // put it close to where it was before
       real3_x prevx=((real3_x*)ls.x)[virt3[i].vidx]; // Where it was
-      dx=real3_sub(real3_subpbc(virtx,prevx,box),real3_sub(virtx,prevx));
+      dx=real3_sub(real3_subpbc<flagBox>(virtx,prevx,box),real3_sub(virtx,prevx));
       real3_inc(&virtx,dx);
     }
     ((real3_x*)ls.x)[virt3[i].vidx]=virtx;
   }
 }
 
-void calc_virtual_position(System *system,bool rectify)
+template <bool flagBox,typename box_type>
+void calc_virtual_positionT(System *system,box_type box,bool rectify)
 {
   Run *r=system->run;
   State *s=system->state;
@@ -89,22 +90,34 @@ void calc_virtual_position(System *system,bool rectify)
 
   if (p->virtualSite2Count!=0) {
     if (rectify) {
-      calc_virtualSite2_position_kernel<true><<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],s->orthBox);
+      calc_virtualSite2_position_kernel<flagBox,true><<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],box);
     } else {
-      calc_virtualSite2_position_kernel<false><<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],s->orthBox);
+      calc_virtualSite2_position_kernel<flagBox,false><<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],box);
     }
   }
 
   if (p->virtualSite3Count!=0) {
     if (rectify) {
-      calc_virtualSite3_position_kernel<true><<<(p->virtualSite3Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite3Count,p->virtualSite3_d,s->leapState[0],s->orthBox);
+      calc_virtualSite3_position_kernel<flagBox,true><<<(p->virtualSite3Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite3Count,p->virtualSite3_d,s->leapState[0],box);
     } else {
-      calc_virtualSite3_position_kernel<false><<<(p->virtualSite3Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite3Count,p->virtualSite3_d,s->leapState[0],s->orthBox);
+      calc_virtualSite3_position_kernel<flagBox,false><<<(p->virtualSite3Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite3Count,p->virtualSite3_d,s->leapState[0],box);
     }
   }
 }
 
-__global__ void calc_virtualSite2_force_kernel(int N,struct VirtualSite2 *virt2,struct LeapState ls,real3_x box)
+void calc_virtual_position(System *system,bool rectify)
+{
+  if (system->state->typeBox) {
+    calc_virtual_positionT<true>(system,system->state->tricBox,rectify);
+  } else {
+    calc_virtual_positionT<true>(system,system->state->orthBox,rectify);
+  }
+}
+
+
+
+template <bool flagBox,typename box_type>
+__global__ void calc_virtualSite2_force_kernel(int N,struct VirtualSite2 *virt2,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   // real3_x virtx;
@@ -119,7 +132,7 @@ __global__ void calc_virtualSite2_force_kernel(int N,struct VirtualSite2 *virt2,
     // virtx=((real3_x*)ls.x)[virt2[i].vidx];
     hostx[0]=((real3_x*)ls.x)[virt2[i].hidx[0]];
     hostx[1]=((real3_x*)ls.x)[virt2[i].hidx[1]];
-    dx=real3_subpbc(hostx[0],hostx[1],box);
+    dx=real3_subpbc<flagBox>(hostx[0],hostx[1],box);
 
     virtf=((real3_f*)ls.f)[virt2[i].vidx];
     // hostf[0]=((real3_f*)ls.f)[virt2[i].hidx[0]];
@@ -135,7 +148,8 @@ __global__ void calc_virtualSite2_force_kernel(int N,struct VirtualSite2 *virt2,
   }
 }
 
-__global__ void calc_virtualSite3_force_kernel(int N,struct VirtualSite3 *virt3,struct LeapState ls,real3_x box)
+template <bool flagBox,typename box_type>
+__global__ void calc_virtualSite3_force_kernel(int N,struct VirtualSite3 *virt3,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real3_x virtx;
@@ -164,13 +178,13 @@ __global__ void calc_virtualSite3_force_kernel(int N,struct VirtualSite3 *virt3,
       hostf[j]=real3_reset<real3_f>();
     }
 
-    r=real3_subpbc(virtx,hostx[0],box);
-    t=real3_subpbc(hostx[1],hostx[2],box);
+    r=real3_subpbc<flagBox>(virtx,hostx[0],box);
+    t=real3_subpbc<flagBox>(hostx[1],hostx[2],box);
     if (virt3[i].dist<0) { // Negative distance is used as a bisector flag (indicating to use the bisector of 1 and 2 as the 1 position)
       real3_scaleself(&t,(real_x)(0.5));
       real3_dec(&hostx[1],t);
     }
-    s=real3_subpbc(hostx[0],hostx[1],box);
+    s=real3_subpbc<flagBox>(hostx[0],hostx[1],box);
     sinv2=1/real3_mag2<real_x>(s);
 
     real3_inc(&hostf[0],virtf);
@@ -205,7 +219,8 @@ __global__ void calc_virtualSite3_force_kernel(int N,struct VirtualSite3 *virt3,
   }
 }
 
-void calc_virtual_force(System *system)
+template <bool flagBox,typename box_type>
+void calc_virtual_forceT(System *system,box_type box)
 {
   Run *r=system->run;
   State *s=system->state;
@@ -214,10 +229,19 @@ void calc_virtual_force(System *system)
   if (system->id) return; // head process only
 
   if (p->virtualSite2Count!=0) {
-    calc_virtualSite2_force_kernel<<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],s->orthBox);
+    calc_virtualSite2_force_kernel<flagBox><<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],box);
   }
 
   if (p->virtualSite3Count!=0) {
-    calc_virtualSite3_force_kernel<<<(p->virtualSite3Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite3Count,p->virtualSite3_d,s->leapState[0],s->orthBox);
+    calc_virtualSite3_force_kernel<flagBox><<<(p->virtualSite3Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite3Count,p->virtualSite3_d,s->leapState[0],box);
+  }
+}
+
+void calc_virtual_force(System *system)
+{
+  if (system->state->typeBox) {
+    calc_virtual_forceT<true>(system,system->state->tricBox);
+  } else {
+    calc_virtual_forceT<false>(system,system->state->orthBox);
   }
 }

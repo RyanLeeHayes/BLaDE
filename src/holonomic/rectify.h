@@ -9,5 +9,6 @@
 class System;
 
 void holonomic_rectify(System *system);
+void holonomic_rectifyback(System *system);
 
 #endif

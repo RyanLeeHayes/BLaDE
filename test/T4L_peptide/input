@@ -52,7 +52,7 @@ msld bias 1 2 6 0.0 0.0 0
 msld softcore on
 
 coordinates file pdb {dir}/T4L_prep/minimized.pdb
-coordinates box 41.271760 0 0   0 41.271760 0   0 0 41.271760
+coordinates box cubi 41.271760 41.271760 41.271760 90 90 90
 coordinates velocity 300
 
 run setvariable nsteps 1000 ! 50000

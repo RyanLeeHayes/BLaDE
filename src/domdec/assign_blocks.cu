@@ -353,7 +353,14 @@ void Domdec::assign_blocks(System *system)
 
     // Get the tokens for sorting
 
-    real3 box=system->state->orthBox_f;
+    real3 box;
+    if (system->state->typeBox) {
+      box.x=system->state->tricBox_f.a.x;
+      box.y=system->state->tricBox_f.b.y;
+      box.z=system->state->tricBox_f.c.z;
+    } else {
+      box=system->state->orthBox_f;
+    }
     real V=box.x*box.y*box.z;
     real dr=exp(log(32*V/system->state->atomCount)/3); // Target block size
     int2 domainDiv;

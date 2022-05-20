@@ -11,7 +11,7 @@ parameters file prep/toppar/par_water_ions.prm
 structure file psf prep/minimized.psf
 
 coordinates file crd prep/minimized.crd
-coordinates box {box} 0 0   0 {box} 0   0 0 {box}
+coordinates box cubi {box} {box} {box} 90 90 90
 coordinates velocity {temp}
 
 selection limit 200

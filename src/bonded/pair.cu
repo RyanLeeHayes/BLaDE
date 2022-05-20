@@ -156,8 +156,8 @@ __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,rea
 }
 
 
-template <class PairPotential,bool useSoftCore,bool usevdWSwitch,bool usePME>
-__global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs cutoffs,real3 *position,real3_f *force,real3 box,real *lambda,real_f *lambdaForce,real_e *energy)
+template <bool flagBox,class PairPotential,bool useSoftCore,bool usevdWSwitch,bool usePME,typename box_type>
+__global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs cutoffs,real3 *position,real3_f *force,box_type box,real *lambda,real_f *lambdaForce,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj;
@@ -179,7 +179,7 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
     jj=pp.idx[1];
     xi=position[ii];
     xj=position[jj];
-    dr=real3_subpbc(xi,xj,box);
+    dr=real3_subpbc<flagBox>(xi,xj,box);
     r=real3_mag<real>(dr);
 
     // Scaling
@@ -247,8 +247,8 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
   }
 }
 
-template <bool useSoftCore,bool usevdWSwitch,bool usePME>
-void getforce_nb14TTT(System *system,bool calcEnergy)
+template <bool flagBox,bool useSoftCore,bool usevdWSwitch,bool usePME,typename box_type>
+void getforce_nb14TTTT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -266,41 +266,52 @@ void getforce_nb14TTT(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenb14;
   }
 
-  getforce_pair_kernel <Nb14Potential,useSoftCore,usevdWSwitch,usePME> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  getforce_pair_kernel <flagBox,Nb14Potential,useSoftCore,usevdWSwitch,usePME> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
 }
 
-template <bool useSoftCore,bool usevdWSwitch>
-void getforce_nb14TT(System *system,bool calcEnergy)
+template <bool flagBox,bool useSoftCore,bool usevdWSwitch,typename box_type>
+void getforce_nb14TTT(System *system,box_type box,bool calcEnergy)
 {
   if (system->run->usePME) {
-    getforce_nb14TTT<useSoftCore,usevdWSwitch,true>(system,calcEnergy);
+    getforce_nb14TTTT<flagBox,useSoftCore,usevdWSwitch,true>(system,box,calcEnergy);
   } else {
-    getforce_nb14TTT<useSoftCore,usevdWSwitch,false>(system,calcEnergy);
+    getforce_nb14TTTT<flagBox,useSoftCore,usevdWSwitch,false>(system,box,calcEnergy);
   }
 }
 
-template <bool useSoftCore>
-void getforce_nb14T(System *system,bool calcEnergy)
+template <bool flagBox,bool useSoftCore,typename box_type>
+void getforce_nb14TT(System *system,box_type box,bool calcEnergy)
 {
   if (!system->run->vfSwitch) {
-    getforce_nb14TT<useSoftCore,true>(system,calcEnergy);
+    getforce_nb14TTT<flagBox,useSoftCore,true>(system,box,calcEnergy);
   } else {
-    getforce_nb14TT<useSoftCore,false>(system,calcEnergy);
+    getforce_nb14TTT<flagBox,useSoftCore,false>(system,box,calcEnergy);
+  }
+}
+
+template <bool flagBox,typename box_type>
+void getforce_nb14T(System *system,box_type box,bool calcEnergy)
+{
+  if (system->msld->useSoftCore14) {
+    getforce_nb14TT<flagBox,true>(system,box,calcEnergy);
+  } else {
+    getforce_nb14TT<flagBox,false>(system,box,calcEnergy);
   }
 }
 
 void getforce_nb14(System *system,bool calcEnergy)
 {
-  if (system->msld->useSoftCore14) {
-    getforce_nb14T<true>(system,calcEnergy);
+  if (system->state->typeBox) {
+    getforce_nb14T<true>(system,system->state->tricBox_f,calcEnergy);
   } else {
-    getforce_nb14T<false>(system,calcEnergy);
+    getforce_nb14T<false>(system,system->state->orthBox_f,calcEnergy);
   }
 }
 
 
 
-void getforce_nbex(System *system,bool calcEnergy)
+template <bool flagBox,typename box_type>
+void getforce_nbexT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -320,5 +331,14 @@ void getforce_nbex(System *system,bool calcEnergy)
   }
 
   // Never use soft cores for nbex, they're already soft.
-  getforce_pair_kernel <NbExPotential,false,false,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  getforce_pair_kernel <flagBox,NbExPotential,false,false,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+}
+
+void getforce_nbex(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_nbexT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_nbexT<false>(system,system->state->orthBox_f,calcEnergy);
+  }
 }

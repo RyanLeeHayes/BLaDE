@@ -55,8 +55,8 @@ void replica_exchange(System *system)
         s->positionBuffer,n,MYMPI_REAL_X,rankPartner,10,
         MPI_COMM_WORLD,MPI_STATUS_IGNORE);
       // And boxes
-      MPI_Sendrecv((real_x*)&s->orthBoxBackup,3,MYMPI_REAL_X,rankPartner,11,
-        (real_x*)&s->orthBox,3,MYMPI_REAL_X,rankPartner,11,
+      MPI_Sendrecv((real_x*)&s->boxBackup,6,MYMPI_REAL_X,rankPartner,11,
+        (real_x*)&s->box,6,MYMPI_REAL_X,rankPartner,11,
         MPI_COMM_WORLD,MPI_STATUS_IGNORE);
       cudaMemcpy(s->positionBuffer_d,s->positionBuffer,
         n*sizeof(real_x),cudaMemcpyHostToDevice);

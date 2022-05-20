@@ -10,7 +10,8 @@
 
 
 
-__global__ void holonomic_velocity_triangle_kernel(int N,struct TriangleCons *cons,struct LeapState ls,real3_x box)
+template <bool flagBox,typename box_type>
+__global__ void holonomic_velocity_triangle_kernel(int N,struct TriangleCons *cons,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real_x AT[3][3]; // A transpose
@@ -35,7 +36,7 @@ __global__ void holonomic_velocity_triangle_kernel(int N,struct TriangleCons *co
     for (j=0; j<3; j++) {
       for (k=j+1; k<3; k++) {
         l=j+k-1; // difference index 01->0 02->1 12->2
-        dx[l]=real3_subpbc(x[j],x[k],box);
+        dx[l]=real3_subpbc<flagBox>(x[j],x[k],box);
       }
     }
     for (j=0; j<3; j++) {
@@ -78,7 +79,8 @@ __global__ void holonomic_velocity_triangle_kernel(int N,struct TriangleCons *co
   }
 }
 
-__global__ void holonomic_velocity_branch1_kernel(int N,struct Branch1Cons *cons,struct LeapState ls,real3_x box)
+template <bool flagBox,typename box_type>
+__global__ void holonomic_velocity_branch1_kernel(int N,struct Branch1Cons *cons,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real_x AT; // A transpose
@@ -98,7 +100,7 @@ __global__ void holonomic_velocity_branch1_kernel(int N,struct Branch1Cons *cons
       im[j]=ls.ism[3*cons[i].idx[j]];
       im[j]*=im[j];
     }
-    dx=real3_subpbc(x[0],x[1],box);
+    dx=real3_subpbc<flagBox>(x[0],x[1],box);
     b=-real3_dot<real_x>(real3_sub(v[0],v[1]),dx);
     AT=(im[0]+im[1])*real3_dot<real_x>(dx,dx);
     lambda=b/AT;
@@ -110,7 +112,8 @@ __global__ void holonomic_velocity_branch1_kernel(int N,struct Branch1Cons *cons
   }
 }
 
-__global__ void holonomic_velocity_branch2_kernel(int N,struct Branch2Cons *cons,struct LeapState ls,real3_x box)
+template <bool flagBox,typename box_type>
+__global__ void holonomic_velocity_branch2_kernel(int N,struct Branch2Cons *cons,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real_x AT[2][2]; // A transpose
@@ -131,7 +134,7 @@ __global__ void holonomic_velocity_branch2_kernel(int N,struct Branch2Cons *cons
       im[j]*=im[j];
     }
     for (j=0; j<2; j++) {
-      dx[j]=real3_subpbc(x[0],x[j+1],box);
+      dx[j]=real3_subpbc<flagBox>(x[0],x[j+1],box);
     }
     for (j=0; j<2; j++) {
       jp=1-j;
@@ -154,7 +157,8 @@ __global__ void holonomic_velocity_branch2_kernel(int N,struct Branch2Cons *cons
   }
 }
 
-__global__ void holonomic_velocity_branch3_kernel(int N,struct Branch3Cons *cons,struct LeapState ls,real3_x box)
+template <bool flagBox,typename box_type>
+__global__ void holonomic_velocity_branch3_kernel(int N,struct Branch3Cons *cons,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real_x AT[3][3]; // A transpose
@@ -175,7 +179,7 @@ __global__ void holonomic_velocity_branch3_kernel(int N,struct Branch3Cons *cons
       im[j]*=im[j];
     }
     for (j=0; j<3; j++) {
-      dx[j]=real3_subpbc(x[0],x[j+1],box);
+      dx[j]=real3_subpbc<flagBox>(x[0],x[j+1],box);
     }
     for (j=0; j<3; j++) {
       // jp=(j+1)%3;
@@ -205,7 +209,8 @@ __global__ void holonomic_velocity_branch3_kernel(int N,struct Branch3Cons *cons
   }
 }
 
-void holonomic_velocity(System *system)
+template <bool flagBox,typename box_type>
+void holonomic_velocityT(System *system,box_type box)
 {
   Run *r=system->run;
   State *s=system->state;
@@ -213,16 +218,25 @@ void holonomic_velocity(System *system)
   int N;
 
   N=p->triangleConsCount;
-  if (N) holonomic_velocity_triangle_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->triangleCons_d,s->leapState[0],s->orthBox);
+  if (N) holonomic_velocity_triangle_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->triangleCons_d,s->leapState[0],box);
 
   N=p->branch1ConsCount;
-  if (N) holonomic_velocity_branch1_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch1Cons_d,s->leapState[0],s->orthBox);
+  if (N) holonomic_velocity_branch1_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch1Cons_d,s->leapState[0],box);
 
   N=p->branch2ConsCount;
-  if (N) holonomic_velocity_branch2_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch2Cons_d,s->leapState[0],s->orthBox);
+  if (N) holonomic_velocity_branch2_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch2Cons_d,s->leapState[0],box);
 
   N=p->branch3ConsCount;
-  if (N) holonomic_velocity_branch3_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch3Cons_d,s->leapState[0],s->orthBox);
+  if (N) holonomic_velocity_branch3_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch3Cons_d,s->leapState[0],box);
+}
+
+void holonomic_velocity(System *system)
+{
+  if (system->state->typeBox) {
+    holonomic_velocityT<true>(system,system->state->tricBox);
+  } else {
+    holonomic_velocityT<false>(system,system->state->orthBox);
+  }
 }
 
 
@@ -230,7 +244,8 @@ void holonomic_velocity(System *system)
 // __global__ void holonomic_position_triangle_kernel(int N,struct TriangleCons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box)
 // {}
 //   int i=blockIdx.x*blockDim.x+threadIdx.x;
-__device__ inline void holonomic_position_triangle_kernel(int N,int B0,struct TriangleCons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
+template <bool flagBox,typename box_type>
+__device__ inline void holonomic_position_triangle_kernel(int N,int B0,struct TriangleCons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,box_type box,real tolerance)
 {
   int i=(blockIdx.x-B0)*blockDim.x+threadIdx.x;
   real_x invMass[3];
@@ -252,7 +267,7 @@ __device__ inline void holonomic_position_triangle_kernel(int N,int B0,struct Tr
     for (j=0; j<3; j++) {
       xPrev[j]=((real3_x*)xPrevious)[cons[i].idx[j]];
       if (j>0) {
-        xShift[j]=real3_sub(real3_subpbc(xPrev[j],xPrev[0],box),real3_sub(xPrev[j],xPrev[0]));
+        xShift[j]=real3_sub(real3_subpbc<flagBox>(xPrev[j],xPrev[0],box),real3_sub(xPrev[j],xPrev[0]));
       } else {
         xShift[0]=real3_reset<real3_x>();
       }
@@ -359,7 +374,8 @@ __device__ inline void holonomic_position_triangle_kernel(int N,int B0,struct Tr
 // __global__ void holonomic_position_branch1_kernel(int N,struct Branch1Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box)
 // {}
 //   int i=blockIdx.x*blockDim.x+threadIdx.x;
-__device__ inline void holonomic_position_branch1_kernel(int N,int B0,struct Branch1Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
+template <bool flagBox,typename box_type>
+__device__ inline void holonomic_position_branch1_kernel(int N,int B0,struct Branch1Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,box_type box,real tolerance)
 {
   int i=(blockIdx.x-B0)*blockDim.x+threadIdx.x;
   real_x invMass[2];
@@ -376,7 +392,7 @@ __device__ inline void holonomic_position_branch1_kernel(int N,int B0,struct Bra
     for (j=0; j<2; j++) {
       xPrev[j]=((real3_x*)xPrevious)[cons[i].idx[j]];
       if (j>0) {
-        xShift[j]=real3_sub(real3_subpbc(xPrev[j],xPrev[0],box),real3_sub(xPrev[j],xPrev[0]));
+        xShift[j]=real3_sub(real3_subpbc<flagBox>(xPrev[j],xPrev[0],box),real3_sub(xPrev[j],xPrev[0]));
       } else {
         xShift[0]=real3_reset<real3_x>();
       }
@@ -405,7 +421,8 @@ __device__ inline void holonomic_position_branch1_kernel(int N,int B0,struct Bra
 // __global__ void holonomic_position_branch2_kernel(int N,struct Branch2Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
 // {}
 //   int i=blockIdx.x*blockDim.x+threadIdx.x;
-__device__ inline void holonomic_position_branch2_kernel(int N,int B0,struct Branch2Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
+template <bool flagBox,typename box_type>
+__device__ inline void holonomic_position_branch2_kernel(int N,int B0,struct Branch2Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,box_type box,real tolerance)
 {
   int i=(blockIdx.x-B0)*blockDim.x+threadIdx.x;
   real_x invMass[3];
@@ -426,7 +443,7 @@ __device__ inline void holonomic_position_branch2_kernel(int N,int B0,struct Bra
     for (j=0; j<3; j++) {
       xPrev[j]=((real3_x*)xPrevious)[cons[i].idx[j]];
       if (j>0) {
-        xShift[j]=real3_sub(real3_subpbc(xPrev[j],xPrev[0],box),real3_sub(xPrev[j],xPrev[0]));
+        xShift[j]=real3_sub(real3_subpbc<flagBox>(xPrev[j],xPrev[0],box),real3_sub(xPrev[j],xPrev[0]));
       } else {
         xShift[0]=real3_reset<real3_x>();
       }
@@ -490,7 +507,8 @@ __device__ inline void holonomic_position_branch2_kernel(int N,int B0,struct Bra
 // __global__ void holonomic_position_branch3_kernel(int N,struct Branch3Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
 // {}
 //   int i=blockIdx.x*blockDim.x+threadIdx.x;
-__device__ inline void holonomic_position_branch3_kernel(int N,int B0,struct Branch3Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
+template <bool flagBox,typename box_type>
+__device__ inline void holonomic_position_branch3_kernel(int N,int B0,struct Branch3Cons *cons,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,box_type box,real tolerance)
 {
   int i=(blockIdx.x-B0)*blockDim.x+threadIdx.x;
   real_x invMass[4];
@@ -511,7 +529,7 @@ __device__ inline void holonomic_position_branch3_kernel(int N,int B0,struct Bra
     for (j=0; j<4; j++) {
       xPrev[j]=((real3_x*)xPrevious)[cons[i].idx[j]];
       if (j>0) {
-        xShift[j]=real3_sub(real3_subpbc(xPrev[j],xPrev[0],box),real3_sub(xPrev[j],xPrev[0]));
+        xShift[j]=real3_sub(real3_subpbc<flagBox>(xPrev[j],xPrev[0],box),real3_sub(xPrev[j],xPrev[0]));
       } else {
         xShift[0]=real3_reset<real3_x>();
       }
@@ -676,20 +694,22 @@ __global__ void holonomic_position_alttriangle_kernel(int N,struct TriangleCons 
 }
 */
 
-__global__ void holonomic_position_kernel(int N0,int N1,int N2,int N3,int B0,int B1,int B2,int B3,struct TriangleCons *cons0,struct Branch1Cons *cons1,struct Branch2Cons *cons2,struct Branch3Cons *cons3,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,real3_x box,real tolerance)
+template <bool flagBox,typename box_type>
+__global__ void holonomic_position_kernel(int N0,int N1,int N2,int N3,int B0,int B1,int B2,int B3,struct TriangleCons *cons0,struct Branch1Cons *cons1,struct Branch2Cons *cons2,struct Branch3Cons *cons3,struct LeapState ls,struct LeapParms2 lp,real_x *xPrevious,box_type box,real tolerance)
 {
   if (blockIdx.x<B0) {
-    holonomic_position_triangle_kernel(N0,0,cons0,ls,lp,xPrevious,box,tolerance);
+    holonomic_position_triangle_kernel<flagBox>(N0,0,cons0,ls,lp,xPrevious,box,tolerance);
   } else if (blockIdx.x<B1) {
-    holonomic_position_branch1_kernel(N1,B0,cons1,ls,lp,xPrevious,box,tolerance);
+    holonomic_position_branch1_kernel<flagBox>(N1,B0,cons1,ls,lp,xPrevious,box,tolerance);
   } else if (blockIdx.x<B2) {
-    holonomic_position_branch2_kernel(N2,B1,cons2,ls,lp,xPrevious,box,tolerance);
+    holonomic_position_branch2_kernel<flagBox>(N2,B1,cons2,ls,lp,xPrevious,box,tolerance);
   } else if (blockIdx.x<B3) {
-    holonomic_position_branch3_kernel(N3,B2,cons3,ls,lp,xPrevious,box,tolerance);
+    holonomic_position_branch3_kernel<flagBox>(N3,B2,cons3,ls,lp,xPrevious,box,tolerance);
   }
 }
 
-void holonomic_position(System *system)
+template <bool flagBox,typename box_type>
+void holonomic_positionT(System *system,box_type box)
 {
   Run *r=system->run;
   State *s=system->state;
@@ -719,7 +739,16 @@ void holonomic_position(System *system)
   B2=B1+(N2+BLUP-1)/BLUP;
   B3=B2+(N3+BLUP-1)/BLUP;
 
-  if (N0+N1+N2+N3) holonomic_position_kernel<<<B3,BLUP,0,r->updateStream>>>(N0,N1,N2,N3,B0,B1,B2,B3,p->triangleCons_d,p->branch1Cons_d,p->branch2Cons_d,p->branch3Cons_d,s->leapState[0],s->leapParms2[0],s->positionCons_d,s->orthBox,r->shakeTolerance);
+  if (N0+N1+N2+N3) holonomic_position_kernel<flagBox><<<B3,BLUP,0,r->updateStream>>>(N0,N1,N2,N3,B0,B1,B2,B3,p->triangleCons_d,p->branch1Cons_d,p->branch2Cons_d,p->branch3Cons_d,s->leapState[0],s->leapParms2[0],s->positionCons_d,box,r->shakeTolerance);
+}
+
+void holonomic_position(System *system)
+{
+  if (system->state->typeBox) {
+    holonomic_positionT<true>(system,system->state->tricBox);
+  } else {
+    holonomic_positionT<false>(system,system->state->orthBox);
+  }
 }
 
 void holonomic_backup_position(LeapState *leapState,real_x *positionCons,cudaStream_t stream)

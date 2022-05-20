@@ -6,6 +6,7 @@
 #include "run/run.h"
 #include "system/potential.h"
 #include "holonomic/virtual.h"
+#include "main/real3.h"
 
 #ifdef USE_TEXTURE
 #include <string.h> // for memset
@@ -85,6 +86,7 @@ void Domdec::initialize(System *system)
   }
 // #warning "No 2d or 3d decomposition implemented"
   gridDomdec=make_int3(1,1,idCount);
+// #warning "If decomposition is performed along any axis other than z, culling will break for non-orthogonal boxes"
   idDomdec=make_int3(0,0,id);
 
   globalCount=system->state->atomCount;
@@ -92,7 +94,12 @@ void Domdec::initialize(System *system)
   // Assume blocks are on average at least 1/3 full, and add some extra blocks for small systems.
   maxBlocks=3*globalCount/32+32;
   // Note: orthBox_f not set yet - now it is, it's set by broadcast_box
-  real invDensity=(system->state->orthBox_f.x*system->state->orthBox_f.y*system->state->orthBox_f.z)/system->state->atomCount;
+  real invDensity;
+  if (system->state->typeBox) {
+    invDensity=(boxxx(system->state->tricBox_f)*boxyy(system->state->tricBox_f)*boxzz(system->state->tricBox_f))/system->state->atomCount;
+  } else {
+    invDensity=(boxxx(system->state->orthBox_f)*boxyy(system->state->orthBox_f)*boxzz(system->state->orthBox_f))/system->state->atomCount;
+  }
   real approxBlockBox=exp(log(32*invDensity)/3);
   real edge=3*approxBlockBox+2*system->run->cutoffs.rCut;
   // edge*edge*edge is the largest volume that can interact with a typically sized box in the worst case. Typically, half these interactions will be taken care of by partner blocks rather than this block, multiplying this expression by 2 means we should have roughly 4 times as many partner spaces as necessary.
@@ -120,7 +127,7 @@ void Domdec::initialize(System *system)
   // cudaMalloc(&localForce_d,2*globalCount*sizeof(real3_f));
   // cudaMalloc(&localNbonds_d,2*globalCount*sizeof(struct NbondPotential));
   // Yup, eventually came back to bite me. Doing it right:
-  // See als localForce_d size in src/system/potential.cxx
+  // See also localForce_d size in src/system/potential.cxx
   cudaMalloc(&localPosition_d,32*maxBlocks*sizeof(real3));
   cudaMalloc(&localForce_d,32*maxBlocks*sizeof(real3_f));
   cudaMalloc(&localNbonds_d,32*maxBlocks*sizeof(struct NbondPotential));

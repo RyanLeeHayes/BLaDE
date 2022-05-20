@@ -11,7 +11,7 @@ structure file psf 5dfr.psf
 structure shake hbond
 
 coordinates file crd 5dfr.crd
-coordinates box 62.23 0 0  0 62.23 0  0 0 62.23
+coordinates box cubi 62.23 62.23 62.23 90 90 90
 coordinates velocity 298
 
 msld nblocks 0

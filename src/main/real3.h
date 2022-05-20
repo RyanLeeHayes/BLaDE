@@ -63,6 +63,82 @@ int over_modulus(int a,int b)
 
 
 
+__host__ __device__ inline
+real_x boxxx(real3_x b) {return b.x;}
+__host__ __device__ inline
+real_x boxxx(real123_x b) {return b.a.x;}
+__host__ __device__ inline
+real boxxx(real3 b) {return b.x;}
+__host__ __device__ inline
+real boxxx(real123 b) {return b.a.x;}
+
+__host__ __device__ inline
+real_x boxyy(real3_x b) {return b.y;}
+__host__ __device__ inline
+real_x boxyy(real123_x b) {return b.b.y;}
+__host__ __device__ inline
+real boxyy(real3 b) {return b.y;}
+__host__ __device__ inline
+real boxyy(real123 b) {return b.b.y;}
+
+__host__ __device__ inline
+real_x boxzz(real3_x b) {return b.z;}
+__host__ __device__ inline
+real_x boxzz(real123_x b) {return b.c.z;}
+__host__ __device__ inline
+real boxzz(real3 b) {return b.z;}
+__host__ __device__ inline
+real boxzz(real123 b) {return b.c.z;}
+
+__host__ __device__ inline
+real_x boxyx(real3_x b) {return 0;}
+__host__ __device__ inline
+real_x boxyx(real123_x b) {return b.b.x;}
+__host__ __device__ inline
+real boxyx(real3 b) {return 0;}
+__host__ __device__ inline
+real boxyx(real123 b) {return b.b.x;}
+
+__host__ __device__ inline
+real_x boxzx(real3_x b) {return 0;}
+__host__ __device__ inline
+real_x boxzx(real123_x b) {return b.c.x;}
+__host__ __device__ inline
+real boxzx(real3 b) {return 0;}
+__host__ __device__ inline
+real boxzx(real123 b) {return b.c.x;}
+
+__host__ __device__ inline
+real_x boxzy(real3_x b) {return 0;}
+__host__ __device__ inline
+real_x boxzy(real123_x b) {return b.c.y;}
+__host__ __device__ inline
+real boxzy(real3 b) {return 0;}
+__host__ __device__ inline
+real boxzy(real123 b) {return b.c.y;}
+
+__host__ __device__ inline
+real boxxx(real321 b) {return b.a.x;}
+__host__ __device__ inline
+real boxyy(real321 b) {return b.b.x;}
+__host__ __device__ inline
+real boxzz(real321 b) {return b.c.x;}
+__host__ __device__ inline
+real boxxy(real321 b) {return b.a.y;}
+__host__ __device__ inline
+real boxxz(real321 b) {return b.a.z;}
+__host__ __device__ inline
+real boxyz(real321 b) {return b.b.y;}
+
+__host__ __device__ inline
+real boxxy(real3 b) {return 0;}
+__host__ __device__ inline
+real boxxz(real3 b) {return 0;}
+__host__ __device__ inline
+real boxyz(real3 b) {return 0;}
+
+
+
 template<typename real3_out,typename real_in,typename real3_in>
 __device__ static inline
 void at_real3_scaleinc(real3_out *a,real_in f,real3_in x)
@@ -104,17 +180,29 @@ real_out real3_mag2(real3_in a)
   return a.x*a.x+a.y*a.y+a.z*a.z;
 }
 
-template<typename real3_type>
+template<bool flagBox,typename real3_type,typename box_type>
 __host__ __device__ static inline
-real3_type real3_subpbc(real3_type a,real3_type b,real3_type box)
+real3_type real3_subpbc(real3_type a,real3_type b,box_type box)
 {
   real3_type c;
   c.x=a.x-b.x;
   c.y=a.y-b.y;
   c.z=a.z-b.z;
-  c.x-=box.x*floor(c.x/box.x+0.5f); // Getting type of real3_type is hard on intel, 0.5f will cast up if necessary
-  c.y-=box.y*floor(c.y/box.y+0.5f);
-  c.z-=box.z*floor(c.z/box.z+0.5f);
+  if (flagBox) {
+    int i=floor(c.z/boxzz(box)+0.5f);
+    c.x-=boxzx(box)*i; // box.c.x*i;
+    c.y-=boxzy(box)*i; // box.c.y*i;
+    c.z-=boxzz(box)*i; // box.c.z*i;
+    i=floor(c.y/boxyy(box)+0.5f);
+    c.x-=boxyx(box)*i; // box.b.x*i;
+    c.y-=boxyy(box)*i; // box.b.y*i;
+    i=floor(c.x/boxxx(box)+0.5f);
+    c.x-=boxxx(box)*i; // box.a.x*i;
+  } else {
+    c.x-=boxxx(box)*floor(c.x/boxxx(box)+0.5f); // Getting type of real3_type is hard on intel, 0.5f will cast up if necessary
+    c.y-=boxyy(box)*floor(c.y/boxyy(box)+0.5f);
+    c.z-=boxzz(box)*floor(c.z/boxzz(box)+0.5f);
+  }
   return c;
 }
 
@@ -216,17 +304,31 @@ void real3_dec(real3_type *a,real3_type x)
   a[0].z-=x.z;
 }
 
-template<typename real3_type>
+#warning "Try remainder instead of fmod"
+template<bool flagBox,typename real3_type,typename box_type>
 __host__ __device__ static inline
-real3_type real3_modulus(real3_type a,real3_type b)
+real3_type real3_modulus(real3_type a,box_type b)
 {
   real3_type c;
-  c.x=fmod(a.x,b.x);
-  c.y=fmod(a.y,b.y);
-  c.z=fmod(a.z,b.z);
-  c.x+=(c.x<0?b.x:0);
-  c.y+=(c.y<0?b.y:0);
-  c.z+=(c.z<0?b.z:0);
+  if (flagBox) {
+    c=a;
+    int i=floor(c.z/boxzz(b));
+    c.x-=boxzx(b)*i;
+    c.y-=boxzy(b)*i;
+    c.z-=boxzz(b)*i;
+    i=floor(c.y/boxyy(b));
+    c.x-=boxyx(b)*i;
+    c.y-=boxyy(b)*i;
+    i=floor(c.x/boxxx(b));
+    c.x-=boxxx(b)*i;
+  } else {
+    c.x=fmod(a.x,boxxx(b));
+    c.y=fmod(a.y,boxyy(b));
+    c.z=fmod(a.z,boxzz(b));
+    c.x+=(c.x<0?boxxx(b):0);
+    c.y+=(c.y<0?boxyy(b):0);
+    c.z+=(c.z<0?boxzz(b):0);
+  }
   return c;
 }
 

@@ -38,7 +38,8 @@ bool check_proximity(DomdecBlockVolume a,DomdecBlockVolume b,real c2)
   return buffer2<=c2;
 }
 
-__global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount,int maxPartnersPerBlock,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,real3 box,real rc2)
+template <bool flagBox,typename box_type>
+__global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount,int maxPartnersPerBlock,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,box_type box,real rc2)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int domainIdx=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
@@ -121,50 +122,92 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
   // Loop over all eligible neighboring domains to find interacting parner blocks
   for (idShift.x=0; idShift.x<2; idShift.x++) {
     idPartnerDomain.x=idDomdec.x+idShift.x;
-    // Check minimum distance to this domain
-    dist2.x=0;
-    if (idShift.x==1) {
-      dist2.x=idPartnerDomain.x*box.x/gridDomdec.x-totalVolume.max.x;
+    if (!flagBox) { // Do later for non-orthogonal boxes
+      // Check minimum distance to this domain
+      dist2.x=0;
+      if (idShift.x==1) {
+        dist2.x=idPartnerDomain.x*boxxx(box)/gridDomdec.x-totalVolume.max.x;
+      }
+      dist2.x*=dist2.x;
     }
-    dist2.x*=dist2.x;
     // Get periodic shift vector if relevant
     s=(idPartnerDomain.x==gridDomdec.x?1:0);
     s=(idPartnerDomain.x==-1?-1:s);
     idPartnerDomain.x-=s*gridDomdec.x;
     shift.x=s;
-    boxShift.x=s*box.x;
+    if (!flagBox) { // Do later for non-orthogonal boxes
+      boxShift.x=s*boxxx(box);
+    }
     for (idShift.y=-idShift.x; idShift.y<2; idShift.y++) {
       idPartnerDomain.y=idDomdec.y+idShift.y;
-      // Check minimum distance to this domain
-      dist2.y=0;
-      if (idShift.y==1) {
-        dist2.y=idPartnerDomain.y*box.y/gridDomdec.y-totalVolume.max.y;
-      } else if (idShift.y==-1) {
-        dist2.y=totalVolume.min.y-(idPartnerDomain.y+1)*box.y/gridDomdec.y;
+      if (!flagBox) { // Do later for non-orthogonal boxes
+        // Check minimum distance to this domain
+        dist2.y=0;
+        if (idShift.y==1) {
+          dist2.y=idPartnerDomain.y*boxyy(box)/gridDomdec.y-totalVolume.max.y;
+        } else if (idShift.y==-1) {
+          dist2.y=totalVolume.min.y-(idPartnerDomain.y+1)*boxyy(box)/gridDomdec.y;
+        }
+        dist2.y=dist2.x+dist2.y*dist2.y;
       }
-      dist2.y=dist2.x+dist2.y*dist2.y;
       // Get periodic shift vector if relevant
       s=(idPartnerDomain.y==gridDomdec.y?1:0);
       s=(idPartnerDomain.y==-1?-1:s);
       idPartnerDomain.y-=s*gridDomdec.y;
       shift.y=s;
-      boxShift.y=s*box.y;
+      if (!flagBox) { // Do later for non-orthogonal boxes
+        boxShift.y=s*boxyy(box);
+      }
       for (idShift.z=-((idShift.x!=0)|(idShift.y!=0)); idShift.z<2; idShift.z++) {
         idPartnerDomain.z=idDomdec.z+idShift.z;
-        // Check minimum distance to this domain
-        dist2.z=0;
-        if (idShift.z==1) {
-          dist2.z=idPartnerDomain.z*box.z/gridDomdec.z-totalVolume.max.z;
-        } else if (idShift.z==-1) {
-          dist2.z=totalVolume.min.z-(idPartnerDomain.z+1)*box.z/gridDomdec.z;
+        if (!flagBox) { // Do later for non-orthogonal boxes
+          // Check minimum distance to this domain
+          dist2.z=0;
+          if (idShift.z==1) {
+            dist2.z=idPartnerDomain.z*boxzz(box)/gridDomdec.z-totalVolume.max.z;
+          } else if (idShift.z==-1) {
+            dist2.z=totalVolume.min.z-(idPartnerDomain.z+1)*boxzz(box)/gridDomdec.z;
+          }
+          dist2.z=dist2.y+dist2.z*dist2.z;
         }
-        dist2.z=dist2.y+dist2.z*dist2.z;
         // Get periodic shift vector if relevant
         s=(idPartnerDomain.z==gridDomdec.z?1:0);
         s=(idPartnerDomain.z==-1?-1:s);
         idPartnerDomain.z-=s*gridDomdec.z;
         shift.z=s;
-        boxShift.z=s*box.z;
+        if (!flagBox) { // Do later for non-orthogonal boxes
+          boxShift.z=s*boxzz(box);
+        }
+        if (flagBox) { // Do now for non-orthogonal boxes
+          boxShift.z=shift.z*boxzz(box);
+          real dimmin,dimmax;
+          dimmax=boxzz(box)/gridDomdec.z;
+          dimmin=dimmax*idPartnerDomain.z+boxShift.z;
+          dimmax+=dimmin;
+          dist2.z=((dimmin>totalVolume.max.z)?(dimmin-totalVolume.max.z):0);
+          dist2.z+=((totalVolume.min.z>dimmax)?(totalVolume.min.z-dimmax):0);
+          dist2.z*=dist2.z;
+          if (dist2.z<=rc2) { // Only bother if it might be close enough
+            boxShift.y=shift.z*boxzy(box)+shift.y*boxyy(box);
+            dimmax=boxyy(box)/gridDomdec.y;
+            dimmin=dimmax*idPartnerDomain.y+boxShift.y;
+            dimmax+=dimmin;
+            dist2.y=((dimmin>totalVolume.max.y)?(dimmin-totalVolume.max.y):0);
+            dist2.y+=((totalVolume.min.y>dimmax)?(totalVolume.min.y-dimmax):0);
+            dist2.y*=dist2.y;
+            dist2.z+=dist2.y;
+          }
+          if (dist2.z<=rc2) { // Only bother if it might be close enough
+            boxShift.x=shift.z*boxzx(box)+shift.y*boxyx(box)+shift.x*boxxx(box);
+            dimmax=boxxx(box)/gridDomdec.x;
+            dimmin=dimmax*idPartnerDomain.x+boxShift.x;
+            dimmax+=dimmin;
+            dist2.x=((dimmin>totalVolume.max.x)?(dimmin-totalVolume.max.x):0);
+            dist2.x+=((totalVolume.min.x>dimmax)?(totalVolume.min.x-dimmax):0);
+            dist2.x*=dist2.x;
+            dist2.z+=dist2.x;
+          }
+        }
 
         // Only bother with this domain if it's in range (saves a factor of 3 in one test)
         if (dist2.z<=rc2) {
@@ -263,14 +306,25 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
   }
 }
 
-void Domdec::cull_blocks(System *system)
+template <bool flagBox,typename box_type>
+void cull_blocksT(System *system,box_type box)
 {
   Run *r=system->run;
-  if (id>=0) {
-    int localBlockCount=blockCount[id+1]-blockCount[id];
-    real rc2=system->run->cutoffs.rCut+cullPad;
+  Domdec *d=system->domdec;
+  if (d->id>=0) {
+    int localBlockCount=d->blockCount[d->id+1]-d->blockCount[d->id];
+    real rc2=system->run->cutoffs.rCut+d->cullPad;
     rc2*=rc2;
 
-    cull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(idDomdec,gridDomdec,blockCount_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,blockVolume_d,system->state->orthBox_f,rc2);
+    cull_blocks_kernel<flagBox><<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(d->idDomdec,d->gridDomdec,d->blockCount_d,d->maxPartnersPerBlock,d->blockCandidateCount_d,d->blockCandidates_d,d->blockVolume_d,box,rc2);
+  }
+}
+
+void Domdec::cull_blocks(System *system)
+{
+  if (system->state->typeBox) {
+    cull_blocksT<true>(system,system->state->tricBox_f);
+  } else {
+    cull_blocksT<false>(system,system->state->orthBox_f);
   }
 }

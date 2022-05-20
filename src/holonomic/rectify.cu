@@ -8,7 +8,8 @@
 
 
 
-__global__ void holonomic_rectify_triangle_kernel(int N,struct TriangleCons *cons,struct LeapState ls,real3_x box)
+template <bool flagBox,typename box_type>
+__global__ void holonomic_rectify_triangle_kernel(int N,struct TriangleCons *cons,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real3_x x[3];
@@ -22,7 +23,7 @@ __global__ void holonomic_rectify_triangle_kernel(int N,struct TriangleCons *con
     for (j=0; j<3; j++) {
       x[j]=((real3_x*)ls.x)[cons[i].idx[j]];
       if (j>0) {
-        dx[j-1]=real3_subpbc(x[j],x[0],box);
+        dx[j-1]=real3_subpbc<flagBox>(x[j],x[0],box);
         xShift[j]=real3_sub(dx[j-1],real3_sub(x[j],x[0]));
       } else {
         xShift[0]=real3_reset<real3_x>();
@@ -54,7 +55,8 @@ __global__ void holonomic_rectify_triangle_kernel(int N,struct TriangleCons *con
   }
 }
 
-__global__ void holonomic_rectify_branch1_kernel(int N,struct Branch1Cons *cons,struct LeapState ls,real3_x box)
+template <bool flagBox,typename box_type>
+__global__ void holonomic_rectify_branch1_kernel(int N,struct Branch1Cons *cons,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real3_x x[2];
@@ -67,7 +69,7 @@ __global__ void holonomic_rectify_branch1_kernel(int N,struct Branch1Cons *cons,
     for (j=0; j<2; j++) {
       x[j]=((real3_x*)ls.x)[cons[i].idx[j]];
       if (j>0) {
-        dx=real3_subpbc(x[j],x[0],box);
+        dx=real3_subpbc<flagBox>(x[j],x[0],box);
         xShift[j]=real3_sub(dx,real3_sub(x[j],x[0]));
       } else {
         xShift[0]=real3_reset<real3_x>();
@@ -87,7 +89,8 @@ __global__ void holonomic_rectify_branch1_kernel(int N,struct Branch1Cons *cons,
   }
 }
 
-__global__ void holonomic_rectify_branch2_kernel(int N,struct Branch2Cons *cons,struct LeapState ls,real3_x box)
+template <bool flagBox,typename box_type>
+__global__ void holonomic_rectify_branch2_kernel(int N,struct Branch2Cons *cons,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real3_x x[3];
@@ -100,7 +103,7 @@ __global__ void holonomic_rectify_branch2_kernel(int N,struct Branch2Cons *cons,
     for (j=0; j<3; j++) {
       x[j]=((real3_x*)ls.x)[cons[i].idx[j]];
       if (j>0) {
-        dx[j-1]=real3_subpbc(x[j],x[0],box);
+        dx[j-1]=real3_subpbc<flagBox>(x[j],x[0],box);
         xShift[j]=real3_sub(dx[j-1],real3_sub(x[j],x[0]));
       } else {
         xShift[0]=real3_reset<real3_x>();
@@ -122,7 +125,8 @@ __global__ void holonomic_rectify_branch2_kernel(int N,struct Branch2Cons *cons,
   }
 }
 
-__global__ void holonomic_rectify_branch3_kernel(int N,struct Branch3Cons *cons,struct LeapState ls,real3_x box)
+template <bool flagBox,typename box_type>
+__global__ void holonomic_rectify_branch3_kernel(int N,struct Branch3Cons *cons,struct LeapState ls,box_type box)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real3_x x[4];
@@ -135,7 +139,7 @@ __global__ void holonomic_rectify_branch3_kernel(int N,struct Branch3Cons *cons,
     for (j=0; j<4; j++) {
       x[j]=((real3_x*)ls.x)[cons[i].idx[j]];
       if (j>0) {
-        dx[j-1]=real3_subpbc(x[j],x[0],box);
+        dx[j-1]=real3_subpbc<flagBox>(x[j],x[0],box);
         xShift[j]=real3_sub(dx[j-1],real3_sub(x[j],x[0]));
       } else {
         xShift[0]=real3_reset<real3_x>();
@@ -157,7 +161,8 @@ __global__ void holonomic_rectify_branch3_kernel(int N,struct Branch3Cons *cons,
   }
 }
 
-void holonomic_rectify(System *system)
+template <bool flagBox,typename box_type>
+void holonomic_rectifyT(System *system,box_type box)
 {
   Run *r=system->run;
   State *s=system->state;
@@ -165,14 +170,141 @@ void holonomic_rectify(System *system)
   int N;
 
   N=p->triangleConsCount;
-  if (N) holonomic_rectify_triangle_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->triangleCons_d,s->leapState[0],s->orthBox);
+  if (N) holonomic_rectify_triangle_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->triangleCons_d,s->leapState[0],box);
 
   N=p->branch1ConsCount;
-  if (N) holonomic_rectify_branch1_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch1Cons_d,s->leapState[0],s->orthBox);
+  if (N) holonomic_rectify_branch1_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch1Cons_d,s->leapState[0],box);
 
   N=p->branch2ConsCount;
-  if (N) holonomic_rectify_branch2_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch2Cons_d,s->leapState[0],s->orthBox);
+  if (N) holonomic_rectify_branch2_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch2Cons_d,s->leapState[0],box);
 
   N=p->branch3ConsCount;
-  if (N) holonomic_rectify_branch3_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch3Cons_d,s->leapState[0],s->orthBox);
+  if (N) holonomic_rectify_branch3_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch3Cons_d,s->leapState[0],box);
+}
+
+void holonomic_rectify(System *system)
+{
+  if (system->state->typeBox) {
+    holonomic_rectifyT<true>(system,system->state->tricBox);
+  } else {
+    holonomic_rectifyT<false>(system,system->state->orthBox);
+  }
+}
+
+template <bool flagBox,typename box_type>
+__global__ void holonomic_rectifyback_triangle_kernel(int N,struct TriangleCons *cons,real3_x *position,box_type box,real3_x *positionBack,box_type boxBack)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  real3_x x0,xb0,x,xb,dx,xNew,xShift;
+  int j;
+
+  if (i<N) {
+    x0=position[cons[i].idx[0]];
+    xb0=positionBack[cons[i].idx[0]];
+    for (j=1; j<3; j++) {
+      x=position[cons[i].idx[j]];
+      xb=positionBack[cons[i].idx[j]];
+      dx=real3_subpbc<flagBox>(xb,xb0,boxBack);
+      xNew=real3_add(x0,dx);
+      dx=real3_subpbc<flagBox>(xNew,x,box);
+      xShift=real3_sub(dx,real3_sub(xNew,x));
+      position[cons[i].idx[j]]=real3_add(xNew,xShift);
+    }
+  }
+}
+
+template <bool flagBox,typename box_type>
+__global__ void holonomic_rectifyback_branch1_kernel(int N,struct Branch1Cons *cons,real3_x *position,box_type box,real3_x *positionBack,box_type boxBack)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  real3_x x0,xb0,x,xb,dx,xNew,xShift;
+  int j;
+  
+  if (i<N) {
+    x0=position[cons[i].idx[0]];
+    xb0=positionBack[cons[i].idx[0]];
+    for (j=1; j<2; j++) {
+      x=position[cons[i].idx[j]];
+      xb=positionBack[cons[i].idx[j]];
+      dx=real3_subpbc<flagBox>(xb,xb0,boxBack);
+      xNew=real3_add(x0,dx);
+      dx=real3_subpbc<flagBox>(xNew,x,box);
+      xShift=real3_sub(dx,real3_sub(xNew,x));
+      position[cons[i].idx[j]]=real3_add(xNew,xShift);
+    }
+  }
+}
+
+template <bool flagBox,typename box_type>
+__global__ void holonomic_rectifyback_branch2_kernel(int N,struct Branch2Cons *cons,real3_x *position,box_type box,real3_x *positionBack,box_type boxBack)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  real3_x x0,xb0,x,xb,dx,xNew,xShift;
+  int j;
+  
+  if (i<N) {
+    x0=position[cons[i].idx[0]];
+    xb0=positionBack[cons[i].idx[0]];
+    for (j=1; j<3; j++) {
+      x=position[cons[i].idx[j]];
+      xb=positionBack[cons[i].idx[j]];
+      dx=real3_subpbc<flagBox>(xb,xb0,boxBack);
+      xNew=real3_add(x0,dx);
+      dx=real3_subpbc<flagBox>(xNew,x,box);
+      xShift=real3_sub(dx,real3_sub(xNew,x));
+      position[cons[i].idx[j]]=real3_add(xNew,xShift);
+    }
+  }
+}
+
+template <bool flagBox,typename box_type>
+__global__ void holonomic_rectifyback_branch3_kernel(int N,struct Branch3Cons *cons,real3_x *position,box_type box,real3_x *positionBack,box_type boxBack)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  real3_x x0,xb0,x,xb,dx,xNew,xShift;
+  int j;
+  
+  if (i<N) {
+    x0=position[cons[i].idx[0]];
+    xb0=positionBack[cons[i].idx[0]];
+    for (j=1; j<4; j++) {
+      x=position[cons[i].idx[j]];
+      xb=positionBack[cons[i].idx[j]];
+      dx=real3_subpbc<flagBox>(xb,xb0,boxBack);
+      xNew=real3_add(x0,dx);
+      dx=real3_subpbc<flagBox>(xNew,x,box);
+      xShift=real3_sub(dx,real3_sub(xNew,x));
+      position[cons[i].idx[j]]=real3_add(xNew,xShift);
+    }
+  }
+}
+
+template <bool flagBox,typename box_type>
+void holonomic_rectifybackT(System *system,box_type box,box_type boxBackup)
+{
+  Run *r=system->run;
+  State *s=system->state;
+  Potential *p=system->potential;
+  int N;
+
+  N=p->triangleConsCount;
+  if (N) holonomic_rectifyback_triangle_kernel<flagBox,box_type><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->triangleCons_d,(real3_x*)s->position_d,box,(real3_x*)s->positionb_d,boxBackup);
+
+  N=p->branch1ConsCount;
+  if (N) holonomic_rectifyback_branch1_kernel<flagBox,box_type><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch1Cons_d,(real3_x*)s->position_d,box,(real3_x*)s->positionb_d,boxBackup);
+
+  N=p->branch2ConsCount;
+  if (N) holonomic_rectifyback_branch2_kernel<flagBox,box_type><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch2Cons_d,(real3_x*)s->position_d,box,(real3_x*)s->positionb_d,boxBackup);
+
+  N=p->branch3ConsCount;
+  if (N) holonomic_rectifyback_branch3_kernel<flagBox,box_type><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch3Cons_d,(real3_x*)s->position_d,box,(real3_x*)s->positionb_d,boxBackup);
+}
+
+void holonomic_rectifyback(System *system)
+{
+  if (system->state->typeBox) {
+    holonomic_rectifybackT<true>(system,system->state->tricBox,system->state->tricBoxBackup);
+  } else {
+    holonomic_rectifybackT<false>(system,system->state->orthBox,system->state->orthBoxBackup);
+  }
 }

@@ -39,8 +39,8 @@ void upload_bonded_d(
 // NYI - Try inlining the fdihe, fimp, fnb14, fnbex potentials...
 
 // getforce_bond_kernel<<<(N+BLBO-1)/BLBO,BLBO,0,p->bondedStream>>>(N,p->bonds,s->position_d,s->force_d,s->box,m->lambda_d,m->lambdaForce_d,NULL);
-template <bool soft>
-__global__ void getforce_bond_kernel(int bond12Count,int bondCount,struct BondPotential *bonds,real3 *position,real3_f *force,real3 box,real *lambda,real_f *lambdaForce,real softAlpha,real softExp,real_e *energy)
+template <bool flagBox,bool soft,typename box_type>
+__global__ void getforce_bond_kernel(int bond12Count,int bondCount,struct BondPotential *bonds,real3 *position,real3_f *force,box_type box,real *lambda,real_f *lambdaForce,real softAlpha,real softExp,real_e *energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -63,7 +63,7 @@ __global__ void getforce_bond_kernel(int bond12Count,int bondCount,struct BondPo
     xi=position[ii];
     xj=position[jj];
 // NOTE #warning "Unprotected division"
-    dr=real3_subpbc(xi,xj,box);
+    dr=real3_subpbc<flagBox>(xi,xj,box);
 // NOTE #warning "Unprotected sqrt"
     r=real3_mag<real>(dr);
     
@@ -140,7 +140,8 @@ __global__ void getforce_bond_kernel(int bond12Count,int bondCount,struct BondPo
   }
 }
 
-void getforce_bond(System *system,bool calcEnergy)
+template <bool flagBox,typename box_type>
+void getforce_bondT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -162,19 +163,28 @@ void getforce_bond(System *system,bool calcEnergy)
   N12=(r->calcTermFlag[eebond]?p->bond12Count:0);
   N=N12+(r->calcTermFlag[eeurey]?p->bond13Count:0);
   bonds=p->bonds_d+(p->bond12Count-N12);
-  if (N>0) getforce_bond_kernel<false><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N12,N,bonds,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,0,1,pEnergy);
+  if (N>0) getforce_bond_kernel<flagBox,false><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N12,N,bonds,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,0,1,pEnergy);
   N=p->softBondCount;
   N12=(r->calcTermFlag[eebond]?p->softBond12Count:0);
   N=N12+(r->calcTermFlag[eeurey]?p->softBond13Count:0);
   bonds=p->softBonds_d+(p->softBond12Count-N12);
-  if (N>0) getforce_bond_kernel<true><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N12,N,bonds,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,softAlpha,softExp,pEnergy);
+  if (N>0) getforce_bond_kernel<flagBox,true><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N12,N,bonds,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,softAlpha,softExp,pEnergy);
+}
+
+void getforce_bond(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_bondT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_bondT<false>(system,system->state->orthBox_f,calcEnergy);
+  }
 }
 
 
 
 // getforce_angle_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->angles_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
-template <bool soft>
-__global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angles,real3 *position,real3_f *force,real3 box,real *lambda,real_f *lambdaForce,real softExp,real_e *energy)
+template <bool flagBox,bool soft,typename box_type>
+__global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angles,real3 *position,real3_f *force,box_type box,real *lambda,real_f *lambdaForce,real softExp,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj,kk;
@@ -201,8 +211,8 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
     xj=position[jj];
     xk=position[kk];
     
-    drij=real3_subpbc(xi,xj,box);
-    drkj=real3_subpbc(xk,xj,box);
+    drij=real3_subpbc<flagBox>(xi,xj,box);
+    drkj=real3_subpbc<flagBox>(xk,xj,box);
     dotp=real3_dot<real>(drij,drkj);
     crop=real3_cross(drij,drkj); // c = a x b
     mcrop=real3_mag<real>(crop);
@@ -263,7 +273,8 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
   }
 }
 
-void getforce_angle(System *system,bool calcEnergy)
+template <bool flagBox,typename box_type>
+void getforce_angleT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -281,9 +292,18 @@ void getforce_angle(System *system,bool calcEnergy)
   }
 
   N=p->angleCount;
-  if (N>0) getforce_angle_kernel<false><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->angles_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,1,pEnergy);
+  if (N>0) getforce_angle_kernel<flagBox,false><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->angles_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,1,pEnergy);
   N=p->softAngleCount;
-  if (N>0) getforce_angle_kernel<true><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softAngles_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,softExp,pEnergy);
+  if (N>0) getforce_angle_kernel<flagBox,true><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softAngles_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,softExp,pEnergy);
+}
+
+void getforce_angle(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_angleT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_angleT<false>(system,system->state->orthBox_f,calcEnergy);
+  }
 }
 
 
@@ -313,8 +333,8 @@ __device__ void function_torsion(ImprPotential ip,real phi,real *fphi,real *lE,b
 
 
 // getforce_dihe_kernel<<<(N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->dihes_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
-template <class TorsionPotential,bool soft>
-__global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsions,real3 *position,real3_f *force,real3 box,real *lambda,real_f *lambdaForce,real softExp,real_e *energy)
+template <bool flagBox,class TorsionPotential,bool soft,typename box_type>
+__global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsions,real3 *position,real3_f *force,box_type box,real *lambda,real_f *lambdaForce,real softExp,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj,kk,ll;
@@ -347,9 +367,9 @@ __global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsi
     xk=position[kk];
     xl=position[ll];
 
-    drij=real3_subpbc(xi,xj,box);
-    drjk=real3_subpbc(xj,xk,box);
-    drkl=real3_subpbc(xk,xl,box);
+    drij=real3_subpbc<flagBox>(xi,xj,box);
+    drjk=real3_subpbc<flagBox>(xj,xk,box);
+    drkl=real3_subpbc<flagBox>(xk,xl,box);
     mvec=real3_cross(drij,drjk);
     nvec=real3_cross(drjk,drkl);
     dsinp=real3_cross(mvec,nvec);
@@ -423,7 +443,8 @@ __global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsi
   }
 }
 
-void getforce_dihe(System *system,bool calcEnergy)
+template <bool flagBox,typename box_type>
+void getforce_diheT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -441,12 +462,22 @@ void getforce_dihe(System *system,bool calcEnergy)
   }
 
   N=p->diheCount;
-  if (N>0) getforce_torsion_kernel <DihePotential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->dihes_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,1,pEnergy);
+  if (N>0) getforce_torsion_kernel <flagBox,DihePotential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->dihes_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,1,pEnergy);
   N=p->softDiheCount;
-  if (N>0) getforce_torsion_kernel <DihePotential,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softDihes_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,softExp,pEnergy);
+  if (N>0) getforce_torsion_kernel <flagBox,DihePotential,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softDihes_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,softExp,pEnergy);
 }
 
-void getforce_impr(System *system,bool calcEnergy)
+void getforce_dihe(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_diheT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_diheT<false>(system,system->state->orthBox_f,calcEnergy);
+  }
+}
+
+template <bool flagBox,typename box_type>
+void getforce_imprT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -464,16 +495,25 @@ void getforce_impr(System *system,bool calcEnergy)
   }
 
   N=p->imprCount;
-  if (N>0) getforce_torsion_kernel <ImprPotential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->imprs_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,1,pEnergy);
+  if (N>0) getforce_torsion_kernel <flagBox,ImprPotential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->imprs_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,1,pEnergy);
   N=p->softImprCount;
-  if (N>0) getforce_torsion_kernel <ImprPotential,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softImprs_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,softExp,pEnergy);
+  if (N>0) getforce_torsion_kernel <flagBox,ImprPotential,true> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softImprs_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,softExp,pEnergy);
+}
+
+void getforce_impr(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_imprT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_imprT<false>(system,system->state->orthBox_f,calcEnergy);
+  }
 }
 
 
 
 // getforce_cmap_kernel<<<(2*N+BLBO-1)/BLBO,BLBO,shMem,p->bondedStream>>>(N,p->cmaps_d,(real3*)s->position_d,(real3*)s->force_d,s->orthBox,m->lambda_d,m->lambdaForce_d,pEnergy);
-template <bool soft>
-__global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,real3 *position,real3_f *force,real3 box,real *lambda,real_f *lambdaForce,real softExp,real_e *energy)
+template <bool flagBox,bool soft,typename box_type>
+__global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,real3 *position,real3_f *force,box_type box,real *lambda,real_f *lambdaForce,real softExp,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj,kk,ll;
@@ -514,9 +554,9 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
     xk=position[kk];
     xl=position[ll];
 
-    drij=real3_subpbc(xi,xj,box);
-    drjk=real3_subpbc(xj,xk,box);
-    drkl=real3_subpbc(xk,xl,box);
+    drij=real3_subpbc<flagBox>(xi,xj,box);
+    drjk=real3_subpbc<flagBox>(xj,xk,box);
+    drkl=real3_subpbc<flagBox>(xk,xl,box);
     mvec=real3_cross(drij,drjk);
     nvec=real3_cross(drjk,drkl);
     dsinp=real3_cross(mvec,nvec);
@@ -677,7 +717,8 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
   }
 }
 
-void getforce_cmap(System *system,bool calcEnergy)
+template <bool flagBox,typename box_type>
+void getforce_cmapT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -695,7 +736,16 @@ void getforce_cmap(System *system,bool calcEnergy)
   }
 
   N=p->cmapCount;
-  if (N>0) getforce_cmap_kernel<false><<<(2*N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->cmaps_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,1,pEnergy);
+  if (N>0) getforce_cmap_kernel<flagBox,false><<<(2*N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->cmaps_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,1,pEnergy);
   N=p->softCmapCount;
-  if (N>0) getforce_cmap_kernel<true><<<(2*N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softCmaps_d,(real3*)s->position_fd,(real3_f*)s->force_d,s->orthBox_f,s->lambda_fd,s->lambdaForce_d,softExp,pEnergy);
+  if (N>0) getforce_cmap_kernel<flagBox,true><<<(2*N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->softCmaps_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,softExp,pEnergy);
+}
+
+void getforce_cmap(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_cmapT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_cmapT<false>(system,system->state->orthBox_f,calcEnergy);
+  }
 }

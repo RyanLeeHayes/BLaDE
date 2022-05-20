@@ -36,11 +36,12 @@ bool check_proximity(DomdecBlockVolume a,DomdecBlockVolume b,real c2)
   return buffer2<=c2;
 }
 
+template <bool flagBox,typename box_type>
 __global__ void recull_blocks_kernel(
   int beginBlock,int endBlock,int maxPartnersPerBlock,
   int *blockCandidateCount,struct DomdecBlockPartners *blockCandidates,
   int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,
-  struct DomdecBlockVolume *blockVolume,real3 box,real rc2)
+  struct DomdecBlockVolume *blockVolume,box_type box,real rc2)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int iBlock=i/32+beginBlock; // 32 threads tag teaming per block
@@ -67,9 +68,15 @@ __global__ void recull_blocks_kernel(
         partnerVolume=blockVolume[blockPartner.jBlock];
         char4 shift=blockPartner.shift;
         real3 boxShift;
-        boxShift.x=shift.x*box.x;
-        boxShift.y=shift.y*box.y;
-        boxShift.z=shift.z*box.z;
+        if (flagBox) {
+          boxShift.x=shift.z*boxzx(box)+shift.y*boxyx(box)+shift.x*boxxx(box);
+          boxShift.y=shift.z*boxzy(box)+shift.y*boxyy(box);
+          boxShift.z=shift.z*boxzz(box);
+        } else {
+          boxShift.x=shift.x*boxxx(box);
+          boxShift.y=shift.y*boxyy(box);
+          boxShift.z=shift.z*boxzz(box);
+        }
         real3_inc(&partnerVolume.max,boxShift);
         real3_inc(&partnerVolume.min,boxShift);
         hit=check_proximity(volume,partnerVolume,rc2);
@@ -113,14 +120,25 @@ __global__ void recull_blocks_kernel(
   }
 }
 
-void Domdec::recull_blocks(System *system)
+template <bool flagBox,typename box_type>
+void recull_blocksT(System *system,box_type box)
 {
   Run *r=system->run;
-  int beginBlock=blockCount[id];
-  int endBlock=blockCount[id+1];
+  Domdec *d=system->domdec;
+  int beginBlock=d->blockCount[d->id];
+  int endBlock=d->blockCount[d->id+1];
   int localBlockCount=endBlock-beginBlock;
   real rc2=system->run->cutoffs.rCut;
   rc2*=rc2;
 
-  recull_blocks_kernel<<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(beginBlock,endBlock,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,blockPartnerCount_d,blockPartners_d,blockVolume_d,system->state->orthBox_f,rc2);
+  recull_blocks_kernel<flagBox><<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(beginBlock,endBlock,d->maxPartnersPerBlock,d->blockCandidateCount_d,d->blockCandidates_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,box,rc2);
+}
+
+void Domdec::recull_blocks(System *system)
+{
+  if (system->state->typeBox) {
+    recull_blocksT<true>(system,system->state->tricBox_f);
+  } else {
+    recull_blocksT<false>(system,system->state->orthBox_f);
+  }
 }
