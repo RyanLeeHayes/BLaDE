@@ -42,6 +42,7 @@ __global__ void update_V(struct LeapState ls,struct LeapParms2 lp1,struct LeapPa
     if (isfinite(ls.ism[i])) {
       // Force is dU/dx by convention in this program, not -dU/dx
       ls.v[i]=ls.v[i]-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
+      // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing V i=%d, v=%f, f=%f, x=%f\n",i,ls.v[i],ls.f[i],ls.x[i]); // DEBUG
     }
   }
 }
@@ -62,6 +63,7 @@ __global__ void update_VV(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
       // Force is dU/dx by convention in this program, not -dU/dx
       real_v v=ls.v[i]-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
       ls.v[i]=v-lp.halfdt*ls.ism[i]*ls.ism[i]*ls.f[i];
+      // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing VV i=%d, v=%f, f=%f, x=%f\n",i,ls.v[i],ls.f[i],ls.x[i]); // DEBUG
     }
   }
 }
@@ -86,6 +88,7 @@ __global__ void update_VhbpR(struct LeapState ls,struct LeapParms2 lp1,struct Le
     if (isfinite(ls.ism[i])) {
       x+=lp.halfdt*v;
       ls.v[i]=v;
+      // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing VhbpR i=%d, v=%f, f=%f, x=%f\n",i,ls.v[i],ls.f[i],ls.x[i]); // DEBUG
       ls.x[i]=x;
     }
   }
@@ -111,6 +114,7 @@ __global__ void update_VVhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
     if (isfinite(ls.ism[i])) {
       x+=lp.halfdt*v;
       ls.v[i]=v;
+      // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing VVhbpR i=%d, v=%f, f=%f, x=%f\n",i,ls.v[i],ls.f[i],ls.x[i]); // DEBUG
       ls.x[i]=x;
     }
   }
@@ -152,6 +156,7 @@ __global__ void update_hbpR(struct LeapState ls,struct LeapParms2 lp1,struct Lea
     real_x x=ls.x[i];
     if (bx) bx[i]=x;
     if (isfinite(ls.ism[i])) {
+      // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing hbpR i=%d, v=%f, f=%f, x=%f\n",i,ls.v[i],ls.f[i],ls.x[i]); // DEBUG
       ls.x[i]=x+lp.halfdt*ls.v[i];
     }
   }
@@ -171,6 +176,7 @@ __global__ void update_OO(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
   if (i < ls.N) {
     if (isfinite(ls.ism[i])) {
       ls.v[i]=lp.friction*ls.v[i]+lp.noise*ls.ism[i]*ls.random[i];
+      // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing OO i=%d, v=%f, r=%f, x=%f\n",i,ls.v[i],ls.random[i],ls.x[i]); // DEBUG
     }
   }
 }
@@ -194,6 +200,7 @@ __global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
     if (isfinite(ls.ism[i])) {
       x+=lp.halfdt*v;
       ls.v[i]=v;
+      // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing OOhbpR i=%d, v=%f, r=%f, x=%f\n",i,ls.v[i],ls.random[i],ls.x[i]); // DEBUG
       ls.x[i]=x;
     }
   }

@@ -551,34 +551,66 @@ void State::check_box(System *system)
   // Check angles
   if (nameBox==ebcubi || nameBox==ebtetr || nameBox==eborth) {
     if (box.b.x!=90 || box.b.y!=90 || box.b.z!=90) {
-      fatal(__FILE__,__LINE__,"Fatal, cubic, tetragonal, or orthorhombic box does not have all 90 degree angles\n");
+      fprintf(stdout,"Warning: cubic, tetragonal, or orthorhombic box does not have all 90 degree angles\n");
+      fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      box.b.x=90;
+      box.b.y=90;
+      box.b.z=90;
+      fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
     }
   } else if (nameBox==ebmono) {
     if (box.b.x!=90 || box.b.z!=90) {
-      fatal(__FILE__,__LINE__,"Fatal, monoclinic box must have alpha and gamma equal to 90 degrees\n");
+      fprintf(stdout,"Warning: monoclinic box must have alpha and gamma equal to 90 degrees\n");
+      fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      box.b.x=90;
+      box.b.z=90;
+      fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
     }
   } else if (nameBox==ebhexa) {
     if (box.b.x!=90 || box.b.y!=90 || box.b.z!=120) {
-      fatal(__FILE__,__LINE__,"Fatal, hexagonal box must have 90, 90, 120 degree angles in that order\n");
+      fprintf(stdout,"Warning: hexagonal box must have 90, 90, 120 degree angles in that order\n");
+      fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      box.b.x=90;
+      box.b.y=90;
+      box.b.z=120;
+      fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
     }
   } else if (nameBox==ebocta) {
-    real_x alpha=acos(-1./3.)/DEGREES;
-    if (abs((box.b.x-alpha)/alpha)>1e-6 || abs((box.b.y-alpha)/alpha)>1e-6 || abs((box.b.z-alpha)/alpha)>1e-6) {
-      fatal(__FILE__,__LINE__,"Fatal, octahedral box must have 109.471220634 degree angles\n");
+    // DEGREES macro is only floating precision, not double as needed here
+    real_x alpha=acos(-1./3.)/0.017453292519943295769;
+    if (box.b.x!=alpha || box.b.y!=alpha || box.b.z!=alpha) {
+      fprintf(stdout,"Warning: octahedral box must have 109.471220634 degree angles\n");
+      fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      box.b.x=alpha;
+      box.b.y=alpha;
+      box.b.z=alpha;
+      fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
     }
   } else if (nameBox==ebrhdo) {
     if (box.b.x!=60 || box.b.y!=90 || box.b.z!=60) {
-      fatal(__FILE__,__LINE__,"Fatal, rhombic dodecahedron box must have 60, 90, 60 degree angles in that order\n");
+      fprintf(stdout,"Warning: rhombic dodecahedron box must have 60, 90, 60 degree angles in that order\n");
+      fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      box.b.x=60;
+      box.b.y=90;
+      box.b.z=60;
+      fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
     }
   }
   // Check lengths
   if (nameBox==ebcubi || nameBox==ebrhom || nameBox==ebocta || nameBox==ebrhdo) {
     if (box.a.x!=box.a.y || box.a.x!=box.a.z) {
-      fatal(__FILE__,__LINE__,"Fatal, all three box vectors must have the same length for cubic, rhombohedral, trucated octahedron, and rhombic dodecahedron boxes\n");
+      fprintf(stdout,"Warning: all three box vectors must have the same length for cubic, rhombohedral, trucated octahedron, and rhombic dodecahedron boxes\n");
+      fprintf(stdout,"Previous: a %24.16f b %24.16f c %24.16f\n",box.a.x,box.a.y,box.a.z);
+      box.a.y=box.a.x;
+      box.a.z=box.a.x;
+      fprintf(stdout,"Rectified: a %24.16f b %24.16f c %24.16f\n",box.a.x,box.a.y,box.a.z);
     }
   } else if (nameBox==ebtetr || nameBox==ebhexa) {
     if (box.a.x!=box.a.y) {
-      fatal(__FILE__,__LINE__,"Fatal, first two box vectors must have the same length for tetragonal and hexagonal boxes\n");
+      fprintf(stdout,"Warning: first two box vectors must have the same length for tetragonal and hexagonal boxes\n");
+      fprintf(stdout,"Previous: a %24.16f b %24.16f c %24.16f\n",box.a.x,box.a.y,box.a.z);
+      box.a.y=box.a.x;
+      fprintf(stdout,"Rectified: a %24.16f b %24.16f c %24.16f\n",box.a.x,box.a.y,box.a.z);
     }
   }
 
