@@ -587,12 +587,12 @@ void State::check_box(System *system)
       fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
     }
   } else if (nameBox==ebrhdo) {
-    if (box.b.x!=60 || box.b.y!=90 || box.b.z!=60) {
-      fprintf(stdout,"Warning: rhombic dodecahedron box must have 60, 90, 60 degree angles in that order\n");
+    if (box.b.x!=60 || box.b.y!=60 || box.b.z!=90) {
+      fprintf(stdout,"Warning: rhombic dodecahedron box must have 60, 60, 90 degree angles in that order\n");
       fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
       box.b.x=60;
-      box.b.y=90;
-      box.b.z=60;
+      box.b.y=60;
+      box.b.z=90;
       fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
     }
   }
