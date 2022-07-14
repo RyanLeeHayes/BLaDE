@@ -403,6 +403,26 @@ void State::broadcast_box(System *system)
       tricBox.c.y=box.a.z*(cos(box.b.x*DEGREES)-cos(box.b.y*DEGREES)*cos(box.b.z*DEGREES))/sin(box.b.z*DEGREES);
       tricBox.c.z=sqrt(box.a.z*box.a.z-tricBox.c.x*tricBox.c.x-tricBox.c.y*tricBox.c.y);
 
+      // Ensure lattice vectors are in minimal representation
+      // Hardcode so rounding errors don't mess some of the represenations up
+      if (nameBox==ebrhdo) {
+        // This happens to be the 90 60 60 choice for rhdo
+        tricBox.c.x+=-tricBox.b.x;
+        tricBox.c.y+=-tricBox.b.y;
+        tricBox.c.x+=tricBox.a.x;
+      } else if (nameBox==ebocta || nameBox==ebhexa) {
+        ; // Do nothing, they're fine
+      } else {
+        int im;
+        im=floor(tricBox.c.y/tricBox.b.y+0.5);
+        tricBox.c.x+=-im*tricBox.b.x;
+        tricBox.c.y+=-im*tricBox.b.y;
+        im=floor(tricBox.c.x/tricBox.a.x+0.5);
+        tricBox.c.x+=-im*tricBox.a.x;
+        im=floor(tricBox.b.x/tricBox.a.x+0.5);
+        tricBox.b.x+=-im*tricBox.a.x;
+      }
+
       tricBox_f.a.x=tricBox.a.x;
       tricBox_f.b.x=tricBox.b.x;
       tricBox_f.b.y=tricBox.b.y;
@@ -587,12 +607,12 @@ void State::check_box(System *system)
       fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
     }
   } else if (nameBox==ebrhdo) {
-    if (box.b.x!=60 || box.b.y!=60 || box.b.z!=90) {
-      fprintf(stdout,"Warning: rhombic dodecahedron box must have 60, 60, 90 degree angles in that order\n");
+    if (box.b.x!=60 || box.b.y!=90 || box.b.z!=60) {
+      fprintf(stdout,"Warning: rhombic dodecahedron box must have 60, 90, 60 degree angles in that order\n");
       fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
       box.b.x=60;
-      box.b.y=60;
-      box.b.z=90;
+      box.b.y=90;
+      box.b.z=60;
       fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
     }
   }
