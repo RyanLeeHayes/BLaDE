@@ -304,7 +304,7 @@ void real3_dec(real3_type *a,real3_type x)
   a[0].z-=x.z;
 }
 
-#warning "Try remainder instead of fmod"
+// fmod rounds toward zero, remainder is in the range -0.5 to 0.5, either one must be rectified.
 template<bool flagBox,typename real3_type,typename box_type>
 __host__ __device__ static inline
 real3_type real3_modulus(real3_type a,box_type b)

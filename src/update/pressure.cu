@@ -170,7 +170,7 @@ void pressure_coupling(System *system)
     // Compare energy
     N=s->atomCount-(2*p->triangleConsCount+p->branch1ConsCount+2*p->branch2ConsCount+3*p->branch3ConsCount);
     kT=s->leapParms1->kT;
-    dW=energyNew-energyOld+system->run->pressure*(volumeNew-volumeOld)-N*kT*log(volumeNew/volumeOld);
+    dW=energyNew-energyOld+r->pressure*(volumeNew-volumeOld)-N*kT*log(volumeNew/volumeOld);
     if (system->verbose>0) {
       fprintf(stdout,"dW= %f, dV= %f\n",dW,volumeNew-volumeOld);
     }
