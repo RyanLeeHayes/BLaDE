@@ -121,7 +121,7 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
   __syncthreads();
   // Loop over all eligible neighboring domains to find interacting parner blocks
   int y0,x0;
-  real dimmin,dimmax;
+  real partnerMin,partnerWidth;
   for (idShift.z=0; idShift.z<2; idShift.z++) {
     idPartnerDomain.z=idDomdec.z+idShift.z;
     // Check minimum distance to this domain
@@ -144,18 +144,15 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
       // Check minimum distance to this domain
       if (flagBox) {
         idPartnerDomain.y+=y0;
-        dimmax=boxyy(box)/gridDomdec.y;
-        dimmin=dimmax*idPartnerDomain.y+shift.z*boxzy(box);
-        dimmax+=dimmin;
-        dist2.y=((dimmin>totalVolume.max.y)?(dimmin-totalVolume.max.y):0);
-        dist2.y+=((totalVolume.min.y>dimmax)?(totalVolume.min.y-dimmax):0);
-      } else {
-        dist2.y=0;
-        if (idShift.y==1) {
-          dist2.y=idPartnerDomain.y*boxyy(box)/gridDomdec.y-totalVolume.max.y;
-        } else if (idShift.y==-1) {
-          dist2.y=totalVolume.min.y-(idPartnerDomain.y+1)*boxyy(box)/gridDomdec.y;
-        }
+      }
+      partnerWidth=boxyy(box)/gridDomdec.y;
+      partnerMin=partnerWidth*idPartnerDomain.y+shift.z*boxzy(box);
+      // partnerMax=partnerMin+partnerWidth;
+      dist2.y=0;
+      if (partnerMin>totalVolume.max.y) {
+        dist2.y=partnerMin-totalVolume.max.y;
+      } else if (totalVolume.min.y>partnerMin+partnerWidth) {
+        dist2.y=totalVolume.min.y-(partnerMin+partnerWidth);
       }
       dist2.y=dist2.z+dist2.y*dist2.y;
       // Get periodic shift vector if relevant
@@ -176,18 +173,15 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
         // Check minimum distance to this domain
         if (flagBox) {
           idPartnerDomain.x+=x0;
-          dimmax=boxxx(box)/gridDomdec.x;
-          dimmin=dimmax*idPartnerDomain.x+(shift.z*boxzx(box)+shift.y*boxyx(box));
-          dimmax+=dimmin;
-          dist2.x=((dimmin>totalVolume.max.x)?(dimmin-totalVolume.max.x):0);
-          dist2.x+=((totalVolume.min.x>dimmax)?(totalVolume.min.x-dimmax):0);
-        } else {
-          dist2.x=0;
-          if (idShift.x==1) {
-            dist2.x=idPartnerDomain.x*boxxx(box)/gridDomdec.x-totalVolume.max.x;
-          } else if (idShift.x==-1) {
-            dist2.x=totalVolume.min.x-(idPartnerDomain.x+1)*boxxx(box)/gridDomdec.x;
-          }
+        }
+        partnerWidth=boxxx(box)/gridDomdec.x;
+        partnerMin=partnerWidth*idPartnerDomain.x+(shift.z*boxzx(box)+shift.y*boxyx(box));
+        // partnerMax=partnerMin+partnerWidth;
+        dist2.x=0;
+        if (partnerMin>totalVolume.max.x) {
+          dist2.x=partnerMin-totalVolume.max.x;
+        } else if (totalVolume.min.x>partnerMin+partnerWidth) {
+          dist2.x=totalVolume.min.x-(partnerMin+partnerWidth);
         }
         dist2.x=dist2.y+dist2.x*dist2.x;
         // Get periodic shift vector if relevant

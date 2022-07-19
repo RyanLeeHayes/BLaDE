@@ -388,7 +388,7 @@ void Structure::add_structure_psf_file(FILE *fp)
     // OR this one...
     fgets(line, MAXLENGTHSTRING, fp);
     j=io_nexti(line,fp,"psf molnt???");
-    fprintf(stdout,"Reading PSF, expect !??MOLNT: got %s",line);
+    fprintf(stdout,"Reading PSF, expect !MOLNT: got %s",line);
     for (i=0; i<atomCount; i++) {
       io_nexti(line,fp,"psf molnt???");
     }
