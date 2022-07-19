@@ -120,97 +120,89 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
   }
   __syncthreads();
   // Loop over all eligible neighboring domains to find interacting parner blocks
-  for (idShift.x=0; idShift.x<2; idShift.x++) {
-    idPartnerDomain.x=idDomdec.x+idShift.x;
-    if (!flagBox) { // Do later for non-orthogonal boxes
-      // Check minimum distance to this domain
-      dist2.x=0;
-      if (idShift.x==1) {
-        dist2.x=idPartnerDomain.x*boxxx(box)/gridDomdec.x-totalVolume.max.x;
-      }
-      dist2.x*=dist2.x;
+  int y0,x0;
+  real dimmin,dimmax;
+  for (idShift.z=0; idShift.z<2; idShift.z++) {
+    idPartnerDomain.z=idDomdec.z+idShift.z;
+    // Check minimum distance to this domain
+    dist2.z=0;
+    if (idShift.z==1) {
+      dist2.z=idPartnerDomain.z*boxzz(box)/gridDomdec.z-totalVolume.max.z;
     }
+    dist2.z*=dist2.z;
     // Get periodic shift vector if relevant
-    s=(idPartnerDomain.x==gridDomdec.x?1:0);
-    s=(idPartnerDomain.x==-1?-1:s);
-    idPartnerDomain.x-=s*gridDomdec.x;
-    shift.x=s;
-    if (!flagBox) { // Do later for non-orthogonal boxes
-      boxShift.x=s*boxxx(box);
+    s=(idPartnerDomain.z==gridDomdec.z?1:0);
+    // s=(idPartnerDomain.z==-1?-1:s); // SUPERFLUOUS
+    idPartnerDomain.z-=s*gridDomdec.z;
+    shift.z=s;
+    boxShift.z=shift.z*boxzz(box);
+    if (flagBox) { // y0 will be 0 if 2*abs(boxzy)<boxyy and gridDomdec.y==1
+      y0=-floor(shift.z*boxzy(box)*gridDomdec.y/boxyy(box)+((real)0.5));
     }
-    for (idShift.y=-idShift.x; idShift.y<2; idShift.y++) {
+    for (idShift.y=-idShift.z; idShift.y<2; idShift.y++) {
       idPartnerDomain.y=idDomdec.y+idShift.y;
-      if (!flagBox) { // Do later for non-orthogonal boxes
-        // Check minimum distance to this domain
+      // Check minimum distance to this domain
+      if (flagBox) {
+        idPartnerDomain.y+=y0;
+        dimmax=boxyy(box)/gridDomdec.y;
+        dimmin=dimmax*idPartnerDomain.y+shift.z*boxzy(box);
+        dimmax+=dimmin;
+        dist2.y=((dimmin>totalVolume.max.y)?(dimmin-totalVolume.max.y):0);
+        dist2.y+=((totalVolume.min.y>dimmax)?(totalVolume.min.y-dimmax):0);
+      } else {
         dist2.y=0;
         if (idShift.y==1) {
           dist2.y=idPartnerDomain.y*boxyy(box)/gridDomdec.y-totalVolume.max.y;
         } else if (idShift.y==-1) {
           dist2.y=totalVolume.min.y-(idPartnerDomain.y+1)*boxyy(box)/gridDomdec.y;
         }
-        dist2.y=dist2.x+dist2.y*dist2.y;
       }
+      dist2.y=dist2.z+dist2.y*dist2.y;
       // Get periodic shift vector if relevant
-      s=(idPartnerDomain.y==gridDomdec.y?1:0);
-      s=(idPartnerDomain.y==-1?-1:s);
+      s=(idPartnerDomain.y>=gridDomdec.y?1:0);
+      s=(idPartnerDomain.y<=-1?-1:s);
+      if (flagBox) {
+        s=(idPartnerDomain.y>=2*gridDomdec.y?2:s);
+        s=(idPartnerDomain.y<=-gridDomdec.y-1?-2:s);
+      }
       idPartnerDomain.y-=s*gridDomdec.y;
       shift.y=s;
-      if (!flagBox) { // Do later for non-orthogonal boxes
-        boxShift.y=s*boxyy(box);
+      boxShift.y=shift.z*boxzy(box)+shift.y*boxyy(box);
+      if (flagBox) { // y0 will be 0 if 2*abs(boxzy)<boxyy and gridDomdec.y==1
+        x0=-floor((shift.z*boxzx(box)+shift.y*boxyx(box))*gridDomdec.x/boxxx(box)+((real)0.5));
       }
-      for (idShift.z=-((idShift.x!=0)|(idShift.y!=0)); idShift.z<2; idShift.z++) {
-        idPartnerDomain.z=idDomdec.z+idShift.z;
-        if (!flagBox) { // Do later for non-orthogonal boxes
-          // Check minimum distance to this domain
-          dist2.z=0;
-          if (idShift.z==1) {
-            dist2.z=idPartnerDomain.z*boxzz(box)/gridDomdec.z-totalVolume.max.z;
-          } else if (idShift.z==-1) {
-            dist2.z=totalVolume.min.z-(idPartnerDomain.z+1)*boxzz(box)/gridDomdec.z;
-          }
-          dist2.z=dist2.y+dist2.z*dist2.z;
-        }
-        // Get periodic shift vector if relevant
-        s=(idPartnerDomain.z==gridDomdec.z?1:0);
-        s=(idPartnerDomain.z==-1?-1:s);
-        idPartnerDomain.z-=s*gridDomdec.z;
-        shift.z=s;
-        if (!flagBox) { // Do later for non-orthogonal boxes
-          boxShift.z=s*boxzz(box);
-        }
-        if (flagBox) { // Do now for non-orthogonal boxes
-          boxShift.z=shift.z*boxzz(box);
-          real dimmin,dimmax;
-          dimmax=boxzz(box)/gridDomdec.z;
-          dimmin=dimmax*idPartnerDomain.z+boxShift.z;
+      for (idShift.x=-((idShift.z!=0)|(idShift.y!=0)); idShift.x<2; idShift.x++) {
+        idPartnerDomain.x=idDomdec.x+idShift.x;
+        // Check minimum distance to this domain
+        if (flagBox) {
+          idPartnerDomain.x+=x0;
+          dimmax=boxxx(box)/gridDomdec.x;
+          dimmin=dimmax*idPartnerDomain.x+(shift.z*boxzx(box)+shift.y*boxyx(box));
           dimmax+=dimmin;
-          dist2.z=((dimmin>totalVolume.max.z)?(dimmin-totalVolume.max.z):0);
-          dist2.z+=((totalVolume.min.z>dimmax)?(totalVolume.min.z-dimmax):0);
-          dist2.z*=dist2.z;
-          if (dist2.z<=rc2) { // Only bother if it might be close enough
-            boxShift.y=shift.z*boxzy(box)+shift.y*boxyy(box);
-            dimmax=boxyy(box)/gridDomdec.y;
-            dimmin=dimmax*idPartnerDomain.y+boxShift.y;
-            dimmax+=dimmin;
-            dist2.y=((dimmin>totalVolume.max.y)?(dimmin-totalVolume.max.y):0);
-            dist2.y+=((totalVolume.min.y>dimmax)?(totalVolume.min.y-dimmax):0);
-            dist2.y*=dist2.y;
-            dist2.z+=dist2.y;
-          }
-          if (dist2.z<=rc2) { // Only bother if it might be close enough
-            boxShift.x=shift.z*boxzx(box)+shift.y*boxyx(box)+shift.x*boxxx(box);
-            dimmax=boxxx(box)/gridDomdec.x;
-            dimmin=dimmax*idPartnerDomain.x+boxShift.x;
-            dimmax+=dimmin;
-            dist2.x=((dimmin>totalVolume.max.x)?(dimmin-totalVolume.max.x):0);
-            dist2.x+=((totalVolume.min.x>dimmax)?(totalVolume.min.x-dimmax):0);
-            dist2.x*=dist2.x;
-            dist2.z+=dist2.x;
+          dist2.x=((dimmin>totalVolume.max.x)?(dimmin-totalVolume.max.x):0);
+          dist2.x+=((totalVolume.min.x>dimmax)?(totalVolume.min.x-dimmax):0);
+        } else {
+          dist2.x=0;
+          if (idShift.x==1) {
+            dist2.x=idPartnerDomain.x*boxxx(box)/gridDomdec.x-totalVolume.max.x;
+          } else if (idShift.x==-1) {
+            dist2.x=totalVolume.min.x-(idPartnerDomain.x+1)*boxxx(box)/gridDomdec.x;
           }
         }
+        dist2.x=dist2.y+dist2.x*dist2.x;
+        // Get periodic shift vector if relevant
+        s=(idPartnerDomain.x==gridDomdec.x?1:0);
+        s=(idPartnerDomain.x==-1?-1:s);
+        if (flagBox) {
+          s=(idPartnerDomain.x>=2*gridDomdec.x?2:s);
+          s=(idPartnerDomain.x<=-gridDomdec.x-1?-2:s);
+        }
+        idPartnerDomain.x-=s*gridDomdec.x;
+        shift.x=s;
+        boxShift.x=shift.z*boxzx(box)+shift.y*boxyx(box)+shift.x*boxxx(box);
 
         // Only bother with this domain if it's in range (saves a factor of 3 in one test)
-        if (dist2.z<=rc2) {
+        if (dist2.x<=rc2) {
           partnerDomainIdx=(idPartnerDomain.x*gridDomdec.y+idPartnerDomain.y)*gridDomdec.z+idPartnerDomain.z;
           startBlock=blockCount[partnerDomainIdx];
           endBlock=blockCount[partnerDomainIdx+1];
