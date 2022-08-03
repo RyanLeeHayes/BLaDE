@@ -67,8 +67,10 @@ __host__ __device__ inline
 real_x boxxx(real3_x b) {return b.x;}
 __host__ __device__ inline
 real_x boxxx(real123_x b) {return b.a.x;}
+#if defined(DOUBLE) != defined(DOUBLE_X)
 __host__ __device__ inline
 real boxxx(real3 b) {return b.x;}
+#endif
 __host__ __device__ inline
 real boxxx(real123 b) {return b.a.x;}
 
@@ -76,8 +78,10 @@ __host__ __device__ inline
 real_x boxyy(real3_x b) {return b.y;}
 __host__ __device__ inline
 real_x boxyy(real123_x b) {return b.b.y;}
+#if defined(DOUBLE) != defined(DOUBLE_X)
 __host__ __device__ inline
 real boxyy(real3 b) {return b.y;}
+#endif
 __host__ __device__ inline
 real boxyy(real123 b) {return b.b.y;}
 
@@ -85,8 +89,10 @@ __host__ __device__ inline
 real_x boxzz(real3_x b) {return b.z;}
 __host__ __device__ inline
 real_x boxzz(real123_x b) {return b.c.z;}
+#if defined(DOUBLE) != defined(DOUBLE_X)
 __host__ __device__ inline
 real boxzz(real3 b) {return b.z;}
+#endif
 __host__ __device__ inline
 real boxzz(real123 b) {return b.c.z;}
 
@@ -94,8 +100,10 @@ __host__ __device__ inline
 real_x boxyx(real3_x b) {return 0;}
 __host__ __device__ inline
 real_x boxyx(real123_x b) {return b.b.x;}
+#if defined(DOUBLE) != defined(DOUBLE_X)
 __host__ __device__ inline
 real boxyx(real3 b) {return 0;}
+#endif
 __host__ __device__ inline
 real boxyx(real123 b) {return b.b.x;}
 
@@ -103,8 +111,10 @@ __host__ __device__ inline
 real_x boxzx(real3_x b) {return 0;}
 __host__ __device__ inline
 real_x boxzx(real123_x b) {return b.c.x;}
+#if defined(DOUBLE) != defined(DOUBLE_X)
 __host__ __device__ inline
 real boxzx(real3 b) {return 0;}
+#endif
 __host__ __device__ inline
 real boxzx(real123 b) {return b.c.x;}
 
@@ -112,8 +122,10 @@ __host__ __device__ inline
 real_x boxzy(real3_x b) {return 0;}
 __host__ __device__ inline
 real_x boxzy(real123_x b) {return b.c.y;}
+#if defined(DOUBLE) != defined(DOUBLE_X)
 __host__ __device__ inline
 real boxzy(real3 b) {return 0;}
+#endif
 __host__ __device__ inline
 real boxzy(real123 b) {return b.c.y;}
 
