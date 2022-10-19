@@ -231,9 +231,9 @@ void Run::error(char *line,char *token,System *system)
 
 void Run::dump(char *line,char *token,System *system)
 {
-  fprintf(stdout,"RUN PRINT> dt=%f (time step input in ps)\n",dt);
+  fprintf(stdout,"RUN PRINT> dt=%f (time step input in AKMA)\n",dt);
   fprintf(stdout,"RUN PRINT> T=%f (temperature in K)\n",T);
-  fprintf(stdout,"RUN PRINT> gamma=%f (friction input in ps^-1)\n",gamma);
+  fprintf(stdout,"RUN PRINT> gamma=%f (friction input in AKMA^-1)\n",gamma);
   fprintf(stdout,"RUN PRINT> nsteps=%d (number of time steps for dynamics)\n",nsteps);
   fprintf(stdout,"RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
   fprintf(stdout,"RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
