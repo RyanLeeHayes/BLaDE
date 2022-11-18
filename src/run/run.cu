@@ -231,27 +231,27 @@ void Run::error(char *line,char *token,System *system)
 
 void Run::dump(char *line,char *token,System *system)
 {
-  fprintf(stdout,"RUN PRINT> dt=%f (time step input in ps)\n",dt);
+  fprintf(stdout,"RUN PRINT> dt=%f (time step input in ps)\n",dt/PICOSECOND);
   fprintf(stdout,"RUN PRINT> T=%f (temperature in K)\n",T);
-  fprintf(stdout,"RUN PRINT> gamma=%f (friction input in ps^-1)\n",gamma);
+  fprintf(stdout,"RUN PRINT> gamma=%f (friction input in ps^-1)\n",gamma*PICOSECOND);
   fprintf(stdout,"RUN PRINT> nsteps=%d (number of time steps for dynamics)\n",nsteps);
   fprintf(stdout,"RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
   fprintf(stdout,"RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
   fprintf(stdout,"RUN PRINT> fnmnrg=%s (file name for energy output)\n",fnmNRG.c_str());
   fprintf(stdout,"RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n",fnmCPI.c_str());
   fprintf(stdout,"RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n",fnmCPO.c_str());
-  fprintf(stdout,"RUN PRINT> betaEwald=%f (input invbetaewald in A)\n",betaEwald);
-  fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut);
-  fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch);
+  fprintf(stdout,"RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n",betaEwald*ANGSTROM);
+  fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut/ANGSTROM);
+  fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch/ANGSTROM);
   fprintf(stdout,"RUN PRINT> vfswitch=%d\n",vfSwitch);
   fprintf(stdout,"RUN PRINT> usepme=%d\n",usePME);
-  fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace);
+  fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace/ANGSTROM);
   fprintf(stdout,"RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n",grid[0],grid[1],grid[2]);
   fprintf(stdout,"RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwald);
   fprintf(stdout,"RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n",shakeTolerance);
   fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
-  fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation);
-  fprintf(stdout,"RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure);
+  fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation/(ANGSTROM*ANGSTROM*ANGSTROM));
+  fprintf(stdout,"RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure/ATMOSPHERE);
   fprintf(stdout,"RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n",(int)domdecHeuristic);
 #ifdef REPLICAEXCHANGE
   fprintf(stdout,"RUN PRINT> fnmrex=%s (file name for replica exchange)\n",fnmREx.c_str());
