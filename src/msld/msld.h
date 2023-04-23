@@ -55,6 +55,9 @@ class Msld {
   struct VariableBias *variableBias;
   struct VariableBias *variableBias_d;
 
+  real kThetaBias;
+  real nThetaBias;
+
   std::vector<Int2> softBonds;
   std::vector<std::vector<int> > atomRestraints;
 
@@ -99,9 +102,11 @@ class Msld {
   void initialize(System *system);
 
   void calc_lambda_from_theta(cudaStream_t stream,System *system);
+  void init_lambda_from_theta(cudaStream_t stream,System *system);
   void calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system);
   void getforce_fixedBias(System *system,bool calcEnergy);
   void getforce_variableBias(System *system,bool calcEnergy);
+  void getforce_thetaBias(System *system,bool calcEnergy);
   void getforce_atomRestraints(System *system,bool calcEnergy);
   void getforce_chargeRestraints(System *system,bool calcEnergy);
 };
@@ -117,6 +122,7 @@ extern "C" {
   void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int scaleAngle,int scaleDihe,int scaleImpr,int scaleCmap);
   void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent,int fix);
   void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n);
+  void blade_add_msld_thetabias(System *system,double k,double n);
   void blade_add_msld_softbond(System *system,int i,int j);
   void blade_add_msld_atomrestraint(System *system);
   void blade_add_msld_atomrestraint_element(System *system,int i);

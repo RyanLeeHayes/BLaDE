@@ -294,3 +294,9 @@ void blade_set_device()
 {
   cudaSetDevice(omp_get_thread_num());
 }
+
+void blade_set_verbose(System *system,int v)
+{
+  system+=omp_get_thread_num();
+  system->verbose=v;
+}

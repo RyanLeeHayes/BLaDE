@@ -52,6 +52,9 @@ Msld::Msld() {
   variableBias=NULL;
   variableBias_d=NULL;
 
+  kThetaBias=0;
+  nThetaBias=2;
+
   softBonds.clear();
   atomRestraints.clear();
 
@@ -209,6 +212,9 @@ void parse_msld(char *line,System *system)
     vb.k=io_nextf(line);
     vb.n=io_nexti(line);
     system->msld->variableBias_tmp.push_back(vb);
+  } else if (strcmp(token,"thetabias")==0) {
+    system->msld->kThetaBias=io_nextf(line);
+    system->msld->nThetaBias=io_nextf(line);
   } else if (strcmp(token,"removescaling")==0) {
     std::string name;
     while ((name=io_nexts(line))!="") {
@@ -631,6 +637,16 @@ void Msld::calc_lambda_from_theta(cudaStream_t stream,System *system)
   }
 }
 
+void Msld::init_lambda_from_theta(cudaStream_t stream,System *system)
+{
+  State *s=system->state;
+  if (!fix) { // ffix
+    calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex);
+  } else {
+    cudaMemcpy(s->lambda_d,s->theta_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice);
+  }
+}
+
 __global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta,real_f *lambdaForce,real_f *thetaForce,int blockCount,int *lambdaSite,int *siteBound,real fnex)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -646,7 +662,7 @@ __global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta
       fi+=-lambda[j]*lambdaForce[j];
     }
     fi*=li*fnex*cosf(ANGSTROM*theta[i])*ANGSTROM;
-    thetaForce[i]=fi;
+    atomicAdd(&thetaForce[i],fi);
   }
 }
 
@@ -790,6 +806,59 @@ void Msld::getforce_variableBias(System *system,bool calcEnergy)
 
   if (variableBiasCount>0) {
     getforce_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
+  }
+}
+
+__global__ void getforce_thetaBias_kernel(real *theta,real_f *thetaForce,real_e *energy,int siteCount,int *siteBound,real k,real n)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  real nhigh,nlow;
+  int j,ji,jf;
+  extern __shared__ real sEnergy[];
+  real lEnergy=0;
+
+  if (i<siteCount) {
+    ji=siteBound[i];
+    jf=siteBound[i+1];
+    nhigh=0;
+    nlow=0;
+    for (j=ji; j<jf; j++) {
+      nhigh+=pow(((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n);
+      nlow+=pow(-((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n);
+    }
+    lEnergy=((real)0.5)*k*((nhigh-1)*(nhigh-1)+(nlow-(jf-ji-1))*(nlow-(jf-ji-1)));
+    for (j=ji; j<jf; j++) {
+      atomicAdd(&thetaForce[j], k*n*((nhigh-1)*pow(((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n-1)-(nlow-(jf-ji-1))*pow(-((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n-1))*cos(ANGSTROM*theta[j])*ANGSTROM);
+    }
+  }
+
+  // Energy, if requested
+  if (energy) {
+    __syncthreads();
+    real_sum_reduce(lEnergy,sEnergy,energy);
+  }
+}
+
+void Msld::getforce_thetaBias(System *system,bool calcEnergy)
+{
+  cudaStream_t stream=0;
+  Run *r=system->run;
+  State *s=system->state;
+  real_e *pEnergy=NULL;
+  int shMem=0;
+
+  if (r->calcTermFlag[eelambda]==false) return;
+
+  if (calcEnergy) {
+    shMem=BLMS*sizeof(real)/32;
+    pEnergy=s->energy_d+eelambda;
+  }
+  if (system->run) {
+    stream=system->run->biaspotStream;
+  }
+
+  if (kThetaBias!=0) {
+    getforce_thetaBias_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->theta_fd,s->thetaForce_d,pEnergy,siteCount,siteBound_d,kThetaBias,nThetaBias);
   }
 }
 
@@ -1032,6 +1101,13 @@ void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,
   vb.k=k;
   vb.n=n;
   system->msld->variableBias_tmp.push_back(vb);
+}
+
+void blade_add_msld_thetabias(System *system,double k,double n)
+{
+  system+=omp_get_thread_num();
+  system->msld->kThetaBias=k;
+  system->msld->nThetaBias=n;
 }
 
 void blade_add_msld_softbond(System *system,int i,int j)
