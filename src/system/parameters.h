@@ -61,6 +61,7 @@ struct DiheParameter {
 
 struct ImprParameter {
   real kimp;
+  int nimp;
   real imp0;
 };
 
@@ -210,7 +211,7 @@ extern "C" {
     double kdih,int ndih,double dih0);
   void blade_add_parameter_imprs(System *system,
     const char *t1,const char *t2,const char *t3,const char *t4,
-    double kimp,double imp0);
+    double kimp,int nimp,double imp0);
   void blade_add_parameter_cmaps(System *system,
     const char *t1,const char *t2,const char *t3,const char *t4,
     const char *t5,const char *t6,const char *t7,const char *t8,

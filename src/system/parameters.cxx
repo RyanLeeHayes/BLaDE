@@ -314,8 +314,8 @@ void Parameters::add_parameter_imprs(FILE *fp)
       name.t[1]=check_type_name(io_nexts(line),"IMPROPERS");
       name.t[2]=check_type_name(io_nexts(line),"IMPROPERS");
       name.t[3]=check_type_name(io_nexts(line),"IMPROPERS");
-      ip.kimp=(2.0*KCAL_MOL)*io_nextf(line);
-      io_nexts(line);
+      ip.kimp=KCAL_MOL*io_nextf(line);
+      ip.nimp=io_nexti(line);
       ip.imp0=DEGREES*io_nextf(line);
       imprParameter[name]=ip;
     } else {
@@ -522,7 +522,7 @@ void Parameters::dump()
   for (std::map<TypeName4,struct ImprParameter>::iterator ii=imprParameter.begin(); ii!=imprParameter.end(); ii++) {
     TypeName4 name=ii->first;
     struct ImprParameter ip=ii->second;
-    fprintf(stdout,"%s imprParameter[%6s,%6s,%6s,%6s]={kimp=%g imp0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),name.t[3].c_str(),ip.kimp,ip.imp0);
+    fprintf(stdout,"%s imprParameter[%6s,%6s,%6s,%6s]={kimp=%g nimp=%d imp0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),name.t[3].c_str(),ip.kimp,ip.nimp,ip.imp0);
   }
   fprintf(stdout,"%s\n",tag);
 
@@ -646,7 +646,7 @@ void blade_add_parameter_dihes(System *system,const char *t1,const char *t2,cons
   system->parameters->maxDiheTerms=((system->parameters->maxDiheTerms<diheTerms)?diheTerms:system->parameters->maxDiheTerms);
 }
 
-void blade_add_parameter_imprs(System *system,const char *t1,const char *t2,const char *t3,const char *t4,double kimp,double imp0)
+void blade_add_parameter_imprs(System *system,const char *t1,const char *t2,const char *t3,const char *t4,double kimp,int nimp,double imp0)
 {
   TypeName4 name;
   struct ImprParameter ip;
@@ -655,7 +655,8 @@ void blade_add_parameter_imprs(System *system,const char *t1,const char *t2,cons
   name.t[1]=t2;
   name.t[2]=t3;
   name.t[3]=t4;
-  ip.kimp=(2.0*KCAL_MOL)*kimp;
+  ip.kimp=KCAL_MOL*kimp;
+  ip.nimp=nimp;
   ip.imp0=DEGREES*imp0;
   system+=omp_get_thread_num();
   system->parameters->imprParameter[name]=ip;
