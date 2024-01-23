@@ -70,6 +70,7 @@ struct ImprPotential {
   int idx[4];
   int siteBlock[2];
   real kimp;
+  int nimp;
   real imp0;
 };
 

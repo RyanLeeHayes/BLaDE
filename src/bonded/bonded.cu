@@ -323,11 +323,19 @@ __device__ void function_torsion(ImprPotential ip,real phi,real *fphi,real *lE,b
 {
   real dphi;
 
-  dphi=phi-ip.imp0;
-  dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
-  fphi[0]=ip.kimp*dphi;
-  if (calcEnergy) {
-    lE[0]=((real)0.5)*ip.kimp*dphi*dphi;
+  if (ip.nimp>0) {
+    dphi=ip.nimp*phi-ip.imp0;
+    fphi[0]=-ip.kimp*ip.nimp*sinf(dphi);
+    if (calcEnergy) {
+      lE[0]=ip.kimp*(cosf(dphi)+1);
+    }
+  } else {
+    dphi=phi-ip.imp0;
+    dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
+    fphi[0]=((real)2.0)*ip.kimp*dphi;
+    if (calcEnergy) {
+      lE[0]=ip.kimp*dphi*dphi;
+    }
   }
 }
 

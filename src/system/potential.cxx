@@ -657,6 +657,7 @@ void Potential::initialize(System *system)
       }
     }
     impr.kimp=ip.kimp;
+    impr.nimp=ip.nimp;
     impr.imp0=ip.imp0;
     if (rest) impr.kimp*=system->msld->restScaling;
     if (soft) {
