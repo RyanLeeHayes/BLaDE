@@ -316,6 +316,11 @@ void Parameters::add_parameter_imprs(FILE *fp)
       name.t[3]=check_type_name(io_nexts(line),"IMPROPERS");
       ip.kimp=KCAL_MOL*io_nextf(line);
       ip.nimp=io_nexti(line);
+      if (ip.nimp==0) {
+        ip.kimp*=2;
+      } else if (ip.nimp<0) {
+        fatal(__FILE__,__LINE__,"Error: Improper periodicity in parameter file is less than 0.\n");
+      }
       ip.imp0=DEGREES*io_nextf(line);
       imprParameter[name]=ip;
     } else {
@@ -657,6 +662,11 @@ void blade_add_parameter_imprs(System *system,const char *t1,const char *t2,cons
   name.t[3]=t4;
   ip.kimp=KCAL_MOL*kimp;
   ip.nimp=nimp;
+  if (ip.nimp==0) {
+    ip.kimp*=2;
+  } else if (ip.nimp<0) {
+    fatal(__FILE__,__LINE__,"Error: Improper periodicity in parameter file is less than 0.\n");
+  }
   ip.imp0=DEGREES*imp0;
   system+=omp_get_thread_num();
   system->parameters->imprParameter[name]=ip;

@@ -332,9 +332,9 @@ __device__ void function_torsion(ImprPotential ip,real phi,real *fphi,real *lE,b
   } else {
     dphi=phi-ip.imp0;
     dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
-    fphi[0]=((real)2.0)*ip.kimp*dphi;
+    fphi[0]=ip.kimp*dphi;
     if (calcEnergy) {
-      lE[0]=ip.kimp*dphi*dphi;
+      lE[0]=((real)0.5)*ip.kimp*dphi*dphi;
     }
   }
 }
