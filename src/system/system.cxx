@@ -23,7 +23,7 @@
 // Class constructors
 System::System() {
   fprintf(stdout,"Creating a copy of system\n");
-  verbose=1;
+  verbose=0;
   variables=new Variables;
   parameters=NULL;
   structure=NULL;

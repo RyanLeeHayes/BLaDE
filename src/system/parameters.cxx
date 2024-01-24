@@ -396,6 +396,8 @@ void Parameters::add_parameter_nbonds(char *line,FILE *fp)
   // char line[MAXLENGTHSTRING];
   std::string iname;
   struct NbondParameter np;
+  double e14fac=1;
+  int combine=0; // 0 normal, 1 geometric
 
   fgetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
@@ -403,15 +405,24 @@ void Parameters::add_parameter_nbonds(char *line,FILE *fp)
     if (strcmp(iname.c_str(),"")==0) {
       ;
 // Other acceptable tokens
-// NOTE: "Currently ignores nonbonded default parameters"
 //      cutnb  14.0 ctofnb 12.0 ctonnb 10.0 eps 1.0 e14fac 1.0 wmin 1.5 
-    } else if (strcmp(iname.c_str(),"cutnb")==0 ||
+#warning "Case sensitive in reading parameter file"
+    } else if (strcmp(iname.c_str(),"NONBONDED")==0 ||
+               strcmp(iname.c_str(),"cutnb")==0 ||
                strcmp(iname.c_str(),"ctofnb")==0 ||
                strcmp(iname.c_str(),"ctonnb")==0 ||
                strcmp(iname.c_str(),"eps")==0 ||
                strcmp(iname.c_str(),"e14fac")==0 ||
-               strcmp(iname.c_str(),"wmin")==0) {
-      ;
+               strcmp(iname.c_str(),"wmin")==0 ||
+               strcmp(iname.c_str(),"geom")==0) {
+      while (strcmp(iname.c_str(),"")!=0) {
+        if (strcmp(iname.c_str(),"e14fac")==0) {
+          e14fac=io_nextf(line);
+        } else if (strcmp(iname.c_str(),"geom")==0) {
+          combine=1;
+        }
+        iname=io_nexts(line);
+      }
     } else if (knownTokens.count(iname.substr(0,4))==0) {
       check_type_name(iname,"NONBONDEDS");
       io_nextf(line);
@@ -424,6 +435,8 @@ void Parameters::add_parameter_nbonds(char *line,FILE *fp)
       np.sig*=ANGSTROM;
       np.eps14*=-KCAL_MOL;
       np.sig14*=ANGSTROM;
+      np.e14fac=e14fac;
+      np.combine=combine;
       nbondParameter[iname]=np;
     } else {
       // This is part of next section. Back up and return.
@@ -459,6 +472,8 @@ void Parameters::add_parameter_nbfixs(FILE *fp)
       np.sig*=ANGSTROM;
       np.eps14*=-KCAL_MOL;
       np.sig14*=ANGSTROM;
+      np.e14fac=1; // unused
+      np.combine=0; // unused
       nbfixParameter[name]=np;
     } else {
       // This is part of next section. Back up and return.
@@ -732,7 +747,7 @@ void blade_add_parameter_cmaps_fill(System *system,
 !atom  ignored    epsilon      Rmin/2   ignored   eps,1-4       Rmin/2,1-4
 !
 */
-void blade_add_parameter_nbonds(System *system,const char *t1,double eps,double sig,double eps14,double sig14)
+void blade_add_parameter_nbonds(System *system,const char *t1,double eps,double sig,double eps14,double sig14,double e14fac,int combine)
 {
   std::string name;
   struct NbondParameter np;
@@ -746,6 +761,8 @@ void blade_add_parameter_nbonds(System *system,const char *t1,double eps,double 
   np.sig*=ANGSTROM;
   np.eps14*=-KCAL_MOL;
   np.sig14*=ANGSTROM;
+  np.e14fac=e14fac;
+  np.combine=combine; // combination rule, 0 is normal charmm combination rule, 1 is geometric combination rule
   system+=omp_get_thread_num();
   system->parameters->nbondParameter[name]=np;
 }

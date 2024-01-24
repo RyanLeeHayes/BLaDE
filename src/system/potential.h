@@ -87,6 +87,7 @@ struct Nb14Potential {
   real qxq;
   real c12;
   real c6;
+  real e14fac;
 };
 
 struct NbExPotential {

@@ -114,6 +114,8 @@ struct NbondParameter {
   real sig;
   real eps14;
   real sig14;
+  real e14fac;
+  int combine;
 };
 
 class Parameters {
@@ -221,7 +223,7 @@ extern "C" {
     const char *t5,const char *t6,const char *t7,const char *t8,
     int i, int j, double kcmapij);
   void blade_add_parameter_nbonds(System *system,
-    const char *t1,double eps,double sig,double eps14,double sig14);
+    const char *t1,double eps,double sig,double eps14,double sig14,double e14fac,int combine);
   void blade_add_parameter_nbfixs(System *system,
     const char *t1,const char *t2,
     double eps,double sig,double eps14,double sig14);

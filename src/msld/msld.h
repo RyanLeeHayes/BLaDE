@@ -55,8 +55,14 @@ class Msld {
   struct VariableBias *variableBias;
   struct VariableBias *variableBias_d;
 
-  real kThetaBias;
-  real nThetaBias;
+  int thetaCollBiasCount;
+  real *kThetaCollBias;
+  real *kThetaCollBias_d;
+  real *nThetaCollBias;
+  real *nThetaCollBias_d;
+  int thetaIndeBiasCount;
+  real *kThetaIndeBias;
+  real *kThetaIndeBias_d;
 
   std::vector<Int2> softBonds;
   std::vector<std::vector<int> > atomRestraints;
@@ -122,7 +128,8 @@ extern "C" {
   void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int scaleAngle,int scaleDihe,int scaleImpr,int scaleCmap);
   void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent,int fix);
   void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n);
-  void blade_add_msld_thetabias(System *system,double k,double n);
+  void blade_add_msld_thetacollbias(System *system,int sites,int i,double k,double n);
+  void blade_add_msld_thetaindebias(System *system,int sites,int i,double k);
   void blade_add_msld_softbond(System *system,int i,int j);
   void blade_add_msld_atomrestraint(System *system);
   void blade_add_msld_atomrestraint_element(System *system,int i);

@@ -110,13 +110,14 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
     if (usePME) {
       real br=rc.betaEwald*r;
 
-      real erfcrinv=fasterfc(br)*rinv;
+      real erfcrinv=(fasterfc(br)+pp.e14fac-1)*rinv;
       // fpair[0]+=kqq*(-erfcf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
       fpair[0]+=kqq*(-erfcrinv-((real)1.128379167095513)*rc.betaEwald*expf(-br*br))*rinv;
       if (calcEnergy) {
         lE[0]+=kqq*erfcrinv;
       }
     } else {
+      real kqqe14=kqq*pp.e14fac;
       real roff2=rc.rCut*rc.rCut;
       real ron2=rc.rSwitch*rc.rSwitch;
       real ginv=1/((roff2-ron2)*(roff2-ron2)*(roff2-ron2));
@@ -129,12 +130,12 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
       real r3=r2*r;
       real r5=r3*r2;
       fpair[0]+=(r<=rc.rSwitch)?
-        -kqq*rinv*rinv:
-        -kqq*rinv*(Aconst*rinv+Bconst*r+3*Cconst*r3+5*Dconst*r5);
+        -kqqe14*rinv*rinv:
+        -kqqe14*rinv*(Aconst*rinv+Bconst*r+3*Cconst*r3+5*Dconst*r5);
       if (calcEnergy) {
         lE[0]+=(r<=rc.rSwitch)?
-          kqq*(rinv+dvc):
-          kqq*(Aconst*(rinv-1/rc.rCut)+Bconst*(rc.rCut-r)+Cconst*(roff2*rc.rCut-r3)+Dconst*(roff2*roff2*rc.rCut-r5));
+          kqqe14*(rinv+dvc):
+          kqqe14*(Aconst*(rinv-1/rc.rCut)+Bconst*(rc.rCut-r)+Cconst*(roff2*rc.rCut-r3)+Dconst*(roff2*roff2*rc.rCut-r5));
       }
     }
   }

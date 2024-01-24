@@ -948,8 +948,10 @@ void Potential::initialize(System *system)
         // Get participating atoms
         nb14.idx[0]=i;
         nb14.idx[1]=*jj;
+        nb14.e14fac=1;
         for (k=0; k<2; k++) {
           type.t[k]=struc->atomList[nb14.idx[k]].atomTypeName;
+          nb14.e14fac*=sqrt(param->nbondParameter[type.t[k]].e14fac);
         }
         // Get their MSLD scaling
         msld->nb14_scaling(nb14.idx,nb14.siteBlock);
@@ -968,6 +970,9 @@ void Potential::initialize(System *system)
           }
           np.eps14=sqrt(npij[0].eps14*npij[1].eps14);
           np.sig14=npij[0].sig14+npij[1].sig14;
+          if (npij[0].combine==1 && npij[1].combine==1) {
+            np.sig14=2*sqrt(npij[0].sig14*npij[1].sig14);
+          }
         }
         if (system->msld->rest) {
           for (j=0; j<2; j++) {
@@ -1236,7 +1241,10 @@ void Potential::initialize(System *system)
         }
         np.eps=sqrt(npij[0].eps*npij[1].eps);
         np.sig=npij[0].sig+npij[1].sig;
+        if (npij[0].combine==1 && npij[1].combine==1) {
+          np.sig=2*sqrt(npij[0].sig*npij[1].sig);
         }
+      }
       np.eps*=scaling[1];
       real sig6=np.sig*np.sig;
       sig6*=(sig6*sig6);

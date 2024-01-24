@@ -52,8 +52,14 @@ Msld::Msld() {
   variableBias=NULL;
   variableBias_d=NULL;
 
-  kThetaBias=0;
-  nThetaBias=2;
+  thetaCollBiasCount=0;
+  kThetaCollBias=NULL;
+  kThetaCollBias_d=NULL;
+  nThetaCollBias=NULL;
+  nThetaCollBias_d=NULL;
+  thetaIndeBiasCount=0;
+  kThetaIndeBias=NULL;
+  kThetaIndeBias_d=NULL;
 
   softBonds.clear();
   atomRestraints.clear();
@@ -85,11 +91,19 @@ Msld::~Msld() {
   if (thetaVelocity) free(thetaVelocity);
   if (thetaMass) free(thetaMass);
   if (lambdaCharge) free(lambdaCharge);
+  if (variableBias) free(variableBias);
+  if (kThetaCollBias) free(kThetaCollBias);
+  if (nThetaCollBias) free(nThetaCollBias);
+  if (kThetaIndeBias) free(kThetaIndeBias);
 
   if (atomBlock_d) cudaFree(atomBlock_d);
   if (lambdaSite_d) cudaFree(lambdaSite_d);
   if (lambdaBias_d) cudaFree(lambdaBias_d);
   if (lambdaCharge_d) cudaFree(lambdaCharge_d);
+  if (variableBias_d) cudaFree(variableBias_d);
+  if (kThetaCollBias_d) cudaFree(kThetaCollBias_d);
+  if (nThetaCollBias_d) cudaFree(nThetaCollBias_d);
+  if (kThetaIndeBias_d) cudaFree(kThetaIndeBias_d);
 
   if (blocksPerSite) free(blocksPerSite);
   if (blocksPerSite_d) cudaFree(blocksPerSite_d);
@@ -212,9 +226,76 @@ void parse_msld(char *line,System *system)
     vb.k=io_nextf(line);
     vb.n=io_nexti(line);
     system->msld->variableBias_tmp.push_back(vb);
-  } else if (strcmp(token,"thetabias")==0) {
-    system->msld->kThetaBias=io_nextf(line);
-    system->msld->nThetaBias=io_nextf(line);
+  } else if (strcmp(token,"thetaebias")==0) {
+    std::string name;
+    name=io_nexts(line);
+    if (name=="collective") {
+      name=io_nexts(line);
+      if (name=="nsites") {
+        system->msld->thetaCollBiasCount=io_nexti(line)+1;
+        system->msld->kThetaCollBias=(real*)calloc(system->msld->thetaCollBiasCount,sizeof(real));
+        system->msld->nThetaCollBias=(real*)calloc(system->msld->thetaCollBiasCount,sizeof(real));
+      } else if (name=="set") {
+        if (system->msld->kThetaCollBias==NULL) {
+          fatal(__FILE__,__LINE__,"Call thetabias collective nsites [int] before thetabias set or thetabias auto\n");
+        }
+        int i0=io_nexti(line);
+        int i1=i0+1;
+        if (i0==0) {
+          i0=1;
+          i1=system->msld->thetaCollBiasCount;
+        }
+        real k,N;
+        k=io_nextf(line);
+        N=io_nextf(line);
+        for (i=i0; i<i1; i++) {
+          system->msld->kThetaCollBias[i]=k;
+          system->msld->nThetaCollBias[i]=N;
+        }
+      } else {
+        fatal(__FILE__,__LINE__,"Unrecognized token %s in thetabias\n",name.c_str());
+      }
+    } else if (name=="independent") {
+      name=io_nexts(line);
+      if (name=="nsites") {
+        system->msld->thetaIndeBiasCount=io_nexti(line)+1;
+        system->msld->kThetaIndeBias=(real*)calloc(system->msld->thetaIndeBiasCount,sizeof(real));
+      } else if (name=="set" || name=="auto") {
+        if (system->msld->kThetaIndeBias==NULL) {
+          fatal(__FILE__,__LINE__,"Call thetabias indepdendent nsites [int] before thetabias set or thetabias auto\n");
+        }
+        int i0=io_nexti(line);
+        int i1=i0+1;
+        if (i0==0) {
+          i0=1;
+          i1=system->msld->thetaIndeBiasCount;
+        }
+        real k,Ns,T;
+        if (name=="auto") {
+          Ns=io_nextf(line);
+          T=io_nextf(line);
+        }
+        if (name=="set") {
+          k=io_nextf(line);
+        }
+        for (i=i0; i<i1; i++) {
+          if (name=="auto") {
+            k=1;
+            for (j=0; j<50; j++) {
+              // k=0.5*log(k*Ns*Ns*M_PI/2);
+              k=0.5*log(0.25*k*Ns*Ns*M_PI/2);
+              if (!(k>0)) k=0;
+            }
+            k=kB*T;
+          }
+          system->msld->kThetaIndeBias[i]=k;
+        }
+      } else {
+        fatal(__FILE__,__LINE__,"Unrecognized token %s in thetabias\n",name.c_str());
+      }
+    } else {
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for thetabias type. Use collective or independent\n",name.c_str());
+    }
   } else if (strcmp(token,"removescaling")==0) {
     std::string name;
     while ((name=io_nexts(line))!="") {
@@ -554,6 +635,17 @@ void Msld::initialize(System *system)
   }
   cudaMemcpy(variableBias_d,variableBias,variableBiasCount*sizeof(struct VariableBias),cudaMemcpyHostToDevice);
 
+  if (thetaCollBiasCount>0) {
+    cudaMalloc(&kThetaCollBias_d,thetaCollBiasCount*sizeof(real));
+    cudaMemcpy(kThetaCollBias_d,kThetaCollBias,thetaCollBiasCount*sizeof(real),cudaMemcpyHostToDevice);
+    cudaMalloc(&nThetaCollBias_d,thetaCollBiasCount*sizeof(real));
+    cudaMemcpy(nThetaCollBias_d,nThetaCollBias,thetaCollBiasCount*sizeof(real),cudaMemcpyHostToDevice);
+  }
+  if (thetaIndeBiasCount>0) {
+    cudaMalloc(&kThetaIndeBias_d,thetaIndeBiasCount*sizeof(real));
+    cudaMemcpy(kThetaIndeBias_d,kThetaIndeBias,thetaIndeBiasCount*sizeof(real),cudaMemcpyHostToDevice);
+  }
+
   // Get blocksPerSite
   siteCount=1;
   for (i=0; i<blockCount; i++) {
@@ -809,7 +901,7 @@ void Msld::getforce_variableBias(System *system,bool calcEnergy)
   }
 }
 
-__global__ void getforce_thetaBias_kernel(real *theta,real_f *thetaForce,real_e *energy,int siteCount,int *siteBound,real k,real n)
+__global__ void getforce_thetaCollBias_kernel(real *theta,real_f *thetaForce,real_e *energy,int siteCount,int *siteBound,real *k,real *n)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real nhigh,nlow;
@@ -823,13 +915,34 @@ __global__ void getforce_thetaBias_kernel(real *theta,real_f *thetaForce,real_e 
     nhigh=0;
     nlow=0;
     for (j=ji; j<jf; j++) {
-      nhigh+=pow(((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n);
-      nlow+=pow(-((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n);
+      nhigh+=pow(((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n[i]);
+      nlow+=pow(-((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n[i]);
     }
-    lEnergy=((real)0.5)*k*((nhigh-1)*(nhigh-1)+(nlow-(jf-ji-1))*(nlow-(jf-ji-1)));
+    lEnergy=((real)0.5)*k[i]*((nhigh-1)*(nhigh-1)+(nlow-(jf-ji-1))*(nlow-(jf-ji-1)));
     for (j=ji; j<jf; j++) {
-      atomicAdd(&thetaForce[j], k*n*((nhigh-1)*pow(((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n-1)-(nlow-(jf-ji-1))*pow(-((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n-1))*cos(ANGSTROM*theta[j])*ANGSTROM);
+      atomicAdd(&thetaForce[j], k[i]*n[i]*((nhigh-1)*pow(((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n[i]-1)-(nlow-(jf-ji-1))*pow(-((real)0.5)*sin(ANGSTROM*theta[j])+((real)0.5),n[i]-1))*cos(ANGSTROM*theta[j])*ANGSTROM);
     }
+  }
+
+  // Energy, if requested
+  if (energy) {
+    __syncthreads();
+    real_sum_reduce(lEnergy,sEnergy,energy);
+  }
+}
+__global__ void getforce_thetaIndeBias_kernel(real *theta,real_f *thetaForce,real_e *energy,int blockCount,int *lambdaSite,real *k)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  extern __shared__ real sEnergy[];
+  real lEnergy=0;
+  real ki,s,s3;
+
+  if (i<blockCount) {
+    ki=k[lambdaSite[i]];
+    s=((real)0.5)-((real)0.5)*sin(ANGSTROM*theta[i]);
+    s3=s*s*s;
+    lEnergy=ki*(((real)1)-s*s3);
+    atomicAdd(&thetaForce[i], ((real)2)*ki*s3*cos(ANGSTROM*theta[i])*ANGSTROM);
   }
 
   // Energy, if requested
@@ -849,6 +962,8 @@ void Msld::getforce_thetaBias(System *system,bool calcEnergy)
 
   if (r->calcTermFlag[eelambda]==false) return;
 
+
+
   if (calcEnergy) {
     shMem=BLMS*sizeof(real)/32;
     pEnergy=s->energy_d+eelambda;
@@ -857,8 +972,12 @@ void Msld::getforce_thetaBias(System *system,bool calcEnergy)
     stream=system->run->biaspotStream;
   }
 
-  if (kThetaBias!=0) {
-    getforce_thetaBias_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->theta_fd,s->thetaForce_d,pEnergy,siteCount,siteBound_d,kThetaBias,nThetaBias);
+  if (thetaCollBiasCount!=0) {
+    getforce_thetaCollBias_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->theta_fd,s->thetaForce_d,pEnergy,siteCount,siteBound_d,kThetaCollBias_d,nThetaCollBias_d);
+  }
+
+  if (thetaIndeBiasCount!=0) {
+    getforce_thetaIndeBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->theta_fd,s->thetaForce_d,pEnergy,blockCount,lambdaSite_d,kThetaIndeBias_d);
   }
 }
 
@@ -1103,11 +1222,26 @@ void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,
   system->msld->variableBias_tmp.push_back(vb);
 }
 
-void blade_add_msld_thetabias(System *system,double k,double n)
+void blade_add_msld_thetacollbias(System *system,int sites,int i,double k,double n)
 {
   system+=omp_get_thread_num();
-  system->msld->kThetaBias=k;
-  system->msld->nThetaBias=n;
+  if (system->msld->thetaCollBiasCount==0) {
+    system->msld->thetaCollBiasCount=sites;
+    system->msld->kThetaCollBias=(real*)calloc(system->msld->thetaCollBiasCount,sizeof(real));
+    system->msld->nThetaCollBias=(real*)calloc(system->msld->thetaCollBiasCount,sizeof(real));
+  }
+  system->msld->kThetaCollBias[i-1]=k;
+  system->msld->nThetaCollBias[i-1]=n;
+}
+
+void blade_add_msld_thetaindebias(System *system,int sites,int i,double k)
+{
+  system+=omp_get_thread_num();
+  if (system->msld->thetaIndeBiasCount==0) {
+    system->msld->thetaIndeBiasCount=sites;
+    system->msld->kThetaIndeBias=(real*)calloc(system->msld->thetaIndeBiasCount,sizeof(real));
+  } 
+  system->msld->kThetaIndeBias[i-1]=k;
 }
 
 void blade_add_msld_softbond(System *system,int i,int j)
