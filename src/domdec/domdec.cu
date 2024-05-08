@@ -96,9 +96,15 @@ void Domdec::initialize(System *system)
   // Note: orthBox_f not set yet - now it is, it's set by broadcast_box
   real invDensity;
   if (system->state->typeBox) {
-    invDensity=(boxxx(system->state->tricBox_f)*boxyy(system->state->tricBox_f)*boxzz(system->state->tricBox_f))/system->state->atomCount;
+    invDensity=(boxxx(system->state->tricBox_f)
+      *boxyy(system->state->tricBox_f)
+      *boxzz(system->state->tricBox_f))
+      /system->state->atomCount;
   } else {
-    invDensity=(boxxx(system->state->orthBox_f)*boxyy(system->state->orthBox_f)*boxzz(system->state->orthBox_f))/system->state->atomCount;
+    invDensity=(boxxx(system->state->orthBox_f)
+      *boxyy(system->state->orthBox_f)
+      *boxzz(system->state->orthBox_f))
+      /system->state->atomCount;
   }
   real approxBlockBox=exp(log(32*invDensity)/3);
   real edge=3*approxBlockBox+2*system->run->cutoffs.rCut;

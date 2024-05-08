@@ -452,9 +452,9 @@ void State::broadcast_box(System *system)
 #pragma omp barrier // OMP
   if (system->id!=0) { // OMP
     if (typeBox) {
-      orthBox_f=orthBox_omp[0]; // OMP
-    } else {
       tricBox_f=tricBox_omp[0]; // OMP
+    } else {
+      orthBox_f=orthBox_omp[0]; // OMP
     }
   } // OMP
   // nvtxRangePop();

@@ -472,6 +472,7 @@ void Run::dynamics(char *line,char *token,System *system)
     }
   }
   t2=clock();
+// Note: omp_get_wtime may be of more interest when parallelizing
   fprintf(stdout,"Elapsed dynamics time: %f\n",(t2-t1)*1.0/CLOCKS_PER_SEC);
 
   dynamics_finalize(system);
