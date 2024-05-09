@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
   MPI_Init(&argc,&argv);
 #endif
 
-  system=init_system();
+  system=init_system(0,NULL);
 
 #pragma omp parallel
   {

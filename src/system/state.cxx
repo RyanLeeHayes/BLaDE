@@ -383,7 +383,8 @@ void State::broadcast_position(System *system)
     cudaStreamWaitEvent(system->run->updateStream,system->run->communicate_omp[0],0); // UNSURE
     // cudaMemcpyPeer(positionBuffer_d,system->id,positionBuffer_omp,0,N*sizeof(real)); // OMP
     // cudaMemcpyAsync(positionBuffer_fd,positionBuffer_omp,N*sizeof(real),cudaMemcpyDefault,system->run->updateStream); // OMP
-    cudaMemcpyPeerAsync(positionBuffer_fd,system->id,positionBuffer_omp,0,N*sizeof(real),system->run->updateStream); // OMP
+    cudaMemcpyPeerAsync(positionBuffer_fd,system->gpu,positionBuffer_omp,
+      system->mothership_gpu,N*sizeof(real),system->run->updateStream); // OMP
 #endif
   } // OMP
   // nvtxRangePop();
@@ -495,10 +496,12 @@ void State::gather_force(System *system,bool calcEnergy)
 #else
   if (system->id!=0) {
     // cudaMemcpyAsync(forceBuffer_omp,forceBuffer_d,N*sizeof(real_f),cudaMemcpyDefault,system->run->updateStream);
-    cudaMemcpyPeerAsync(forceBuffer_omp,0,forceBuffer_d,system->id,N*sizeof(real_f),system->run->updateStream);
+    cudaMemcpyPeerAsync(forceBuffer_omp,system->mothership_gpu,forceBuffer_d,
+      system->gpu,N*sizeof(real_f),system->run->updateStream);
     if (calcEnergy) {
       // cudaMemcpyAsync(energy_omp,energy_d,eeend*sizeof(real_e),cudaMemcpyDefault,system->run->updateStream);
-      cudaMemcpyPeerAsync(energy_omp,0,energy_d,system->id,eeend*sizeof(real_e),system->run->updateStream);
+      cudaMemcpyPeerAsync(energy_omp,system->mothership_gpu,energy_d,
+        system->gpu,eeend*sizeof(real_e),system->run->updateStream);
     }
   }
   /* // Binary wait tree

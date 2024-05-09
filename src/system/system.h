@@ -27,6 +27,7 @@ class Domdec;
 class System {
   public:
   int id,idCount;
+  int gpu,mothership_gpu;
   int verbose;
   void **message; // (shared variable for message passing of pointers)
 // Have command parsing
@@ -78,14 +79,14 @@ class System {
   void parse_system_verbose(char *line,char *token,System *system);
 };
 
-System* init_system();
+System* init_system(int ngpus,int *gpus);
 void dest_system(System *system);
 
 // Library functions
 extern "C" {
-  System* blade_init_system();
+  System* blade_init_system(int ngpus,int *gpus);
   void blade_dest_system(System *system);
-  void blade_set_device();
+  void blade_set_device(System *system);
   void blade_set_verbose(System *system,int v);
 }
 

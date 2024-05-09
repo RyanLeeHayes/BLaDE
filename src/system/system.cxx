@@ -17,6 +17,7 @@
 #include "system/potential.h"
 #include "system/state.h"
 #include "domdec/domdec.h"
+#include "main/gpu_check.h"
 
 
 
@@ -224,7 +225,7 @@ void System::error(char *line,char *token,System *system)
   fatal(__FILE__,__LINE__,"Unrecognized token: %s\n",token);
 }
 
-System* init_system()
+System* init_system(int ngpus,int *gpus)
 {
   System *system;
   int id;
@@ -234,22 +235,34 @@ System* init_system()
   int available;
   int notAvailable=cudaGetDeviceCount(&available);
   if (notAvailable==1) fatal(__FILE__,__LINE__,"No GPUs available\n");
-  if (available<omp_get_max_threads()) fatal(__FILE__,__LINE__,"Running with %d omp threads but only %d GPUs\n",omp_get_max_threads(),available);
+  if (available<omp_get_max_threads()) {
+    fatal(__FILE__, __LINE__,
+      "Running with %d omp threads but only %d GPUs\n",
+       omp_get_max_threads(),available);
+  }
 
   system=new System[idCount];
 
   message=(void**)calloc(idCount,sizeof(void*));
   for (id=0; id<idCount; id++) {
     system[id].id=id;
+    if (ngpus<idCount) {
+      system[id].gpu=id;
+    } else {
+      system[id].gpu=gpus[id];
+    }
+    system[id].mothership_gpu=system[0].gpu;
     system[id].idCount=idCount;
     system[id].message=message;
-    cudaSetDevice(id);
+    gpuCheck(cudaSetDevice(system[id].gpu));
     if (id!=0) {
       int accessible;
-      cudaDeviceCanAccessPeer(&accessible, id, 0);
-      fprintf(stdout,"Device %d %s access device %d directly\n",id,(accessible?"can":"cannot"),0);
+      gpuCheck(cudaDeviceCanAccessPeer(&accessible,
+        system[id].gpu,system[id].mothership_gpu));
+      fprintf(stdout,"Device %d %s access device %d directly\n",
+        system[id].gpu,(accessible? "can" : "cannot"),system[id].mothership_gpu);
       if (accessible) {
-        cudaDeviceEnablePeerAccess(0,0); // host 0, required 0
+        gpuCheck(cudaDeviceEnablePeerAccess(system[id].mothership_gpu,0)); // host, required 0
       }
     }
     system[id].rngGPU=new RngGPU;
@@ -265,12 +278,12 @@ void dest_system(System *system)
 
   free(system->message);
   for (id=0; id<idCount; id++) {
-    cudaSetDevice(id);
+    cudaSetDevice(system[id].gpu);
     if (id!=0) {
       int accessible;
-      cudaDeviceCanAccessPeer(&accessible, id, 0);
+      cudaDeviceCanAccessPeer(&accessible, system[id].gpu, system[id].mothership_gpu);
       if (accessible) {
-        cudaDeviceDisablePeerAccess(0); // host 0, have to disable on free, otherwise an error is thrown on reallocation
+        cudaDeviceDisablePeerAccess(system[id].mothership_gpu); // host, have to disable on free, otherwise an error is thrown on reallocation
       }
     }
     delete(system[id].rngGPU);
@@ -280,9 +293,9 @@ void dest_system(System *system)
   delete[] system;
 }
 
-System* blade_init_system()
+System* blade_init_system(int ngpus,int *gpus)
 {
-  return init_system();
+  return init_system(ngpus,gpus);
 }
 
 void blade_dest_system(System *system)
@@ -290,9 +303,10 @@ void blade_dest_system(System *system)
   dest_system(system);
 }
 
-void blade_set_device()
+void blade_set_device(System *system)
 {
-  cudaSetDevice(omp_get_thread_num());
+  system+=omp_get_thread_num();
+  gpuCheck(cudaSetDevice(system->gpu));
 }
 
 void blade_set_verbose(System *system,int v)
