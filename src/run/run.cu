@@ -11,6 +11,7 @@
 #include "system/selections.h"
 #include "holonomic/rectify.h"
 #include "domdec/domdec.h"
+#include "main/gpu_check.h"
 
 #ifdef REPLICAEXCHANGE
 #include <mpi.h>
@@ -64,6 +65,12 @@ Run::Run(System *system)
   freqNPT=50;
   volumeFluctuation=100*ANGSTROM*ANGSTROM*ANGSTROM;
   pressure=1*ATMOSPHERE;
+
+  // minimization options
+  dxAtomMax=0.5*ANGSTROM;
+  dxRMSInit=0.1*ANGSTROM;
+  dxRMS=dxRMSInit;
+  minType=esd; // enum steepest descent
 
   domdecHeuristic=true;
 
@@ -204,6 +211,8 @@ void Run::setup_parse_run()
   helpRun["energy"]="?run energy> Calculate energy of current conformation or from fnmcpi checkpoint in file\"\n";
   parseRun["test"]=&Run::test;
   helpRun["test"]="?run test [arguments]> Test first derivatives using finite differences. Valid arguments are \"alchemical [difference]\" and \"spatial [selection] [difference]\"\n";
+  parseRun["minimize"]=&Run::minimize;
+  helpRun["minimize"]="?run minimize> Minimize structure with the options set by \"run setvariable\"\n";
   parseRun["dynamics"]=&Run::dynamics;
   helpRun["dynamics"]="?run dynamics> Run dynamics with the options set by \"run setvariable\"\n";
 }
@@ -252,6 +261,9 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
   fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation/(ANGSTROM*ANGSTROM*ANGSTROM));
   fprintf(stdout,"RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure/ATMOSPHERE);
+  fprintf(stdout,"RUN PRINT> dxatommax=%f (Maximum minimization atom displacement in A)\n",dxAtomMax/ANGSTROM);
+  fprintf(stdout,"RUN PRINT> dxrmsinit=%f (Starting minimization rms displacement in A)\n",dxRMSInit/ANGSTROM);
+  fprintf(stdout,"RUN PRINT> mintype=%d (minimization algorithm. 0 is steepest descent, etc)\n",minType);
   fprintf(stdout,"RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n",(int)domdecHeuristic);
 #ifdef REPLICAEXCHANGE
   fprintf(stdout,"RUN PRINT> fnmrex=%s (file name for replica exchange)\n",fnmREx.c_str());
@@ -336,6 +348,17 @@ void Run::set_variable(char *line,char *token,System *system)
     volumeFluctuation=io_nextf(line)*ANGSTROM*ANGSTROM*ANGSTROM;
   } else if (strcmp(token,"pressure")==0) {
     pressure=io_nextf(line)*ATMOSPHERE;
+  } else if (strcmp(token,"dxatommax")==0) {
+    dxAtomMax=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"dxrmsinit")==0) {
+    dxRMSInit=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"mintype")==0) {
+    std::string minString=io_nexts(line);
+    if (strcmp(minString.c_str(),"sd")==0) {
+      minType=esd;
+    } else {
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: sd\n",minString.c_str());
+    }
   } else if (strcmp(token,"domdecheuristic")==0) {
     domdecHeuristic=io_nextb(line);
 #ifdef REPLICAEXCHANGE
@@ -446,6 +469,23 @@ void Run::test(char *line,char *token,System *system)
   dynamics_finalize(system);
 }
 
+void Run::minimize(char *line,char *token,System *system)
+{
+  dynamics_initialize(system);
+  system->state->min_init(system);
+
+  for (step=0; step<nsteps; step++) {
+    system->domdec->update_domdec(system,true); // true to always update neighbor list
+    system->potential->calc_force(0,system); // step 0 to always calculate energy
+    system->state->min_move(step,system);
+    print_dynamics_output(step,system);
+    gpuCheck(cudaPeekAtLastError());
+  }
+
+  system->state->min_dest(system);
+  dynamics_finalize(system);
+}
+
 void Run::dynamics(char *line,char *token,System *system)
 {
   clock_t t1,t2;
@@ -464,12 +504,7 @@ void Run::dynamics(char *line,char *token,System *system)
     system->state->update(step,system);
 #warning "Need to copy coordinates before update"
     print_dynamics_output(step,system);
-
-    // NYI check gpu
-    if (cudaPeekAtLastError() != cudaSuccess) {
-      cudaError_t err=cudaPeekAtLastError();
-      fatal(__FILE__,__LINE__,"GPU error code %d during run propogation of OMP rank %d\n%s\n",err,system->id,cudaGetErrorString(err));
-    }
+    gpuCheck(cudaPeekAtLastError());
   }
   t2=clock();
 // Note: omp_get_wtime may be of more interest when parallelizing
@@ -523,13 +558,9 @@ void Run::dynamics_initialize(System *system)
   system->domdec=new Domdec();
   system->domdec->initialize(system);
 
-  // NYI check gpu
   cudaDeviceSynchronize();
 #pragma omp barrier
-  if (cudaPeekAtLastError() != cudaSuccess) {
-    cudaError_t err=cudaPeekAtLastError();
-    fatal(__FILE__,__LINE__,"GPU error code %d during run initialization of OMP rank %d\n%s\n",err,system->id,cudaGetErrorString(err));
-  }
+  gpuCheck(cudaPeekAtLastError());
 #pragma omp barrier
 }
 

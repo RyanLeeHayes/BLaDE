@@ -18,6 +18,10 @@ struct Cutoffs {
   real rSwitch;
 };
 
+typedef enum emin {
+  esd,
+  eminend} EMin;
+
 class Run {
   public:
   std::map<std::string,void(Run::*)(char*,char*,System*)> parseRun;
@@ -44,6 +48,12 @@ class Run {
   real dt;
   real T;
   real gamma;
+
+  // Minimization variables
+  real dxAtomMax; // maximum step length
+  real dxRMSInit;
+  real dxRMS;
+  EMin minType; // minimization scheme
 
   real betaEwald;
   real rCut;
@@ -102,6 +112,7 @@ class Run {
   void set_term(char *line,char *token,System *system);
   void energy(char *line,char *token,System *system);
   void test(char *line,char *token,System *system);
+  void minimize(char *line,char *token,System *system);
   void dynamics(char *line,char *token,System *system);
 
   void dynamics_initialize(System *system);

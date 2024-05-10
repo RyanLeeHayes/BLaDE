@@ -84,6 +84,7 @@ real variables_calculate(char *line)
       return (real) number;
     } else {
       fatal(__FILE__,__LINE__,"Unrecognized token (%s) in calculate statement\n",token.c_str());
+      return 0; // suppress compiler warnings
     }
   }
 }
