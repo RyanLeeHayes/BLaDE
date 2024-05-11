@@ -128,12 +128,7 @@ void pressure_coupling(System *system)
     energyOld=s->energy[eepotential];
 
     // and print it
-    if (system->verbose>0) {
-      for (int i=0; i<eeend; i++) {
-        fprintf(stdout," %12.4f",s->energy[i]);
-      }
-      fprintf(stdout,"\n");
-    }
+    if (system->verbose>0) display_nrg(system);
 
     s->backup_position();
 
@@ -160,12 +155,7 @@ void pressure_coupling(System *system)
     energyNew=s->energy[eepotential];
 
     // and print it
-    if (system->verbose>0) {
-      for (int i=0; i<eeend; i++) {
-        fprintf(stdout," %12.4f",s->energy[i]);
-      }
-      fprintf(stdout,"\n");
-    }
+    if (system->verbose>0) display_nrg(system);
 
     // Compare energy
     N=s->atomCount-(2*p->triangleConsCount+p->branch1ConsCount+2*p->branch2ConsCount+3*p->branch3ConsCount);

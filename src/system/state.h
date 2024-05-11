@@ -77,8 +77,9 @@ class State {
   real_e *energy_omp;
 
   // Minimization buffers
-  real_e *displacements2_d; // sd, [0] is rms, [1] is max
+  real_e *grads2_d; // sd+sdfd, [0] is rms, [1] is max
   real_e prevEnergy; // sd
+  real_v *minDirection_d; // sdfd
 
   // Spatial-Theta buffers
   real_v *velocityBuffer;
@@ -177,7 +178,7 @@ class State {
   // From update/minimize.cu
   void min_init(System *system);
   void min_dest(System *system);
-  void min_move(int step,System *system);
+  void min_move(int step,int nsteps,System *system);
 };
 
 #endif

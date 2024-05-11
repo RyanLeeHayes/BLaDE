@@ -56,6 +56,7 @@ void io_strncpy(char *targ,char *dest,int n);
 void interpretter(const char *fnm,System *system);
 
 void print_nrg(int step,System *system);
+void display_nrg(System *system);
 void print_dynamics_output(int step,System *system);
 
 void write_checkpoint_file(const char *fnm,System *system);

@@ -329,6 +329,17 @@ void print_nrg(int step,System *system)
   fprintf(fp,"\n");
 }
 
+void display_nrg(System *system)
+{
+  real_e *e=system->state->energy;
+  int i;
+
+  for (i=0; i<eeend; i++) {
+    fprintf(stdout," %12.4f",e[i]);
+  }
+  fprintf(stdout,"\n");
+}
+
 void print_dynamics_output(int step,System *system)
 {
   if (system->id==0) {

@@ -19,7 +19,8 @@ struct Cutoffs {
 };
 
 typedef enum emin {
-  esd,
+  esd, // steepest descent
+  esdfd, // steepest descent with finite difference to choose step length
   eminend} EMin;
 
 class Run {

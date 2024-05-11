@@ -67,8 +67,8 @@ Run::Run(System *system)
   pressure=1*ATMOSPHERE;
 
   // minimization options
-  dxAtomMax=0.5*ANGSTROM;
-  dxRMSInit=0.1*ANGSTROM;
+  dxAtomMax=0.1*ANGSTROM;
+  dxRMSInit=0.05*ANGSTROM;
   dxRMS=dxRMSInit;
   minType=esd; // enum steepest descent
 
@@ -356,8 +356,10 @@ void Run::set_variable(char *line,char *token,System *system)
     std::string minString=io_nexts(line);
     if (strcmp(minString.c_str(),"sd")==0) {
       minType=esd;
+    } else if (strcmp(minString.c_str(),"sdfd")==0) {
+      minType=esdfd;
     } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: sd\n",minString.c_str());
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: sd or sdfd\n",minString.c_str());
     }
   } else if (strcmp(token,"domdecheuristic")==0) {
     domdecHeuristic=io_nextb(line);
@@ -477,7 +479,7 @@ void Run::minimize(char *line,char *token,System *system)
   for (step=0; step<nsteps; step++) {
     system->domdec->update_domdec(system,true); // true to always update neighbor list
     system->potential->calc_force(0,system); // step 0 to always calculate energy
-    system->state->min_move(step,system);
+    system->state->min_move(step,nsteps,system);
     print_dynamics_output(step,system);
     gpuCheck(cudaPeekAtLastError());
   }
