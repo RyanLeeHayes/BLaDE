@@ -18,7 +18,11 @@ __global__ void sd_acceleration_kernel(int N,struct LeapState ls,real_e *displac
   int i=blockIdx.x*blockDim.x+threadIdx.x;
 
   if (i<N) {
-    ls.v[i]=-ls.f[i]*ls.ism[i]*ls.ism[i];
+    if (isfinite(ls.ism[i])) {
+      ls.v[i]=-ls.f[i]*ls.ism[i]*ls.ism[i];
+    } else {
+      ls.v[i]=0; // No acceleration for massless virtual particles
+    }
   }
 }
 
@@ -79,6 +83,12 @@ void State::min_move(int step,System *system)
   if (r->minType==esd) {
     if (system->id==0) {
       recv_energy();
+      if (system->verbose>0) {
+        for (int i=0; i<eeend; i++) {
+          fprintf(stdout," %12.4f",energy[i]);
+        }
+        fprintf(stdout,"\n");
+      }
       currEnergy=energy[eepotential];
       if (step==0) {
         r->dxRMS=r->dxRMSInit;
