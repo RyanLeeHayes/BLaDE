@@ -862,6 +862,14 @@ __global__ void getforce_variableBias_kernel(real *lambda,real_f *lambdaForce,re
       lEnergy=vb.k*lj*(1-pow((li+vb.l0)/vb.l0,vb.n));
       fi=-vb.k*lj*pow((li+vb.l0)/vb.l0,vb.n-1)/vb.l0;
       fj=vb.k*(1-pow((li+vb.l0)/vb.l0,vb.n));
+    } else if (vb.type==11) {
+      lEnergy=vb.k*pow(li,vb.l0)*pow(lj,vb.n);
+      fi=vb.k*vb.l0*pow(li,vb.l0-1)*pow(lj,vb.n);
+      fj=vb.k*vb.n*pow(li,vb.l0)*pow(lj,vb.n-1);
+    } else if (vb.type==12) {
+      lEnergy=vb.k*li*pow(lj,vb.n)/(li+vb.l0);
+      fi=vb.k*vb.l0*pow(lj,vb.n)/((li+vb.l0)*(li+vb.l0));
+      fj=vb.k*vb.n*li*pow(lj,vb.n-1)/(li+vb.l0);
     } else {
       lEnergy=0;
       fi=0;
@@ -1213,7 +1221,7 @@ void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,
   vb.j=j-1;
   vb.type=type;
   // if (vb.type!=6 && vb.type!=8 && vb.type!=10)
-  if (vb.type<=0 || vb.type>10) {
+  if (vb.type<=0 || vb.type>12) {
     fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type\n",vb.type);
   }
   vb.l0=l0;
