@@ -528,6 +528,7 @@ void Run::dynamics_initialize(System *system)
     if (!fpLMD) fpLMD=fpopen(fnmLMD.c_str(),"w");
   } else {
     if (!fpXLMD) fpXLMD=xdrfile_open(fnmLMD.c_str(),"w");
+    if (!fpXLMD) fatal(__FILE__,__LINE__,"Failed to open LMD file %s\n",fnmLMD.c_str());
   }
   if (!fpNRG) fpNRG=fpopen(fnmNRG.c_str(),"w");
 #ifdef REPLICAEXCHANGE

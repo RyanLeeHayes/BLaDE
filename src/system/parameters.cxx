@@ -394,7 +394,7 @@ void Parameters::add_parameter_nbonds(char *line,FILE *fp)
 {
   fpos_t fp_pos;
   // char line[MAXLENGTHSTRING];
-  std::string iname;
+  std::string iname,INAME;
   struct NbondParameter np;
   double e14fac=1;
   int combine=0; // 0 normal, 1 geometric
@@ -402,26 +402,27 @@ void Parameters::add_parameter_nbonds(char *line,FILE *fp)
   fgetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     iname=io_nexts(line);
+    INAME=io_uppers(iname);
     if (strcmp(iname.c_str(),"")==0) {
       ;
 // Other acceptable tokens
 //      cutnb  14.0 ctofnb 12.0 ctonnb 10.0 eps 1.0 e14fac 1.0 wmin 1.5 
-#warning "Case sensitive in reading parameter file"
-    } else if (strcmp(iname.c_str(),"NONBONDED")==0 ||
-               strcmp(iname.c_str(),"cutnb")==0 ||
-               strcmp(iname.c_str(),"ctofnb")==0 ||
-               strcmp(iname.c_str(),"ctonnb")==0 ||
-               strcmp(iname.c_str(),"eps")==0 ||
-               strcmp(iname.c_str(),"e14fac")==0 ||
-               strcmp(iname.c_str(),"wmin")==0 ||
-               strcmp(iname.c_str(),"geom")==0) {
-      while (strcmp(iname.c_str(),"")!=0) {
-        if (strcmp(iname.c_str(),"e14fac")==0) {
+    } else if (strcmp(INAME.c_str(),"NONBONDED")==0 ||
+               strcmp(INAME.c_str(),"CUTNB")==0 ||
+               strcmp(INAME.c_str(),"CTOFNB")==0 ||
+               strcmp(INAME.c_str(),"CTONNB")==0 ||
+               strcmp(INAME.c_str(),"EPS")==0 ||
+               strcmp(INAME.c_str(),"E14FAC")==0 ||
+               strcmp(INAME.c_str(),"WMIN")==0 ||
+               strcmp(INAME.c_str(),"GEOM")==0) {
+      while (strcmp(INAME.c_str(),"")!=0) {
+        if (strcmp(INAME.c_str(),"E14FAC")==0) {
           e14fac=io_nextf(line);
-        } else if (strcmp(iname.c_str(),"geom")==0) {
+        } else if (strcmp(INAME.c_str(),"GEOM")==0) {
           combine=1;
         }
         iname=io_nexts(line);
+        INAME=io_uppers(iname);
       }
     } else if (knownTokens.count(iname.substr(0,4))==0) {
       check_type_name(iname,"NONBONDEDS");

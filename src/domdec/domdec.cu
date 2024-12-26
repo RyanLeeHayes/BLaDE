@@ -91,29 +91,33 @@ void Domdec::initialize(System *system)
 
   globalCount=system->state->atomCount;
 
-  // Assume blocks are on average at least 1/3 full, and add some extra blocks for small systems.
-  maxBlocks=3*globalCount/32+32;
-  // Note: orthBox_f not set yet - now it is, it's set by broadcast_box
-  real invDensity;
+  // Set maxBlocks
+  // Note: orthBox_f is set by broadcast_box
+  real3 box;
   if (system->state->typeBox) {
-    invDensity=(boxxx(system->state->tricBox_f)
-      *boxyy(system->state->tricBox_f)
-      *boxzz(system->state->tricBox_f))
-      /system->state->atomCount;
+    box.x=boxxx(system->state->tricBox_f);
+    box.y=boxyy(system->state->tricBox_f);
+    box.z=boxzz(system->state->tricBox_f);
   } else {
-    invDensity=(boxxx(system->state->orthBox_f)
-      *boxyy(system->state->orthBox_f)
-      *boxzz(system->state->orthBox_f))
-      /system->state->atomCount;
+    box.x=boxxx(system->state->orthBox_f);
+    box.y=boxyy(system->state->orthBox_f);
+    box.z=boxzz(system->state->orthBox_f);
   }
+  real invDensity=box.x*box.y*box.z/system->state->atomCount;
   real approxBlockBox=exp(log(32*invDensity)/3);
+  domainDiv.x=(int)ceil(box.x/(approxBlockBox*gridDomdec.x));
+  domainDiv.y=(int)ceil(box.y/(approxBlockBox*gridDomdec.y));
+  // If each column has one empty block at the end, there cannot be more blocks than the number of atoms divided into 32 plus one for each column
+  maxBlocks=(globalCount/32+1)+(idCount*domainDiv.x*domainDiv.y);
+  fprintf(stdout,"maxBlocks=%d\n",maxBlocks);
+
+  // Set maxPartnersPerBlock
   real edge=3*approxBlockBox+2*system->run->cutoffs.rCut;
   // edge*edge*edge is the largest volume that can interact with a typically sized box in the worst case. Typically, half these interactions will be taken care of by partner blocks rather than this block, multiplying this expression by 2 means we should have roughly 4 times as many partner spaces as necessary.
 // #warning "Increased maxPartnersPerBlock"
   // maxPartnersPerBlock=2*((int)(edge*edge*edge/(32*invDensity)));
   maxPartnersPerBlock=3*((int)(edge*edge*edge/(32*invDensity)));
   fprintf(stdout,"The following parameters are set heuristically at %s:%d, and can cause errors if set too low\n",__FILE__,__LINE__);
-  fprintf(stdout,"maxBlocks=%d\n",maxBlocks);
   fprintf(stdout,"maxPartnersPerBlock=%d\n",maxPartnersPerBlock);
 
   freqDomdec=10;

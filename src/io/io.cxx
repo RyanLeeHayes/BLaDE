@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
 // For arrested_development
 #include <signal.h>
 #include <unistd.h>
@@ -116,6 +117,22 @@ std::string io_nexts(char *line)
   } else {
     token[0]='\0';
   }
+
+  output=token;
+  return output;
+}
+
+std::string io_uppers(std::string input)
+{
+  char token[MAXLENGTHSTRING];
+  int i;
+  std::string output;
+
+  if (MAXLENGTHSTRING<=input.length()) fatal(__FILE__,__LINE__,"Error: string to uppercase is too long: %s\n",input.c_str());
+  for (i=0; i<input.length(); i++) {
+    token[i]=toupper(input.c_str()[i]);
+  }
+  token[i]='\0';
 
   output=token;
   return output;

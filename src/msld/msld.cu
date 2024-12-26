@@ -219,7 +219,7 @@ void parse_msld(char *line,System *system)
     }
     vb.type=io_nexti(line);
     // if (vb.type!=6 && vb.type!=8 && vb.type!=10)
-    if (vb.type<=0 || vb.type>10) {
+    if (vb.type<=0 || vb.type>12) {
       fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type\n",vb.type);
     }
     vb.l0=io_nextf(line);
@@ -870,6 +870,18 @@ __global__ void getforce_variableBias_kernel(real *lambda,real_f *lambdaForce,re
       lEnergy=vb.k*li*pow(lj,vb.n)/(li+vb.l0);
       fi=vb.k*vb.l0*pow(lj,vb.n)/((li+vb.l0)*(li+vb.l0));
       fj=vb.k*vb.n*li*pow(lj,vb.n-1)/(li+vb.l0);
+/*
+    } else if (vb.type==13 && vb.k) {
+      lEnergy=vb.k*li*lj*(1-li-lj)/(vb.l0+1-li-lj);
+      fi=-vb.k*vb.l0*li*lj/((vb.l0+1-li-lj)*(vb.l0+1-li-lj)); // partial force
+      fj=fi+vb.k*li*(1-li-lj)/(vb.l0+1-li-lj); // full force
+      fi=fi+vb.k*lj*(1-li-lj)/(vb.l0+1-li-lj); // full force
+    } else if (vb.type==14) {
+      lEnergy=vb.k*li*lj*(1-li-lj)/(vb.l0+li);
+      fi=-vb.k*li*lj/(vb.l0+li); // partial force
+      fj=fi+vb.k*li*(1-li-lj)/(vb.l0+li); // full force
+      fi=fi+vb.k*vb.l0*lj*(1-li-lj)/((vb.l0+li)*(vb.l0+li)); // full force
+*/
     } else {
       lEnergy=0;
       fi=0;

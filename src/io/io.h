@@ -43,6 +43,7 @@ void io_shift(char *line,int i);
 void io_nexta(char *line,char *token);
 std::string io_peeks(char *line);
 std::string io_nexts(char *line);
+std::string io_uppers(std::string);
 bool io_nextb(char *line);
 int io_nexti(char *line);
 int io_nexti(char *line,int output);

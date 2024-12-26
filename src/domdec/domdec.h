@@ -60,6 +60,7 @@ class Domdec {
   real3_f *localForce_d;
   struct NbondPotential *localNbonds_d;
 // For sorting atoms into blocks
+  int2 domainDiv;
   struct DomdecBlockSort *blockSort_d;
   struct DomdecBlockToken *blockToken_d;
   int *blockBounds_d;
