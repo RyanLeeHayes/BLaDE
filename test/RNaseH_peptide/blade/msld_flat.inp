@@ -30,7 +30,7 @@ run setvariable invbetaewald 3.125
 run setvariable orderewald 6
 run setvariable gridspace 1.1 ! 1.1 A is max grid spacing, should give 40x40x40
 
-coordinates file {DIR}/prep/minimized.pdb
+coordinates file pdb {DIR}/prep/minimized.pdb
 coordinates velocity {temp}
 
 !---------------------------------------------------------------------------
@@ -58,6 +58,7 @@ run setvariable freqnrg 1000
 run setvariable freqnpt 100
 run setvariable freqlmd 10
 run setvariable hrlmd no
+run setvariable domdecheuristic off
 run dynamics
 
 
@@ -75,4 +76,5 @@ run setvariable freqnrg 1000
 run setvariable freqnpt 100
 run setvariable freqlmd 10
 run setvariable hrlmd no
+run setvariable domdecheuristic off
 run dynamics
