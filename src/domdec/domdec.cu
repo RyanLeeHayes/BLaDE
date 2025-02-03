@@ -159,7 +159,7 @@ void Domdec::initialize(System *system)
   cudaMalloc(&blockExclCount_d,sizeof(int));
 
 #ifdef USE_TEXTURE
-  {
+  if (system->potential->exclCount>0) {
     cudaResourceDesc resDesc;
     memset(&resDesc,0,sizeof(resDesc));
     resDesc.resType=cudaResourceTypeLinear;
