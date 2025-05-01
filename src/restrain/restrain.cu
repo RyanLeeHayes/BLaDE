@@ -151,3 +151,147 @@ void getforce_harm(System *system,bool calcEnergy)
     getforce_harmT<false>(system,system->state->orthBox_f,calcEnergy);
   }
 }
+
+template <bool flagBox,class DiRestPotential,bool soft,typename box_type>
+__global__ void getforce_dihedralRestraint_kernel(int diRestCount,DiRestPotential *diRests,real3 *position,real3_f *force,box_type box,real_e *energy)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  int ii,jj,kk,ll;
+  DiRestPotential dr;
+  real rjk;
+  real3 drij,drjk,drkl;
+  real3 mvec,nvec;
+  real3 mvecnorm,nvecnorm;
+  real mvecmag,nvecmag,bhatmag;
+  real mvinv,nvinv,bhinv;
+  real3 normcross;
+  real3 bhatnorm;
+  real phi;
+  real cosp,sinp;
+  real minv2,ninv2,rjkinv2;
+  real p,q;
+  real3 fi,fj,fk,fl;
+  real fphir=0;
+  real lEnergy=0;
+  extern __shared__ real sEnergy[];
+  real3 xi,xj,xk,xl;
+
+  if (i<diRestCount) {
+    // Geometry
+    dr=diRests[i];
+    ii=dr.idx[0];
+    jj=dr.idx[1];
+    kk=dr.idx[2];
+    ll=dr.idx[3];
+    xi=position[ii];
+    xj=position[jj];
+    xk=position[kk];
+    xl=position[ll];
+
+    drij=real3_subpbc<flagBox>(xj,xi,box);
+    drjk=real3_subpbc<flagBox>(xk,xj,box);
+    drkl=real3_subpbc<flagBox>(xl,xk,box);
+    mvec=real3_cross(drij,drjk);
+    mvecmag=real3_mag<real>(mvec);
+    nvec=real3_cross(drjk,drkl);
+    nvecmag=real3_mag<real>(nvec);
+    bhatmag=real3_mag<real>(drjk);
+    mvinv=1.0/mvecmag;
+    nvinv=1.0/nvecmag;
+    bhinv=1.0/bhatmag;
+    mvecnorm = (mvecmag > 1e-8) ? real3_scale<real3>(mvinv, mvec) : real3_reset<real3>();
+    nvecnorm = (nvecmag > 1e-8) ? real3_scale<real3>(nvinv, nvec) : real3_reset<real3>();
+    bhatnorm = (bhatmag > 1e-8) ? real3_scale<real3>(bhinv, drjk) : real3_reset<real3>();
+    normcross=real3_cross(mvecnorm,nvecnorm);
+    sinp=real3_dot<real>(bhatnorm,normcross);
+    cosp=real3_dot<real>(mvecnorm,nvecnorm);
+    phi=atan2f(sinp,cosp);
+
+
+    // Interaction
+    function_torsion(dr,phi,&fphir,&lEnergy,energy);
+
+    //for now no Lambda force
+    // Spatial force
+// NOTE #warning "Division and sqrt in kernel"
+    minv2=1/(real3_mag2<real>(mvec));
+    ninv2=1/(real3_mag2<real>(nvec));
+    rjk=sqrt(real3_mag2<real>(drjk));
+    rjkinv2=1/(rjk*rjk);
+    fi=real3_scale<real3>(-fphir*rjk*minv2,mvec);
+    at_real3_inc(&force[ii], fi);
+
+    fk=real3_scale<real3>(-fphir*rjk*ninv2,nvec);
+    p=real3_dot<real>(drij,drjk)*rjkinv2;
+    q=real3_dot<real>(drkl,drjk)*rjkinv2;
+    fj=real3_scale<real3>(-p,fi);
+    real3_scaleinc(&fj,-q,fk);
+    fl=real3_scale<real3>(-1,fk);
+    at_real3_inc(&force[ll], fl);
+
+    real3_dec(&fk,fj);
+    at_real3_inc(&force[kk], fk);
+
+    real3_dec(&fj,fi);
+    at_real3_inc(&force[jj], fj);
+  }
+
+  // Energy, if requested
+  if (energy) {
+    real_sum_reduce(lEnergy,sEnergy,energy);
+  }
+}
+
+template <bool flagBox,typename box_type>
+void getforce_diRestT(System *system,box_type box,bool calcEnergy)
+{
+  Potential *p=system->potential;
+  State *s=system->state;
+  Run *r=system->run;
+  int N;
+  int shMem=0;
+  real_e *pEnergy=NULL;
+
+  if (r->calcTermFlag[eebias]==false) return;
+
+  if (calcEnergy) {
+    shMem=BLBO*sizeof(real)/32;
+    pEnergy=s->energy_d+eebias;
+  }
+
+  N=p->diRestCount;
+  if (N>0) getforce_dihedralRestraint_kernel <flagBox,DiRestPotential,false> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->diRests_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,pEnergy);
+}
+
+void getforce_diRest(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_diRestT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_diRestT<false>(system,system->state->orthBox_f,calcEnergy);
+  }
+}
+
+__device__ void function_torsion(DiRestPotential dr,real phi,real *fphi,real *lE,bool calcEnergy)
+{
+  real dphi;
+  if (dr.nphi>0) {
+    dphi=dr.nphi*phi-dr.phi0;
+    dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
+    fphi[0]=dr.kphi*dr.nphi*sinf(dphi);
+    if (calcEnergy) {
+      lE[0]=dr.kphi*(1-cosf(dphi));
+    }
+  }
+  else {
+    dphi=phi-dr.phi0;
+    dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
+    fphi[0]=dr.kphi*dphi;
+    if (calcEnergy) {
+      lE[0]=((real)0.5)*dr.kphi*dphi*dphi;
+    }
+  }
+}
+
+
+

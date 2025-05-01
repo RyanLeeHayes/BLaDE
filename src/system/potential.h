@@ -164,6 +164,13 @@ struct HarmonicPotential {
   real3 r0;
 };
 
+struct DiRestPotential {
+  int idx[4];
+  real kphi;
+  int nphi;
+  real phi0;
+};
+
 class Potential {
   public:
   int atomCount;
@@ -300,7 +307,9 @@ class Potential {
   struct HarmonicPotential *harms;
   struct HarmonicPotential *harms_d;
   real3_x harmCenter;
-
+  int diRestCount;
+  struct DiRestPotential *diRests;
+  struct DiRestPotential *diRests_d;
   int (*prettifyPlan)[2];
 
   Potential();

@@ -11,6 +11,7 @@
 class System;
 struct NoePotential;
 struct HarmonicPotential;
+struct DiRestPotential;
 struct VirtualSite2; // Colinear lone pair
 struct VirtualSite3; // Colinear lone pair
 
@@ -63,6 +64,9 @@ class Structure {
 
   int harmCount;
   std::vector<struct HarmonicPotential> harmList;
+
+  int diRestCount;
+  std::vector<struct DiRestPotential> diRestList;
   
   Structure();
   ~Structure();
@@ -75,6 +79,7 @@ class Structure {
   void parse_shake(char *line,char *token,System *system);
   void parse_noe(char *line,char *token,System *system);
   void parse_harmonic(char *line,char *token,System *system);
+  void parse_diRest(char *line,char *token,System *system);
   void dump(char *line,char *token,System *system);
   void add_structure_psf_file(FILE *fp);
 };
@@ -98,6 +103,7 @@ extern "C" {
   void blade_add_shake(System *system,int shakeHbond);
   void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rmax,double kmax,double rpeak,double rswitch,double nswitch);
   void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double z0,double n);
+  void blade_add_diRest(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0);
 }
 
 #endif
