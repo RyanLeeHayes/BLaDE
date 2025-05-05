@@ -226,7 +226,7 @@ void parse_msld(char *line,System *system)
     vb.k=io_nextf(line);
     vb.n=io_nexti(line);
     system->msld->variableBias_tmp.push_back(vb);
-  } else if (strcmp(token,"thetaebias")==0) {
+  } else if (strcmp(token,"thetabias")==0) {
     std::string name;
     name=io_nexts(line);
     if (name=="collective") {
@@ -286,7 +286,8 @@ void parse_msld(char *line,System *system)
               k=0.5*log(0.25*k*Ns*Ns*M_PI/2);
               if (!(k>0)) k=0;
             }
-            k=kB*T;
+            k*=kB*T;
+            // fprintf(stdout,"theta bias: site %d, temperature %f, Ns %f, bias %f\n",i,T,Ns,k);
           }
           system->msld->kThetaIndeBias[i]=k;
         }
@@ -980,13 +981,13 @@ void Msld::getforce_thetaBias(System *system,bool calcEnergy)
   real_e *pEnergy=NULL;
   int shMem=0;
 
-  if (r->calcTermFlag[eelambda]==false) return;
+  if (r->calcTermFlag[eetheta]==false) return;
 
 
 
   if (calcEnergy) {
     shMem=BLMS*sizeof(real)/32;
-    pEnergy=s->energy_d+eelambda;
+    pEnergy=s->energy_d+eetheta;
   }
   if (system->run) {
     stream=system->run->biaspotStream;

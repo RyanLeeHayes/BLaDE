@@ -30,6 +30,7 @@ typedef enum eeterm {
   eenbrecipself,
   eenbrecipexcl,
   eelambda,
+  eetheta,
   eebias,
   eepotential,
   eekinetic,

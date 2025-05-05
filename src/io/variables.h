@@ -22,6 +22,8 @@ class Variables {
   void error(char *line,char *token,System *system);
   void reset(char *line,char *token,System *system);
   void set(char *line,char *token,System *system);
+  void setupper(char *line,char *token,System *system);
+  void setlower(char *line,char *token,System *system);
   void calculate(char *line,char *token,System *system);
   void dump(char *line,char *token,System *system);
   void help(char *line,char *token,System *system);

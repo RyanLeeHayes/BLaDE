@@ -87,6 +87,7 @@ Run::Run(System *system)
   termStringToInt["nbrecipself"]=eenbrecipself;
   termStringToInt["nbrecipexcl"]=eenbrecipexcl;
   termStringToInt["lambda"]=eelambda;
+  termStringToInt["theta"]=eetheta;
   termStringToInt["bias"]=eebias;
   termStringToInt["potential"]=eepotential;
   termStringToInt["kinetic"]=eekinetic;
