@@ -355,7 +355,9 @@ void Run::set_variable(char *line,char *token,System *system)
     dxRMSInit=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"mintype")==0) {
     std::string minString=io_nexts(line);
-    if (strcmp(minString.c_str(),"sd")==0) {
+    if (strcmp(minString.c_str(), "lbfgs") == 0){
+      minType=elbfgs;
+    } else if (strcmp(minString.c_str(),"sd")==0) {
       minType=esd;
     } else if (strcmp(minString.c_str(),"sdfd")==0) {
       minType=esdfd;

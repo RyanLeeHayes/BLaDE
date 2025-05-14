@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(blade LANGUAGES CXX CUDA)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 file(GLOB_RECURSE sources *.cxx *.cu *.h)
 

@@ -12,6 +12,9 @@
 
 #include "main/real3.h"
 
+#include <functional>
+#include "msld/msld.h"
+
 
 
 __global__ void no_mass_weight_kernel(int N,real* masses,real* ones)
@@ -120,7 +123,35 @@ void State::min_move(int step,int nsteps,System *system)
   real scaling, rescaling;
   real frac;
 
-  if (r->minType==esd) {
+  if (r->minType==elbfgs){
+    if (system->id==0){
+      recv_energy();
+      if (system->verbose>0) display_nrg(system);
+      currEnergy=energy[eepotential];
+      if (step == 0){
+        // Function called by LBFGS class to get energy & gradient 
+        std::function<real(real*, real*)> grad = [system](real* X, real* G){
+          // Copy X onto CUDA device
+          int DOF = system->state->atomCount*3 + system->msld->blockCount;
+          cudaMemcpy(system->state->positionBuffer_d, X, DOF*sizeof(real), cudaMemcpyDefault);
+          // Potential & Grad Eval
+          system->potential->calc_force(0, system);
+          // Copy grad(F(X)) into G
+          cudaMemcpy(G, system->state->force_d, DOF*sizeof(real), cudaMemcpyDefault);
+          real energy = system->state->energy[eepotential];
+          return energy;
+        };
+
+        int DOF = system->state->atomCount*3 + system->msld->blockCount;
+        int m = 7; // Past grad depth
+        r->lbfgs = new LBFGS<real>(7, DOF, grad);
+        // Steepest decent step
+        r->lbfgs->init((real*)system->state->positionBuffer, (real*) system->state->forceBuffer, 1e-2);
+      }
+      r->lbfgs->minimize_step((real*)system->state->positionBuffer, (real*) system->state->forceBuffer);
+    }
+  }
+  else if (r->minType==esd) {
     if (system->id==0) {
       recv_energy();
       if (system->verbose>0) display_nrg(system);
