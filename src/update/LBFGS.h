@@ -21,27 +21,21 @@ public:
         min_step_size = sizeof(T) == 4 ? 1e-4 : 1e-7;
         max_step_size = 1.0;
         rho = (T*) calloc(m, sizeof(T));
-        alpha = (T*) malloc(m*sizeof(T));
-        gamma = (T*) malloc(sizeof(T));
-        beta = (T*) malloc(sizeof(T));
+        alpha = (T*) calloc(m, sizeof(T));
+        gamma = (T*) calloc(m, sizeof(T));
+        beta = (T*) calloc(m, sizeof(T));
         step_size = 0.0;
-            
-        G = (T*) malloc(DOF*sizeof(T));
-        X = (T*) malloc(DOF*sizeof(T));
+         
+        search = (T*) calloc(DOF, sizeof(T));
+        prev_positions = (T*) calloc(DOF, sizeof(T));
+        prev_gradient = (T*) calloc(DOF, sizeof(T));
 
-        search = (T*) malloc(DOF*sizeof(T));
-        prev_positions = (T*)malloc(DOF * sizeof(T));
-        prev_gradient = (T*)malloc(DOF * sizeof(T));
-
-        q = (T*) malloc(DOF*sizeof(T));
-        x_plus_step = (T*) malloc(DOF*sizeof(T));
+        q = (T*) calloc(DOF, sizeof(T));
+        x_plus_step = (T*) calloc(DOF, sizeof(T));
         s = (T*) calloc(m*DOF, sizeof(T));
         y = (T*) calloc(m*DOF, sizeof(T));
     }
 
-    /**
-     * TODO: Free all memory used by LBFGS
-     */
     ~LBFGS() {
         free(rho);
         free(alpha);
@@ -59,23 +53,26 @@ public:
     }
 
 /**
- * TODO: Implement steepest decent step
- * Sets variables and returns 1
+ * Steepest decent step
+ * 
  * @param X Initial Position
  * @param G Initial Position Grad
  */
 void init(T* X, T* G, T steepest_descent_step_size) {
+    // f(X0), g(X0)
+    grad(X, G);
+    // Update
     for (int i = 0; i < DOF; ++i) {
         prev_positions[i] = X[i];
         prev_gradient[i] = G[i];
     }
     for (int i = 0; i < DOF; ++i) {
-        X[i] -= steepest_descent_step_size * G[i];
         s[i + (m - 1) * DOF] = X[i] - prev_positions[i];
         y[i + (m - 1) * DOF] = G[i] - prev_gradient[i];
-        this->X[i] = X[i];
+        X[i] -= steepest_descent_step_size * G[i];
     }
-    grad(this->X, this->G);
+    // f(X0-size*G), g(X0-size*G)
+    grad(X, G);
 }
 
 /**
@@ -94,18 +91,16 @@ void init(T* X, T* G, T steepest_descent_step_size) {
  *   gamma = s.i.T * y.i / y.i.T * y.i
  *   rho.j = 1 / (y.j.T * s.j)
  */
-void minimize_step(T* X_input, T* G_input) {
+void minimize_step(T* X, T* G) {
     if (minimized){
         return;
     }
-    for (int i = 0; i < DOF; ++i) {
-        X[i] = X_input[i];
-        G[i] = G_input[i];
-    }
+    // Eval function at X
+    T p0 = grad(X, G);
     for (int i = 0; i < DOF; ++i) {
         q[i] = G[i];
     }
-    update();
+    update(X, G);
     for (int i = m - 1; i >= 0; --i) {
         alpha[i] = rho[i] * dot_product(s + i * DOF, q, DOF);
         for (int j = 0; j < DOF; ++j) {
@@ -118,24 +113,23 @@ void minimize_step(T* X_input, T* G_input) {
     }
     for (int i = 0; i < m; ++i) {
         T beta = rho[i] * dot_product(y + i * DOF, q, DOF);
-
         for (int j = 0; j < DOF; ++j) {
             q[j] += (alpha[i] - beta) * s[i * DOF + j];
         }
     }
-    step_size = linesearch(); 
+    // min_a f(X + a*q)
+    step_size = this->linesearch(p0, X, G); 
     std::cout << "step size: " << step_size << "\n";
+    // Update system positions
     for (int j = 0; j < DOF; ++j) {
         X[j] += (step_size * -q[j]);
-        X_input[j] = X[j];
     }
 }
 
-void update() {
+void update(T* X, T* G) {
     for (int i = 0; i < ((m - 1) * DOF); ++i) {
         s[i] = s[i + DOF];
         y[i] = y[i + DOF];
-
     }
     for (int i = 0; i < DOF; ++i) {
         s[(m - 1) * DOF + i] = X[i] - prev_positions[i];
@@ -158,21 +152,23 @@ void update() {
     }
 }
 
-T linesearch() {
+T linesearch(T p0, T* X, T* G) {
     int max_it = 1000;
     T c = 0.5;
     T tau = 0.75;
     T m = dot_product(G, q, DOF);
     T step_size = 1;
     for (int i = 0; i < max_it; i++) {
+        T sum = 0;
         for (int j = 0; j < DOF; ++j) {
             x_plus_step[j] = X[j] - (step_size * q[j]);
         }
-        if (grad(X, G) - grad(x_plus_step, G) >= step_size * -c * m) {
+        T new_value = grad(x_plus_step, G);
+        if (p0 - new_value >= step_size * -c * m) {
             return step_size;
-        }
-        else {
+        } else {
             step_size *= tau;
+            printf("Step_size: %f, p0: %f, new: %f, x+s: %f\n", step_size, p0, new_value, q[50]);
         }
     }
     return 0;
@@ -213,4 +209,4 @@ private:
     }
 };
 
-#endif
+#endif // LBFGS

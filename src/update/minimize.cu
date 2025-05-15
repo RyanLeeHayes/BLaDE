@@ -130,7 +130,7 @@ void State::min_move(int step,int nsteps,System *system)
       currEnergy=energy[eepotential];
       if (step == 0){
         // Function called by LBFGS class to get energy & gradient 
-        std::function<real(real*, real*)> grad = [system](real* X, real* G){
+        std::function<real(real*, real*)> energy_and_grad = [system](real* X, real* G){
           // Copy X onto CUDA device
           int DOF = system->state->atomCount*3 + system->msld->blockCount;
           cudaMemcpy(system->state->positionBuffer_d, X, DOF*sizeof(real), cudaMemcpyDefault);
@@ -144,7 +144,7 @@ void State::min_move(int step,int nsteps,System *system)
 
         int DOF = system->state->atomCount*3 + system->msld->blockCount;
         int m = 7; // Past grad depth
-        r->lbfgs = new LBFGS<real>(7, DOF, grad);
+        r->lbfgs = new LBFGS<real>(7, DOF, energy_and_grad);
         // Steepest decent step
         r->lbfgs->init((real*)system->state->positionBuffer, (real*) system->state->forceBuffer, 1e-2);
       }
