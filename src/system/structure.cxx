@@ -31,6 +31,8 @@ Structure::Structure() {
   noeList.clear();
   harmCount=0;
   harmList.clear();
+  diRestCount=0;
+  diRestList.clear();
 
   setup_parse_structure();
 }
@@ -55,6 +57,8 @@ void Structure::setup_parse_structure()
   helpStructure["noe"]="?structure noe [selection] [selection] [rmin] [kmin] [rmax] [kmax] [rpeak] [rswitch] [nswitch]> Apply a CHARMM-style NOE restraint between a pair of atoms\n";
   parseStructure["harmonic"]=&Structure::parse_harmonic;
   helpStructure["harmonic"]="?structure harmonic [selection] [mass|none] [k real] [n real]> Apply harmonic restraints of k*(x-x0)^n to each atom in selection. x0 is taken from the current coordinates read in by coordinates. For none, k has units of kcal/mol/A^n, for mass, k is multiplied by the mass, and has units of kcal/mol/A^n/amu. structure harmonic reset clears all restraints\n";
+  parseStructure["dihedral"]=&Structure::parse_diRest;
+  helpStructure["dihedral"]="[selection] [selection] [selection] [selection] [kconst] [angle0] [periodicity]\n";
   parseStructure["print"]=&Structure::dump;
   helpStructure["print"]="?structure print> This prints selected contents of the structure data structure to standard out\n";
   parseStructure["help"]=&Structure::help;
@@ -219,6 +223,74 @@ void Structure::parse_harmonic(char *line,char *token,System *system)
     fatal(__FILE__,__LINE__,"Unrecognized selection name %s for harmonic restraints\n",token);
   }
   harmCount=harmList.size();
+}
+
+void Structure::parse_diRest(char *line,char *token,System *system)
+{
+  io_nexta(line,token);
+  if (strcmp(token,"reset")==0) {
+    diRestList.clear();
+  } else {
+    std::string iselection=token;
+    std::string jselection=io_nexts(line);
+    std::string kselection=io_nexts(line);
+    std::string lselection=io_nexts(line); 
+    int is,ns,i,j,k,l;
+    if (system->selections->selectionMap.count(iselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized first selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[iselection].boolCount; is++) {
+      if (system->selections->selectionMap[iselection].boolSelection[is]) {
+        i=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in first selection, found %d\n",ns);
+    if (system->selections->selectionMap.count(jselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized second selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[jselection].boolCount; is++) {
+      if (system->selections->selectionMap[jselection].boolSelection[is]) {
+        j=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in second selection, found %d\n",ns);
+    if (system->selections->selectionMap.count(kselection)!=1){
+      fatal(__FILE__,__LINE__,"Unrecognized third selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[kselection].boolCount; is++) {
+       if (system->selections->selectionMap[kselection].boolSelection[is]) {
+        k=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in third selection, found %d\n",ns);
+    if (system->selections->selectionMap.count(lselection)!=1){
+      fatal(__FILE__,__LINE__,"Unrecognized fourth selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[lselection].boolCount; is++) {
+       if (system->selections->selectionMap[lselection].boolSelection[is]) {
+        l=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in fourth selection, found %d\n",ns);
+    struct DiRestPotential dr;
+    dr.idx[0]=i;
+    dr.idx[1]=j;
+    dr.idx[2]=k;
+    dr.idx[3]=l;
+    dr.kphi=io_nextf(line)*KCAL_MOL;
+    dr.phi0=io_nextf(line)*DEGREES;
+    dr.nphi=io_nexti(line);
+    diRestList.push_back(dr);
+    }
+  diRestCount=diRestList.size();
 }
 
 void Structure::dump(char *line,char *token,System *system)
@@ -646,4 +718,19 @@ void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double
   h.r0.z=z0;
   system->structure->harmList.push_back(h);
   system->structure->harmCount=system->structure->harmList.size();
+}
+
+void blade_add_diRest(System *system,int i,int j,int k,int l,double kphi,double phi0,int nphi)
+{
+  system+=omp_get_thread_num();
+  struct DiRestPotential dr;
+  dr.idx[0]=i-1;
+  dr.idx[1]=j-1;
+  dr.idx[2]=k-1;
+  dr.idx[3]=l-1;
+  dr.kphi=kphi*KCAL_MOL;
+  dr.phi0=phi0*DEGREES;
+  dr.nphi = nphi;
+  system->structure->diRestList.push_back(dr);
+  system->structure->diRestCount=system->structure->diRestList.size();
 }

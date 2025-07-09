@@ -127,6 +127,9 @@ Potential::Potential() {
   harmCount=0;
   harms=NULL;
   harms_d=NULL;
+  diRestCount=0;
+  diRests=NULL;
+  diRests_d=NULL;
 
   prettifyPlan=NULL;
 }
@@ -213,6 +216,8 @@ Potential::~Potential()
   if (noes_d) cudaFree(noes_d);
   if (harms) free(harms);
   if (harms_d) cudaFree(harms_d);
+  if (diRests) free(diRests);
+  if (diRests_d) cudaFree(diRests_d);
 
   if (prettifyPlan) free(prettifyPlan);
 }
@@ -1513,7 +1518,20 @@ void Potential::initialize(System *system)
     harmCenter.z/=harmCenterNorm;
   }
   cudaMemcpy(harms_d,harms,harmCount*sizeof(struct HarmonicPotential),cudaMemcpyHostToDevice);
-
+  //Dihedral restraints
+  diRestCount=system->structure->diRestCount;
+  diRests=(struct DiRestPotential*)calloc(diRestCount,sizeof(struct DiRestPotential));
+  cudaMalloc(&diRests_d,diRestCount*sizeof(struct DiRestPotential));
+   for (i=0; i<diRestCount; i++) {
+    // Get participating atoms
+    for (j=0; j<4; j++) {
+      diRests[i].idx[j]=system->structure->diRestList[i].idx[j];
+    }
+    diRests[i].kphi=system->structure->diRestList[i].kphi;
+    diRests[i].nphi=system->structure->diRestList[i].nphi;
+    diRests[i].phi0=system->structure->diRestList[i].phi0;
+  }
+  cudaMemcpy(diRests_d,diRests,diRestCount*sizeof(struct DiRestPotential),cudaMemcpyHostToDevice);
   // Cleaning up output coordinates
   prettifyPlan=(int(*)[2])malloc(atomCount*sizeof(int[2]));
   std::set<int> prettifyFound, prettifyMissing;
@@ -1610,6 +1628,7 @@ void Potential::calc_force(int step,System *system)
     system->msld->getforce_chargeRestraints(system,calcEnergy);
     getforce_noe(system,calcEnergy);
     getforce_harm(system,calcEnergy);
+    getforce_diRest(system,calcEnergy);
     cudaEventRecord(r->biaspotComplete,r->biaspotStream);
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }
