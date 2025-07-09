@@ -10,6 +10,7 @@
 #include "rng/rng_gpu.h"
 #include "holonomic/holonomic.h"
 #include "update/pressure.h"
+#include "update/endpoint.h"
 #include "update/rex.h"
 
 #include "main/real3.h"
@@ -214,6 +215,10 @@ void State::update(int step,System *system)
 
   if (system->run->freqNPT>0 && (system->run->step%system->run->freqNPT)==0) {
     pressure_coupling(system);
+  }
+
+  if (system->run->endPointCorr && (system->run->step%system->run->freqLMD)==0) {
+    endpoint_correction(system);
   }
 
 #ifdef REPLICAEXCHANGE

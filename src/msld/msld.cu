@@ -740,6 +740,36 @@ void Msld::init_lambda_from_theta(cudaStream_t stream,System *system)
   }
 }
 
+__global__ void calc_endpoint_lambda_kernel(real_x *lambda,int siteCount,int *siteBound,real endPointCorrCutoff)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  int j,ji,jf,k;
+
+  if (i<siteCount) {
+    ji=siteBound[i];
+    jf=siteBound[i+1];
+    for (j=ji; j<jf; j++) {
+      if (lambda[j]>endPointCorrCutoff) {
+        // printf("ji=%d jf=%d lambda[%d]=%f\n",ji,jf,j,lambda[j]); // DEBUG
+        for (k=ji; k<jf; k++) {
+          lambda[k]=0;
+        }
+        lambda[j]=1;
+      }
+    }
+  }
+}
+
+void Msld::calc_endpoint_lambda(cudaStream_t stream,System *system)
+{
+  State *s=system->state;
+  if (!fix) {
+    calc_endpoint_lambda_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,siteCount,siteBound_d,system->run->endPointCorrCutoff);
+  } else {
+    fatal(__FILE__,__LINE__,"Endpoint correction doesn't work with fixed lambda values\n");
+  }
+}
+
 __global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta,real_f *lambdaForce,real_f *thetaForce,int blockCount,int *lambdaSite,int *siteBound,real fnex)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;

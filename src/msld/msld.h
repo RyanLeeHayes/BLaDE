@@ -109,6 +109,7 @@ class Msld {
 
   void calc_lambda_from_theta(cudaStream_t stream,System *system);
   void init_lambda_from_theta(cudaStream_t stream,System *system);
+  void calc_endpoint_lambda(cudaStream_t stream,System *system);
   void calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system);
   void getforce_fixedBias(System *system,bool calcEnergy);
   void getforce_variableBias(System *system,bool calcEnergy);

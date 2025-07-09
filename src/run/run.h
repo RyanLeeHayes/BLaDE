@@ -71,6 +71,11 @@ class Run {
   real volumeFluctuation;
   real pressure;
 
+  bool endPointCorr;
+  real endPointCorrCutoff;
+  std::string fnmEPC;
+  FILE *fpEPC;
+
   bool domdecHeuristic;
 
   std::map<std::string,int> termStringToInt;

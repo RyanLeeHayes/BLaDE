@@ -19,8 +19,8 @@
 
 
 
-// #warning "Hardcoded serial kernels"
-// #define PROFILESERIAL
+#warning "Hardcoded serial kernels"
+#define PROFILESERIAL
 
 // Class constructors
 Run::Run(System *system)
@@ -65,6 +65,11 @@ Run::Run(System *system)
   freqNPT=50;
   volumeFluctuation=100*ANGSTROM*ANGSTROM*ANGSTROM;
   pressure=1*ATMOSPHERE;
+
+  endPointCorr=false;
+  endPointCorrCutoff=0.8;
+  fnmEPC="default.epc";
+  fpEPC=NULL;
 
   // minimization options
   dxAtomMax=0.1*ANGSTROM;
@@ -152,6 +157,7 @@ Run::~Run()
   if (fpXLMD) xdrfile_close(fpXLMD);
   if (fpLMD) fclose(fpLMD);
   if (fpNRG) fclose(fpNRG);
+  if (fpEPC) fclose(fpEPC);
 #ifndef PROFILESERIAL
   cudaStreamDestroy(updateStream);
 #endif
@@ -262,6 +268,9 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
   fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation/(ANGSTROM*ANGSTROM*ANGSTROM));
   fprintf(stdout,"RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure/ATMOSPHERE);
+  fprintf(stdout,"RUN PRINT> endpointcorr=%d (boolean flag for whether to perform endpoint correction calculations)\n",endPointCorr);
+  fprintf(stdout,"RUN PRINT> fnmepc=%s (endpoint correction filename)\n",fnmEPC);
+  fprintf(stdout,"RUN PRINT> endpointcorrcutoff=%f (minimum lambda value to correct to endpoint)\n",endPointCorrCutoff);
   fprintf(stdout,"RUN PRINT> dxatommax=%f (Maximum minimization atom displacement in A)\n",dxAtomMax/ANGSTROM);
   fprintf(stdout,"RUN PRINT> dxrmsinit=%f (Starting minimization rms displacement in A)\n",dxRMSInit/ANGSTROM);
   fprintf(stdout,"RUN PRINT> mintype=%d (minimization algorithm. 0 is steepest descent, etc)\n",minType);
@@ -349,6 +358,14 @@ void Run::set_variable(char *line,char *token,System *system)
     volumeFluctuation=io_nextf(line)*ANGSTROM*ANGSTROM*ANGSTROM;
   } else if (strcmp(token,"pressure")==0) {
     pressure=io_nextf(line)*ATMOSPHERE;
+  } else if (strcmp(token,"endpointcorr")==0) {
+    endPointCorr=io_nextb(line);
+  } else if (strcmp(token,"endpointcorrcutoff")==0) {
+    endPointCorrCutoff=io_nextf(line);
+  } else if (strcmp(token,"fnmepc")==0) {
+    if (fpEPC) fclose(fpEPC);
+    fpEPC=NULL;
+    fnmEPC=io_nexts(line);
   } else if (strcmp(token,"dxatommax")==0) {
     dxAtomMax=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"dxrmsinit")==0) {
@@ -535,6 +552,7 @@ void Run::dynamics_initialize(System *system)
 #ifdef REPLICAEXCHANGE
   if (!fpREx && freqREx>0) fpREx=fpopen(fnmREx.c_str(),"w");
 #endif
+  if (!fpEPC && endPointCorr) fpEPC=fpopen(fnmEPC.c_str(),"w");
 
   // Finish setting up MSLD
   system->msld->initialize(system); 
@@ -649,6 +667,8 @@ void blade_add_run_dynopts(System *system,
   system->run->freqNPT=freqNPT;
   system->run->volumeFluctuation=volumeFluctuation;
   system->run->pressure=pressure;
+
+#warning "Did not include epc here"
 }
 
 void blade_run_energy(System *system)
