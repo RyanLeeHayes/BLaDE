@@ -62,6 +62,25 @@ void Selections::count(char *line,char *token,System *system)
   system->variables->data[key]=value;
 }
 
+bool search_match(std::string a,std::string b)
+{
+  int i;
+  bool r=false;
+  if (b=="*") {
+    r=true;
+  } else if (a.length()==b.length() && b.length()>0) {
+    r=true;
+    for (i=0; i<b.length(); i++) {
+      if (!(b.c_str()[i]=='%' || b.c_str()[i]==a.c_str()[i])) {
+        r=false;
+      }
+    }
+  } else {
+    r=false;
+  }
+  return r;
+}
+
 Selection Selections::parse_selection_string(char *line,Structure *structure)
 {
   Selection s1;
@@ -84,6 +103,7 @@ Selection Selections::parse_selection_string(char *line,Structure *structure)
   knownTokens.insert("atomname");
   knownTokens.insert("atomnames");
   knownTokens.insert("atom");
+  knownTokens.insert("atomsearch");
   knownTokens.insert("selection");
   knownTokens.insert("");
 
@@ -175,6 +195,15 @@ Selection Selections::parse_selection_string(char *line,Structure *structure)
       s1.boolSelection[i]=(structure->atomList[i].segName==segid &&
                            structure->atomList[i].resIdx==resid &&
                            structure->atomList[i].atomName==atomname);
+    }
+  } else if (strcmp(token,"atomsearch")==0) {
+    std::string segid=io_nexts(line);
+    std::string resid=io_nexts(line);
+    std::string atomname=io_nexts(line);
+    for (i=0; i<N; i++) {
+      s1.boolSelection[i]=(search_match(structure->atomList[i].segName,segid) &&
+                           search_match(structure->atomList[i].resIdx,resid) &&
+                           search_match(structure->atomList[i].atomName,atomname));
     }
   } else if (strcmp(token,"selection")==0) {
     std::string selName=io_nexts(line);

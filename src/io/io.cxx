@@ -138,6 +138,22 @@ std::string io_uppers(std::string input)
   return output;
 }
 
+std::string io_lowers(std::string input)
+{
+  char token[MAXLENGTHSTRING];
+  int i;
+  std::string output;
+
+  if (MAXLENGTHSTRING<=input.length()) fatal(__FILE__,__LINE__,"Error: string to lowercase is too long: %s\n",input.c_str());
+  for (i=0; i<input.length(); i++) {
+    token[i]=tolower(input.c_str()[i]);
+  }
+  token[i]='\0';
+
+  output=token;
+  return output;
+}
+
 bool io_nextb(char *line)
 {
   std::string booleanString=io_nexts(line);
