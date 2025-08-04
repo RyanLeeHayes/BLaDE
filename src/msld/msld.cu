@@ -672,6 +672,10 @@ void Msld::initialize(System *system)
   cudaMemcpy(siteBound_d,siteBound,(siteCount+1)*sizeof(int),cudaMemcpyHostToDevice);
   cudaMemcpy(lambdaSite_d,lambdaSite,blockCount*sizeof(int),cudaMemcpyHostToDevice);
 
+  // New newton constraint
+  cudaMalloc(&theta0_d, siteCount*sizeof(real_x));
+  cudaMalloc(&dcdt_d, blockCount*sizeof(real_f));
+
   // Atom restraints
   atomRestraintCount=atomRestraints.size();
   if (atomRestraintCount>0) {
@@ -698,7 +702,90 @@ void Msld::initialize(System *system)
   }
 }
 
-__global__ void calc_lambda_from_theta_kernel(real_x *lambda,real_x *theta,int siteCount,int *siteBound,real fnex)
+// return sum_site(f(theta-constraint)) - 1, filling lambdas if not null
+__device__ real constraint(real_x* thetas, real_x theta0, real_x* lambdas, int subs){
+  // pointers should be at first element in site
+  real_x sum = 0;
+  real_x p = 3.0; // power of fn
+  for(int i = 0; i < subs; i++){
+    real_x dist = thetas[i] - theta0;
+    real_x lmd = dist > 0 ? pow(dist, p) : 0;
+    sum += lmd;
+    if(lambdas){
+      lambdas[i] = lmd;
+    }
+  }
+  return sum - 1.0;
+}
+
+// return sum_site(f'(theta-constraint)), filling dU/dtheta if not null
+__device__ real d_constraint(real_x* thetas, real_x theta0, real* dUdT, int subs){
+  // pointers should be at first element in site
+  real_x sum = 0;
+  real_x p = 3.0; // power of fn
+  for(int i = 0; i < subs; i++){
+    real_x dist = thetas[i] - theta0;
+    real_x dcdti = dist > 0 ? p*pow(dist, p-1.0) : 0;
+    sum += dcdti;
+    if(dUdT){
+      dUdT[i] = dcdti;
+    }
+  }
+  return sum;
+}
+
+__device__ real d_constraintf(real* thetas, real theta0, real* dUdT, int subs){
+  // pointers should be at first element in site
+  real sum = 0;
+  real p = 3.0; // power of fn
+  for(int i = 0; i < subs; i++){
+    real dist = thetas[i] - theta0;
+    real dcdti = dist > 0 ? p*pow(dist, p-1.0) : 0;
+    sum += dcdti;
+    if(dUdT){
+      dUdT[i] = dcdti;
+    }
+  }
+  return sum;
+}
+
+// Newtons method to solve polynomial constraint, returns true for success
+__device__ bool solve_constraint(real_x* thetas, real_x* theta0, int subs){
+  // pointers should start at site
+  int max_iter = 50;
+  real_x tol = 1e-12; // needs to be tight to ensure lambdas aren't > 1 or sum != 1
+  int prev = 0;
+  real_x x0 = -1e9; // very negative number
+  real_x x1 = 0;
+  // x0=max(thetas)-1
+  for(int i = 0; i < subs; i++){
+    if(thetas[i] > x0){ 
+      x0 = thetas[i];
+    }
+  }
+  x0 -= 1.0;
+  bool result = false;
+  for(int i = 0; i <= max_iter; i++){
+    real_x c = constraint(thetas, x0, NULL, subs);
+    // Derivatives w.r.t. thetas, so need to make neg to be w.r.t. x0
+    real_x c_prime = -d_constraint(thetas, x0, NULL, subs);
+    x1 = x0 - c / c_prime;
+    if (abs(x1 - x0) <= tol){
+      *theta0 = x1; // downcast
+      max_iter = result ? max_iter : i + 1;
+      result = true;
+      break;
+    }
+    x0 = x1;
+  }
+  return result;
+}
+
+__global__ void calc_lambda_from_theta_kernel(
+  real_x *lambda,real_x *theta,
+  int siteCount,int *siteBound,real fnex,
+  bool new_implicit, real_x* theta0
+)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int j,ji,jf;
@@ -708,14 +795,22 @@ __global__ void calc_lambda_from_theta_kernel(real_x *lambda,real_x *theta,int s
   if (i<siteCount) {
     ji=siteBound[i];
     jf=siteBound[i+1];
-    for (j=ji; j<jf; j++) {
-      lLambda=exp(fnex*sin(theta[j]*ANGSTROM));
-      lambda[j]=lLambda;
-      norm+=lLambda;
-    }
-    norm=1/norm;
-    for (j=ji; j<jf; j++) {
-      lambda[j]*=norm;
+    if(!new_implicit){
+      for (j=ji; j<jf; j++) {
+        lLambda=exp(fnex*sin(theta[j]*ANGSTROM));
+        lambda[j]=lLambda;
+        norm+=lLambda;
+      }
+      norm=1/norm;
+      for (j=ji; j<jf; j++) {
+        lambda[j]*=norm;
+      }
+    } else { // newton constraint
+      bool result = solve_constraint(&(theta[ji]), &theta0[i], jf-ji); // calculates theta0 via newton iteration
+      real left = constraint(&theta[ji], theta0[i], &lambda[ji], jf-ji); // fills lambdas
+      if(!result){
+        printf("Constraint Failed! Off by: %f, theta0: %f\n", left, theta0[i]);
+      }
     }
   }
 }
@@ -724,7 +819,10 @@ void Msld::calc_lambda_from_theta(cudaStream_t stream,System *system)
 {
   State *s=system->state;
   if (!fix) { // ffix
-    calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex);
+    calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(
+      s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex,
+      new_implicit, theta0_d 
+    );
   } else {
     cudaMemcpy(s->theta_d,s->lambda_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice);
   }
@@ -734,13 +832,21 @@ void Msld::init_lambda_from_theta(cudaStream_t stream,System *system)
 {
   State *s=system->state;
   if (!fix) { // ffix
-    calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex);
+    calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(
+      s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex,
+      new_implicit, theta0_d
+    );
   } else {
     cudaMemcpy(s->lambda_d,s->theta_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice);
   }
 }
 
-__global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta,real_f *lambdaForce,real_f *thetaForce,int blockCount,int *lambdaSite,int *siteBound,real fnex)
+__global__ void calc_thetaForce_from_lambdaForce_kernel(
+  real *lambda,real *theta,
+  real_f *lambdaForce,real_f *thetaForce,
+  int blockCount,int *lambdaSite,int *siteBound,real fnex,
+  bool new_implicit, real_x* theta0, real* dcdt, real w, real n
+)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int j, ji, jf;
@@ -751,11 +857,32 @@ __global__ void calc_thetaForce_from_lambdaForce_kernel(real *lambda,real *theta
     fi=lambdaForce[i];
     ji=siteBound[lambdaSite[i]];
     jf=siteBound[lambdaSite[i]+1];
-    for (j=ji; j<jf; j++) {
-      fi+=-lambda[j]*lambdaForce[j];
+    if(!new_implicit){
+      for (j=ji; j<jf; j++) {
+        fi+=-lambda[j]*lambdaForce[j];
+      }
+      fi*=li*fnex*cosf(ANGSTROM*theta[i])*ANGSTROM;
+      atomicAdd(&thetaForce[i],fi);
+    } else { // newton solved constraint
+      int subs = jf - ji;
+      real norm = d_constraintf(&theta[ji], theta0[lambdaSite[i]], &dcdt[ji], subs); // loops over subs 1x
+      real dot = 0;
+      for(j = ji; j < jf; j++){
+        dot += lambdaForce[j]*dcdt[j];
+      }
+      // theta range limiter - flat bottom harmonic
+      real bias;
+      real dbdt;
+      real dist=0;
+      if(theta[i] > subs*w){
+        dist = theta[i] - subs*w;
+      } else if (theta[i] < -subs*w){
+        dist = theta[i] + subs*w;
+      }
+      bias = .5*n*dist*dist;
+      dbdt = n*dist;
+      atomicAdd(&thetaForce[i], dcdt[i]*(lambdaForce[i]-dot/norm) + dbdt);
     }
-    fi*=li*fnex*cosf(ANGSTROM*theta[i])*ANGSTROM;
-    atomicAdd(&thetaForce[i],fi);
   }
 }
 
@@ -763,7 +890,13 @@ void Msld::calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system)
 {
   State *s=system->state;
   if (!fix) { // ffix
-    calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,stream>>>(s->lambda_fd,s->theta_fd,s->lambdaForce_d,s->thetaForce_d,blockCount,lambdaSite_d,siteBound_d,fnex);
+    calc_thetaForce_from_lambdaForce_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,0,stream>>>(
+      s->lambda_fd,s->theta_fd,
+      s->lambdaForce_d,s->thetaForce_d,
+      blockCount,lambdaSite_d,siteBound_d,fnex,
+      new_implicit, theta0_d, dcdt_d, well_width, 
+      well_strength*system->state->leapParms1->kT 
+    );
   }
 }
 
