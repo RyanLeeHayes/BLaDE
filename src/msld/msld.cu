@@ -412,6 +412,12 @@ void parse_msld(char *line,System *system)
   } else if (strcmp(token,"fix")==0) { // ffix
     system->msld->fix=io_nextb(line); // ffix
 // NYI - charge restraints, put Q in initialize
+  } else if (strcmp(token, "piecewise")==0){
+    system->msld->new_implicit=io_nextb(line);
+  } else if (strcmp(token, "well_width")==0){
+    system->msld->well_width=io_nextf(line);
+  } else if (strcmp(token, "well_k")==0){
+    system->msld->well_k=io_nextf(line);
   } else if (strcmp(token,"print")==0) {
     system->selections->dump();
   } else {
@@ -1099,7 +1105,7 @@ __global__ void getforce_thetaFlatHarmonic_kernel(
   real* theta, real_f* thetaForce, 
   real_e* energy, int blockCount, 
   int* lambdaSite, int* blocksPerSite,
-  real width, real strength)
+  real width, real k)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   extern __shared__ real sEnergy[];
@@ -1115,8 +1121,8 @@ __global__ void getforce_thetaFlatHarmonic_kernel(
       } else if (theta[i] < -subs*width){
         dist = theta[i] + subs*width;
       }
-      lEnergy = ((real).5)*strength*dist*dist;
-      dbdt = strength*dist;
+      lEnergy = ((real).5)*k*dist*dist;
+      dbdt = k*dist;
       atomicAdd(&thetaForce[i], dbdt);
   }
   // Energy, if requested
@@ -1159,7 +1165,7 @@ void Msld::getforce_thetaBias(System *system,bool calcEnergy)
       s->theta_fd,s->thetaForce_d,
       pEnergy,blockCount,
       lambdaSite_d, blocksPerSite_d, 
-      well_width, well_strength);
+      well_width, well_k);
   }
 }
 
@@ -1449,8 +1455,8 @@ void blade_add_msld_atomrestraint_element(System *system,int i)
   system->msld->atomRestraints.back().push_back(i-1);
 }
 
-void blade_set_msld_piecewise_constraint(System* system, bool do_imp, real width, real strength){
+void blade_set_msld_piecewise_constraint(System* system, bool do_imp, real width, real k){
   system->msld->new_implicit=do_imp;
   system->msld->well_width=width;
-  system->msld->well_strength=strength;
+  system->msld->well_k=k;
 }
