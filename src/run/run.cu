@@ -419,14 +419,22 @@ void Run::test(char *line,char *token,System *system)
 
   // Calculate forces
   system->potential->calc_force(0,system);
+  system->msld->calc_thetaForce_from_lambdaForce(system->run->updateStream, system);
   // Save position and forces
   system->state->backup_position();
 
+  bool theta_test = false;
   if (testType=="alchemical") {
     dx=io_nextf(line); // dimensionless
     ij0=0;
     imax=system->state->lambdaCount;
     jmax=1;
+  } else if (testType=="alchemical-theta"){
+    dx=io_nextf(line);
+    ij0=system->state->lambdaCount+3*system->state->atomCount;
+    imax=system->state->lambdaCount;
+    jmax=1;
+    theta_test=true;
   } else if (testType=="spatial") {
     name=io_nexts(line);
     if (system->selections->selectionMap.count(name)==0) {
@@ -437,7 +445,7 @@ void Run::test(char *line,char *token,System *system)
     imax=system->state->atomCount;
     jmax=3;
   } else {
-    fatal(__FILE__,__LINE__,"Error: test type %s does not match alchemical or spatial\n",testType.c_str());
+    fatal(__FILE__,__LINE__,"Error: test type %s does not match alchemical, alchemical-theta, or spatial\n",testType.c_str());
   }
 
   for (i=0; i<imax; i++) {
@@ -447,10 +455,14 @@ void Run::test(char *line,char *token,System *system)
         for (s=0; s<2; s++) {
           // Shift ij by (s-0.5)*dx
           shift_kernel<<<1,1>>>(&system->state->positionBuffer_d[ij],(s-0.5)*dx);
+          if(theta_test){ // don't overwrite changes in lambda deltas
+            system->msld->calc_lambda_from_theta(system->run->updateStream, system); 
+          }
           
           // Calculate energy
           system->domdec->update_domdec(system,0);
           system->potential->calc_force(0,system);
+          system->msld->calc_thetaForce_from_lambdaForce(system->run->updateStream, system);
 
           // Save relevant data
           if (system->id==0) {
