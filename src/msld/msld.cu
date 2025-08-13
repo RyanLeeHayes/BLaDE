@@ -1432,6 +1432,14 @@ void blade_add_msld_thetaindebias(System *system,int sites,int i,double k)
   system->msld->kThetaIndeBias[i-1]=k;
 }
 
+void blade_set_msld_piecewise_constraint(System *system, int do_imp, real width, real k)
+{
+  system+=omp_get_thread_num();
+  system->msld->new_implicit=do_imp;
+  system->msld->well_width=width;
+  system->msld->well_k=k;
+}
+
 void blade_add_msld_softbond(System *system,int i,int j)
 {
   system+=omp_get_thread_num();
@@ -1453,10 +1461,4 @@ void blade_add_msld_atomrestraint_element(System *system,int i)
 {
   system+=omp_get_thread_num();
   system->msld->atomRestraints.back().push_back(i-1);
-}
-
-void blade_set_msld_piecewise_constraint(System* system, bool do_imp, real width, real k){
-  system->msld->new_implicit=do_imp;
-  system->msld->well_width=width;
-  system->msld->well_k=k;
 }

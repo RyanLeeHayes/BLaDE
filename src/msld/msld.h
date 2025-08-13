@@ -137,6 +137,7 @@ extern "C" {
   void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n);
   void blade_add_msld_thetacollbias(System *system,int sites,int i,double k,double n);
   void blade_add_msld_thetaindebias(System *system,int sites,int i,double k);
+  void blade_set_msld_piecewise_constraint(System *system, int do_imp, real width, real k);
   void blade_add_msld_softbond(System *system,int i,int j);
   void blade_add_msld_atomrestraint(System *system);
   void blade_add_msld_atomrestraint_element(System *system,int i);
