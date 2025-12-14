@@ -31,6 +31,10 @@ typedef enum eeterm {
   eenbrecipexcl,
   eelambda,
   eetheta,
+  eecats,
+  eenoe,
+  eeharmonic,
+  eemmfp,
   eebias,
   eepotential,
   eekinetic,
@@ -163,6 +167,28 @@ struct HarmonicPotential {
   real k;
   real n;
   real3 r0;
+};
+
+struct BoRestPotential {
+  int idx[2];
+  real kr;
+  real r0;
+  int block;
+};
+
+struct AnRestPotential {
+  int idx[3];
+  real kt;
+  real t0;
+  int block;
+};
+
+struct DiRestPotential {
+  int idx[4];
+  real kphi;
+  int nphi;
+  real phi0;
+  int block;
 };
 
 class Potential {
@@ -301,7 +327,15 @@ class Potential {
   struct HarmonicPotential *harms;
   struct HarmonicPotential *harms_d;
   real3_x harmCenter;
-
+  int boRestCount;
+  struct BoRestPotential *boRests;
+  struct BoRestPotential *boRests_d;
+  int anRestCount;
+  struct AnRestPotential *anRests;
+  struct AnRestPotential *anRests_d;
+  int diRestCount;
+  struct DiRestPotential *diRests;
+  struct DiRestPotential *diRests_d;
   int (*prettifyPlan)[2];
 
   Potential();

@@ -48,6 +48,13 @@ class Msld {
   real gamma;
   real fnex;
 
+  // New Implicit Constraint
+  bool new_implicit = false;
+  real_x* theta0_d; // [nSite] newton solved variable in new implicit model
+  real_f* dcdt_d; // [nBlock] derivative of constraint w.r.t. theta.i -> -'ve der w.r.t. theta0
+  real well_width = 1.0; // flat bottom harmonic starting outside of [-w, w]
+  real well_k = 100.0; // strength of fb harmonic
+
   bool scaleTerms[6]; // bond,ureyb,angle,dihe,impr,cmap
 
   int variableBiasCount;
@@ -130,6 +137,7 @@ extern "C" {
   void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n);
   void blade_add_msld_thetacollbias(System *system,int sites,int i,double k,double n);
   void blade_add_msld_thetaindebias(System *system,int sites,int i,double k);
+  void blade_set_msld_piecewise_constraint(System *system, int do_imp, double width, double k);
   void blade_add_msld_softbond(System *system,int i,int j);
   void blade_add_msld_atomrestraint(System *system);
   void blade_add_msld_atomrestraint_element(System *system,int i);
