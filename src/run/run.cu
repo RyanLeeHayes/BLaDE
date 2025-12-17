@@ -359,14 +359,14 @@ void Run::set_variable(char *line,char *token,System *system)
     dxRMSInit=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"mintype")==0) {
     std::string minString=io_nexts(line);
-    if (strcmp(minString.c_str(), "lbfgs") == 0){
+    if (strcmp(minString.c_str(), "lbfgs")==0){
       minType=elbfgs;
     } else if (strcmp(minString.c_str(),"sd")==0) {
       minType=esd;
     } else if (strcmp(minString.c_str(),"sdfd")==0) {
       minType=esdfd;
     } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: sd or sdfd\n",minString.c_str());
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: lbfgs, sd, or sdfd\n",minString.c_str());
     }
   } else if (strcmp(token,"domdecheuristic")==0) {
     domdecHeuristic=io_nextb(line);
@@ -501,6 +501,12 @@ void Run::minimize(char *line,char *token,System *system)
     system->state->min_move(step,nsteps,system);
     print_dynamics_output(step,system);
     gpuCheck(cudaPeekAtLastError());
+  }
+
+  if(system->run->minType==elbfgs){
+    printf("L-BFGS took %d force evaluations in %d steps.\n", system->run->lbfgs_energy_evals, system->run->lbfgs->step);
+    printf("U0: %f, Uf: %f, Uf - U0: %f\n", 
+      system->run->lbfgs->U0, system->run->lbfgs->Uf, system->run->lbfgs->Uf - system->run->lbfgs->U0);
   }
 
   system->state->min_dest(system);

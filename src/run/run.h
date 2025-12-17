@@ -8,7 +8,7 @@
 
 #include "xdr/xdrfile.h"
 #include "xdr/xdrfile_xtc.h"
-#include "update/LBFGS.h"
+#include "update/lbfgs.h"
 
 // Forward delcaration
 class System;
@@ -59,7 +59,8 @@ class Run {
   EMin minType; // minimization scheme
 
   // L-BFGS variables
-  LBFGS<real>* lbfgs;
+  LBFGS* lbfgs;
+  int lbfgs_energy_evals = 0;
 
   real betaEwald;
   real rCut;

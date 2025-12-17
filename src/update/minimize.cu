@@ -85,6 +85,18 @@ __global__ void sdfd_dotproduct_kernel(int N,struct LeapState ls,real_v *minDire
   real_sum_reduce(3*lDot/N,sDot,dot);
 }
 
+__global__ void double_convert_float(int N, real_x* doubleBuffer, real* floatBuffer, bool direction)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  if (i<N) {
+    if(direction){ // forward
+      floatBuffer[i] = (real)doubleBuffer[i];
+    } else { // backward
+      doubleBuffer[i] = (real_x)floatBuffer[i];
+    }
+  }
+}
+
 void State::min_init(System *system)
 {
   // Set masses to 1 for shake during minimization, except virtual sites
@@ -99,6 +111,29 @@ void State::min_init(System *system)
   if (system->run->minType==esdfd) {
     cudaMalloc(&minDirection_d,3*atomCount*sizeof(real_v));
   }
+  if (system->run->minType==elbfgs){
+    // Function called by L-BFGS class to get energy & gradient 
+    std::function<real()> energy_and_grad = [system](){
+      // Copy X onto double precision buffer
+      int DOF = system->state->atomCount*3;
+      int shift = system->state->lambdaCount;
+      double_convert_float<<<(system->state->atomCount+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(
+            DOF, system->state->positionBuffer_d+shift, system->state->positionBuffer_fd+shift, false);
+      // Potential & Grad Eval -> step=0 to calc energy
+      system->domdec->update_domdec(system,true);
+      system->potential->calc_force(0, system);
+      // grad(F(X)) G already stored
+      system->state->recv_energy();
+      system->run->lbfgs_energy_evals++;
+      return (real)system->state->energy[eepotential];
+    };
+
+    int shift = system->state->lambdaCount;
+    int DOF = system->state->atomCount*3; // only minimize atom positions
+    int m = 7; // Past grad depth
+    system->state->recv_state();
+    system->run->lbfgs = new LBFGS(m, DOF, energy_and_grad, system->state->positionBuffer_fd+shift, system->state->forceBuffer_d+shift);
+  }
 }
 
 void State::min_dest(System *system)
@@ -112,9 +147,12 @@ void State::min_dest(System *system)
   if (system->run->minType==esdfd) {
     cudaFree(minDirection_d);
   }
+  if (system->run->minType==elbfgs){
+    system->run->lbfgs->~LBFGS();
+  }
 }
 
-void State::min_move(int step,int nsteps,System *system)
+void State::min_move(int step, int nsteps, System *system)
 {
   Run *r=system->run;
   real_e grads2[2];
@@ -128,27 +166,7 @@ void State::min_move(int step,int nsteps,System *system)
       recv_energy();
       if (system->verbose>0) display_nrg(system);
       currEnergy=energy[eepotential];
-      if (step == 0){
-        // Function called by LBFGS class to get energy & gradient 
-        std::function<real(real*, real*)> energy_and_grad = [system](real* X, real* G){
-          // Copy X onto CUDA device
-          int DOF = system->state->atomCount*3 + system->msld->blockCount;
-          cudaMemcpy(system->state->positionBuffer_d, X, DOF*sizeof(real), cudaMemcpyDefault);
-          // Potential & Grad Eval
-          system->potential->calc_force(0, system);
-          // Copy grad(F(X)) into G
-          cudaMemcpy(G, system->state->force_d, DOF*sizeof(real), cudaMemcpyDefault);
-          real energy = system->state->energy[eepotential];
-          return energy;
-        };
-
-        int DOF = system->state->atomCount*3 + system->msld->blockCount;
-        int m = 7; // Past grad depth
-        r->lbfgs = new LBFGS<real>(7, DOF, energy_and_grad);
-        // Steepest decent step
-        r->lbfgs->init((real*)system->state->positionBuffer, (real*) system->state->forceBuffer, 1e-2);
-      }
-      r->lbfgs->minimize_step((real*)system->state->positionBuffer, (real*) system->state->forceBuffer);
+      r->lbfgs->minimize_step(currEnergy);
     }
   }
   else if (r->minType==esd) {
