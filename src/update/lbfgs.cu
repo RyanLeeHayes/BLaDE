@@ -119,12 +119,12 @@ LBFGS::LBFGS(int m, real_x eps, int DOF, std::function<real_x()> user_grad, real
 
 LBFGS::~LBFGS() {
     if (tmp_d) cudaFree(tmp_d);
+    if (gamma_d) cudaFree(gamma_d);
     if (rho_d) cudaFree(rho_d);
     if (alpha_d) cudaFree(alpha_d);
-    if (gamma_d) cudaFree(gamma_d);
+    if (q_d) cudaFree(q_d);
     if (prev_positions_d) cudaFree(prev_positions_d);
     if (prev_gradient_d) cudaFree(prev_gradient_d);
-    if (q_d) cudaFree(q_d);
     if (s_d) cudaFree(s_d);
     if (y_d) cudaFree(y_d);
     if (s_tmp_d) cudaFree(s_tmp_d);

@@ -8,7 +8,7 @@ class LBFGS {
 public:
     int step_count=0; // total number of minimize calls
     int reset_count=0; // number of times lbfgs memory was cleared
-    int m=5; // Number of previous gradients to use for hessian approximation (5-7)
+    int m=7; // Number of previous gradients to use for hessian approximation (5-7)
     bool minimized=false;
     real_x U0, Uf;
 

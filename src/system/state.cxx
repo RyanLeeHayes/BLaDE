@@ -157,6 +157,7 @@ State::~State() {
   if (positionBackup_d) cudaFree(positionBackup_d);
   if (forceBuffer) free(forceBuffer);
   if (forceBuffer_d) cudaFree(forceBuffer_d);
+  if (forceBufferX_d) cudaFree(forceBufferX_d);
   if (forceBackup_d) cudaFree(forceBackup_d);
   // Other buffers
   if (energy) free(energy);
