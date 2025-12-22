@@ -504,9 +504,10 @@ void Run::minimize(char *line,char *token,System *system)
   }
 
   if(system->run->minType==elbfgs){
-    printf("L-BFGS took %d force evaluations in %d steps.\n", system->run->lbfgs_energy_evals, system->run->lbfgs->step);
-    printf("U0: %f, Uf: %f, Uf - U0: %f\n", 
-      system->run->lbfgs->U0, system->run->lbfgs->Uf, system->run->lbfgs->Uf - system->run->lbfgs->U0);
+    Run* r = system->run;
+    printf("L-BFGS (m=%d) did %d force evaluations in %d steps. Reset memory %d times.\n", 
+      r->lbfgs->m, r->lbfgs_energy_evals, r->lbfgs->step_count, r->lbfgs->reset_count);
+    printf("U0: %f, Uf: %f, Uf - U0: %f\n", r->lbfgs->U0, r->lbfgs->Uf, r->lbfgs->Uf - r->lbfgs->U0);
   }
 
   system->state->min_dest(system);

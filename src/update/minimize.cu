@@ -85,13 +85,13 @@ __global__ void sdfd_dotproduct_kernel(int N,struct LeapState ls,real_v *minDire
   real_sum_reduce(3*lDot/N,sDot,dot);
 }
 
-__global__ void double_convert_float(int N, real_x* doubleBuffer, real* floatBuffer, bool direction)
+__global__ void double_onto_float(int N, real_x* doubleBuffer, real* floatBuffer, bool direction)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   if (i<N) {
-    if(direction){ // forward
+    if(direction){ // forward - float = double 
       floatBuffer[i] = (real)doubleBuffer[i];
-    } else { // backward
+    } else { // backward - double = float
       doubleBuffer[i] = (real_x)floatBuffer[i];
     }
   }
@@ -113,26 +113,29 @@ void State::min_init(System *system)
   }
   if (system->run->minType==elbfgs){
     // Function called by L-BFGS class to get energy & gradient 
-    std::function<real()> energy_and_grad = [system](){
-      // Copy X onto double precision buffer
+    std::function<real_x()> energy_and_grad = [system](){
+      // Copy double precision onto float precision buffer
       int DOF = system->state->atomCount*3;
       int shift = system->state->lambdaCount;
-      double_convert_float<<<(system->state->atomCount+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(
-            DOF, system->state->positionBuffer_d+shift, system->state->positionBuffer_fd+shift, false);
+      double_onto_float<<<(DOF+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(
+            DOF, system->state->positionBuffer_d+shift, system->state->positionBuffer_fd+shift, true);
       // Potential & Grad Eval -> step=0 to calc energy
-      system->domdec->update_domdec(system,true);
+      //system->domdec->update_domdec(system,true);
       system->potential->calc_force(0, system);
       // grad(F(X)) G already stored
       system->state->recv_energy();
+      // Copy float precision onto double precision buffer
+      double_onto_float<<<(DOF+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(
+            DOF, system->state->forceBufferX_d+shift, system->state->forceBuffer_d+shift, false);
       system->run->lbfgs_energy_evals++;
-      return (real)system->state->energy[eepotential];
+      return system->state->energy[eepotential];
     };
 
     int shift = system->state->lambdaCount;
     int DOF = system->state->atomCount*3; // only minimize atom positions
-    int m = 7; // Past grad depth
+    int m = 10; // Past grad depth
     system->state->recv_state();
-    system->run->lbfgs = new LBFGS(m, DOF, energy_and_grad, system->state->positionBuffer_fd+shift, system->state->forceBuffer_d+shift);
+    system->run->lbfgs = new LBFGS(m, DOF, energy_and_grad, system->state->positionBuffer_d+shift, system->state->forceBufferX_d+shift);
   }
 }
 

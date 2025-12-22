@@ -4,153 +4,356 @@
 #include <cmath>
 #include <type_traits>
 #include <cstdio>
+#include <algorithm>
 
 #include <cuda_runtime.h>
 #include "update/lbfgs.h"
 #include "main/real3.h" // for real_sum_reduce
 
-// C = u*A + w*(d^n)*B, C and A and B can be related
-__global__ void vector_add(
-    int N, real u, real *A, real w, real* d, real n, real *B, 
-    real* C) {
+/*
+    Cuda Kernels
+*/
+
+// d = 1/sqrt(d) - element-wise
+__global__ void inv_sqrt(int N, real_x *d) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < N) {
+        d[i] = 1.0/sqrt(d[i]);
+    }
+}
+
+// d = 1/d - element-wise
+__global__ void recip(int N, real_x *d) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < N) {
+        d[i] = 1.0/d[i];
+    }
+}
+
+// d = abs(d) - element-wise
+__global__ void vector_abs(int N, real_x *d){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < N) {
+        d[i] = abs(d[i]);
+    }
+}
+
+// C = u*A + w*d*B, C and A and B can be related
+__global__ void vector_add(int N, real_x u, real_x *A, real_x w, real_x *d, real_x *B, real_x *C) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < N) {
         if(d){
-            C[i] = u * A[i] + w * pow(*d, n) * B[i];
+            C[i] = u * A[i] + w * d[0] * B[i];
         } else {
             C[i] = u * A[i] + w * B[i];
         }
     }
 }
 
-    // *dot = w*u^p*(A).(B), w is cpu real, u is gpu real, p is cpu real
-__global__ void dot_product(
-    int N, real w, real* u, real p, real *A, real *B, 
-    real* dot) {
+// C = A[0]*B - element-wise
+__global__ void vector_scale(int N, real_x *A, real_x *B, real_x *C){
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    real lDot = 0;
-    extern __shared__ real sDot[];
-    if(i == 0){
-        *dot = 0;
-    }
     if (i < N) {
-        if(u){
-            lDot = w*powf(*u, p)*A[i]*B[i];
-        } else {
-            lDot = w*A[i]*B[i];
-        }
+        C[i] = A[0]*B[i];
     }
-
-    real_sum_reduce(lDot, sDot, dot);
 }
 
-//  <position precision, real precision>
-LBFGS::LBFGS(int m, int DOF, std::function<real()> user_grad, real *position, real *gradient)
+// B = c*A - element-wise
+__global__ void vector_scale(int N, real_x c, real_x *A, real_x *B){
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < N) {
+        B[i] = c*A[i];
+    }
+}
+
+__global__ void dot_product(int N, real_x *A, real_x *B, real_x* dot) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    real_x lDot = 0;
+    extern __shared__ real sDot[];
+    if (i < N) {
+        lDot = A[i]*B[i];
+    }
+
+    real_sum_reduce((real)lDot, sDot, dot);
+}
+
+/*
+    Class setup
+*/
+
+//  <position precision, real_x precision>
+LBFGS::LBFGS(int m, int DOF, std::function<real_x()> user_grad, real_x *position, real_x *gradient)
     : m(m), DOF(DOF), system_grad(user_grad), X_d(position), G_d(gradient) {
-    step = 0;
-    cudaMalloc(&tmp_d, sizeof(real));
-    cudaMalloc(&gamma_d, sizeof(real));
-    cudaMalloc(&rho_inv_d, m*sizeof(real));
-    cudaMalloc(&alpha_d, m*sizeof(real));
-    cudaMalloc(&beta_d, m*sizeof(real));
-    cudaMalloc(&q_d, DOF*sizeof(real));
-    cudaMalloc(&prev_positions_d, DOF*sizeof(real));
-    cudaMalloc(&prev_gradient_d, DOF*sizeof(real));
-    cudaMalloc(&s_d, m*DOF*sizeof(real));
-    cudaMalloc(&y_d, m*DOF*sizeof(real));
+    k = 0;
+    cudaMalloc(&tmp_d, sizeof(real_x));
+    cudaMalloc(&gamma_d, sizeof(real_x));
+    cudaMalloc(&rho_d, m*sizeof(real_x));
+    cudaMalloc(&alpha_d, m*sizeof(real_x));
+    cudaMalloc(&q_d, DOF*sizeof(real_x));
+    cudaMalloc(&prev_positions_d, DOF*sizeof(real_x));
+    cudaMalloc(&prev_gradient_d, DOF*sizeof(real_x));
+    cudaMalloc(&s_d, m*DOF*sizeof(real_x));
+    cudaMalloc(&y_d, m*DOF*sizeof(real_x));
+    cudaMalloc(&s_tmp_d, DOF*sizeof(real_x));
+    cudaMalloc(&y_tmp_d, DOF*sizeof(real_x));
 
     U0 = user_grad(); // first energy call by lbfgs
+
+    // Normalize first s.d. step
+    gamma_norm();
+
+    // Set up s.d. step
+    cudaMemcpy(q_d, G_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+    vector_scale<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, gamma_d, q_d, q_d);
+    vector_scale<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, -1, q_d, q_d);
 }
 
 LBFGS::~LBFGS() {
     if (tmp_d) cudaFree(tmp_d);
-    if (rho_inv_d) cudaFree(rho_inv_d);
+    if (rho_d) cudaFree(rho_d);
     if (alpha_d) cudaFree(alpha_d);
     if (gamma_d) cudaFree(gamma_d);
-    if (beta_d) cudaFree(beta_d);
     if (prev_positions_d) cudaFree(prev_positions_d);
     if (prev_gradient_d) cudaFree(prev_gradient_d);
     if (q_d) cudaFree(q_d);
     if (s_d) cudaFree(s_d);
     if (y_d) cudaFree(y_d);
+    if (s_tmp_d) cudaFree(s_tmp_d);
+    if (y_tmp_d) cudaFree(y_tmp_d);
 }
 
-void LBFGS::minimize_step(real f0) { // f0 from outer loop
-    cudaMemcpy(q_d, G_d, DOF*sizeof(real), cudaMemcpyDefault); // G from outer loop
-    //vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, -1, G_d, 0, NULL, 1, q_d, q_d);
-    if(step != 0 && m != 0) update_sk();
-    // Two-loop recursion - Ch7.4, p178 of Nocedal & Wright
-    for (int i = step-1; i >= step-m; i--) {
-        if(i < 0) break;
-        int index = i % m;
-        // alpha.i = rho.i*s.i*q
-        dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32, 0>>>(DOF, 1, rho_inv_d+index, -1, s_d+index*DOF, q_d, alpha_d+index);
-        // q = q - alpha.i*y.i
-        vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, q_d, -1, alpha_d+index, 1, y_d+index*DOF, q_d);
-    }
-    if(step != 0 && m != 0){
-        int index = (step-1) % m;
-        // norm = y.i*y.i
-        dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32, 0>>>(DOF, 1, NULL, 1, y_d+index*DOF, y_d+index*DOF, tmp_d);
-        // dot = s.i*y.i/norm
-        dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32, 0>>>(DOF, 1, tmp_d, -1, s_d+index*DOF, y_d+index*DOF, gamma_d);
-        // q = gamma*q
-        vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 0, q_d, 1, gamma_d, 1, q_d, q_d);
-    }
-    for (int i = step-m; i < step; i++) {
-        if(step == 0) break;
-        if(i < 0) continue;
-        int index = i % m;
-        // B = rho.i*y.i*q
-        dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32, 0>>>(DOF, 1, rho_inv_d+index, -1, y_d+index*DOF, q_d, tmp_d);
-        // q = q + s.i*alpha.i
-        vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, q_d, +1, alpha_d+index, 1, s_d+index*DOF, q_d); 
-        // q = q - B*s.i
-        vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, q_d, -1, tmp_d, 1, s_d+index*DOF, q_d);
-    }
-    // q = -q
-    vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, -1, q_d, 0, NULL, 1, q_d, q_d);
+/*
+    L-BFGS iteration
+*/
+
+bool LBFGS::check_convergence(){
+    // return true if rmsg minimized
+    real_x grad_norm = 0;
+    cudaMemset(tmp_d, 0, sizeof(real_x));
+    dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, G_d, G_d, tmp_d);
+    cudaMemcpy(&grad_norm, tmp_d, sizeof(real_x), cudaMemcpyDefault);
+    grad_norm = sqrt(grad_norm);
+    return grad_norm < eps;
+}
+
+// set gamma = 1/|g_d|
+void LBFGS::gamma_norm(){
+    cudaMemset(tmp_d, 0, sizeof(real_x));
+    dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, G_d, G_d, tmp_d);
+    inv_sqrt<<<1,1>>>(1, tmp_d);
+    cudaMemcpy(gamma_d, tmp_d, sizeof(real_x), cudaMemcpyDefault);
+}
+
+// Ch7.4, p178 of Nocedal & Wright (Algorithm 7.4)
+void LBFGS::minimize_step(real_x f0) { // f0 & G filled from outer minimize loop
+    // Copy kth positions & gradients
+    cudaMemcpy(prev_positions_d, X_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+    cudaMemcpy(prev_gradient_d, G_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+
     // min_a f(X + a*q)
-    linesearch(f0); // backtracking, leaves X & G at final X+a*q
-    step++;
+    step_size = linesearch(f0); // X & G left at & evaluated at f(X+a*q)
+
+    // Check convergence
+    // TODO: implement convergence checks
+
+    // kth position and gradient deltas
+    update_sk_yk(); // potentially skip decrement k or set k=0 & clear s & y memory
+    k++;
+
+    // Two-loop recursion
+    cudaMemcpy(q_d, G_d, DOF*sizeof(real_x), cudaMemcpyDefault); 
+    for (int i = k-1; i >= std::max(0, k-m); i--) {
+        int index = i % m;
+        // q = q - (rho.i*(s.i dot q))*y.i
+        cudaMemset(alpha_d+index, 0, sizeof(real_x));
+        dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, s_d+index*DOF, q_d, alpha_d+index);
+        vector_scale<<<1,1>>>(1, rho_d+index, alpha_d+index, alpha_d+index);
+        vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, q_d, -1, alpha_d+index, y_d+index*DOF, q_d);
+    }
+    // q = gamma.k*q = r
+    vector_scale<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, gamma_d, q_d, q_d);
+    for (int i = std::max(0, k-m); i <= k-1; i++) {
+        int index = i % m;
+        // B = rho.i*(y.i dot q)
+        // q = q + (alpha.i - B)*s.i = q - B*s.i + alpha.i*s.i
+        cudaMemset(tmp_d, 0, sizeof(real_x));
+        dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, y_d+index*DOF, q_d, tmp_d);
+        vector_scale<<<1,1>>>(1, rho_d+index, tmp_d, tmp_d);
+        vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, q_d, -1, tmp_d, s_d+index*DOF, q_d);
+        vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, q_d, 1, alpha_d+index, s_d+index*DOF, q_d); 
+    }
+
+    // q = -q
+    vector_scale<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, -1, q_d, q_d);
+
+    step_count++;
 }
 
-void LBFGS::update_sk() {
-    int index = (step - 1) % m;
-    vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, X_d, -1, NULL, 1, prev_positions_d, s_d+index*DOF);
-    vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, G_d, -1, NULL, 1, prev_gradient_d, y_d+index*DOF);
-    dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32, 0>>>(DOF, 1, NULL, 1, y_d+index*DOF, s_d+index*DOF, rho_inv_d+index);
+void LBFGS::update_sk_yk() {
+    if(m == 0) { // Steepest decent, normalize step size via gamma
+        gamma_norm();
+        return;
+    } 
+    int index = k % m;
 
-    cudaMemcpy(prev_positions_d, X_d, DOF*sizeof(real), cudaMemcpyDefault);
-    cudaMemcpy(prev_gradient_d, G_d, DOF*sizeof(real), cudaMemcpyDefault);
+    // s & y tmp
+    vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, X_d, -1, NULL, prev_positions_d, s_tmp_d);
+    vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, G_d, -1, NULL, prev_gradient_d, y_tmp_d);
+
+    real_x yy = 0;
+    cudaMemset(tmp_d, 0, sizeof(real_x));
+    dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, y_tmp_d, y_tmp_d, tmp_d);
+    cudaMemcpy(&yy, tmp_d, sizeof(real_x), cudaMemcpyDefault);
+
+    real_x sy = 0;
+    cudaMemset(tmp_d, 0, sizeof(real_x));
+    dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, s_tmp_d, y_tmp_d, tmp_d);
+    cudaMemcpy(&sy, tmp_d, sizeof(real_x), cudaMemcpyDefault);
+
+    // Check curvature s.T H s = s.T y > 0 for positive def matrix satisfying secant eq Hs=y (required for L-BFGS)
+    if(sy < 1e-6){ 
+        printf("Curvature condition (sy = %e) not satistied! Clearing L-BFGS memory!\n", sy);
+        cudaMemset(s_d, 0, m*DOF*sizeof(real_x));
+        cudaMemset(y_d, 0, m*DOF*sizeof(real_x));
+        gamma_norm();
+        k = -1;
+        reset_count++;
+        return;
+    } 
+
+    // rho = 1/y.s
+    real_x rho = 1.0/sy;
+    // gamma_k = s.y/(y.y)
+    real_x gamma = sy/yy;
+    cudaMemcpy(gamma_d, &gamma, sizeof(real_x), cudaMemcpyDefault);
+    cudaMemcpy(rho_d+index, &rho, sizeof(real_x), cudaMemcpyDefault);
+    cudaMemcpy(s_d + index*DOF, s_tmp_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+    cudaMemcpy(y_d + index*DOF, y_tmp_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+    printf("iter: %d, k: %d, index: %d, rho: %f, gamma: %f\n", step_count, k, index, rho, gamma);
 }
 
-// Ch3.2, p37 of Nocedal & Wright 
-real LBFGS::linesearch(real f0) {
-    int max_it = 15;
-    real a = 5e-3; // max step size
-    real a_prev = 0;
-    real c1 = 1e-4; // Armijo cond
-    real tau = 0.25; // labeled rho in reference
-    real fi = 0;
-    real m0;
-    dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32, 0>>>(DOF, 1, NULL, 1, G_d, q_d, tmp_d); // df(0)/da
-    cudaMemcpy(&m0, tmp_d, sizeof(real), cudaMemcpyDefault);
-    for (int i = 0; i < max_it; i++) {
-        // Bump positions back and forth
-        vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, X_d, (a-a_prev), NULL, 1, q_d, X_d);
-        fi = system_grad(); // update G
-        printf("a: %f, U0-Uf: %f, m0: %f\n", a, f0-fi, m0);
-        if (fi <= f0 + c1*a*m0) {
-            Uf = fi;
-            return a; // position & gradient already updated at new point)
+/*
+    Line Search
+*/
+
+// return [f(X + alpha*p), df(X+alpha*p)/da]
+void LBFGS::phi(real_x alpha, real_x* result, bool leave_x){
+    cudaMemcpy(X_d, prev_positions_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+    vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, X_d, alpha, NULL, q_d, X_d);
+    result[0] = system_grad();
+    cudaMemset(tmp_d, 0, sizeof(real_x));
+    dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, G_d, q_d, tmp_d); // df(0)/da
+    cudaMemcpy(&result[1], tmp_d, sizeof(real_x), cudaMemcpyDefault);
+    printf("alpha: %f, phi: %f, phi': %f\n", alpha, result[0], result[1]);
+    if(!leave_x) {
+        cudaMemcpy(X_d, prev_positions_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+        cudaMemcpy(G_d, prev_gradient_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+    }
+}
+
+real_x sign(real_x value){
+    if(value < 0){
+        return -1;
+    }
+    return 1;
+}
+
+// Ch3.5, p59 of Nocedal & Wright (Equation 3.59) 
+real_x cubic_interp(real_x a, real_x fa, real_x ga, real_x b, real_x fb, real_x gb){
+    real_x d1 = ga + gb - 3*(fb - fa)/(a-b);
+    real_x d2 = sign(b - a)*sqrt(d1*d1 - ga*gb);
+    real_x arg = b - (b-a)*(gb + d2 - d1)/(gb - ga + 2*d2);
+    if(isinf(arg) || isnan(arg) || abs(arg - a) < 1e-7 || abs(arg - b) < 1e-7 || arg < 0){
+        printf("Quadratic interpolation failed! arg: %f, a: %f, b: %f\n", arg, a, b);
+        return (a + b) / 2.0;
+    }
+    return arg;
+}
+
+// Ch3.5, p61 of Nocedal & Wright (Algorithm 3.6)
+real_x LBFGS::zoom(real_x al, real_x const * const phi_lower, real_x au, real_x const * const phi_upper, real_x const * const phi0){
+    printf("Zoom started!\n");
+    int max_iter = 5;
+    real_x phil[2];
+    memcpy(phil, phi_lower, 2*sizeof(real_x));
+    real_x phiu[2];
+    memcpy(phiu, phi_upper, 2*sizeof(real_x));
+    real_x phij[2];
+    real_x aj;
+    for(int i = 0; i < max_iter; i++){
+        aj = cubic_interp(al, phil[0], phil[1], au, phiu[0], phiu[1]);
+        phi(aj, phij, false);
+        if(phij[0] > phi0[0] + c1*aj*phi0[1] || phij[0] >= phil[0]){
+            au = aj;
+            memcpy(phiu, phij, 2*sizeof(real_x));
         } else {
-            a_prev = a;
-            a *= tau;
+            // note that checking for strong wolf is important
+            if (abs(phij[1]) <= c2*abs(phi0[1])){
+                return aj;
+            }
+            if (phij[1]*(au - al) >= 0){
+                au = al;
+                memcpy(phiu, phil, 2*sizeof(real_x));
+            }
+            al = aj;
+            memcpy(phil, phij, 2*sizeof(real_x));
         }
     }
-    // Linesearch failed
-    printf("Linesearch Failed!\n", a); // a0*tau^(max_iter)
-    Uf = fi;
-    return a;
+    printf("Zoom reached max iterations! aj = %f, phi: %f, phi': %f\n", aj, phij[0], phij[1]);
+    return aj;
+}
+
+// Ch3.5, p60 of Nocedal & Wright (Algorithm 3.5)
+real_x LBFGS::linesearch(real_x f0){
+    printf("Linesearch started!\n");
+    real_x max_iter = 10;
+    real_x aim1 = 0; 
+    real_x ai = 1;
+    real_x amax = 10;
+    real_x tau = 1.5;
+
+    real_x phi0[2];
+    phi(0, phi0, true);
+    real_x phiim1[2];
+    memcpy(phiim1, phi0, 2*sizeof(real_x));
+    real_x phii[2];
+    for(int i = 0; i < max_iter; i++){
+        phi(ai, phii, false);
+        if (phii[0] > phi0[0] + c1*ai*phi0[1] || (phii[0] >= phiim1[0] && i > 0)){
+            ai = zoom(aim1, phiim1, ai, phii, phi0);
+            phi(ai, phii, true); 
+            Uf = phii[0];
+            break;
+        }
+        // note that checking for strong wolf is important
+        if (abs(phii[1]) >= c2*abs(phi0[1])){
+            phi(ai, phii, false);
+            Uf = phii[0];
+            break;
+        }
+        if (phii[1] >= 0){
+            ai = zoom(aim1, phiim1, ai, phii, phi0);
+            phi(ai, phii, false); 
+            Uf = phii[0];
+            break;
+        }
+        aim1 = ai;
+        memcpy(phiim1, phii, 2*sizeof(real_x));
+        ai = tau*ai;
+        if(ai > amax){
+            ai /= tau;
+            printf("Reached Max Step Size!");
+            phi(ai, phii, false); 
+            break;
+        }
+    }
+
+    // Protect from taking too small or steps that increase potential 
+    if(ai < 1e-5 || phii[0] > phi0[0]){
+        ai = 1e-4; // if g.p < 0 this will probably give ok results
+    }
+    phi(ai, phii, true); // update positions & leave
+    Uf = phii[0];
+    //printf("Linesearch reached max iterations! Defaulting to alpha: %f - phi: %f, phi': %f\n", ai, phii[0], phii[1]);
+    return ai;
 }
