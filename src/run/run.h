@@ -61,6 +61,8 @@ class Run {
   // L-BFGS variables
   LBFGS* lbfgs;
   int lbfgs_energy_evals = 0;
+  int lbfgs_m = 7; // gradient history length*DOF
+  real lbfgs_eps = 1; // gradient rms convergence criteria
 
   real betaEwald;
   real rCut;

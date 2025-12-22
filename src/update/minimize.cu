@@ -133,9 +133,8 @@ void State::min_init(System *system)
 
     int shift = system->state->lambdaCount;
     int DOF = system->state->atomCount*3; // only minimize atom positions
-    int m = 10; // Past grad depth
-    system->state->recv_state();
-    system->run->lbfgs = new LBFGS(m, DOF, energy_and_grad, system->state->positionBuffer_d+shift, system->state->forceBufferX_d+shift);
+    system->run->lbfgs = new LBFGS(system->run->lbfgs_m, system->run->lbfgs_eps, DOF, 
+      energy_and_grad, system->state->positionBuffer_d+shift, system->state->forceBufferX_d+shift);
   }
 }
 
@@ -170,6 +169,7 @@ void State::min_move(int step, int nsteps, System *system)
       if (system->verbose>0) display_nrg(system);
       currEnergy=energy[eepotential];
       r->lbfgs->minimize_step(currEnergy);
+      if(r->lbfgs->minimized){ system->run->step = nsteps; } // do we want this?
     }
   }
   else if (r->minType==esd) {

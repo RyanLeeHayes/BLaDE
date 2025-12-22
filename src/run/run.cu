@@ -357,6 +357,10 @@ void Run::set_variable(char *line,char *token,System *system)
     dxAtomMax=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"dxrmsinit")==0) {
     dxRMSInit=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token, "lbfgs_m")==0){
+    lbfgs_m=io_nexti(line);
+  } else if (strcmp(token, "lbfgs_eps")==0){
+    lbfgs_eps=io_nextf(line);
   } else if (strcmp(token,"mintype")==0) {
     std::string minString=io_nexts(line);
     if (strcmp(minString.c_str(), "lbfgs")==0){
