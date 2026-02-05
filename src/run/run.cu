@@ -412,6 +412,7 @@ void Run::energy(char *line,char *token,System *system)
   system->potential->calc_force(0,system);
   system->state->recv_energy();
   print_nrg(0,system);
+  display_nrg(system);
   dynamics_finalize(system);
 }
 

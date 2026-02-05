@@ -8,6 +8,7 @@
 #include "system/potential.h"
 #include "domdec/domdec.h"
 #include "holonomic/holonomic.h"
+#include "holonomic/rectify.h"
 #include "io/io.h"
 
 #include "main/real3.h"
