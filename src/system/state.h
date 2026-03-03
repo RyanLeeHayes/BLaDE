@@ -37,6 +37,8 @@ struct LeapState
   real_f *f;
   real *ism; // 1/sqrt(m)
   real *random;
+  real *lambda_friction_d;  // per-block friction for lambda DOFs (a2=exp(-g*dt))
+  real *lambda_noise_d;     // per-block noise for lambda DOFs (sqrt((1-a2^2)*kT)) - still divided by sqrt(m) at use
 };
 
 typedef enum ebox {

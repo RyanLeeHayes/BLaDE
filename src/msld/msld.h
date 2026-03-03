@@ -46,6 +46,7 @@ class Msld {
   real restScaling;
 
   real gamma;
+  real *thetaFriction;     // per-block friction (AKMA internal units, converted from ps^-1 by timfac on Fortran side)
   real fnex;
 
   // New Implicit Constraint
@@ -91,6 +92,9 @@ class Msld {
   real softNotBondExponent;
 
   bool fix; // ffix
+
+  bool *blockFixed;    // per-block fixed flag (host)
+  bool *blockFixed_d;  // per-block fixed flag (device)
 
   Msld();
   ~Msld();
@@ -138,9 +142,11 @@ extern "C" {
   void blade_add_msld_thetacollbias(System *system,int sites,int i,double k,double n);
   void blade_add_msld_thetaindebias(System *system,int sites,int i,double k);
   void blade_set_msld_piecewise_constraint(System *system, int do_imp, double width, double k);
+  void blade_add_msld_block_friction(System *system,int blockIdx,double friction);
   void blade_add_msld_softbond(System *system,int i,int j);
   void blade_add_msld_atomrestraint(System *system);
   void blade_add_msld_atomrestraint_element(System *system,int i);
+  void blade_set_msld_block_fixed(System *system,int blockIdx,int fixed);
 }
 
 #endif

@@ -187,7 +187,14 @@ __global__ void update_OO(struct LeapState ls,struct LeapParms2 lp1,struct LeapP
 
   if (i < ls.N) {
     if (isfinite(ls.ism[i])) {
-      ls.v[i]=lp.friction*ls.v[i]+lp.noise*ls.ism[i]*ls.random[i];
+      real fric=lp.friction;
+      real nois=lp.noise;
+      if (i >= ls.N1 && ls.lambda_friction_d) {
+        int li=i-ls.N1;
+        fric=ls.lambda_friction_d[li];
+        nois=ls.lambda_noise_d[li];
+      }
+      ls.v[i]=fric*ls.v[i]+nois*ls.ism[i]*ls.random[i];
       // if (!(ls.v[i] < 100 && ls.v[i] > -100)) printf("Crashing OO i=%d, v=%f, r=%f, x=%f\n",i,ls.v[i],ls.random[i],ls.x[i]); // DEBUG
     }
   }
@@ -207,7 +214,14 @@ __global__ void update_OOhbpR(struct LeapState ls,struct LeapParms2 lp1,struct L
   if (i < ls.N) {
     real_v v=ls.v[i];
     real_x x=ls.x[i];
-    v=lp.friction*v+lp.noise*ls.ism[i]*ls.random[i];
+    real fric=lp.friction;
+    real nois=lp.noise;
+    if (i >= ls.N1 && ls.lambda_friction_d) {
+      int li=i-ls.N1;
+      fric=ls.lambda_friction_d[li];
+      nois=ls.lambda_noise_d[li];
+    }
+    v=fric*v+nois*ls.ism[i]*ls.random[i];
     if (bx) bx[i]=x;
     if (isfinite(ls.ism[i])) {
       x+=lp.halfdt*v;

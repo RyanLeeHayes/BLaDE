@@ -213,6 +213,28 @@ void State::initialize(System *system)
   if (system->msld->fix) { // ffix
     cudaMemcpy(lambda_d,theta,nL*sizeof(real_x),cudaMemcpyHostToDevice);
   }
+
+  // Compute per-block friction/noise arrays for MSLD theta DOFs
+  if (system->msld->thetaFriction && lambdaCount > 0) {
+    real dt=system->run->dt;
+    real kT=kB*system->run->T;
+    real *h_friction=(real*)calloc(lambdaCount,sizeof(real));
+    real *h_noise=(real*)calloc(lambdaCount,sizeof(real));
+    int blockCount=system->msld->blockCount;
+    for (i=0; i<blockCount && i<lambdaCount; i++) {
+      real g=system->msld->thetaFriction[i];
+      real a2=exp(-g*dt);
+      h_friction[i]=a2;
+      h_noise[i]=sqrt((1-a2*a2)*kT);
+    }
+    cudaMalloc(&(leapState->lambda_friction_d),lambdaCount*sizeof(real));
+    cudaMalloc(&(leapState->lambda_noise_d),lambdaCount*sizeof(real));
+    cudaMemcpy(leapState->lambda_friction_d,h_friction,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
+    cudaMemcpy(leapState->lambda_noise_d,h_noise,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
+    free(h_friction);
+    free(h_noise);
+  }
+
 #warning "Running nvprof on 2080s causes seg faults in the next command and at later locations"
   system->msld->calc_lambda_from_theta(0,system);
 }
@@ -288,12 +310,16 @@ struct LeapState* State::alloc_leapstate(int N1,int N2,real_x *x,real_v *v,real_
   ls->f=f;
   ls->ism=ism;
   ls->random=random;
+  ls->lambda_friction_d=NULL;
+  ls->lambda_noise_d=NULL;
   return ls;
 }
 
 void State::free_leapstate(struct LeapState* ls)
 {
   cudaFree(ls->random);
+  if (ls->lambda_friction_d) cudaFree(ls->lambda_friction_d);
+  if (ls->lambda_noise_d) cudaFree(ls->lambda_noise_d);
 }
 
 void State::recv_state()
