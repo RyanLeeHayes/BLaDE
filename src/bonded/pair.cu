@@ -206,7 +206,7 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
   real3 xi,xj;
   int b[2];
   real l[2]={1,1};
-  real rEff,dredr,dredll; // Soft core stuff
+  real rEff,dredr,dredll,pairScale=1; // Soft core stuff
 
   if (i<pairCount) {
     // Geometry
@@ -247,12 +247,23 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
       }
     }
 
+    bool sameBlock = (b[0] == b[1] && b[0] != 0);
+    pairScale = l[0] * l[1];
+    if (!useSoftCore && sameBlock) {
+      if (msldEwaldType <= 1) {
+        // Mode 0/ON same-block exclusions scale linearly with lambda.
+        pairScale = l[0];
+      } else if (msldEwaldType == 2) {
+        // Mode EX same-block exclusions use squared lambda scaling.
+        pairScale = l[0] * l[0];
+      }
+    }
+
     // Interaction
     function_pair(pp,cutoffs,rEff,&fpair,&lEnergy, b[0] || energy,vdwMethod,elecMethod);
-    fpair*=l[0]*l[1];
+    fpair *= pairScale;
 
     // Lambda force - with PMEL mode-specific handling for NbEx
-    bool sameBlock = (b[0] == b[1] && b[0] != 0);
     if (useSoftCore) {
       if (b[0]) {
         atomicAdd(&lambdaForce[b[0]],l[1]*(lEnergy+fpair*dredll));
@@ -289,23 +300,9 @@ __global__ void getforce_pair_kernel(int pairCount,PairPotential *pairs,Cutoffs 
     at_real3_scaleinc(&force[jj],-fpair/r,dr);
   }
 
-  // Energy, if requested - with PMEL mode-specific scaling
+  // Energy, if requested - with the same PMEL mode-specific scaling used for forces
   if (energy) {
-    // PMEL mode-specific energy scaling
-    // msldEwaldType: 0=not specified (treat as ON), 1=ON, 2=EX, 3=NN
-    bool sameBlock_e = (b[0] == b[1] && b[0] != 0);
-    real fscalex;
-    if (msldEwaldType <= 1 && sameBlock_e) {
-      // Mode 0/ON same-block: single lambda scaling
-      fscalex = l[0];
-    } else if (msldEwaldType == 2 && sameBlock_e) {
-      // Mode EX same-block: squared scaling
-      fscalex = l[0] * l[0];
-    } else {
-      // Standard case: product of lambdas
-      fscalex = l[0] * l[1];
-    }
-    lEnergy *= fscalex;
+    lEnergy *= pairScale;
     real_sum_reduce(lEnergy,sEnergy,energy);
   }
 }
