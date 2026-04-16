@@ -498,5 +498,72 @@ void getforce_diRest(System *system,bool calcEnergy)
   }
 }
 
+// RESD Distance Restraint, 2 distances, eeresd-begin
+template <bool flagBox,typename box_type>
+__global__ void getforce_resd_kernel(int resdCount,struct ResdPotential *resds,real3 *position,real3_f *force,box_type box,real_e *energy)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  ResdPotential resdp;
+  real r1, r2, delref;
+  real3 dr1; 
+  real3 dr2;
+  real fresd=0;
+  real lEnergy=0;
+  extern __shared__ real sEnergy[];
+  real3 xi1, xi2, xj1, xj2;
 
+  if (i<resdCount) {
+    resdp=resds[i];
+    xi1=position[resdp.i1];
+    xi2=position[resdp.i2];
+    xj1=position[resdp.j1];
+    xj2=position[resdp.j2];
+    dr1=real3_subpbc<flagBox>(xi1,xi2,box);
+    dr2=real3_subpbc<flagBox>(xj1,xj2,box);
+    r1=real3_mag<real>(dr1);
+    r2=real3_mag<real>(dr2);
+    delref=resdp.ci*r1+resdp.cj*r2-resdp.rdist;
+    fresd=delref*resdp.kdist;
+    if (energy) lEnergy=((real)0.5)*fresd*delref;
 
+    // Pair 1: (i1, i2)
+    at_real3_scaleinc(&force[resdp.i1],  fresd * resdp.ci / r1, dr1);
+    at_real3_scaleinc(&force[resdp.i2], -fresd * resdp.ci / r1, dr1);
+
+    // Pair 2: (j1, j2)
+    at_real3_scaleinc(&force[resdp.j1],  fresd * resdp.cj / r2, dr2);
+    at_real3_scaleinc(&force[resdp.j2], -fresd * resdp.cj / r2, dr2);
+  }
+    // Energy, if requested
+  if (energy) {
+    real_sum_reduce(lEnergy,sEnergy,energy);
+  }
+}
+
+template <bool flagBox,typename box_type>
+void getforce_resdT(System *system,box_type box,bool calcEnergy)
+{
+  Potential *p=system->potential;
+  State *s=system->state;
+  Run *r=system->run;
+  int N;
+  int shMem=0;
+  real_e *pEnergy=NULL;
+  if (r->calcTermFlag[eeresd]==false) return; //eeresd 
+
+  if (calcEnergy) {
+    shMem=BLBO*sizeof(real)/32;
+    pEnergy=s->energy_d+eeresd; // eeresd
+  }
+  N=p->resdCount;
+  if (N>0) getforce_resd_kernel<flagBox><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->resds_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,pEnergy);
+}
+
+void getforce_resd(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_resdT<true>(system,system->state->tricBox_f,calcEnergy);
+  } else {
+    getforce_resdT<false>(system,system->state->orthBox_f,calcEnergy);
+  }
+} // eeresd-end

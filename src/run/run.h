@@ -88,12 +88,14 @@ class Run {
   cudaStream_t biaspotStream;
   cudaStream_t nbdirectStream;
   cudaStream_t nbrecipStream;
+  cudaStream_t mlpotStream; // eemlp
 
   cudaEvent_t forceBegin;
   cudaEvent_t bondedComplete;
   cudaEvent_t biaspotComplete;
   cudaEvent_t nbdirectComplete;
   cudaEvent_t nbrecipComplete;
+  cudaEvent_t mlpotComplete; // eemlp
   // cudaEvent_t forceComplete;
   cudaEvent_t communicate;
   cudaEvent_t *communicate_omp;

@@ -9,5 +9,6 @@ void getforce_harm(System *system,bool calcEnergy);
 void getforce_boRest(System *system,bool calcEnergy);
 void getforce_anRest(System *system,bool calcEnergy);
 void getforce_diRest(System *system,bool calcEnergy);
+void getforce_resd(System *system,bool calcEnergy); // eeresd
 
 #endif

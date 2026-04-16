@@ -18,6 +18,7 @@
 #include "nbdirect/nbdirect.h"
 #include "restrain/restrain.h"
 #include "holonomic/virtual.h"
+#include "mlp/mlp.h" // eemlp
 
 #ifdef USE_TEXTURE
 #include <string.h> // for memset
@@ -136,6 +137,24 @@ Potential::Potential() {
   diRestCount=0;
   diRests=NULL;
   diRests_d=NULL;
+  resdCount=0;   // eeresd
+  resds=NULL;    // eeresd
+  resds_d=NULL;  // eeresd
+
+  // eemlp-begin
+  MLPModelCount = 0; 
+  mlp_h    = NULL;
+  mlp_d.ptnml        = 0;
+  mlp_d.mlnatoms     = 0;
+  mlp_d.mlatomidx    = NULL;
+  mlp_d.mlZidx       = NULL;
+  mlp_d.mlSidx       = NULL; // for species id
+  mlp_d.mlmaskid     = NULL;
+  // buffer
+  mlp_d.ml_qm_coords_s_d = NULL;
+  mlp_d.ml_energy_s_d    = NULL;
+  mlp_d.ml_qm_grad_s_d   = NULL;  
+  // eemlp-end
 
   prettifyPlan=NULL;
 }
@@ -228,6 +247,20 @@ Potential::~Potential()
   if (anRests_d) cudaFree(anRests_d);
   if (diRests) free(diRests);
   if (diRests_d) cudaFree(diRests_d);
+  if (resds) free(resds);           // eeresd
+  if (resds_d) cudaFree(resds_d);   // eeresd
+
+  // eemlp-begin
+  if (mlp_h) delete[] mlp_h;  // dont use free() for struct having stl members
+  if (mlp_d.mlatomidx) cudaFree(mlp_d.mlatomidx);
+  if (mlp_d.mlZidx) cudaFree(mlp_d.mlZidx);
+  if (mlp_d.mlSidx) cudaFree(mlp_d.mlSidx);
+  if (mlp_d.mlmaskid) cudaFree(mlp_d.mlmaskid);
+  // buffer
+  if (mlp_d.ml_qm_coords_s_d) cudaFree(mlp_d.ml_qm_coords_s_d);
+  if (mlp_d.ml_energy_s_d)    cudaFree(mlp_d.ml_energy_s_d);
+  if (mlp_d.ml_qm_grad_s_d)   cudaFree(mlp_d.ml_qm_grad_s_d);
+  // eemlp-end
 
   if (prettifyPlan) free(prettifyPlan);
 }
@@ -1568,6 +1601,59 @@ void Potential::initialize(System *system)
     diRests[i].phi0=system->structure->diRestList[i].phi0;
   }
   cudaMemcpy(diRests_d,diRests,diRestCount*sizeof(struct DiRestPotential),cudaMemcpyHostToDevice);
+  
+  // RESD Distance Restraint, 2 distances, eeresd-begin
+  resdCount=system->structure->resdCount;
+  resds=(struct ResdPotential*)calloc(resdCount,sizeof(struct ResdPotential));
+  cudaMalloc(&resds_d,resdCount*sizeof(struct ResdPotential));
+  for (i=0; i<resdCount; i++) {
+    resds[i]=system->structure->resdList[i];
+  }
+  cudaMemcpy(resds_d,resds,resdCount*sizeof(struct ResdPotential),cudaMemcpyHostToDevice);  
+  // eeresd-end
+
+  // eemlp-begin
+  MLPModelCount = system->structure->MLPModelCount;
+  if (MLPModelCount > 0) {
+    // allocate host array once
+    // calloc seems to have some issue with struct containing torch::jit::script::Module
+    if (!mlp_h) {mlp_h = new MLPotential[MLPModelCount];}
+    // copy the first potential from structure
+    mlp_h[0] = system->structure->MLPList[0];
+    mlp_h[0].ptgpuid = system->gpu;
+    MLPotential &h = mlp_h[0];
+
+#ifdef WITH_TORCH
+    // load TorchScript model directly onto GPU
+    torch::Device dev(torch::kCUDA, mlp_h[0].ptgpuid);
+    h.model = torch::jit::load(h.ptname, dev);
+    h.model.eval();
+#endif
+
+    // fill mlp_d (host struct with device pointers)
+    MLPotentialDev &d = mlp_d;
+    // copy scalar meta by value (NO cudaMalloc here)
+    d.ptnml  = h.ptnml;
+    d.mlnatoms = h.mlnatoms; //same as atomCount
+    // allocate device arrays for the integer buffers
+    cudaMalloc(&d.mlatomidx,  sizeof(int) * h.ptnml);
+    if (!h.mlSidx.empty()) {cudaMalloc(&d.mlSidx, sizeof(int) * h.ptnml);}
+    cudaMalloc(&d.mlZidx, sizeof(int) * h.ptnml); 
+    cudaMalloc(&d.mlmaskid, sizeof(int) * atomCount);
+    // upload the corresponding host vectors
+    cudaMemcpy(d.mlatomidx,h.mlatomidx.data(),sizeof(int) * h.ptnml,cudaMemcpyHostToDevice);
+    cudaMemcpy(d.mlZidx,h.mlZidx.data(),sizeof(int) * h.ptnml,cudaMemcpyHostToDevice);
+    if (!h.mlSidx.empty()) {cudaMemcpy(d.mlSidx, h.mlSidx.data(),sizeof(int) * h.ptnml, cudaMemcpyHostToDevice);}
+    cudaMemcpy(d.mlmaskid,h.mlmaskid.data(),sizeof(int) * atomCount,cudaMemcpyHostToDevice);
+    // Buffer Array allocation and initialization
+    cudaMalloc(&d.ml_qm_coords_s_d,  3 * h.ptnml * sizeof(float));
+    cudaMalloc(&d.ml_qm_grad_s_d,    3 * h.ptnml  * sizeof(float));
+    cudaMalloc(&d.ml_energy_s_d,     sizeof(float));
+    cudaMemset(d.ml_qm_coords_s_d,     0, 3*h.ptnml * sizeof(float));
+    cudaMemset(d.ml_qm_grad_s_d,       0, 3*h.ptnml * sizeof(float));
+    cudaMemset(d.ml_energy_s_d,        0, sizeof(float));
+  }  // eemlp-end 
+
   // Cleaning up output coordinates
   prettifyPlan=(int(*)[2])malloc(atomCount*sizeof(int[2]));
   std::set<int> prettifyFound, prettifyMissing;
@@ -1664,9 +1750,18 @@ void Potential::calc_force(int step,System *system)
     getforce_boRest(system,calcEnergy);
     getforce_anRest(system,calcEnergy);
     getforce_diRest(system,calcEnergy);
+    getforce_resd(system,calcEnergy); //eeresd
     cudaEventRecord(r->biaspotComplete,r->biaspotStream);
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }
+
+  // eemlp-begin
+  if (system->id==helper) {
+  cudaStreamWaitEvent(r->mlpotStream, r->forceBegin,0);
+  gettorchforce_tani(system, calcEnergy);
+  cudaEventRecord(r->mlpotComplete, r->mlpotStream);
+  cudaStreamWaitEvent(r->updateStream, r->mlpotComplete, 0);
+  } // eemlp-end
 
   if (system->domdec->id>=0) {
     cudaStreamWaitEvent(r->nbdirectStream,r->forceBegin,0);

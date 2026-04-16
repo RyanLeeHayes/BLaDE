@@ -35,6 +35,8 @@ typedef enum eeterm {
   eenoe,
   eeharmonic,
   eemmfp,
+  eeresd, // eeresd
+  eemlp,  // eemlp
   eebias,
   eepotential,
   eekinetic,
@@ -191,6 +193,46 @@ struct DiRestPotential {
   int block;
 };
 
+// eeresd-begin
+struct ResdPotential {
+  int i1;
+  int i2;
+  int j1;
+  int j2;
+  real ci;
+  real cj;
+  real rdist;
+  real kdist;
+}; // eeresd-end
+
+// eemlp-begin
+struct MLPotential { // host arrays
+  std::string ptname;
+  int ptnml;
+  int mlnatoms;
+  int ptgpuid = -1; 
+  int is_tani = -1; 
+  std::vector<int> mlatomidx;  
+  std::vector<int> mlSidx;
+  std::vector<int> mlZidx;
+  std::vector<int> mlmaskid;
+#ifdef WITH_TORCH
+  torch::jit::script::Module model; // PyTorch model
+#endif
+};
+struct MLPotentialDev { //device arrays
+  int  ptnml;
+  int  mlnatoms;
+  int *mlatomidx; 
+  int *mlSidx;
+  int *mlZidx;
+  int *mlmaskid;  
+  // buffers
+  float  *ml_qm_coords_s_d;   
+  float  *ml_qm_grad_s_d;     
+  float  *ml_energy_s_d;       
+}; // eemlp-end
+
 class Potential {
   public:
   int atomCount;
@@ -336,6 +378,12 @@ class Potential {
   int diRestCount;
   struct DiRestPotential *diRests;
   struct DiRestPotential *diRests_d;
+  int resdCount;                 // eeresd 
+  struct ResdPotential *resds;   // eeresd     
+  struct ResdPotential *resds_d; // eeresd  
+  int MLPModelCount;             // eemlp
+  struct MLPotential *mlp_h;     // eemlp
+  struct MLPotentialDev mlp_d;   // eemlp
   int (*prettifyPlan)[2];
 
   Potential();
