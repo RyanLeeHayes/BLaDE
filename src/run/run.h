@@ -91,6 +91,12 @@ class Run {
   real pressure;
 
   bool domdecHeuristic;
+  int scanAlgorithm;             // -1=AUTO, 0=Blelloch, 1=Hillis-Steele
+  int scanAlgorithmActive;       // Currently active algorithm, resolved from AUTO
+  bool scanBenchmarkComplete;
+  float scanTimeBlelloch;
+  float scanTimeHillisSteele;
+  int scanBenchmarkCount[2];     // [Blelloch, Hillis-Steele]
 
   std::map<std::string,int> termStringToInt;
   std::map<int,bool> calcTermFlag;
@@ -154,6 +160,8 @@ extern "C" {
     int step, int step0, int nsteps, double dt, double T,
     int freqNPT, double volumeFluctuation, double pressure);
   void blade_run_energy(System *system);
+  // Set scan algorithm: -1 = AUTO, 0 = Blelloch, 1 = Hillis-Steele
+  void blade_set_scan_algorithm(System *system, int algorithm);
   // Interrupt handling for Ctrl+C
   void blade_set_interrupt(int value);
   int blade_check_interrupt();

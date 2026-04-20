@@ -41,12 +41,33 @@ static void blade_sigint_handler(int signum) {
 #include "holonomic/rectify.h"
 #include "domdec/domdec.h"
 #include "main/gpu_check.h"
+#include "main/scan.h"
 
 #ifdef REPLICAEXCHANGE
 #include <mpi.h>
 #endif
 
 
+static void set_scan_algorithm(Run *run,int algorithm)
+{
+  if (algorithm<SCAN_AUTO || algorithm>SCAN_HILLIS_STEELE) {
+    fatal(__FILE__,__LINE__,"scanalgorithm must be -1 (AUTO), 0 (Blelloch), or 1 (Hillis-Steele)\n");
+  }
+
+  run->scanAlgorithm=algorithm;
+  run->scanTimeBlelloch=0.0f;
+  run->scanTimeHillisSteele=0.0f;
+  run->scanBenchmarkCount[0]=0;
+  run->scanBenchmarkCount[1]=0;
+
+  if (algorithm==SCAN_AUTO) {
+    run->scanAlgorithmActive=SCAN_HILLIS_STEELE;
+    run->scanBenchmarkComplete=false;
+  } else {
+    run->scanAlgorithmActive=algorithm;
+    run->scanBenchmarkComplete=true;
+  }
+}
 
 // #warning "Hardcoded serial kernels"
 // #define PROFILESERIAL
@@ -105,6 +126,13 @@ Run::Run(System *system)
   nprint=50; // print frequency for MINI> output
 
   domdecHeuristic=true;
+  scanAlgorithm=SCAN_HILLIS_STEELE;
+  scanAlgorithmActive=SCAN_HILLIS_STEELE;
+  scanBenchmarkComplete=true;
+  scanTimeBlelloch=0.0f;
+  scanTimeHillisSteele=0.0f;
+  scanBenchmarkCount[0]=0;
+  scanBenchmarkCount[1]=0;
 
   termStringToInt.clear();
   termStringToInt["bond"]=eebond;
@@ -240,7 +268,7 @@ void Run::setup_parse_run()
   parseRun["reset"]=&Run::reset;
   helpRun["reset"]="?run reset> Resets the run data structure to it's default values\n";
   parseRun["setvariable"]=&Run::set_variable;
-  helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Available \"name\"s are: dt (time step in ps), nsteps (number of steps of dynamics to run), fnmxtc (filename for the coordinate output), fnmlmd (filename for the lambda output), fnmnrg (filename for the energy output)\n";
+  helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Available \"name\"s include: dt (time step in ps), nsteps (number of steps of dynamics to run), fnmxtc (filename for the coordinate output), fnmlmd (filename for the lambda output), fnmnrg (filename for the energy output), scanalgorithm (-1=AUTO, 0=Blelloch, 1=Hillis-Steele)\n";
   parseRun["setterm"]=&Run::set_term;
   helpRun["setterm"]="?run setterm [term] [on|off]> Turn terms (including bond, angle, dihe, impr, nb14 nbdirect, nbrecip, nbrecipself, nbrecipexcl, lambda, and bias) on or off\n";
   parseRun["energy"]=&Run::energy;
@@ -333,6 +361,15 @@ void Run::dump(char *line,char *token,System *system)
   blade_log(buf);
   snprintf(buf, sizeof(buf), "RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n", (int)domdecHeuristic);
   blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> scanalgorithm=%d (-1=AUTO, 0=Blelloch, 1=Hillis-Steele)\n", scanAlgorithm);
+  blade_log(buf);
+  if (scanAlgorithm==SCAN_AUTO) {
+    snprintf(buf, sizeof(buf), "RUN PRINT> scanbenchmark: complete=%d active=%d Blelloch=%.3fms(%d) Hillis-Steele=%.3fms(%d)\n",
+        (int)scanBenchmarkComplete, scanAlgorithmActive,
+        scanTimeBlelloch, scanBenchmarkCount[0],
+        scanTimeHillisSteele, scanBenchmarkCount[1]);
+    blade_log(buf);
+  }
 #ifdef REPLICAEXCHANGE
   snprintf(buf, sizeof(buf), "RUN PRINT> fnmrex=%s (file name for replica exchange)\n", fnmREx.c_str());
   blade_log(buf);
@@ -465,6 +502,8 @@ void Run::set_variable(char *line,char *token,System *system)
     nprint=io_nexti(line);
   } else if (strcmp(token,"domdecheuristic")==0) {
     domdecHeuristic=io_nextb(line);
+  } else if (strcmp(token,"scanalgorithm")==0) {
+    set_scan_algorithm(this,io_nexti(line));
 #ifdef REPLICAEXCHANGE
   } else if (strcmp(token,"fnmrex")==0) {
     if (fpREx) fclose(fpREx);
@@ -811,6 +850,12 @@ void blade_run_energy(System *system)
   system->potential->calc_force(0,system);
   system->state->recv_energy();
   system->run->dynamics_finalize(system);
+}
+
+void blade_set_scan_algorithm(System *system, int algorithm)
+{
+  system+=omp_get_thread_num();
+  set_scan_algorithm(system->run,algorithm);
 }
 
 // Interrupt handling API functions
