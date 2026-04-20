@@ -81,6 +81,8 @@ class Domdec {
   int sortedExclCount;
   int *blockExcls_d;
   int *blockExclCount_d;
+// For overflow detection and dynamic reallocation
+  int *overflowFlag_d;
 
   Domdec();
   ~Domdec();
@@ -98,6 +100,7 @@ class Domdec {
   void unpack_forces(System *system);
   // From domdec/cull.cu
   void cull_blocks(System *system);
+  void reallocate_partner_arrays(System *system,int newMaxPartners);
   // From domdec/assign_excl.cu
   void setup_exclusions(System *system);
   // From domdec/recull.cu

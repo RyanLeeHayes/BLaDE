@@ -42,6 +42,7 @@ Domdec::Domdec()
 #endif
   blockExcls_d=NULL;
   blockExclCount_d=NULL;
+  overflowFlag_d=NULL;
 }
 
 Domdec::~Domdec()
@@ -71,6 +72,7 @@ Domdec::~Domdec()
 #endif
   if (blockExcls_d) cudaFree(blockExcls_d);
   if (blockExclCount_d) cudaFree(blockExclCount_d);
+  if (overflowFlag_d) cudaFree(overflowFlag_d);
 }
 
 void Domdec::initialize(System *system)
@@ -173,6 +175,7 @@ void Domdec::initialize(System *system)
   cudaMalloc(&sortedExcls_d,system->potential->exclCount*sizeof(struct ExclPotential));
   cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int));
   cudaMalloc(&blockExclCount_d,sizeof(int));
+  cudaMalloc(&overflowFlag_d,sizeof(int));
 
 #ifdef USE_TEXTURE
   if (system->potential->exclCount>0) {

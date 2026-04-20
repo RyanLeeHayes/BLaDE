@@ -7,6 +7,8 @@
 #include "system/potential.h"
 #include "main/defines.h"
 #include "main/real3.h"
+#include "main/blade_log.h"
+#include "io/io.h"
 
 
 
@@ -39,7 +41,7 @@ bool check_proximity(DomdecBlockVolume a,DomdecBlockVolume b,real c2)
 }
 
 template <bool flagBox,typename box_type>
-__global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount,int maxPartnersPerBlock,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,box_type box,real rc2)
+__global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount,int maxPartnersPerBlock,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,box_type box,real rc2,int *overflowFlag)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int domainIdx=(idDomdec.x*gridDomdec.y+idDomdec.y)*gridDomdec.z+idDomdec.z;
@@ -259,7 +261,7 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
                 cumHit+=((i&31)>=16)*__shfl_up_sync(0xFFFFFFFF,cumHit,16);
                 // Method 4 is fastest, followed by method 1, then method 3. Method 2 doesn't work.
 
-                if (hit) {
+                if (hit && partnerPos+cumHit-1<maxPartnersPerBlock) {
                   blockPartner.jBlock=jBlock;
                   blockPartner.shift=shift;
                   blockPartner.exclAddress=-1; // No exclusions yet
@@ -285,15 +287,14 @@ __global__ void cull_blocks_kernel(int3 idDomdec,int3 gridDomdec,int *blockCount
       // use i/32 instead of iblock so it's at the start of the array
       blockPartnerCount[i/32]=partnerPos;
       if (partnerPos>=maxPartnersPerBlock) {
-// #warning "printf in kernel"
-        printf("Error: Overflow of maxPartnersPerBlock. Use \"run setvariable domdecheuristic off\" - except that reallocation is not implemented here\n");
+        atomicExch(overflowFlag,1);
       }
     }
   }
 }
 
 template <bool flagBox,typename box_type>
-void cull_blocksT(System *system,box_type box)
+void cull_blocksT(System *system,box_type box,int *overflowFlag_d)
 {
   Run *r=system->run;
   Domdec *d=system->domdec;
@@ -302,15 +303,62 @@ void cull_blocksT(System *system,box_type box)
     real rc2=system->run->cutoffs.rCut+d->cullPad;
     rc2*=rc2;
 
-    cull_blocks_kernel<flagBox><<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(d->idDomdec,d->gridDomdec,d->blockCount_d,d->maxPartnersPerBlock,d->blockCandidateCount_d,d->blockCandidates_d,d->blockVolume_d,box,rc2);
+    cull_blocks_kernel<flagBox><<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(d->idDomdec,d->gridDomdec,d->blockCount_d,d->maxPartnersPerBlock,d->blockCandidateCount_d,d->blockCandidates_d,d->blockVolume_d,box,rc2,overflowFlag_d);
   }
+}
+
+void Domdec::reallocate_partner_arrays(System *system,int newMaxPartners)
+{
+  if (blockCandidates_d) cudaFree(blockCandidates_d);
+  if (blockPartners_d) cudaFree(blockPartners_d);
+
+  cudaMalloc(&blockCandidates_d,maxBlocks*newMaxPartners*sizeof(struct DomdecBlockPartners));
+  cudaMalloc(&blockPartners_d,maxBlocks*newMaxPartners*sizeof(struct DomdecBlockPartners));
+
+  if (system->verbose>0) {
+    char msg[256];
+    snprintf(msg, sizeof(msg), "Reallocated partner arrays: maxPartnersPerBlock %d -> %d\n",
+        maxPartnersPerBlock,newMaxPartners);
+    blade_log(msg);
+  }
+
+  maxPartnersPerBlock=newMaxPartners;
 }
 
 void Domdec::cull_blocks(System *system)
 {
-  if (system->state->typeBox) {
-    cull_blocksT<true>(system,system->state->tricBox_f);
-  } else {
-    cull_blocksT<false>(system,system->state->orthBox_f);
+  const int MAX_RETRIES=5;
+  const float GROWTH_FACTOR=1.5f;
+  int overflowFlag=0;
+  Run *r=system->run;
+
+  for (int retry=0; retry<MAX_RETRIES; retry++) {
+    cudaMemsetAsync(overflowFlag_d,0,sizeof(int),r->updateStream);
+
+    if (system->state->typeBox) {
+      cull_blocksT<true>(system,system->state->tricBox_f,overflowFlag_d);
+    } else {
+      cull_blocksT<false>(system,system->state->orthBox_f,overflowFlag_d);
+    }
+
+    cudaMemcpyAsync(&overflowFlag,overflowFlag_d,sizeof(int),cudaMemcpyDeviceToHost,r->updateStream);
+    cudaStreamSynchronize(r->updateStream);
+
+    if (overflowFlag==0) return;
+
+    int newMaxPartners=(int)(maxPartnersPerBlock*GROWTH_FACTOR);
+    if (newMaxPartners<=maxPartnersPerBlock) newMaxPartners=maxPartnersPerBlock+32;
+
+    if (system->verbose>0) {
+      char msg[256];
+      snprintf(msg, sizeof(msg),
+          "maxPartnersPerBlock overflow detected (retry %d/%d), growing %d -> %d\n",
+          retry+1,MAX_RETRIES,maxPartnersPerBlock,newMaxPartners);
+      blade_log(msg);
+    }
+
+    reallocate_partner_arrays(system,newMaxPartners);
   }
+
+  fatal(__FILE__,__LINE__,"maxPartnersPerBlock overflow after maximum retries\n");
 }
