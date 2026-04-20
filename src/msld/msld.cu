@@ -717,7 +717,7 @@ void Msld::initialize(System *system)
   if (blocksPerSite[0]!=1) fatal(__FILE__,__LINE__,"Only one block allowed in site 0\n");
   siteBound[0]=0;
   for (i=0; i<siteCount; i++) {
-    if (i && blocksPerSite[i]<2) fatal(__FILE__,__LINE__,"At least two blocks are required in each site. %d found at site %d\n",blocksPerSite[i],i);
+    if (i && blocksPerSite[i]<2 && !(blocksPerSite[i]==1 && blockFixed && blockFixed[siteBound[i]])) fatal(__FILE__,__LINE__,"At least two blocks are required in each site (unless single block is fixed). %d found at site %d\n",blocksPerSite[i],i);
     siteBound[i+1]=siteBound[i]+blocksPerSite[i];
   }
   cudaMemcpy(blocksPerSite_d,blocksPerSite,siteCount*sizeof(int),cudaMemcpyHostToDevice);
