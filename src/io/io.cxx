@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <limits.h>
 // For arrested_development
 #include <signal.h>
 #include <unistd.h>
@@ -298,6 +299,14 @@ void interpretter(const char *fnm,System *system)
   system->control.pop_back();
 }
 
+static int io_step_to_int(long int step)
+{
+  if (step>INT_MAX || step<INT_MIN) {
+    fatal(__FILE__,__LINE__,"BLaDE step %ld is outside int range\n",step);
+  }
+  return (int)step;
+}
+
 void print_xtc(int step,System *system)
 {
   XDRFILE *fp=system->run->fpXTC;
@@ -412,7 +421,7 @@ void write_checkpoint_file(const char *fnm,System *system)
 
     system->state->recv_state();
 
-    fprintf(fp,"Step %d\n",system->run->step0);
+    fprintf(fp,"Step %d\n",io_step_to_int(system->run->step0));
 
     fprintf(fp,"Position %d\n",system->state->atomCount);
     for (i=0; i<system->state->atomCount; i++) {
