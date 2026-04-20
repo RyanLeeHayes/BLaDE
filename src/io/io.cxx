@@ -375,12 +375,12 @@ void display_nrg(System *system)
   real_e *e=system->state->energy;
   int i;
   char buf[256];
-  int offset = 0;
 
   for (i=0; i<eeend; i++) {
-    offset += snprintf(buf + offset, sizeof(buf) - offset, " %12.4f",e[i]);
+    snprintf(buf,sizeof(buf)," %12.4f",e[i]);
+    blade_log(buf);
   }
-  blade_log(buf);
+  blade_log("\n");
 }
 
 void print_dynamics_output(int step,System *system)

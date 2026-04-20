@@ -26,9 +26,16 @@
 // Workspace for multi-block reduction
 struct ReductionWorkspace {
     void *blockResults_d;  // Intermediate block results
+    void *blockResults2_d; // Alternate buffer for iterative reductions
     int maxBlocks;         // Allocated capacity
     size_t elementSize;    // Size of each element
 };
+
+__host__ inline int reduction_round_up_warp(int n)
+{
+    int threads = ((n + 31) >> 5) << 5;
+    return (threads > 0) ? threads : 32;
+}
 
 //-----------------------------------------------------------------------------
 // Type traits for reduction operations
@@ -206,13 +213,16 @@ void reduction_workspace_init(ReductionWorkspace *ws, int maxElements, cudaStrea
     ws->maxBlocks = (maxElements + blockSize - 1) / blockSize;
     ws->elementSize = sizeof(T);
     cudaMalloc(&ws->blockResults_d, ws->maxBlocks * sizeof(T));
+    cudaMalloc(&ws->blockResults2_d, ws->maxBlocks * sizeof(T));
 }
 
 __host__ inline
 void reduction_workspace_free(ReductionWorkspace *ws)
 {
     if (ws->blockResults_d) cudaFree(ws->blockResults_d);
+    if (ws->blockResults2_d) cudaFree(ws->blockResults2_d);
     ws->blockResults_d = NULL;
+    ws->blockResults2_d = NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -335,25 +345,35 @@ __host__ void parallel_reduce(T *d_input, T *d_output, int n,
                               ReductionWorkspace *ws, cudaStream_t stream)
 {
     const int blockSize = BLUP;
-    int numBlocks = (n + blockSize - 1) / blockSize;
 
-    if (numBlocks == 1) {
+    if (n <= blockSize) {
         // Single block - direct reduction
-        int numWarps = (n + 31) >> 5;
-        reduce_single_block_kernel<T><<<1, n, numWarps * sizeof(T), stream>>>
+        int threads = reduction_round_up_warp(n);
+        int numWarps = threads >> 5;
+        reduce_single_block_kernel<T><<<1, threads, numWarps * sizeof(T), stream>>>
             (d_input, d_output, n);
     } else {
-        // Two-phase reduction
+        T *input = d_input;
+        T *output = reinterpret_cast<T*>(ws->blockResults_d);
+        T *alternate = reinterpret_cast<T*>(ws->blockResults2_d);
+        int currentCount = n;
         int numWarps1 = blockSize >> 5;
-        reduce_phase1_kernel<T><<<numBlocks, blockSize, numWarps1 * sizeof(T), stream>>>
-            (d_input, reinterpret_cast<T*>(ws->blockResults_d), n);
 
-        int numWarps2 = (numBlocks + 31) >> 5;
-        int phase2Threads = numBlocks;
-        if (phase2Threads > 1024) phase2Threads = 1024;  // Cap at max block size
+        while (currentCount > blockSize) {
+            int numBlocks = (currentCount + blockSize - 1) / blockSize;
+            reduce_phase1_kernel<T><<<numBlocks, blockSize, numWarps1 * sizeof(T), stream>>>
+                (input, output, currentCount);
 
-        reduce_phase2_kernel<T><<<1, phase2Threads, numWarps2 * sizeof(T), stream>>>
-            (reinterpret_cast<T*>(ws->blockResults_d), d_output, numBlocks);
+            input = output;
+            output = alternate;
+            alternate = input;
+            currentCount = numBlocks;
+        }
+
+        int threads = reduction_round_up_warp(currentCount);
+        int numWarps = threads >> 5;
+        reduce_single_block_kernel<T><<<1, threads, numWarps * sizeof(T), stream>>>
+            (input, d_output, currentCount);
     }
 }
 

@@ -10,27 +10,13 @@
 volatile sig_atomic_t blade_interrupt_flag = 0;
 static struct sigaction blade_old_sigint_action;
 static bool blade_signal_handler_installed = false;
-static int blade_sigint_count = 0;
+static volatile sig_atomic_t blade_sigint_count = 0;
 static const int BLADE_FORCE_EXIT_COUNT = 3;
 
 // Signal handler for SIGINT (Ctrl+C)
 static void blade_sigint_handler(int signum) {
   blade_sigint_count++;
   blade_interrupt_flag = 1;
-
-  if (blade_sigint_count >= BLADE_FORCE_EXIT_COUNT) {
-    fprintf(stderr, "\n[BLaDE] %dx Ctrl+C - FORCE EXIT!\n", blade_sigint_count);
-    fflush(stderr);
-    // Restore default handler and re-raise to exit immediately
-    signal(SIGINT, SIG_DFL);
-    raise(SIGINT);
-    return;
-  }
-
-  int remaining = BLADE_FORCE_EXIT_COUNT - blade_sigint_count;
-  fprintf(stderr, "\n[BLaDE] SIGINT received, requesting graceful stop... "
-          "(press %dx more to force quit)\n", remaining);
-  fflush(stderr);
 }
 #include "system/system.h"
 #include "io/io.h"
@@ -66,6 +52,28 @@ static void set_scan_algorithm(Run *run,int algorithm)
   } else {
     run->scanAlgorithmActive=algorithm;
     run->scanBenchmarkComplete=true;
+  }
+}
+
+static void handle_interrupt(const char *mode,long int step)
+{
+  char buf[256];
+
+  if (blade_sigint_count>=BLADE_FORCE_EXIT_COUNT) {
+    snprintf(buf,sizeof(buf),"\n[BLaDE] %dx Ctrl+C - FORCE EXIT!\n",(int)blade_sigint_count);
+    blade_log(buf);
+    signal(SIGINT,SIG_DFL);
+    raise(SIGINT);
+    return;
+  }
+
+  snprintf(buf,sizeof(buf),"\nBLaDE %s interrupted by user at step %ld\n",mode,step);
+  blade_log(buf);
+
+  if (blade_sigint_count>0) {
+    int remaining=BLADE_FORCE_EXIT_COUNT-(int)blade_sigint_count;
+    snprintf(buf,sizeof(buf),"Press %dx more to force quit\n",remaining);
+    blade_log(buf);
   }
 }
 
@@ -636,9 +644,7 @@ void Run::minimize(char *line,char *token,System *system)
   for (step=0; step<nsteps; step++) {
     // Check for interrupt (Ctrl+C)
     if (blade_interrupt_flag) {
-      char buf[256];
-      snprintf(buf, sizeof(buf), "\nBLaDE minimization interrupted by user at step %ld\n", step);
-      blade_log(buf);
+      handle_interrupt("minimization",step);
       interrupted = true;
       break;
     }
@@ -669,15 +675,13 @@ void Run::dynamics(char *line,char *token,System *system)
   for (step=step0; step<step0+nsteps; step++) {
     // Check for interrupt (Ctrl+C)
     if (blade_interrupt_flag) {
-      char buf[256];
-      snprintf(buf, sizeof(buf), "\nBLaDE dynamics interrupted by user at step %ld\n", step);
-      blade_log(buf);
+      handle_interrupt("dynamics",step);
       interrupted = true;
       break;
     }
     if (system->verbose>0) {
       char buf[256];
-      snprintf(buf, sizeof(buf), "Step %d\n", step);
+      snprintf(buf, sizeof(buf), "Step %ld\n", step);
       blade_log(buf);
     }
     system->domdec->update_domdec(system,(step%system->domdec->freqDomdec)==0);
@@ -888,5 +892,6 @@ void blade_restore_signal_handler()
   if (blade_signal_handler_installed) {
     sigaction(SIGINT, &blade_old_sigint_action, NULL);
     blade_signal_handler_installed = false;
+    blade_sigint_count = 0;
   }
 }

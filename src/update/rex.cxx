@@ -98,7 +98,7 @@ void replica_exchange(System *system)
           MPI_COMM_WORLD,MPI_STATUS_IGNORE);
         {
           char buf[256];
-          snprintf(buf, sizeof(buf), "Step %d , Rank %d , Replica %d, dW %f, Accept\n", r->step, rank, r->replica, dW);
+          snprintf(buf, sizeof(buf), "Step %ld , Rank %d , Replica %d, dW %f, Accept\n", r->step, rank, r->replica, dW);
           blade_log(buf);
         }
         r->replica=newReplica;
@@ -115,7 +115,7 @@ void replica_exchange(System *system)
         // maintain replica indices
         {
           char buf[256];
-          snprintf(buf, sizeof(buf), "Step %d , Rank %d , Replica %d, dW %f, Reject\n", r->step, rank, r->replica, dW);
+          snprintf(buf, sizeof(buf), "Step %ld , Rank %d , Replica %d, dW %f, Reject\n", r->step, rank, r->replica, dW);
           blade_log(buf);
         }
         // Restore positions

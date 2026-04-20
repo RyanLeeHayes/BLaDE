@@ -216,7 +216,7 @@ void System::help(char *line,char *token,System *system)
       blade_log(buf);
     }
     blade_log("\n");
-  } else if (helpSystem.count(token)==1) {
+  } else if (helpSystem.count(name)==1) {
     blade_log(helpSystem[name].c_str());
   } else {
     error(line,token,system);
