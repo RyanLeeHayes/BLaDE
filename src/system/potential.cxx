@@ -1566,6 +1566,7 @@ void Potential::initialize(System *system)
     diRests[i].kphi=system->structure->diRestList[i].kphi;
     diRests[i].nphi=system->structure->diRestList[i].nphi;
     diRests[i].phi0=system->structure->diRestList[i].phi0;
+    diRests[i].block=system->structure->diRestList[i].block;
   }
   cudaMemcpy(diRests_d,diRests,diRestCount*sizeof(struct DiRestPotential),cudaMemcpyHostToDevice);
   // Cleaning up output coordinates
