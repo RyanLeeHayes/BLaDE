@@ -3,6 +3,7 @@
 #include <string>
 
 #include "system/system.h"
+#include "main/blade_log.h"
 #include "io/io.h"
 #include "io/variables.h"
 #include "io/control.h"
@@ -23,7 +24,7 @@
 
 // Class constructors
 System::System() {
-  fprintf(stdout,"Creating a copy of system\n");
+  blade_log("Creating a copy of system\n");
   verbose=0;
   variables=new Variables;
   parameters=NULL;
@@ -42,7 +43,7 @@ System::System() {
 }
 
 System::~System() {
-  fprintf(stdout,"Destroying a copy of system\n");
+  blade_log("Destroying a copy of system\n");
   if (variables) delete(variables);
   if (parameters) delete(parameters);
   if (structure) delete(structure);
@@ -112,7 +113,7 @@ void System::setup_parse_system()
   parseSystem["endwhile"]=&System::parse_system_endwhile;
   helpSystem["endwhile"]="?while [conditional]\nendwhile> Used for loops within script. To use a for loop, place initialization before while and increment operation before endwhile.\n";
   parseSystem["verbose"]=&System::parse_system_verbose;
-  helpSystem["verbose"]="?verbose [int]> Set a verbose level for output. verbose=1 is default, verbose=0 is less output.\n";
+  helpSystem["verbose"]="?verbose [int]> Set a verbose level for output. verbose=0 is minimal output (default), verbose=1 prints MINI> progress, verbose=2 adds debug info.\n";
 }
 
 // MOVE
@@ -208,13 +209,15 @@ void System::help(char *line,char *token,System *system)
 {
   std::string name=io_nexts(line);
   if (name=="") {
-    fprintf(stdout,"?> This program uses a script to allow you to set up and run alchemical molecular simulations. Each line of the script starts with a directive, followed by other subdirectives. Comments after ! characters are ignored. At any point in the script, you may put help after a directive or subdirective to get documentation on how to use it. Top level directives are listed at the end of this help section. Directives can be divided into directives that set up and manipulate the system, and directives that alter the control flow and allow you to script the set up.\n\nSystem manipulation directives:\nThe general work flow is to set up the potential energy function parameters with calls to parameters, then set up the atoms, bond connectivity, and other potential terms with calls to structure, then set up the msld alchemical treatment with calls to msld, then set up the initial conditions or starting structure with calls to state. After all of that you are ready to call run to calculate energy, minimize the structure, or run dynamics.\n\nScripting control directives:\nStream allows you to start execution of another script from this point in the current script. Set allows you to set internal variables which can be accessed in subsequent commands by enclosing the variable name in {}. (Variable names can also contain variables via nested {{}}). Functions (function/endfunction) can be defined for later use and called (call), if (if/elseif/else/endif) and while (while/endwhile) loops are also available. Some of these features may not yet be implemented, see the listing below for what's available.\n\nSeveral available directives are:\n");
+    blade_log("?> This program uses a script to allow you to set up and run alchemical molecular simulations. Each line of the script starts with a directive, followed by other subdirectives. Comments after ! characters are ignored. At any point in the script, you may put help after a directive or subdirective to get documentation on how to use it. Top level directives are listed at the end of this help section. Directives can be divided into directives that set up and manipulate the system, and directives that alter the control flow and allow you to script the set up.\n\nSystem manipulation directives:\nThe general work flow is to set up the potential energy function parameters with calls to parameters, then set up the atoms, bond connectivity, and other potential terms with calls to structure, then set up the msld alchemical treatment with calls to msld, then set up the initial conditions or starting structure with calls to state. After all of that you are ready to call run to calculate energy, minimize the structure, or run dynamics.\n\nScripting control directives:\nStream allows you to start execution of another script from this point in the current script. Set allows you to set internal variables which can be accessed in subsequent commands by enclosing the variable name in {}. (Variable names can also contain variables via nested {{}}). Functions (function/endfunction) can be defined for later use and called (call), if (if/elseif/else/endif) and while (while/endwhile) loops are also available. Some of these features may not yet be implemented, see the listing below for what's available.\n\nSeveral available directives are:\n");
+    char buf[256];
     for (std::map<std::string,std::string>::iterator ii=helpSystem.begin(); ii!=helpSystem.end(); ii++) {
-      fprintf(stdout," %s",ii->first.c_str());
+      snprintf(buf, sizeof(buf), " %s", ii->first.c_str());
+      blade_log(buf);
     }
-    fprintf(stdout,"\n");
-  } else if (helpSystem.count(token)==1) {
-    fprintf(stdout,helpSystem[name].c_str());
+    blade_log("\n");
+  } else if (helpSystem.count(name)==1) {
+    blade_log(helpSystem[name].c_str());
   } else {
     error(line,token,system);
   }
@@ -259,8 +262,10 @@ System* init_system(int ngpus,int *gpus)
       int accessible;
       gpuCheck(cudaDeviceCanAccessPeer(&accessible,
         system[id].gpu,system[id].mothership_gpu));
-      fprintf(stdout,"Device %d %s access device %d directly\n",
+      char buf[256];
+      snprintf(buf, sizeof(buf), "Device %d %s access device %d directly\n",
         system[id].gpu,(accessible? "can" : "cannot"),system[id].mothership_gpu);
+      blade_log(buf);
       if (accessible) {
         gpuCheck(cudaDeviceEnablePeerAccess(system[id].mothership_gpu,0)); // host, required 0
       }

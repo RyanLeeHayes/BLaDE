@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "main/blade_log.h"
 #include "system/system.h"
 #include "io/control.h"
 #include "io/variables.h"
@@ -142,7 +143,7 @@ void parse_if(char *line,System *system)
 
   condition=(bool)variables_calculate(line);
   while (condition==false) {
-    fprintf(stdout,"if/elseif> evaluated as false\n");
+    blade_log("if/elseif> evaluated as false");
     find_next_if(system);
 
     fgetpos(fp,&fp_pos);
@@ -163,7 +164,7 @@ void parse_if(char *line,System *system)
       fatal(__FILE__,__LINE__,"Bug in code, shouldn't reach this line. Sorry.\n");
     }
   }
-  fprintf(stdout,"if/elseif/else> evaluated as true\n");
+  blade_log("if/elseif/else> evaluated as true");
 }
 
 void parse_elseif(char *line,System *system)
@@ -216,9 +217,9 @@ void evaluate_while(char *line,System *system)
   bool condition=(bool)variables_calculate(line);
 
   if (condition) {
-    fprintf(stdout,"while> evaluated as true\n");
+    blade_log("while> evaluated as true");
   } else {
-    fprintf(stdout,"while> evaluated as false\n");
+    blade_log("while> evaluated as false");
     finish_control(system);
   }
 }

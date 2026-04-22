@@ -167,8 +167,10 @@ msld softbond name
 may be used to set up a soft bond between the two atoms in the selection refered to by name. Soft bond parameters may be set with "msld parameter softbondradius value", "msld parameter softbondexponent value", and "msld parameter softnotbondexponent". See CHARMM block sobo command.
 
 msld fix on|off
+msld fix blockIndex [blockIndex ...]
 
 may be used to fix lambda values for an FEP calculation. In this case, theta in the "msld initialize" command is the lambda value at which the simulation is fixed. See CHARMM block msld ffix option.
+The block form fixes only the listed 0-indexed blocks.
 
 G. run
 
@@ -197,6 +199,7 @@ freqnpt (frequency of pressure coupling moves. 10 or less reproduces bulk dynami
 volumefluctuation (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))
 pressure (pressure for pressure coupling, input in atmospheres)
 domdecheuristic (use heuristics for domdec limits without checking their validity - "off" is safer)
+scanalgorithm (-1=AUTO, 0=Blelloch, 1=Hillis-Steele for large domain-decomposition scans)
 
 When you're ready to run dynamics, call
 

@@ -4,11 +4,13 @@
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <limits.h>
 // For arrested_development
 #include <signal.h>
 #include <unistd.h>
 
 #include "main/defines.h"
+#include "main/blade_log.h"
 #include "system/system.h"
 
 // parse_whatever
@@ -27,11 +29,14 @@
 void fatal(const char* fnm,int i,const char* format, ...)
 {
   va_list args;
+  char buf[256];
 
   va_start(args,format);
-  fprintf(stdout,"FATAL ERROR:\n");
-  fprintf(stdout,"%s:%d\n",fnm,i);
-  vfprintf(stdout,format,args);
+  blade_log("FATAL ERROR:");
+  snprintf(buf, sizeof(buf), "%s:%d",fnm,i);
+  blade_log(buf);
+  vsnprintf(buf, sizeof(buf), format, args);
+  blade_log(buf);
   va_end(args);
 
   exit(1);
@@ -54,8 +59,10 @@ void arrested_development(System *system,int howLong) {
 FILE* fpopen(const char* fnm,const char* type)
 {
   FILE *fp;
+  char buf[256];
 
-  fprintf(stdout,"Opening file %s for %s\n",fnm,type);
+  snprintf(buf, sizeof(buf), "Opening file %s for %s",fnm,type);
+  blade_log(buf);
   fp=fopen(fnm,type);
   if (fp==NULL) {
     fatal(__FILE__,__LINE__,"Error: Unable to open file %s\n",fnm);
@@ -278,7 +285,9 @@ void interpretter(const char *fnm,System *system)
   fgetpos(fp,&system->control[level-1].fp_pos);
   // fsetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
-    fprintf(stdout,"IN%d> %s",level,line);
+    char buf[256];
+    snprintf(buf, sizeof(buf), "IN%d> %s",level,line);
+    blade_log(buf);
     system->variables->substitute(line);
     io_nexta(line,token);
     system->parse_system(line,token,system);
@@ -288,6 +297,14 @@ void interpretter(const char *fnm,System *system)
 
   fclose(fp);
   system->control.pop_back();
+}
+
+static int io_step_to_int(long int step)
+{
+  if (step>INT_MAX || step<INT_MIN) {
+    fatal(__FILE__,__LINE__,"BLaDE step %ld is outside int range\n",step);
+  }
+  return (int)step;
 }
 
 void print_xtc(int step,System *system)
@@ -366,11 +383,13 @@ void display_nrg(System *system)
 {
   real_e *e=system->state->energy;
   int i;
+  char buf[256];
 
   for (i=0; i<eeend; i++) {
-    fprintf(stdout," %12.4f",e[i]);
+    snprintf(buf,sizeof(buf)," %12.4f",e[i]);
+    blade_log(buf);
   }
-  fprintf(stdout,"\n");
+  blade_log("\n");
 }
 
 void print_dynamics_output(int step,System *system)
@@ -402,7 +421,7 @@ void write_checkpoint_file(const char *fnm,System *system)
 
     system->state->recv_state();
 
-    fprintf(fp,"Step %d\n",system->run->step0);
+    fprintf(fp,"Step %d\n",io_step_to_int(system->run->step0));
 
     fprintf(fp,"Position %d\n",system->state->atomCount);
     for (i=0; i<system->state->atomCount; i++) {

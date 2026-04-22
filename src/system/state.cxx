@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "system/state.h"
+#include "main/blade_log.h"
 #include "io/io.h"
 #include "system/system.h"
 #include "system/structure.h"
@@ -64,6 +65,11 @@ State::State(System *system) {
   energy=(real_e*)calloc(rootFactor*eeend,sizeof(real_e));
   cudaMalloc(&(energy_d),rootFactor*eeend*sizeof(real_e));
   cudaMalloc(&(energyBackup_d),eeend*sizeof(real_e));
+
+  // NaN detection flag
+  nanFlag=0;
+  cudaMalloc(&(nanFlag_d),sizeof(int));
+  cudaMemset(nanFlag_d,0,sizeof(int));
 
   if (system->idCount>0) { // OMP
 #pragma omp barrier // OMP
@@ -161,6 +167,8 @@ State::~State() {
   if (energy) free(energy);
   if (energy_d) cudaFree(energy_d);
   if (energyBackup_d) cudaFree(energyBackup_d);
+  // NaN detection flag
+  if (nanFlag_d) cudaFree(nanFlag_d);
   // Spatial-Theta buffers
   if (velocityBuffer) free(velocityBuffer);
   if (velocityBuffer_d) cudaFree(velocityBuffer_d);
@@ -205,6 +213,28 @@ void State::initialize(System *system)
   if (system->msld->fix) { // ffix
     cudaMemcpy(lambda_d,theta,nL*sizeof(real_x),cudaMemcpyHostToDevice);
   }
+
+  // Compute per-block friction/noise arrays for MSLD theta DOFs
+  if (system->msld->thetaFriction && lambdaCount > 0) {
+    real dt=system->run->dt;
+    real kT=kB*system->run->T;
+    real *h_friction=(real*)calloc(lambdaCount,sizeof(real));
+    real *h_noise=(real*)calloc(lambdaCount,sizeof(real));
+    int blockCount=system->msld->blockCount;
+    for (i=0; i<blockCount && i<lambdaCount; i++) {
+      real g=system->msld->thetaFriction[i];
+      real a2=exp(-g*dt);
+      h_friction[i]=a2;
+      h_noise[i]=sqrt((1-a2*a2)*kT);
+    }
+    cudaMalloc(&(leapState->lambda_friction_d),lambdaCount*sizeof(real));
+    cudaMalloc(&(leapState->lambda_noise_d),lambdaCount*sizeof(real));
+    cudaMemcpy(leapState->lambda_friction_d,h_friction,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
+    cudaMemcpy(leapState->lambda_noise_d,h_noise,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
+    free(h_friction);
+    free(h_noise);
+  }
+
 #warning "Running nvprof on 2080s causes seg faults in the next command and at later locations"
   system->msld->calc_lambda_from_theta(0,system);
 }
@@ -280,12 +310,16 @@ struct LeapState* State::alloc_leapstate(int N1,int N2,real_x *x,real_v *v,real_
   ls->f=f;
   ls->ism=ism;
   ls->random=random;
+  ls->lambda_friction_d=NULL;
+  ls->lambda_noise_d=NULL;
   return ls;
 }
 
 void State::free_leapstate(struct LeapState* ls)
 {
   cudaFree(ls->random);
+  if (ls->lambda_friction_d) cudaFree(ls->lambda_friction_d);
+  if (ls->lambda_noise_d) cudaFree(ls->lambda_noise_d);
 }
 
 void State::recv_state()
@@ -320,10 +354,27 @@ void State::recv_energy()
 
   cudaMemcpy(energy,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToHost);
 
+  // Check GPU-side NaN flag (set by update kernels)
+  check_nan_flag();
+
   for (i=0; i<eepotential; i++) {
     energy[eepotential]+=energy[i];
   }
   energy[eetotal]=energy[eepotential]+energy[eekinetic];
+}
+
+void State::reset_nan_flag()
+{
+  cudaMemset(nanFlag_d,0,sizeof(int));
+}
+
+void State::check_nan_flag()
+{
+  cudaMemcpy(&nanFlag,nanFlag_d,sizeof(int),cudaMemcpyDeviceToHost);
+  if (nanFlag > 0) {
+    int atomIdx = nanFlag - 1;  // Decode atom index
+    fatal(__FILE__,__LINE__,"NaN/Inf detected at atom %d. Check structure or parameters.",atomIdx);
+  }
 }
 
 
@@ -574,66 +625,87 @@ void State::check_box(System *system)
   // Check angles
   if (nameBox==ebcubi || nameBox==ebtetr || nameBox==eborth) {
     if (box.b.x!=90 || box.b.y!=90 || box.b.z!=90) {
-      fprintf(stdout,"Warning: cubic, tetragonal, or orthorhombic box does not have all 90 degree angles\n");
-      fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      char buf[256];
+      blade_log("Warning: cubic, tetragonal, or orthorhombic box does not have all 90 degree angles");
+      snprintf(buf, sizeof(buf), "Previous: alpha %24.16f beta %24.16f gamma %24.16f", box.b.x, box.b.y, box.b.z);
+      blade_log(buf);
       box.b.x=90;
       box.b.y=90;
       box.b.z=90;
-      fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      snprintf(buf, sizeof(buf), "Rectified: alpha %24.16f beta %24.16f gamma %24.16f", box.b.x, box.b.y, box.b.z);
+      blade_log(buf);
     }
   } else if (nameBox==ebmono) {
     if (box.b.x!=90 || box.b.z!=90) {
-      fprintf(stdout,"Warning: monoclinic box must have alpha and gamma equal to 90 degrees\n");
-      fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      char buf[256];
+      blade_log("Warning: monoclinic box must have alpha and gamma equal to 90 degrees");
+      snprintf(buf, sizeof(buf), "Previous: alpha %24.16f beta %24.16f gamma %24.16f", box.b.x, box.b.y, box.b.z);
+      blade_log(buf);
       box.b.x=90;
       box.b.z=90;
-      fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      snprintf(buf, sizeof(buf), "Rectified: alpha %24.16f beta %24.16f gamma %24.16f", box.b.x, box.b.y, box.b.z);
+      blade_log(buf);
     }
   } else if (nameBox==ebhexa) {
     if (box.b.x!=90 || box.b.y!=90 || box.b.z!=120) {
-      fprintf(stdout,"Warning: hexagonal box must have 90, 90, 120 degree angles in that order\n");
-      fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      char buf[256];
+      blade_log("Warning: hexagonal box must have 90, 90, 120 degree angles in that order");
+      snprintf(buf, sizeof(buf), "Previous: alpha %24.16f beta %24.16f gamma %24.16f", box.b.x, box.b.y, box.b.z);
+      blade_log(buf);
       box.b.x=90;
       box.b.y=90;
       box.b.z=120;
-      fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      snprintf(buf, sizeof(buf), "Rectified: alpha %24.16f beta %24.16f gamma %24.16f", box.b.x, box.b.y, box.b.z);
+      blade_log(buf);
     }
   } else if (nameBox==ebocta) {
     // DEGREES macro is only floating precision, not double as needed here
     real_x alpha=acos(-1./3.)/0.017453292519943295769;
     if (box.b.x!=alpha || box.b.y!=alpha || box.b.z!=alpha) {
-      fprintf(stdout,"Warning: octahedral box must have 109.471220634 degree angles\n");
-      fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      char buf[256];
+      blade_log("Warning: octahedral box must have 109.471220634 degree angles");
+      snprintf(buf, sizeof(buf), "Previous: alpha %24.16f beta %24.16f gamma %24.16f", box.b.x, box.b.y, box.b.z);
+      blade_log(buf);
       box.b.x=alpha;
       box.b.y=alpha;
       box.b.z=alpha;
-      fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      snprintf(buf, sizeof(buf), "Rectified: alpha %24.16f beta %24.16f gamma %24.16f", box.b.x, box.b.y, box.b.z);
+      blade_log(buf);
     }
   } else if (nameBox==ebrhdo) {
     if (box.b.x!=60 || box.b.y!=90 || box.b.z!=60) {
-      fprintf(stdout,"Warning: rhombic dodecahedron box must have 60, 90, 60 degree angles in that order\n");
-      fprintf(stdout,"Previous: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      char buf[256];
+      blade_log("Warning: rhombic dodecahedron box must have 60, 90, 60 degree angles in that order");
+      snprintf(buf, sizeof(buf), "Previous: alpha %24.16f beta %24.16f gamma %24.16f", box.b.x, box.b.y, box.b.z);
+      blade_log(buf);
       box.b.x=60;
       box.b.y=90;
       box.b.z=60;
-      fprintf(stdout,"Rectified: alpha %24.16f beta %24.16f gamma %24.16f\n",box.b.x,box.b.y,box.b.z);
+      snprintf(buf, sizeof(buf), "Rectified: alpha %24.16f beta %24.16f gamma %24.16f", box.b.x, box.b.y, box.b.z);
+      blade_log(buf);
     }
   }
   // Check lengths
   if (nameBox==ebcubi || nameBox==ebrhom || nameBox==ebocta || nameBox==ebrhdo) {
     if (box.a.x!=box.a.y || box.a.x!=box.a.z) {
-      fprintf(stdout,"Warning: all three box vectors must have the same length for cubic, rhombohedral, trucated octahedron, and rhombic dodecahedron boxes\n");
-      fprintf(stdout,"Previous: a %24.16f b %24.16f c %24.16f\n",box.a.x,box.a.y,box.a.z);
+      char buf[256];
+      blade_log("Warning: all three box vectors must have the same length for cubic, rhombohedral, trucated octahedron, and rhombic dodecahedron boxes");
+      snprintf(buf, sizeof(buf), "Previous: a %24.16f b %24.16f c %24.16f", box.a.x, box.a.y, box.a.z);
+      blade_log(buf);
       box.a.y=box.a.x;
       box.a.z=box.a.x;
-      fprintf(stdout,"Rectified: a %24.16f b %24.16f c %24.16f\n",box.a.x,box.a.y,box.a.z);
+      snprintf(buf, sizeof(buf), "Rectified: a %24.16f b %24.16f c %24.16f", box.a.x, box.a.y, box.a.z);
+      blade_log(buf);
     }
   } else if (nameBox==ebtetr || nameBox==ebhexa) {
     if (box.a.x!=box.a.y) {
-      fprintf(stdout,"Warning: first two box vectors must have the same length for tetragonal and hexagonal boxes\n");
-      fprintf(stdout,"Previous: a %24.16f b %24.16f c %24.16f\n",box.a.x,box.a.y,box.a.z);
+      char buf[256];
+      blade_log("Warning: first two box vectors must have the same length for tetragonal and hexagonal boxes");
+      snprintf(buf, sizeof(buf), "Previous: a %24.16f b %24.16f c %24.16f", box.a.x, box.a.y, box.a.z);
+      blade_log(buf);
       box.a.y=box.a.x;
-      fprintf(stdout,"Rectified: a %24.16f b %24.16f c %24.16f\n",box.a.x,box.a.y,box.a.z);
+      snprintf(buf, sizeof(buf), "Rectified: a %24.16f b %24.16f c %24.16f", box.a.x, box.a.y, box.a.z);
+      blade_log(buf);
     }
   }
 

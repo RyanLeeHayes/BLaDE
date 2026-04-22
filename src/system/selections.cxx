@@ -6,6 +6,7 @@
 #include <set>
 
 #include "main/defines.h"
+#include "main/blade_log.h"
 #include "io/io.h"
 #include "system/system.h"
 #include "io/variables.h"
@@ -32,7 +33,9 @@ void Selections::insert(char *line,char *token,Structure *structure)
   // } else if (selectionMap.count(name)==1) {
   //   fatal(__FILE__,__LINE__,"Cannot define selection with name %s, one already exists. Use selection delete [name] to remove it.\n",token);
   } else {
-    fprintf(stdout,"SELECTION> add %s to selections after parsing %s\n",name.c_str(),line);
+    char buf[256];
+    snprintf(buf, sizeof(buf), "SELECTION> add %s to selections after parsing %s\n", name.c_str(), line);
+    blade_log(buf);
     selectionMap[name]=parse_selection_string(line,structure);
   }
 }
@@ -224,9 +227,12 @@ void Selections::dump()
 {
   int i,trueCount;
   char tag[]="PRINT SELECTIONS>";
+  char buf[256];
 
-  fprintf(stdout,"%s selectionCount=%d\n",tag,selectionMap.size());
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s selectionCount=%lu\n", tag, (unsigned long)selectionMap.size());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
   for (std::map<std::string,Selection>::iterator ii=selectionMap.begin(); ii!=selectionMap.end(); ii++) {
     trueCount=0;
@@ -235,9 +241,11 @@ void Selections::dump()
         trueCount++;
       }
     }
-    fprintf(stdout,"%s selection[%s]={contains %d atoms}\n",tag,ii->first.c_str(),trueCount);
+    snprintf(buf, sizeof(buf), "%s selection[%s]={contains %d atoms}\n", tag, ii->first.c_str(), trueCount);
+    blade_log(buf);
   }
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
 }
 
@@ -270,7 +278,9 @@ void parse_selection(char *line,System *system)
     system->selections->count(line,token,system);
   } else if (strcmp(token,"limit")==0) {
     system->selections->limit=io_nexti(line);
-    fprintf(stdout,"New selection limit set to %d (be careful, selections can take up a lot of memory. Use selection delete [name] when done with a selection.)\n",system->selections->limit);
+    char buf[256];
+    snprintf(buf, sizeof(buf), "New selection limit set to %d (be careful, selections can take up a lot of memory. Use selection delete [name] when done with a selection.)\n", system->selections->limit);
+    blade_log(buf);
   } else if (strcmp(token,"print")==0) {
     system->selections->dump();
   } else {

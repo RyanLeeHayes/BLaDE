@@ -8,6 +8,7 @@
 #include "rng/rng_cpu.h"
 #include "holonomic/rectify.h"
 #include "io/io.h"
+#include "main/blade_log.h"
 
 
 
@@ -128,7 +129,7 @@ void pressure_coupling(System *system)
     energyOld=s->energy[eepotential];
 
     // and print it
-    if (system->verbose>0) display_nrg(system);
+    if (system->verbose>1) display_nrg(system);
 
     s->backup_position();
 
@@ -155,22 +156,28 @@ void pressure_coupling(System *system)
     energyNew=s->energy[eepotential];
 
     // and print it
-    if (system->verbose>0) display_nrg(system);
+    if (system->verbose>1) display_nrg(system);
 
     // Compare energy
     N=s->atomCount-(2*p->triangleConsCount+p->branch1ConsCount+2*p->branch2ConsCount+3*p->branch3ConsCount);
     kT=s->leapParms1->kT;
     dW=energyNew-energyOld+r->pressure*(volumeNew-volumeOld)-N*kT*log(volumeNew/volumeOld);
-    if (system->verbose>0) {
-      fprintf(stdout,"dW= %f, dV= %f\n",dW,volumeNew-volumeOld);
+    if (system->verbose>1) {
+      char buf[256];
+      snprintf(buf, sizeof(buf), "dW= %f, dV= %f\n", dW, volumeNew-volumeOld);
+      blade_log(buf);
     }
     if (system->rngCPU->rand_uniform()<exp(-dW/kT)) { // accept move
-      if (system->verbose>0) {
-        fprintf(stdout,"Volume move accepted. New volume=%f\n",volumeNew);
+      if (system->verbose>1) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "Volume move accepted. New volume=%f\n", volumeNew);
+        blade_log(buf);
       }
     } else {
-      if (system->verbose>0) {
-        fprintf(stdout,"Volume move rejected. Old volume=%f\n",volumeOld);
+      if (system->verbose>1) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "Volume move rejected. Old volume=%f\n", volumeOld);
+        blade_log(buf);
       }
       s->restore_position();
     }

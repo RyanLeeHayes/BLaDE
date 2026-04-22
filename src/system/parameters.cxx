@@ -6,6 +6,7 @@
 #include <string>
 
 #include "main/defines.h"
+#include "main/blade_log.h"
 #include "system/system.h"
 #include "system/parameters.h"
 #include "io/io.h"
@@ -133,7 +134,9 @@ void Parameters::add_parameter_file(FILE *fp)
 
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     if (line[0]=='*') {
-      fprintf(stdout,"TITLE> %s",line);
+      char buf[512];
+      snprintf(buf, sizeof(buf), "TITLE> %s", line);
+      blade_log(buf);
       continue;
     }
     io_nexta(line,token);
@@ -158,7 +161,9 @@ void Parameters::add_parameter_file(FILE *fp)
     } else if (strcmp(token,"END")==0) {
       return;
     } else {
-      fprintf(stdout,"Unparsed line> %s %s",token,line);
+      char buf[512];
+      snprintf(buf, sizeof(buf), "Unparsed line> %s %s", token, line);
+      blade_log(buf);
     }
   }
 }
@@ -361,7 +366,6 @@ void Parameters::add_parameter_cmaps(FILE *fp)
         fatal(__FILE__,__LINE__,"CMAP grid is greater than 60 points per 360 degrees (%d). Have you really thought about how much memory that will take?\n",cp.ngrid);
       }
       cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
-    fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
 
       for (i=0; i<cp.ngrid; i++) {
         for (j=0; j<cp.ngrid; j++) {
@@ -492,38 +496,51 @@ void Parameters::dump()
   int i;
   std::string key;
   char tag[]="PRINT PARAMETERS>";
+  char buf[512];
 
-  fprintf(stdout,"%s atomTypeCount=%d\n",tag,atomTypeCount);
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s atomTypeCount=%d\n", tag, atomTypeCount);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
   for (std::map<std::string,int>::iterator ii=atomTypeMap.begin(); ii!=atomTypeMap.end(); ii++) {
-    fprintf(stdout,"%s atomTypeMap[%6s]=%5d\n",tag,ii->first.c_str(),ii->second);
+    snprintf(buf, sizeof(buf), "%s atomTypeMap[%6s]=%5d\n", tag, ii->first.c_str(), ii->second);
+    blade_log(buf);
   }
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
   for (i=0; i<atomTypeCount; i++) {
-    fprintf(stdout,"%s atomType[%5d]=%6s\n",tag,i,atomType[i].c_str());
+    snprintf(buf, sizeof(buf), "%s atomType[%5d]=%6s\n", tag, i, atomType[i].c_str());
+    blade_log(buf);
   }
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
   for (std::map<std::string,real>::iterator ii=atomMass.begin(); ii!=atomMass.end(); ii++) {
-    fprintf(stdout,"%s atomMass[%6s]=%g\n",tag,ii->first.c_str(),ii->second);
+    snprintf(buf, sizeof(buf), "%s atomMass[%6s]=%g\n", tag, ii->first.c_str(), ii->second);
+    blade_log(buf);
   }
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
   for (std::map<TypeName2,struct BondParameter>::iterator ii=bondParameter.begin(); ii!=bondParameter.end(); ii++) {
     TypeName2 name=ii->first;
     struct BondParameter bp=ii->second;
-    fprintf(stdout,"%s bondParameter[%6s,%6s]={kb=%g b0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),bp.kb,bp.b0);
+    snprintf(buf, sizeof(buf), "%s bondParameter[%6s,%6s]={kb=%g b0=%g}\n", tag, name.t[0].c_str(), name.t[1].c_str(), bp.kb, bp.b0);
+    blade_log(buf);
   }
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
   for (std::map<TypeName3,struct AngleParameter>::iterator ii=angleParameter.begin(); ii!=angleParameter.end(); ii++) {
     TypeName3 name=ii->first;
     struct AngleParameter ap=ii->second;
-    fprintf(stdout,"%s angleParameter[%6s,%6s,%6s]={kangle=%g angle0=%g kureyb=%g ureyb0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),ap.kangle,ap.angle0,ap.kureyb,ap.ureyb0);
+    snprintf(buf, sizeof(buf), "%s angleParameter[%6s,%6s,%6s]={kangle=%g angle0=%g kureyb=%g ureyb0=%g}\n", tag, name.t[0].c_str(), name.t[1].c_str(), name.t[2].c_str(), ap.kangle, ap.angle0, ap.kureyb, ap.ureyb0);
+    blade_log(buf);
   }
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
   for (std::map<TypeName4,std::vector<struct DiheParameter> >::iterator ii=diheParameter.begin(); ii!=diheParameter.end(); ii++) {
     TypeName4 name=ii->first;
@@ -532,44 +549,58 @@ void Parameters::dump()
     sprintf(varName,"diheParameter[%6s,%6s,%6s,%6s]",name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),name.t[3].c_str());
     for (int j=0; j<dpv.size(); j++) {
       struct DiheParameter dp=dpv[j];
-      fprintf(stdout,"%s %s={kdih=%g ndih=%d dih0=%g}\n",tag,varName,dp.kdih,dp.ndih,dp.dih0);
+      snprintf(buf, sizeof(buf), "%s %s={kdih=%g ndih=%d dih0=%g}\n", tag, varName, dp.kdih, dp.ndih, dp.dih0);
+      blade_log(buf);
       sprintf(varName,"                                          ");
     }
   }
-  fprintf(stdout,"%s\n",tag);
-  fprintf(stdout,"%s maxDiheTerms=%d\n",tag,maxDiheTerms);
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "%s maxDiheTerms=%d\n", tag, maxDiheTerms);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
   for (std::map<TypeName4,struct ImprParameter>::iterator ii=imprParameter.begin(); ii!=imprParameter.end(); ii++) {
     TypeName4 name=ii->first;
     struct ImprParameter ip=ii->second;
-    fprintf(stdout,"%s imprParameter[%6s,%6s,%6s,%6s]={kimp=%g nimp=%d imp0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),name.t[3].c_str(),ip.kimp,ip.nimp,ip.imp0);
+    snprintf(buf, sizeof(buf), "%s imprParameter[%6s,%6s,%6s,%6s]={kimp=%g nimp=%d imp0=%g}\n", tag, name.t[0].c_str(), name.t[1].c_str(), name.t[2].c_str(), name.t[3].c_str(), ip.kimp, ip.nimp, ip.imp0);
+    blade_log(buf);
   }
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
   for (std::map<std::string,struct NbondParameter>::iterator ii=nbondParameter.begin(); ii!=nbondParameter.end(); ii++) {
     std::string name=ii->first;
     struct NbondParameter np=ii->second;
-    fprintf(stdout,"%s nbondParameter[%6s]={eps=%g sig=%g eps14=%g sig14=%g}\n",tag,name.c_str(),np.eps,np.sig,np.eps14,np.sig14);
+    snprintf(buf, sizeof(buf), "%s nbondParameter[%6s]={eps=%g sig=%g eps14=%g sig14=%g}\n", tag, name.c_str(), np.eps, np.sig, np.eps14, np.sig14);
+    blade_log(buf);
   }
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
   for (std::map<TypeName2,struct NbondParameter>::iterator ii=nbfixParameter.begin(); ii!=nbfixParameter.end(); ii++) {
     TypeName2 name=ii->first;
     struct NbondParameter np=ii->second;
-    fprintf(stdout,"%s nbfixParameter[%6s,%6s]={eps=%g sig=%g eps14=%g sig14=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),np.eps,np.sig,np.eps14,np.sig14);
+    snprintf(buf, sizeof(buf), "%s nbfixParameter[%6s,%6s]={eps=%g sig=%g eps14=%g sig14=%g}\n", tag, name.t[0].c_str(), name.t[1].c_str(), np.eps, np.sig, np.eps14, np.sig14);
+    blade_log(buf);
   }
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
-  fprintf(stdout,"%s cmapParameter not printed\n",tag);
-  fprintf(stdout,"%s\n",tag);
+  snprintf(buf, sizeof(buf), "%s cmapParameter not printed\n", tag);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "%s\n", tag);
+  blade_log(buf);
 
 }
 
 std::string Parameters::check_type_name(std::string type,const char *tag)
-{ 
+{
   if (atomTypeMap.count(type)==0) {
-    fprintf(stdout,"Warning: atom type %s found in %s but not declared in ATOMS\n",type.c_str(),tag);
+    char buf[256];
+    snprintf(buf, sizeof(buf), "Warning: atom type %s found in %s but not declared in ATOMS\n", type.c_str(), tag);
+    blade_log(buf);
   }
   return type;
 }
@@ -710,7 +741,11 @@ void blade_add_parameter_cmaps(System *system,
   }
   system+=omp_get_thread_num();
   cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
-  fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
+  if (system->verbose > 1) {
+    char buf[256];
+    snprintf(buf, sizeof(buf), "allocating kcmap=%p\n", cp.kcmap);
+    blade_log(buf);
+  }
   system->parameters->cmapParameter[name]=cp;
 }
 

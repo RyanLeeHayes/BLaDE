@@ -4,6 +4,7 @@
 #include "domdec/domdec.h"
 #include "system/potential.h"
 #include "rng/rng_cpu.h"
+#include "main/blade_log.h"
 
 #ifdef REPLICAEXCHANGE
 #include <mpi.h>
@@ -38,10 +39,13 @@ void replica_exchange(System *system)
 
       // and print it
       /*if (system->verbose>0) {
+        char buf[256];
+        int pos = 0;
         for (int i=0; i<eeend; i++) {
-          fprintf(stdout," %12.4f",s->energy[i]);
+          pos += snprintf(buf + pos, sizeof(buf) - pos, " %12.4f", s->energy[i]);
         }
-        fprintf(stdout,"\n");
+        snprintf(buf + pos, sizeof(buf) - pos, "\n");
+        blade_log(buf);
       }*/
 
       s->backup_position();
@@ -92,7 +96,11 @@ void replica_exchange(System *system)
         MPI_Sendrecv(&r->replica,1,MPI_INT,rankPartner,14,
           &newReplica,1,MPI_INT,rankPartner,14,
           MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Accept\n",r->step,rank,r->replica,dW);
+        {
+          char buf[256];
+          snprintf(buf, sizeof(buf), "Step %ld , Rank %d , Replica %d, dW %f, Accept\n", r->step, rank, r->replica, dW);
+          blade_log(buf);
+        }
         r->replica=newReplica;
         // Swap velocities
         n=s->lambdaCount+3*s->atomCount;
@@ -105,7 +113,11 @@ void replica_exchange(System *system)
           n*sizeof(real_v),cudaMemcpyHostToDevice);
       } else {
         // maintain replica indices
-        fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Reject\n",r->step,rank,r->replica,dW);
+        {
+          char buf[256];
+          snprintf(buf, sizeof(buf), "Step %ld , Rank %d , Replica %d, dW %f, Reject\n", r->step, rank, r->replica, dW);
+          blade_log(buf);
+        }
         // Restore positions
         s->restore_position();
       }

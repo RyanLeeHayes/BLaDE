@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "domdec/domdec.h"
+#include "main/blade_log.h"
 #include "system/potential.h"
 #include "run/run.h"
 #include "system/system.h"
@@ -363,7 +364,9 @@ void Domdec::setup_exclusions(System *system)
       cudaMemcpy(&blockExclCount,blockExclCount_d,sizeof(int),cudaMemcpyDeviceToHost);
       if (blockExclCount > maxBlockExclCount) {
         cudaFree(blockExcls_d);
-        fprintf(stdout,"Note: Updated maxBlockExclCount from %d to %d\n",maxBlockExclCount,blockExclCount+64);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "Note: Updated maxBlockExclCount from %d to %d\n", maxBlockExclCount, blockExclCount+64);
+        blade_log(buf);
         maxBlockExclCount=blockExclCount+64;
         cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int));
       } else {

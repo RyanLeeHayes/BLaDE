@@ -30,12 +30,11 @@ typedef enum eeterm {
   eenbrecipself,
   eenbrecipexcl,
   eelambda,
-  eetheta,
-  eecats,
-  eenoe,
-  eeharmonic,
-  eemmfp,
-  eebias,
+  eetheta,      // MSLD theta bias energy
+  eenoe,        // NOE restraint energy
+  eeharmonic,   // Harmonic positional restraint energy
+  eemmfp,       // MMFP (GEO) restraint energy
+  eebias,       // Legacy: sum of theta+noe+harmonic+mmfp (for compatibility)
   eepotential,
   eekinetic,
   eetotal,
@@ -160,6 +159,10 @@ struct NoePotential {
   real rpeak;
   real rswitch;
   real nswitch;
+  real c0x;
+  real c0y;
+  real c0z;
+  bool is_pnoe;
 };
 
 struct HarmonicPotential {
@@ -188,6 +191,7 @@ struct DiRestPotential {
   real kphi;
   int nphi;
   real phi0;
+  real width;  // flat-bottom half-width in radians (default 0 = pure harmonic)
   int block;
 };
 

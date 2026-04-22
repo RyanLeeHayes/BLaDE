@@ -1,8 +1,24 @@
 #include <omp.h>
 #include <cuda_runtime.h>
 #include <string.h>
+#include <signal.h>
+#include <limits.h>
 
 #include "run/run.h"
+#include "main/blade_log.h"
+
+// Global interrupt flag for Ctrl+C handling
+volatile sig_atomic_t blade_interrupt_flag = 0;
+static struct sigaction blade_old_sigint_action;
+static bool blade_signal_handler_installed = false;
+static volatile sig_atomic_t blade_sigint_count = 0;
+static const int BLADE_FORCE_EXIT_COUNT = 3;
+
+// Signal handler for SIGINT (Ctrl+C)
+static void blade_sigint_handler(int signum) {
+  blade_sigint_count++;
+  blade_interrupt_flag = 1;
+}
 #include "system/system.h"
 #include "io/io.h"
 #include "msld/msld.h"
@@ -12,12 +28,63 @@
 #include "holonomic/rectify.h"
 #include "domdec/domdec.h"
 #include "main/gpu_check.h"
+#include "main/scan.h"
 
 #ifdef REPLICAEXCHANGE
 #include <mpi.h>
 #endif
 
 
+static void set_scan_algorithm(Run *run,int algorithm)
+{
+  if (algorithm<SCAN_AUTO || algorithm>SCAN_HILLIS_STEELE) {
+    fatal(__FILE__,__LINE__,"scanalgorithm must be -1 (AUTO), 0 (Blelloch), or 1 (Hillis-Steele)\n");
+  }
+
+  run->scanAlgorithm=algorithm;
+  run->scanTimeBlelloch=0.0f;
+  run->scanTimeHillisSteele=0.0f;
+  run->scanBenchmarkCount[0]=0;
+  run->scanBenchmarkCount[1]=0;
+
+  if (algorithm==SCAN_AUTO) {
+    run->scanAlgorithmActive=SCAN_HILLIS_STEELE;
+    run->scanBenchmarkComplete=false;
+  } else {
+    run->scanAlgorithmActive=algorithm;
+    run->scanBenchmarkComplete=true;
+  }
+}
+
+static void handle_interrupt(const char *mode,long int step)
+{
+  char buf[256];
+
+  if (blade_sigint_count>=BLADE_FORCE_EXIT_COUNT) {
+    snprintf(buf,sizeof(buf),"\n[BLaDE] %dx Ctrl+C - FORCE EXIT!\n",(int)blade_sigint_count);
+    blade_log(buf);
+    signal(SIGINT,SIG_DFL);
+    raise(SIGINT);
+    return;
+  }
+
+  snprintf(buf,sizeof(buf),"\nBLaDE %s interrupted by user at step %ld\n",mode,step);
+  blade_log(buf);
+
+  if (blade_sigint_count>0) {
+    int remaining=BLADE_FORCE_EXIT_COUNT-(int)blade_sigint_count;
+    snprintf(buf,sizeof(buf),"Press %dx more to force quit\n",remaining);
+    blade_log(buf);
+  }
+}
+
+static int run_step_to_int(long int step)
+{
+  if (step>INT_MAX || step<INT_MIN) {
+    fatal(__FILE__,__LINE__,"BLaDE step %ld is outside int range\n",step);
+  }
+  return (int)step;
+}
 
 // #warning "Hardcoded serial kernels"
 // #define PROFILESERIAL
@@ -48,8 +115,10 @@ Run::Run(System *system)
   betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
-  vfSwitch=true;
-  usePME=true;
+  vfSwitch=true;      // backward compatibility
+  vdwMethod=evfswitch; // default to VFSWITCH (force switching)
+  elecMethod=epme;    // default to PME
+  usePME=true;        // backward compatibility
   gridSpace=1.0*ANGSTROM;
   grid[0]=-1;
   grid[1]=-1;
@@ -71,8 +140,16 @@ Run::Run(System *system)
   dxRMSInit=0.05*ANGSTROM;
   dxRMS=dxRMSInit;
   minType=esd; // enum steepest descent
+  nprint=50; // print frequency for MINI> output
 
   domdecHeuristic=true;
+  scanAlgorithm=SCAN_HILLIS_STEELE;
+  scanAlgorithmActive=SCAN_HILLIS_STEELE;
+  scanBenchmarkComplete=true;
+  scanTimeBlelloch=0.0f;
+  scanTimeHillisSteele=0.0f;
+  scanBenchmarkCount[0]=0;
+  scanBenchmarkCount[1]=0;
 
   termStringToInt.clear();
   termStringToInt["bond"]=eebond;
@@ -88,10 +165,9 @@ Run::Run(System *system)
   termStringToInt["nbrecipexcl"]=eenbrecipexcl;
   termStringToInt["lambda"]=eelambda;
   termStringToInt["theta"]=eetheta;
-  termStringToInt["cats"]=eecats;
-  termStringToInt["eenoe"]=eenoe;
-  termStringToInt["eeharmonic"]=eeharmonic;
-  termStringToInt["eemmfp"]=eemmfp;
+  termStringToInt["noe"]=eenoe;
+  termStringToInt["harmonic"]=eeharmonic;
+  termStringToInt["mmfp"]=eemmfp;
   termStringToInt["bias"]=eebias;
   termStringToInt["potential"]=eepotential;
   termStringToInt["kinetic"]=eekinetic;
@@ -209,7 +285,7 @@ void Run::setup_parse_run()
   parseRun["reset"]=&Run::reset;
   helpRun["reset"]="?run reset> Resets the run data structure to it's default values\n";
   parseRun["setvariable"]=&Run::set_variable;
-  helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Available \"name\"s are: dt (time step in ps), nsteps (number of steps of dynamics to run), fnmxtc (filename for the coordinate output), fnmlmd (filename for the lambda output), fnmnrg (filename for the energy output)\n";
+  helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Available \"name\"s include: dt (time step in ps), nsteps (number of steps of dynamics to run), fnmxtc (filename for the coordinate output), fnmlmd (filename for the lambda output), fnmnrg (filename for the energy output), scanalgorithm (-1=AUTO, 0=Blelloch, 1=Hillis-Steele)\n";
   parseRun["setterm"]=&Run::set_term;
   helpRun["setterm"]="?run setterm [term] [on|off]> Turn terms (including bond, angle, dihe, impr, nb14 nbdirect, nbrecip, nbrecipself, nbrecipexcl, lambda, and bias) on or off\n";
   parseRun["energy"]=&Run::energy;
@@ -224,15 +300,17 @@ void Run::setup_parse_run()
 
 void Run::help(char *line,char *token,System *system)
 {
+  char buf[256];
   std::string name=io_nexts(line);
   if (name=="") {
-    fprintf(stdout,"?run> Available directives are:\n");
+    blade_log("?run> Available directives are:\n");
     for (std::map<std::string,std::string>::iterator ii=helpRun.begin(); ii!=helpRun.end(); ii++) {
-      fprintf(stdout," %s",ii->first.c_str());
+      snprintf(buf, sizeof(buf), " %s", ii->first.c_str());
+      blade_log(buf);
     }
-    fprintf(stdout,"\n");
+    blade_log("\n");
   } else if (helpRun.count(token)==1) {
-    fprintf(stdout,helpRun[name].c_str());
+    blade_log(helpRun[name].c_str());
   } else {
     error(line,token,system);
   }
@@ -245,34 +323,75 @@ void Run::error(char *line,char *token,System *system)
 
 void Run::dump(char *line,char *token,System *system)
 {
-  fprintf(stdout,"RUN PRINT> dt=%f (time step input in ps)\n",dt/PICOSECOND);
-  fprintf(stdout,"RUN PRINT> T=%f (temperature in K)\n",T);
-  fprintf(stdout,"RUN PRINT> gamma=%f (friction input in ps^-1)\n",gamma*PICOSECOND);
-  fprintf(stdout,"RUN PRINT> nsteps=%d (number of time steps for dynamics)\n",nsteps);
-  fprintf(stdout,"RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
-  fprintf(stdout,"RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
-  fprintf(stdout,"RUN PRINT> fnmnrg=%s (file name for energy output)\n",fnmNRG.c_str());
-  fprintf(stdout,"RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n",fnmCPI.c_str());
-  fprintf(stdout,"RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n",fnmCPO.c_str());
-  fprintf(stdout,"RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n",betaEwald*ANGSTROM);
-  fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> vfswitch=%d\n",vfSwitch);
-  fprintf(stdout,"RUN PRINT> usepme=%d\n",usePME);
-  fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n",grid[0],grid[1],grid[2]);
-  fprintf(stdout,"RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwald);
-  fprintf(stdout,"RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n",shakeTolerance);
-  fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
-  fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation/(ANGSTROM*ANGSTROM*ANGSTROM));
-  fprintf(stdout,"RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure/ATMOSPHERE);
-  fprintf(stdout,"RUN PRINT> dxatommax=%f (Maximum minimization atom displacement in A)\n",dxAtomMax/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> dxrmsinit=%f (Starting minimization rms displacement in A)\n",dxRMSInit/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> mintype=%d (minimization algorithm. 0 is steepest descent, etc)\n",minType);
-  fprintf(stdout,"RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n",(int)domdecHeuristic);
+  char buf[256];
+  snprintf(buf, sizeof(buf), "RUN PRINT> dt=%f (time step input in ps)\n", dt/PICOSECOND);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> T=%f (temperature in K)\n", T);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> gamma=%f (friction input in ps^-1)\n", gamma*PICOSECOND);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> nsteps=%d (number of time steps for dynamics)\n", nsteps);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n", fnmXTC.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n", fnmLMD.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmnrg=%s (file name for energy output)\n", fnmNRG.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n", fnmCPI.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n", fnmCPO.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n", betaEwald*ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> rcut=%f (input in A)\n", rCut/ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> rswitch=%f (input in A)\n", rSwitch/ANGSTROM);
+  blade_log(buf);
+  const char *vdwMethodNames[] = {"VSWITCH", "VFSWITCH", "VSHIFT"};
+  const char *elecMethodNames[] = {"FSWITCH", "PME", "FSHIFT"};
+  snprintf(buf, sizeof(buf), "RUN PRINT> vdwmethod=%s (vswitch, vfswitch, or vshift)\n", vdwMethodNames[vdwMethod]);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> elecmethod=%s (fswitch, pme, or fshift)\n", elecMethodNames[elecMethod]);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> gridspace=%f (For PME - input in A)\n", gridSpace/ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n", grid[0], grid[1], grid[2]);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n", orderEwald);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n", shakeTolerance);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n", freqNPT);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n", volumeFluctuation/(ANGSTROM*ANGSTROM*ANGSTROM));
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n", pressure/ATMOSPHERE);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> dxatommax=%f (Maximum minimization atom displacement in A)\n", dxAtomMax/ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> dxrmsinit=%f (Starting minimization rms displacement in A)\n", dxRMSInit/ANGSTROM);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> mintype=%d (minimization algorithm. 0 is steepest descent, etc)\n", minType);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> nprint=%d (print frequency for MINI> output)\n", nprint);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n", (int)domdecHeuristic);
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> scanalgorithm=%d (-1=AUTO, 0=Blelloch, 1=Hillis-Steele)\n", scanAlgorithm);
+  blade_log(buf);
+  if (scanAlgorithm==SCAN_AUTO) {
+    snprintf(buf, sizeof(buf), "RUN PRINT> scanbenchmark: complete=%d active=%d Blelloch=%.3fms(%d) Hillis-Steele=%.3fms(%d)\n",
+        (int)scanBenchmarkComplete, scanAlgorithmActive,
+        scanTimeBlelloch, scanBenchmarkCount[0],
+        scanTimeHillisSteele, scanBenchmarkCount[1]);
+    blade_log(buf);
+  }
 #ifdef REPLICAEXCHANGE
-  fprintf(stdout,"RUN PRINT> fnmrex=%s (file name for replica exchange)\n",fnmREx.c_str());
-  fprintf(stdout,"RUN PRINT> freqrex=%d (frequency of replica exchange attempts. Use {rexrank} (NYI) to access 0 ordinalized replica index in script)\n",freqREx);
+  snprintf(buf, sizeof(buf), "RUN PRINT> fnmrex=%s (file name for replica exchange)\n", fnmREx.c_str());
+  blade_log(buf);
+  snprintf(buf, sizeof(buf), "RUN PRINT> freqrex=%d (frequency of replica exchange attempts. Use {rexrank} (NYI) to access 0 ordinalized replica index in script)\n", freqREx);
+  blade_log(buf);
 #endif
 }
 
@@ -332,8 +451,38 @@ void Run::set_variable(char *line,char *token,System *system)
     cutoffs.rSwitch=rSwitch;
   } else if (strcmp(token,"vfswitch")==0) {
     vfSwitch=io_nextb(line);
+    vdwMethod=vfSwitch?evfswitch:evswitch;
+  } else if (strcmp(token,"vdwmethod")==0) {
+    std::string method=io_nexts(line);
+    if (method=="vswitch") {
+      vdwMethod=evswitch;
+      vfSwitch=false;
+    } else if (method=="vfswitch") {
+      vdwMethod=evfswitch;
+      vfSwitch=true;
+    } else if (method=="vshift") {
+      vdwMethod=evshift;
+      vfSwitch=false;
+    } else {
+      fatal(__FILE__,__LINE__,"Unknown vdwmethod: %s (use vswitch, vfswitch, or vshift)\n",method.c_str());
+    }
   } else if (strcmp(token,"usepme")==0) {
     usePME=io_nextb(line);
+    elecMethod=usePME?epme:efswitch;
+  } else if (strcmp(token,"elecmethod")==0) {
+    std::string method=io_nexts(line);
+    if (method=="fswitch") {
+      elecMethod=efswitch;
+      usePME=false;
+    } else if (method=="pme") {
+      elecMethod=epme;
+      usePME=true;
+    } else if (method=="fshift") {
+      elecMethod=efshift;
+      usePME=false;
+    } else {
+      fatal(__FILE__,__LINE__,"Unknown elecmethod: %s (use fswitch, pme, or fshift)\n",method.c_str());
+    }
   } else if (strcmp(token,"gridspace")==0) {
     gridSpace=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"grid")==0) {
@@ -366,8 +515,12 @@ void Run::set_variable(char *line,char *token,System *system)
     } else {
       fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: sd or sdfd\n",minString.c_str());
     }
+  } else if (strcmp(token,"nprint")==0) {
+    nprint=io_nexti(line);
   } else if (strcmp(token,"domdecheuristic")==0) {
     domdecHeuristic=io_nextb(line);
+  } else if (strcmp(token,"scanalgorithm")==0) {
+    set_scan_algorithm(this,io_nexti(line));
 #ifdef REPLICAEXCHANGE
   } else if (strcmp(token,"fnmrex")==0) {
     if (fpREx) fclose(fpREx);
@@ -478,8 +631,10 @@ void Run::test(char *line,char *token,System *system)
           system->state->restore_position();
         }
         if (system->id==0) {
+          char buf[256];
           cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
-          fprintf(stdout,"ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
+          snprintf(buf, sizeof(buf), "ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n", ij, E[0], E[1], (E[1]-E[0])/dx, F);
+          blade_log(buf);
         }
       }
     }
@@ -490,17 +645,28 @@ void Run::test(char *line,char *token,System *system)
 
 void Run::minimize(char *line,char *token,System *system)
 {
+  bool interrupted = false;
+
   dynamics_initialize(system);
   system->state->min_init(system);
 
   for (step=0; step<nsteps; step++) {
+    // Check for interrupt (Ctrl+C)
+    if (blade_interrupt_flag) {
+      handle_interrupt("minimization",step);
+      interrupted = true;
+      break;
+    }
     system->domdec->update_domdec(system,true); // true to always update neighbor list
     system->potential->calc_force(0,system); // step 0 to always calculate energy
     system->state->min_move(step,nsteps,system);
-    print_dynamics_output(step,system);
+    print_dynamics_output(run_step_to_int(step),system);
     gpuCheck(cudaPeekAtLastError());
   }
 
+  if (interrupted) {
+    blade_log("Minimization stopped early due to interrupt\n");
+  }
   system->state->min_dest(system);
   dynamics_finalize(system);
 }
@@ -508,6 +674,7 @@ void Run::minimize(char *line,char *token,System *system)
 void Run::dynamics(char *line,char *token,System *system)
 {
   clock_t t1,t2;
+  bool interrupted = false;
 
   // Initialize data structures
   dynamics_initialize(system);
@@ -515,19 +682,34 @@ void Run::dynamics(char *line,char *token,System *system)
   // Run dynamics
   t1=clock();
   for (step=step0; step<step0+nsteps; step++) {
+    // Check for interrupt (Ctrl+C)
+    if (blade_interrupt_flag) {
+      handle_interrupt("dynamics",step);
+      interrupted = true;
+      break;
+    }
     if (system->verbose>0) {
-      fprintf(stdout,"Step %d\n",step);
+      char buf[256];
+      snprintf(buf, sizeof(buf), "Step %d\n", run_step_to_int(step));
+      blade_log(buf);
     }
     system->domdec->update_domdec(system,(step%system->domdec->freqDomdec)==0);
     system->potential->calc_force(step,system);
     system->state->update(step,system);
 #warning "Need to copy coordinates before update"
-    print_dynamics_output(step,system);
+    print_dynamics_output(run_step_to_int(step),system);
     gpuCheck(cudaPeekAtLastError());
   }
   t2=clock();
 // Note: omp_get_wtime may be of more interest when parallelizing
-  fprintf(stdout,"Elapsed dynamics time: %f\n",(t2-t1)*1.0/CLOCKS_PER_SEC);
+  {
+    char buf[256];
+    snprintf(buf, sizeof(buf), "Elapsed dynamics time: %f\n", (t2-t1)*1.0/CLOCKS_PER_SEC);
+    blade_log(buf);
+  }
+  if (interrupted) {
+    blade_log("Dynamics stopped early due to interrupt\n");
+  }
 
   dynamics_finalize(system);
 }
@@ -633,6 +815,9 @@ void blade_add_run_flags(System *system,
   system->run->rSwitch=rSwitch;
   system->run->vfSwitch=vdWfSwitch==1;
   system->run->usePME=elecPME==1;
+  // Set enum values from parameters
+  system->run->vdwMethod=(EVdw)vdWfSwitch;
+  system->run->elecMethod=(EElec)elecPME;
   system->run->gridSpace=gridSpace; // grid spacing for PME calculation
   system->run->grid[0]=gridx; // if gridSpace is negative, use these values
   system->run->grid[1]=gridy; // if gridSpace is negative, use these values
@@ -670,7 +855,7 @@ void blade_add_run_dynopts(System *system,
 void blade_run_energy(System *system)
 {
   system+=omp_get_thread_num();
-  
+
   if (!system->run) {
     system->run=new Run(system);
   }
@@ -678,4 +863,44 @@ void blade_run_energy(System *system)
   system->potential->calc_force(0,system);
   system->state->recv_energy();
   system->run->dynamics_finalize(system);
+}
+
+void blade_set_scan_algorithm(System *system, int algorithm)
+{
+  system+=omp_get_thread_num();
+  set_scan_algorithm(system->run,algorithm);
+}
+
+// Interrupt handling API functions
+void blade_set_interrupt(int value)
+{
+  blade_interrupt_flag = value;
+}
+
+int blade_check_interrupt()
+{
+  return blade_interrupt_flag;
+}
+
+void blade_install_signal_handler()
+{
+  if (!blade_signal_handler_installed) {
+    struct sigaction new_action;
+    new_action.sa_handler = blade_sigint_handler;
+    sigemptyset(&new_action.sa_mask);
+    new_action.sa_flags = 0;
+    sigaction(SIGINT, &new_action, &blade_old_sigint_action);
+    blade_signal_handler_installed = true;
+    blade_interrupt_flag = 0;  // Reset flag when installing handler
+    blade_sigint_count = 0;    // Reset rapid Ctrl+C counter
+  }
+}
+
+void blade_restore_signal_handler()
+{
+  if (blade_signal_handler_installed) {
+    sigaction(SIGINT, &blade_old_sigint_action, NULL);
+    blade_signal_handler_installed = false;
+    blade_sigint_count = 0;
+  }
 }

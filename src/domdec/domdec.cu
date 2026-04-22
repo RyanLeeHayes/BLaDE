@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 
 #include "domdec/domdec.h"
+#include "main/blade_log.h"
 #include "system/system.h"
 #include "system/state.h"
 #include "run/run.h"
@@ -41,6 +42,7 @@ Domdec::Domdec()
 #endif
   blockExcls_d=NULL;
   blockExclCount_d=NULL;
+  overflowFlag_d=NULL;
 }
 
 Domdec::~Domdec()
@@ -70,6 +72,7 @@ Domdec::~Domdec()
 #endif
   if (blockExcls_d) cudaFree(blockExcls_d);
   if (blockExclCount_d) cudaFree(blockExclCount_d);
+  if (overflowFlag_d) cudaFree(overflowFlag_d);
 }
 
 void Domdec::initialize(System *system)
@@ -109,7 +112,11 @@ void Domdec::initialize(System *system)
   domainDiv.y=(int)ceil(box.y/(approxBlockBox*gridDomdec.y));
   // If each column has one empty block at the end, there cannot be more blocks than the number of atoms divided into 32 plus one for each column
   maxBlocks=(globalCount/32+1)+(idCount*domainDiv.x*domainDiv.y);
-  fprintf(stdout,"maxBlocks=%d\n",maxBlocks);
+  if (system->verbose > 1) {
+    char buf[256];
+    snprintf(buf, sizeof(buf), "maxBlocks=%d\n", maxBlocks);
+    blade_log(buf);
+  }
 
   // Set maxPartnersPerBlock
   real edge=3*approxBlockBox+2*system->run->cutoffs.rCut;
@@ -117,16 +124,27 @@ void Domdec::initialize(System *system)
 // #warning "Increased maxPartnersPerBlock"
   // maxPartnersPerBlock=2*((int)(edge*edge*edge/(32*invDensity)));
   maxPartnersPerBlock=3*((int)(edge*edge*edge/(32*invDensity)));
-  fprintf(stdout,"The following parameters are set heuristically at %s:%d, and can cause errors if set too low\n",__FILE__,__LINE__);
-  fprintf(stdout,"maxPartnersPerBlock=%d\n",maxPartnersPerBlock);
+  if (system->verbose > 1) {
+    char buf[256];
+    snprintf(buf, sizeof(buf), "The following parameters are set heuristically at %s:%d, and can cause errors if set too low\n", __FILE__, __LINE__);
+    blade_log(buf);
+    snprintf(buf, sizeof(buf), "maxPartnersPerBlock=%d\n", maxPartnersPerBlock);
+    blade_log(buf);
+  }
 
   freqDomdec=10;
   // How far two particles, each with hydrogen/unit mass can get in freqDomdec timesteps, if each has 30 kT of kinetic energy. Incredibly rare to violate this.
   cullPad=2*sqrt(30*kB*system->run->T/1)*freqDomdec*system->run->dt;
   maxBlockExclCount=(4*system->potential->exclCount+1024)/32; // only 32*exclCount is guaranteed, and that only if the box is large. Allocate dynamically
-  fprintf(stdout,"freqDomdec=%d (how many steps before domain reset)\n",freqDomdec);
-  fprintf(stdout,"cullPad=%g (spatial padding for considering which blocks could interact\n",cullPad);
-  fprintf(stdout,"maxBlockExclCount=%d (can reallocate dynamically with \"run setvariable domdecheuristic off\")\n",maxBlockExclCount);
+  if (system->verbose > 1) {
+    char buf[256];
+    snprintf(buf, sizeof(buf), "freqDomdec=%d (how many steps before domain reset)\n", freqDomdec);
+    blade_log(buf);
+    snprintf(buf, sizeof(buf), "cullPad=%g (spatial padding for considering which blocks could interact\n", cullPad);
+    blade_log(buf);
+    snprintf(buf, sizeof(buf), "maxBlockExclCount=%d (can reallocate dynamically with \"run setvariable domdecheuristic off\")\n", maxBlockExclCount);
+    blade_log(buf);
+  }
 
   domain=(int*)calloc(globalCount,sizeof(int));
   cudaMalloc(&domain_d,globalCount*sizeof(int));
@@ -157,6 +175,7 @@ void Domdec::initialize(System *system)
   cudaMalloc(&sortedExcls_d,system->potential->exclCount*sizeof(struct ExclPotential));
   cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int));
   cudaMalloc(&blockExclCount_d,sizeof(int));
+  cudaMalloc(&overflowFlag_d,sizeof(int));
 
 #ifdef USE_TEXTURE
   if (system->potential->exclCount>0) {

@@ -6,6 +6,7 @@
 #include "system/system.h"
 
 #include "main/defines.h"
+#include "main/blade_log.h"
 
 #ifdef REPLICAEXCHANGE
 #include <mpi.h>
@@ -145,23 +146,27 @@ void Variables::calculate(char *line,char *token,System *system)
 
 void Variables::dump(char *line,char *token,System *system)
 {
+  char buf[256];
   for (std::map<std::string,std::string>::iterator ii=data.begin(); ii!=data.end(); ii++) {
-    fprintf(stdout,"variables print> %s = %s\n",ii->first.c_str(),ii->second.c_str());
+    snprintf(buf, sizeof(buf), "variables print> %s = %s\n", ii->first.c_str(), ii->second.c_str());
+    blade_log(buf);
   }
 }
 
 void Variables::help(char *line,char *token,System *system)
 {
   char name[MAXLENGTHSTRING];
+  char buf[256];
   io_nexta(line,name);
   if (name=="") {
-    fprintf(stdout,"?variables> Available directives are:\n");
+    blade_log("?variables> Available directives are:\n");
     for (std::map<std::string,std::string>::iterator ii=helpVariables.begin(); ii!=helpVariables.end(); ii++) {
-      fprintf(stdout," %s",ii->first.c_str());
+      snprintf(buf, sizeof(buf), " %s", ii->first.c_str());
+      blade_log(buf);
     }
-    fprintf(stdout,"\n");
+    blade_log("\n");
   } else if (helpVariables.count(name)==1) {
-    fprintf(stdout,helpVariables[name].c_str());
+    blade_log(helpVariables[name].c_str());
   } else {
     error(line,name,system);
   }
@@ -191,7 +196,9 @@ void Variables::substitute(char *line)
       }
     }
     if ((openBrace==-1) != (closeBrace==-1)) {
-      fprintf(stdout,"DEBUG: openBrace %d closeBrace %d\n",openBrace,closeBrace);
+      char buf[256];
+      snprintf(buf, sizeof(buf), "DEBUG: openBrace %d closeBrace %d\n", openBrace, closeBrace);
+      blade_log(buf);
       fatal(__FILE__,__LINE__,"Mismatched curly braces in string \"%s\"\n",line);
     }
 
@@ -203,7 +210,9 @@ void Variables::substitute(char *line)
 
       // get value
       if (data.count(token)==0) {
-        fprintf(stdout,"DEBUG: openBrace %d closeBrace %d\n",openBrace,closeBrace);
+        char buf[256];
+        snprintf(buf, sizeof(buf), "DEBUG: openBrace %d closeBrace %d\n", openBrace, closeBrace);
+        blade_log(buf);
         fatal(__FILE__,__LINE__,"Unrecognized variable token name {%s} in line \"%s\"\n",token.c_str(),line);
       }
       value=data[token];
@@ -222,5 +231,9 @@ void Variables::substitute(char *line)
       anySubstitutions=true;
     }
   }
-  if (anySubstitutions) fprintf(stdout,"SUBSTITUTE> %s",line);
+  if (anySubstitutions) {
+    char buf[256];
+    snprintf(buf, sizeof(buf), "SUBSTITUTE> %s", line);
+    blade_log(buf);
+  }
 }

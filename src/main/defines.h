@@ -110,6 +110,14 @@ typedef cufftComplex myCufftComplex;
 #define MYMPI_REAL MPI_FLOAT
 #endif
 #endif
+
+// make_real3 helper to match make_float3/make_double3
+#ifdef DOUBLE
+#define make_real3 make_double3
+#else
+#define make_real3 make_float3
+#endif
+
 typedef struct real33 {real3 a; real3 b;} real33;
 typedef struct real321 {real3 a; real2 b; real1 c;} real321;
 typedef struct real123 {real1 a; real2 b; real3 c;} real123;

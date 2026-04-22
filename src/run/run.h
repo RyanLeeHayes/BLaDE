@@ -3,8 +3,12 @@
 
 #include <map>
 #include <string>
+#include <signal.h>
 
 #include "main/defines.h"
+
+// Global interrupt flag for Ctrl+C handling
+extern volatile sig_atomic_t blade_interrupt_flag;
 
 #include "xdr/xdrfile.h"
 #include "xdr/xdrfile_xtc.h"
@@ -22,6 +26,18 @@ typedef enum emin {
   esd, // steepest descent
   esdfd, // steepest descent with finite difference to choose step length
   eminend} EMin;
+
+typedef enum eelec {
+  efswitch, // force switching (no PME, no shift)
+  epme,     // Particle Mesh Ewald
+  efshift,  // force switching with shift
+  eelecend} EElec;
+
+typedef enum evdw {
+  evswitch,  // 0: potential switching (VSWITCH)
+  evfswitch, // 1: force switching (VFSWITCH)
+  evshift,   // 2: potential shift (VSHIFT)
+  evdwend} EVdw;
 
 class Run {
   public:
@@ -55,12 +71,15 @@ class Run {
   real dxRMSInit;
   real dxRMS;
   EMin minType; // minimization scheme
+  int nprint; // print frequency for minimization (MINI> output)
 
   real betaEwald;
   real rCut;
   real rSwitch;
-  bool vfSwitch;   //added by clb3
-  bool usePME;
+  bool vfSwitch;    // kept for backward compatibility
+  EVdw vdwMethod;   // VDW method: evswitch, evfswitch, or evshift
+  EElec elecMethod; // electrostatic method: efswitch, epme, or efshift
+  bool usePME;      // kept for backward compatibility, set from elecMethod
   real gridSpace; // grid spacing for PME calculation
   int grid[3];
   int orderEwald; // interpolation order (4, 6, or 8 typically)
@@ -72,6 +91,12 @@ class Run {
   real pressure;
 
   bool domdecHeuristic;
+  int scanAlgorithm;             // -1=AUTO, 0=Blelloch, 1=Hillis-Steele
+  int scanAlgorithmActive;       // Currently active algorithm, resolved from AUTO
+  bool scanBenchmarkComplete;
+  float scanTimeBlelloch;
+  float scanTimeHillisSteele;
+  int scanBenchmarkCount[2];     // [Blelloch, Hillis-Steele]
 
   std::map<std::string,int> termStringToInt;
   std::map<int,bool> calcTermFlag;
@@ -135,6 +160,13 @@ extern "C" {
     int step, int step0, int nsteps, double dt, double T,
     int freqNPT, double volumeFluctuation, double pressure);
   void blade_run_energy(System *system);
+  // Set scan algorithm: -1 = AUTO, 0 = Blelloch, 1 = Hillis-Steele
+  void blade_set_scan_algorithm(System *system, int algorithm);
+  // Interrupt handling for Ctrl+C
+  void blade_set_interrupt(int value);
+  int blade_check_interrupt();
+  void blade_install_signal_handler();
+  void blade_restore_signal_handler();
 }
 
 #endif

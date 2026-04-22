@@ -1,40 +1,72 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.18)
 project(blade LANGUAGES CXX CUDA)
+
+# Modern CMake CUDA settings
+set(CMAKE_CUDA_STANDARD 14)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 file(GLOB_RECURSE sources *.cxx *.cu *.h)
 
-find_package(CUDA 10.0)
-set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -ccbin ${CMAKE_CXX_COMPILER}")
+# Modern CUDA toolkit discovery
+find_package(CUDAToolkit 10.0 REQUIRED)
 
 find_package(OpenMP REQUIRED)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 
-# option(UNITS "AKMA (CHARMM) or NMPS (GROMACS)" "NMPS")
+# Unit system: AKMA (CHARMM) or NMPS (GROMACS)
 set(UNITS "NMPS" CACHE STRING "AKMA (CHARMM) or NMPS (GROMACS)")
 if (UNITS STREQUAL "AKMA")
   add_definitions(-DCHARMM_UNITS)
 endif()
 
-# option(PRECISION "FLOAT OR DOUBLE" "FLOAT")
+# Precision: FLOAT or DOUBLE
 set(PRECISION "FLOAT" CACHE STRING "FLOAT OR DOUBLE")
 if (PRECISION STREQUAL "DOUBLE")
   add_definitions(-DDOUBLE)
 endif()
 
-## Add compiler definition flags here
-# add_definitions(-DPROFILESERIAL)
+# Standalone build flag
+# When ON (default), includes blade_log.cxx implementation (printf to stdout)
+# When OFF (submodule in CHARMM), consumer provides blade_log implementation
+option(BLADE_STANDALONE "Build standalone BLaDE with built-in logging" ON)
+if(BLADE_STANDALONE)
+  add_definitions(-DBLADE_STANDALONE)
+endif()
 
-## Use for debugging kernels
-set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
-set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "--use_fast_math")
-# set(CUDA_NVCC_FLAGS_RELEASE ${CUDA_NVCC_FLAGS_RELEASE} "-lineinfo")
+# Create executable with modern CMake
+add_executable(blade ${sources})
 
-# MPI: set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${MPI_CXX_LIBRARIES} ${MPI_CXX_LINK_FLAGS} -lcufft -lnvToolsExt")
-set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -lnvToolsExt")
+# Set CUDA architectures (adjust as needed for your GPU)
+set_target_properties(blade PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_ARCHITECTURES "70;75;80;86"
+)
 
-cuda_add_executable(blade ${sources})
-# MPI: target_include_directories(blade PUBLIC ${MPI_CXX_INCLUDE_PATH} .)
-target_include_directories(blade PUBLIC .)
+# CUDA compiler flags
+target_compile_options(blade PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>
+    $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>
+)
 
-target_link_libraries(blade ${CUDA_CUFFT_LIBRARIES})
+# Include directories
+target_include_directories(blade PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Link libraries
+target_link_libraries(blade
+    CUDA::cufft
+    OpenMP::OpenMP_CXX
+)
+
+# nvToolsExt (NVTX) - try different target names for different CUDA versions
+if(TARGET CUDA::nvToolsExt)
+    target_link_libraries(blade CUDA::nvToolsExt)
+elseif(TARGET CUDA::nvtx3)
+    target_link_libraries(blade CUDA::nvtx3)
+else()
+    # NVTX3 is header-only in CUDA 10.0+, just need include path
+    target_include_directories(blade PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
+endif()
+
+# Install rules
+install(TARGETS blade DESTINATION bin)

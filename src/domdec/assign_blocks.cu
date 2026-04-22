@@ -7,6 +7,8 @@
 #include "system/potential.h"
 #include "run/run.h"
 #include "main/real3.h"
+#include "main/scan.h"
+#include "main/blade_log.h"
 
 
 
@@ -305,6 +307,98 @@ __global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,
   }
 }
 
+__global__ void assign_blocks_blockBounds_multiblock_phase1_kernel(
+  int domainCount,int2 domainDiv,int globalCount,int *localToGlobal,
+  struct DomdecBlockToken *tokens,int *columnBounds)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  int ndiv=domainDiv.x*domainDiv.y;
+  int columnCount=domainCount*ndiv;
+  int domain,col,ix,iy,probePos,hwidth;
+  struct DomdecBlockToken token,probeToken;
+
+  if (i==0) columnBounds[0]=0;
+
+  if (i<columnCount) {
+    domain=i/ndiv;
+    col=i-domain*ndiv;
+    ix=col/domainDiv.y;
+    iy=col-ix*domainDiv.y;
+
+    token.domain=domain;
+    token.ix=ix;
+    token.iy=iy;
+    token.z=INFINITY;
+
+    int lowerPos=-1;
+    int upperPos=globalCount;
+
+    hwidth=globalCount;
+    hwidth|=hwidth>>1;
+    hwidth|=hwidth>>2;
+    hwidth|=hwidth>>4;
+    hwidth|=hwidth>>8;
+    hwidth|=hwidth>>16;
+    hwidth++;
+    hwidth=hwidth>>1;
+
+    for (; hwidth>0; hwidth=hwidth>>1) {
+      probePos=lowerPos+hwidth;
+      if (probePos<upperPos) {
+        probeToken=tokens[localToGlobal[probePos]];
+        if (probeToken<token) {
+          lowerPos=probePos;
+        } else {
+          upperPos=probePos;
+        }
+      }
+    }
+
+    columnBounds[i+1]=upperPos;
+  }
+}
+
+__global__ void assign_blocks_blockBounds_multiblock_phase2_kernel(
+  int columnCount,int *columnBounds,int *blocksPerColumn)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+
+  if (i<columnCount) {
+    int atomsInColumn=columnBounds[i+1]-columnBounds[i];
+    blocksPerColumn[i]=(atomsInColumn+31)/32;
+  }
+}
+
+__global__ void assign_blocks_blockBounds_multiblock_phase3_kernel(
+  int ndiv,int columnCount,int globalCount,int *columnBounds,int *cumBlocks,
+  int *blockCount,int *blockBounds,int maxBlocks)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+
+  if (i==0) blockCount[0]=0;
+
+  if (i<columnCount) {
+    int j0=(i==0)?0:cumBlocks[i-1];
+    int blocksInColumn=cumBlocks[i]-j0;
+
+    if (j0+blocksInColumn<=maxBlocks) {
+      for (int j=0; j<blocksInColumn; j++) {
+        blockBounds[j+j0]=columnBounds[i]+32*j;
+      }
+    } else if (j0<maxBlocks) {
+      printf("Error: Overflow of maxBlocks in multi-block assign_blocks\n");
+    }
+
+    if ((i+1)%ndiv==0) {
+      blockCount[(i+1)/ndiv]=cumBlocks[i];
+    }
+
+    if (i==columnCount-1 && cumBlocks[i]<=maxBlocks) {
+      blockBounds[cumBlocks[i]]=globalCount;
+    }
+  }
+}
+
 __global__ void assign_blocks_localNbonds_kernel(int blockCount,int *blockBounds,int *localToGlobal,int *globalToLocal,NbondPotential *nbonds,NbondPotential *localNbonds)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -408,8 +502,87 @@ void Domdec::assign_blocks(System *system)
     assign_blocks_localToGlobal_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,blockSort_d,localToGlobal_d);
 
     int ndiv=domainDiv.x*domainDiv.y;
-    ndiv=((ndiv>1024)?1024:ndiv);
-    assign_blocks_blockBounds_kernel<<<1,ndiv,2*(ndiv+1)*sizeof(int),r->updateStream>>>(idCount,domainDiv,globalCount,localToGlobal_d,blockToken_d,blockCount_d,blockBounds_d,maxBlocks);
+    if (ndiv<=1024) {
+      assign_blocks_blockBounds_kernel<<<1,ndiv,2*(ndiv+1)*sizeof(int),r->updateStream>>>(idCount,domainDiv,globalCount,localToGlobal_d,blockToken_d,blockCount_d,blockBounds_d,maxBlocks);
+    } else {
+      int columnCount=idCount*ndiv;
+      int *columnBounds_d, *blocksPerColumn_d;
+      cudaMalloc(&columnBounds_d,(columnCount+1)*sizeof(int));
+      cudaMalloc(&blocksPerColumn_d,columnCount*sizeof(int));
+
+      if (system->verbose>0) {
+        char msg[128];
+        snprintf(msg, sizeof(msg), "Using multi-block scan for ndiv=%d (> 1024)\n", ndiv);
+        blade_log(msg);
+      }
+
+      ScanWorkspace scanWs;
+      scan_workspace_init(&scanWs,columnCount,r->updateStream);
+
+      assign_blocks_blockBounds_multiblock_phase1_kernel<<<(columnCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(
+          idCount,domainDiv,globalCount,localToGlobal_d,blockToken_d,columnBounds_d);
+
+      assign_blocks_blockBounds_multiblock_phase2_kernel<<<(columnCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(
+          columnCount,columnBounds_d,blocksPerColumn_d);
+
+      int algorithm=r->scanAlgorithmActive;
+      if (r->scanAlgorithm==SCAN_AUTO && !r->scanBenchmarkComplete) {
+        long int relStep=r->step-r->step0;
+        if (relStep>=0 && relStep<100) {
+          algorithm=(relStep<50)?SCAN_HILLIS_STEELE:SCAN_BLELLOCH;
+          cudaEvent_t benchStart, benchStop;
+          cudaEventCreate(&benchStart);
+          cudaEventCreate(&benchStop);
+          cudaEventRecord(benchStart,r->updateStream);
+
+          parallel_inclusive_scan_int(blocksPerColumn_d,blocksPerColumn_d,columnCount,
+                                      &scanWs,r->updateStream,algorithm);
+
+          cudaEventRecord(benchStop,r->updateStream);
+          cudaEventSynchronize(benchStop);
+          float timeMs=0.0f;
+          cudaEventElapsedTime(&timeMs,benchStart,benchStop);
+          if (algorithm==SCAN_HILLIS_STEELE) {
+            r->scanTimeHillisSteele+=timeMs;
+            r->scanBenchmarkCount[1]++;
+          } else {
+            r->scanTimeBlelloch+=timeMs;
+            r->scanBenchmarkCount[0]++;
+          }
+          cudaEventDestroy(benchStart);
+          cudaEventDestroy(benchStop);
+        } else if (relStep>=100) {
+          float avgHS=(r->scanBenchmarkCount[1]>0)?
+              r->scanTimeHillisSteele/r->scanBenchmarkCount[1]:999.0f;
+          float avgBL=(r->scanBenchmarkCount[0]>0)?
+              r->scanTimeBlelloch/r->scanBenchmarkCount[0]:999.0f;
+          r->scanAlgorithmActive=(avgBL<avgHS)?SCAN_BLELLOCH:SCAN_HILLIS_STEELE;
+          r->scanBenchmarkComplete=true;
+          algorithm=r->scanAlgorithmActive;
+          char msg[256];
+          snprintf(msg, sizeof(msg),
+              "Scan auto-selection complete: Hillis-Steele %.3fms(%d) vs Blelloch %.3fms(%d) -> Selected %s\n",
+              avgHS,r->scanBenchmarkCount[1],avgBL,r->scanBenchmarkCount[0],
+              (algorithm==SCAN_BLELLOCH)?"Blelloch":"Hillis-Steele");
+          blade_log(msg);
+          parallel_inclusive_scan_int(blocksPerColumn_d,blocksPerColumn_d,columnCount,
+                                      &scanWs,r->updateStream,algorithm);
+        } else {
+          parallel_inclusive_scan_int(blocksPerColumn_d,blocksPerColumn_d,columnCount,
+                                      &scanWs,r->updateStream,algorithm);
+        }
+      } else {
+        parallel_inclusive_scan_int(blocksPerColumn_d,blocksPerColumn_d,columnCount,
+                                    &scanWs,r->updateStream,algorithm);
+      }
+
+      assign_blocks_blockBounds_multiblock_phase3_kernel<<<(columnCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(
+          ndiv,columnCount,globalCount,columnBounds_d,blocksPerColumn_d,blockCount_d,blockBounds_d,maxBlocks);
+
+      scan_workspace_free(&scanWs);
+      cudaFree(columnBounds_d);
+      cudaFree(blocksPerColumn_d);
+    }
 
     cudaMemcpy(blockCount,blockCount_d,(idCount+1)*sizeof(int),cudaMemcpyDeviceToHost);
 

@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "system/coordinates.h"
+#include "main/blade_log.h"
 #include "io/io.h"
 #include "system/system.h"
 #include "system/structure.h"
@@ -87,15 +88,17 @@ void Coordinates::setup_parse_coordinates()
 
 void Coordinates::help(char *line,char *token,System *system)
 {
+  char buf[256];
   std::string name=io_nexts(line);
   if (name=="") {
-    fprintf(stdout,"?coordinates > Available directives are:\n");
+    blade_log("?coordinates > Available directives are:");
     for (std::map<std::string,std::string>::iterator ii=helpCoordinates.begin(); ii!=helpCoordinates.end(); ii++) {
-      fprintf(stdout," %s",ii->first.c_str());
+      snprintf(buf, sizeof(buf), " %s", ii->first.c_str());
+      blade_log(buf);
     }
-    fprintf(stdout,"\n");
+    blade_log("\n");
   } else if (helpCoordinates.count(token)==1) {
-    fprintf(stdout,helpCoordinates[name].c_str());
+    blade_log(helpCoordinates[name].c_str());
   } else {
     error(line,token,system);
   }
@@ -131,7 +134,7 @@ void Coordinates::file(char *line,char *token,System *system)
 
 void Coordinates::dump(char *line,char *token,System *system)
 {
-  fprintf(stdout,"coordinates print is not yet implemented (NYI)\n");
+  blade_log("coordinates print is not yet implemented (NYI)\n");
 }
 
 // ftp://ftp.wwpdb.org/pub/pdb/doc/format_descriptions/Format_v33_Letter.pdf

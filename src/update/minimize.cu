@@ -9,6 +9,7 @@
 #include "domdec/domdec.h"
 #include "holonomic/holonomic.h"
 #include "io/io.h"
+#include "main/blade_log.h"
 
 #include "main/real3.h"
 
@@ -123,15 +124,36 @@ void State::min_move(int step,int nsteps,System *system)
   if (r->minType==esd) {
     if (system->id==0) {
       recv_energy();
-      if (system->verbose>0) display_nrg(system);
+      if (system->verbose>1) display_nrg(system);
       currEnergy=energy[eepotential];
+
+      // Check for NaN/Inf energy
+      if (!isfinite(currEnergy)) {
+        fatal(__FILE__,__LINE__,"BLaDE minimization: energy is NaN or Inf at step %d. Check structure or parameters.",step);
+      }
+
       if (step==0) {
         r->dxRMS=r->dxRMSInit;
-      } else if (currEnergy<prevEnergy) {
-        r->dxRMS*=1.2;
-      } else {
-        r->dxRMS*=0.5;
       }
+      // Adaptive step size: halve first, then conditionally increase
+      // Net 1.2x when energy decreases, 0.5x when increases
+      r->dxRMS*=0.5;
+      if (step>0 && currEnergy<prevEnergy) {
+        r->dxRMS*=2.4;
+      }
+      // Detect stalled minimization (energy unchanged) - apply extra damping
+      if (step>0 && currEnergy==prevEnergy) {
+        r->dxRMS*=0.5;
+        char buf[256];
+        snprintf(buf, sizeof(buf), "WARNING: Energy unchanged at step %d, applying extra damping\n", step);
+        blade_log(buf);
+      }
+      // Cap dxRMS to prevent unbounded growth (max 10x initial value)
+      if (r->dxRMS > 10.0 * r->dxRMSInit) {
+        r->dxRMS = 10.0 * r->dxRMSInit;
+      }
+      // Compute deltaE BEFORE updating prevEnergy (for MINI> output)
+      real_e deltaE = (step > 0) ? currEnergy - prevEnergy : 0.0;
       prevEnergy=currEnergy;
       sd_acceleration_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,
         0,r->updateStream>>>(3*atomCount,*leapState);
@@ -141,17 +163,38 @@ void State::min_move(int step,int nsteps,System *system)
         (atomCount,*leapState,grads2_d);
       cudaMemcpy(grads2,grads2_d,2*sizeof(real_e),cudaMemcpyDeviceToHost);
       cudaMemset(grads2_d,0,2*sizeof(real_e));
-      fprintf(stdout,"rmsgrad = %f\n",sqrt(grads2[0]));
-      fprintf(stdout,"maxgrad = %f\n",sqrt(grads2[1]));
+      real gradRMS = sqrt(grads2[0]);
+      real gradMax = sqrt(grads2[1]);
+
+      // Adaptive MINI> output
+      if (step % r->nprint == 0 && system->verbose >= 1) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "MINI> %6d %14.6f %14.6f %14.6f\n", step, currEnergy, deltaE, gradRMS);
+        blade_log(buf);
+      }
+
+      // Detailed debug output
+      if (system->verbose > 1) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "rmsgrad = %f\n", gradRMS);
+        blade_log(buf);
+        snprintf(buf, sizeof(buf), "maxgrad = %f\n", gradMax);
+        blade_log(buf);
+      }
       // scaling factor to achieve desired rms displacement
-      scaling=r->dxRMS/sqrt(grads2[0]);
+      scaling=r->dxRMS/gradRMS;
       // ratio of allowed maximum displacement over actual maximum displacement
-      rescaling=r->dxAtomMax/(scaling*sqrt(grads2[1]));
-      fprintf(stdout,"scaling = %f, rescaling = %f\n",scaling,rescaling);
+      rescaling=r->dxAtomMax/(scaling*gradMax);
+      if (system->verbose > 1) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "scaling = %f, rescaling = %f\n", scaling, rescaling);
+        blade_log(buf);
+      }
       // decrease scaling factor if actual max violates allowed max
+      // Only apply rescaling to current step's scaling, not persistently to dxRMS
+      // (persistent dxRMS modification causes step size to collapse to zero)
       if (rescaling<1) {
         scaling*=rescaling;
-        r->dxRMS*=rescaling;
       }
       sd_position_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>
         (3*atomCount,*leapState,leapState->v,scaling,positionCons_d);
@@ -160,10 +203,34 @@ void State::min_move(int step,int nsteps,System *system)
   } else if (r->minType==esdfd) {
     if (system->id==0) {
       recv_energy();
-      if (system->verbose>0) display_nrg(system);
-      if (step==0) {
-        r->dxRMS=r->dxRMSInit;
+      if (system->verbose>1) display_nrg(system);
+      currEnergy=energy[eepotential];
+
+      // Check for NaN/Inf energy
+      if (!isfinite(currEnergy)) {
+        fatal(__FILE__,__LINE__,"BLaDE minimization (SDFD): energy is NaN or Inf at step %d. Check structure or parameters.",step);
       }
+
+      if (step==0) {
+        // Apply initial damping for first step stability
+        r->dxRMS=r->dxRMSInit*0.5;
+        prevEnergy=currEnergy;
+      }
+      // Detect stalled minimization (energy unchanged) - apply extra damping
+      if (step>0 && currEnergy==prevEnergy) {
+        r->dxRMS*=0.5;
+        char buf[256];
+        snprintf(buf, sizeof(buf), "WARNING (SDFD): Energy unchanged at step %d, applying extra damping\n", step);
+        blade_log(buf);
+      }
+      // Cap dxRMS to prevent unbounded growth (max 10x initial value)
+      if (r->dxRMS > 10.0 * r->dxRMSInit) {
+        r->dxRMS = 10.0 * r->dxRMSInit;
+      }
+      // Compute deltaE BEFORE updating prevEnergy (for MINI> output)
+      real_e deltaE = (step > 0) ? currEnergy - prevEnergy : 0.0;
+      prevEnergy=currEnergy;
+
       sd_acceleration_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,
         0,r->updateStream>>>(3*atomCount,*leapState);
       holonomic_velocity(system);
@@ -173,17 +240,38 @@ void State::min_move(int step,int nsteps,System *system)
         (atomCount,*leapState,grads2_d);
       cudaMemcpy(grads2,grads2_d,2*sizeof(real_e),cudaMemcpyDeviceToHost);
       cudaMemset(grads2_d,0,2*sizeof(real_e));
-      fprintf(stdout,"rmsgrad = %f\n",sqrt(grads2[0]));
-      fprintf(stdout,"maxgrad = %f\n",sqrt(grads2[1]));
+      real gradRMS = sqrt(grads2[0]);
+      real gradMax = sqrt(grads2[1]);
+
+      // Adaptive MINI> output
+      if (step % r->nprint == 0 && system->verbose >= 1) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "MINI> %6d %14.6f %14.6f %14.6f\n", step, currEnergy, deltaE, gradRMS);
+        blade_log(buf);
+      }
+
+      // Detailed debug output
+      if (system->verbose > 1) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "rmsgrad = %f\n", gradRMS);
+        blade_log(buf);
+        snprintf(buf, sizeof(buf), "maxgrad = %f\n", gradMax);
+        blade_log(buf);
+      }
       // scaling factor to achieve desired rms displacement
-      scaling=r->dxRMS/sqrt(grads2[0]);
+      scaling=r->dxRMS/gradRMS;
       // ratio of allowed maximum displacement over actual maximum displacement
-      rescaling=r->dxAtomMax/(scaling*sqrt(grads2[1]));
-      fprintf(stdout,"scaling = %f, rescaling = %f\n",scaling,rescaling);
+      rescaling=r->dxAtomMax/(scaling*gradMax);
+      if (system->verbose > 1) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "scaling = %f, rescaling = %f\n", scaling, rescaling);
+        blade_log(buf);
+      }
       // decrease scaling factor if actual max violates allowed max
+      // Only apply rescaling to current step's scaling, not persistently to dxRMS
+      // (persistent dxRMS modification causes step size to collapse to zero)
       if (rescaling<1) {
         scaling*=rescaling;
-        r->dxRMS*=rescaling;
       }
       backup_position();
       sd_position_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>
@@ -203,13 +291,21 @@ void State::min_move(int step,int nsteps,System *system)
       cudaMemset(grads2_d,0,2*sizeof(real_e));
       // grads2[0] is F*F, gradDot is F*Fnew
       frac=grads2[0]/(grads2[0]-gradDot[0]);
-      fprintf(stdout,"F(x0)*dx = %f, F(x0+dx)*dx = %f, frac = %f\n",grads2[0],gradDot[0],frac);
+      if (system->verbose > 1) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "F(x0)*dx = %f, F(x0+dx)*dx = %f, frac = %f\n", grads2[0], gradDot[0], frac);
+        blade_log(buf);
+      }
       if (frac>1.44 || frac<0) {
         r->dxRMS*=1.2;
       } else if (frac<0.25) {
         r->dxRMS*=0.5;
       } else {
         r->dxRMS*=sqrt(frac);
+      }
+      // Cap dxRMS to prevent unbounded growth (10x initial value)
+      if (r->dxRMS > 10.0 * r->dxRMSInit) {
+        r->dxRMS = 10.0 * r->dxRMSInit;
       }
       frac*=(nsteps-step)/(1.0*nsteps);
       if (frac>1 || frac<0) frac=1;
