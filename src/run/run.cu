@@ -508,13 +508,6 @@ void Run::minimize(char *line,char *token,System *system)
     gpuCheck(cudaPeekAtLastError());
   }
 
-  if(system->run->minType==elbfgs){
-    Run* r = system->run;
-    printf("L-BFGS (m=%d) did %d force evaluations in %d steps. Reset memory %d times.\n", 
-      r->lbfgs->m, r->lbfgs_energy_evals, r->lbfgs->step_count, r->lbfgs->reset_count);
-    printf("U0: %f, Uf: %f, Uf - U0: %f\n", r->lbfgs->U0, r->lbfgs->Uf, r->lbfgs->Uf - r->lbfgs->U0);
-  }
-
   system->state->min_dest(system);
   dynamics_finalize(system);
 }

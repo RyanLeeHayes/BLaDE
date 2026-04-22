@@ -91,8 +91,8 @@ __global__ void dot_product(int N, real_x *A, real_x *B, real_x* dot) {
 */
 
 //  <position precision, real_x precision>
-LBFGS::LBFGS(int m, real_x eps, int DOF, std::function<real_x()> user_grad, real_x *position, real_x *gradient)
-    : m(m), eps_tol(eps), DOF(DOF), system_grad(user_grad), X_d(position), G_d(gradient) {
+LBFGS::LBFGS(int m, real_x eps, int DOF, bool verbose, std::function<real_x()> user_grad, real_x *position, real_x *gradient)
+    : m(m), eps_tol(eps), DOF(DOF), verbose(verbose), system_grad(user_grad), X_d(position), G_d(gradient) {
     k = 0;
     cudaMalloc(&tmp_d, sizeof(real_x));
     cudaMalloc(&gamma_d, sizeof(real_x));
@@ -107,6 +107,7 @@ LBFGS::LBFGS(int m, real_x eps, int DOF, std::function<real_x()> user_grad, real
     cudaMalloc(&y_tmp_d, DOF*sizeof(real_x));
 
     U0 = user_grad(); // first energy call by lbfgs
+    Uf = U0;
 
     // Normalize first s.d. step
     gamma_norm();
@@ -151,11 +152,13 @@ bool LBFGS::converged(){
     cudaMemcpy(&grad_pos_mag, tmp_d, sizeof(real_x), cudaMemcpyDefault);
     grad_pos_mag = grad_mag / std::max(1.0, sqrt(grad_pos_mag));
 
-    printf("   rmsg = %f\n", rmsg);
-    printf("    |g| = %f\n", grad_mag);
-    printf("|g|/|x| = %f\n", grad_pos_mag);
+    if (verbose){
+      printf("   rmsg = %f\n", rmsg);
+      printf("    |g| = %f\n", grad_mag);
+      printf("|g|/|x| = %f\n", grad_pos_mag);
+    }
     if(rmsg < eps_tol){
-        printf("Structure minimized!!\n");
+        if (verbose) printf("Structure minimized!!\n");
         minimized=true;
     }
     return rmsg < eps_tol;
@@ -219,7 +222,8 @@ void LBFGS::update_sk_yk() {
     } 
 
     // s & y tmp
-    vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, X_d, -1, NULL, prev_positions_d, s_tmp_d);
+    // alpha*q = displacement, X_d and prev_position might differ by pbc wrapping
+    vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 0, X_d, step_size, NULL, q_d, s_tmp_d); 
     vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, G_d, -1, NULL, prev_gradient_d, y_tmp_d);
 
     real_x yy = 0;
@@ -292,6 +296,7 @@ real_x LBFGS::linesearch(real_x f0){
     real_x max_iter = 5;
     real_x aim1 = 0; 
     real_x ai = 1;
+    if (step_count == 0) { ai = 1e-2; } // steepest decent step
     real_x amax = 10;
     // Data is already loaded, saves 1 energy & grad call
     real_x phi0[2] = {f0, 0};
@@ -303,8 +308,10 @@ real_x LBFGS::linesearch(real_x f0){
     // Evaluate at 1 & iterate using cubic interpolation
     real_x phii[2];
     phi(ai, phii);
-    printf("alpha: %f, phi: %f, phi': %f\n", aim1, phi0[0], phi0[1]);
-    printf("alpha: %f, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
+    if (verbose){
+      printf("alpha: %f, phi: %f, phi': %f\n", aim1, phi0[0], phi0[1]);
+      printf("alpha: %f, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
+    }
     for(int i = 0; i < max_iter; i++){
         // Check strong wolfe condition
         if (phii[0] <= phi0[0] + c1*ai*phi0[1] && abs(phii[1]) <= c2*abs(phi0[1])){
@@ -314,7 +321,7 @@ real_x LBFGS::linesearch(real_x f0){
         real_x tmp = ai;
         ai = cubic_interp(aim1, phiim1[0], phiim1[1], ai, phii[0], phii[1]);
         phi(ai, phii);
-        printf("alpha: %f, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
+        if (verbose) printf("alpha: %f, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
         aim1 = tmp;
         memcpy(phiim1, phii, 2*sizeof(real_x));
         if(ai < 0 || ai > amax){
@@ -323,7 +330,7 @@ real_x LBFGS::linesearch(real_x f0){
     }
 
     // Failed line search
-    ai = 1e-5; // default step size, a small enough step should decrease function if s.y > 0 
+    ai = 1e-4; // default step size, a small enough step should decrease function if s.y > 0 
     phi(ai, phii);
     Uf = phii[0];
     printf("Linesearch failed! Defaulting to ai = %e, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
