@@ -42,6 +42,7 @@ State::State(System *system) {
   cudaMalloc(&(positionBackup_d),(2*nL+3*n)*sizeof(real_x));
   forceBuffer=(real_f*)calloc(rootFactor*(2*nL+3*n),sizeof(real_f));
   cudaMalloc(&(forceBuffer_d),rootFactor*(2*nL+3*n)*sizeof(real_f));
+  cudaMalloc(&(forceBufferX_d),rootFactor*(2*nL+3*n)*sizeof(real_x));
   cudaMalloc(&(forceBackup_d),(2*nL+3*n)*sizeof(real_f));
 
   if (system->idCount>0) { // OMP
@@ -156,6 +157,7 @@ State::~State() {
   if (positionBackup_d) cudaFree(positionBackup_d);
   if (forceBuffer) free(forceBuffer);
   if (forceBuffer_d) cudaFree(forceBuffer_d);
+  if (forceBufferX_d) cudaFree(forceBufferX_d);
   if (forceBackup_d) cudaFree(forceBackup_d);
   // Other buffers
   if (energy) free(energy);

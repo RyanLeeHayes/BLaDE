@@ -8,9 +8,13 @@
 #include "system/potential.h"
 #include "domdec/domdec.h"
 #include "holonomic/holonomic.h"
+#include "holonomic/rectify.h"
 #include "io/io.h"
 
 #include "main/real3.h"
+
+#include <functional>
+#include "msld/msld.h"
 
 
 
@@ -82,6 +86,15 @@ __global__ void sdfd_dotproduct_kernel(int N,struct LeapState ls,real_v *minDire
   real_sum_reduce(3*lDot/N,sDot,dot);
 }
 
+template <typename real_type_src, typename real_type_dst>
+__global__ void type_conversion_copy(int N, real_type_src* buffer1, real_type_dst* buffer2)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  if (i<N) {
+    buffer2[i] = (real_type_dst)buffer1[i];
+  }
+}
+
 void State::min_init(System *system)
 {
   // Set masses to 1 for shake during minimization, except virtual sites
@@ -96,6 +109,28 @@ void State::min_init(System *system)
   if (system->run->minType==esdfd) {
     cudaMalloc(&minDirection_d,3*atomCount*sizeof(real_v));
   }
+  if (system->run->minType==elbfgs){
+    // Function called by L-BFGS class to get energy & gradient 
+    std::function<real_x()> energy_and_grad = [system](){
+      // Potential & Grad Eval -> step=0 to calc energy
+      system->domdec->update_domdec(system,true); // domdec and updates single precision array with double precision values
+      system->potential->calc_force(0, system);
+      // grad(F(X)) G already stored
+      system->state->recv_energy();
+      // Copy float array written by BLaDE onto double used by L-BFGS
+      int DOF = system->state->atomCount*3;
+      int shift = system->state->lambdaCount;
+      type_conversion_copy<real, real_x><<<(DOF+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(
+            DOF, system->state->forceBuffer_d+shift, system->state->forceBufferX_d+shift);
+      system->run->lbfgs_energy_evals++;
+      return system->state->energy[eepotential];
+    };
+
+    int shift = system->state->lambdaCount;
+    int DOF = system->state->atomCount*3; // only minimize atom positions
+    system->run->lbfgs = new LBFGS(system->run->lbfgs_m, system->run->lbfgs_eps, DOF, system->verbose,
+      energy_and_grad, system->state->positionBuffer_d+shift, system->state->forceBufferX_d+shift);
+  }
 }
 
 void State::min_dest(System *system)
@@ -109,9 +144,12 @@ void State::min_dest(System *system)
   if (system->run->minType==esdfd) {
     cudaFree(minDirection_d);
   }
+  if (system->run->minType==elbfgs){
+    system->run->lbfgs->~LBFGS();
+  }
 }
 
-void State::min_move(int step,int nsteps,System *system)
+void State::min_move(int step, int nsteps, System *system)
 {
   Run *r=system->run;
   real_e grads2[2];
@@ -120,7 +158,22 @@ void State::min_move(int step,int nsteps,System *system)
   real scaling, rescaling;
   real frac;
 
-  if (r->minType==esd) {
+  if (r->minType==elbfgs){
+    if (system->id==0){
+      recv_energy();
+      if (system->verbose!=0) display_nrg(system);
+      currEnergy=energy[eepotential];
+      r->lbfgs->minimize_step(currEnergy);
+      if(r->lbfgs->minimized){ 
+        r->step = nsteps; 
+        printf("%d force evaluations wasted in outer loop.\n", step);
+        printf("L-BFGS (m=%d) did %d force evaluations in %d steps. Reset memory %d times.\n", 
+          r->lbfgs->m, r->lbfgs_energy_evals, r->lbfgs->step_count, r->lbfgs->reset_count);
+        printf("U0: %f, Uf: %f, Uf - U0: %f\n", r->lbfgs->U0, r->lbfgs->Uf, r->lbfgs->Uf - r->lbfgs->U0);
+      } 
+    }
+  }
+  else if (r->minType==esd) {
     if (system->id==0) {
       recv_energy();
       if (system->verbose>0) display_nrg(system);

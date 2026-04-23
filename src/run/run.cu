@@ -357,14 +357,20 @@ void Run::set_variable(char *line,char *token,System *system)
     dxAtomMax=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"dxrmsinit")==0) {
     dxRMSInit=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token, "lbfgs_m")==0){
+    lbfgs_m=io_nexti(line);
+  } else if (strcmp(token, "lbfgs_eps")==0){
+    lbfgs_eps=io_nextf(line);
   } else if (strcmp(token,"mintype")==0) {
     std::string minString=io_nexts(line);
-    if (strcmp(minString.c_str(),"sd")==0) {
+    if (strcmp(minString.c_str(), "lbfgs")==0){
+      minType=elbfgs;
+    } else if (strcmp(minString.c_str(),"sd")==0) {
       minType=esd;
     } else if (strcmp(minString.c_str(),"sdfd")==0) {
       minType=esdfd;
     } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: sd or sdfd\n",minString.c_str());
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: lbfgs, sd, or sdfd\n",minString.c_str());
     }
   } else if (strcmp(token,"domdecheuristic")==0) {
     domdecHeuristic=io_nextb(line);
@@ -406,6 +412,7 @@ void Run::energy(char *line,char *token,System *system)
   system->potential->calc_force(0,system);
   system->state->recv_energy();
   print_nrg(0,system);
+  display_nrg(system);
   dynamics_finalize(system);
 }
 

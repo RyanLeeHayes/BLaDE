@@ -67,6 +67,7 @@ class State {
   real *positionBuffer_omp;
   real_f *forceBuffer;
   real_f *forceBuffer_d;
+  real_x *forceBufferX_d; 
   real_f *forceBackup_d; // For NPT
   real_f *forceBuffer_omp;
 

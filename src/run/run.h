@@ -8,6 +8,7 @@
 
 #include "xdr/xdrfile.h"
 #include "xdr/xdrfile_xtc.h"
+#include "update/lbfgs.h"
 
 // Forward delcaration
 class System;
@@ -19,6 +20,7 @@ struct Cutoffs {
 };
 
 typedef enum emin {
+  elbfgs, // Limited memory BFGS algo
   esd, // steepest descent
   esdfd, // steepest descent with finite difference to choose step length
   eminend} EMin;
@@ -55,6 +57,12 @@ class Run {
   real dxRMSInit;
   real dxRMS;
   EMin minType; // minimization scheme
+
+  // L-BFGS variables
+  LBFGS* lbfgs;
+  int lbfgs_energy_evals = 0;
+  int lbfgs_m = 7; // gradient history length*DOF
+  real lbfgs_eps = 1.0*KCAL_MOL/ANGSTROM; // gradient rms convergence criteria
 
   real betaEwald;
   real rCut;
