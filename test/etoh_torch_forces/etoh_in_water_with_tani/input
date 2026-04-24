@@ -29,12 +29,12 @@ run setvariable fnmxtc prod.xtc
 run setvariable fnmnrg prod.nrg
 run setvariable fnmlmd prod.lmd_0
 
-run setvariable nsteps 10
+run setvariable nsteps 10000
 run setvariable T 298
-run setvariable freqxtc 1
-run setvariable freqnrg 1 ! 200 ! charmm does it every 200 because of ntrfrq
+run setvariable freqxtc 100
+run setvariable freqnrg 100 ! 200 ! charmm does it every 200 because of ntrfrq
 run setvariable freqnpt 0
-run setvariable freqlmd 10
+run setvariable freqlmd 10000
 run setvariable hrlmd no
 
 ! Set nonbonded options
