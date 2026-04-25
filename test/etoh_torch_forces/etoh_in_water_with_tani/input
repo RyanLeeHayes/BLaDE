@@ -9,14 +9,14 @@ parameters file {dir}/par_water_ions.prm
 parameters file {dir}/par_all36_cgenff.prm
 parameters file {dir}/par_all36m_prot.prm
 
-structure file psf {dir}/ethanol.psf
+structure file psf {dir}/ethanol_rec.psf
 structure shake hbond
 
-selection define etohsel segid ETOH
+selection define etohsel segid HETA
 
 structure mlp etohsel tani {dir}/ethanol.pt
 
-coordinates file crd {dir}/ethanol.crd
+coordinates file crd {dir}/ethanol_rec.crd
 coordinates box cubi 60 60 60 90 90 90
 coordinates velocity 298
 
@@ -31,8 +31,8 @@ run setvariable fnmlmd prod.lmd_0
 
 run setvariable nsteps 10000
 run setvariable T 298
-run setvariable freqxtc 100
-run setvariable freqnrg 100 ! 200 ! charmm does it every 200 because of ntrfrq
+run setvariable freqxtc 1
+run setvariable freqnrg 1 ! 200 ! charmm does it every 200 because of ntrfrq
 run setvariable freqnpt 0
 run setvariable freqlmd 10000
 run setvariable hrlmd no
@@ -46,6 +46,6 @@ run setvariable gridspace 1.1 ! A is max grid spacing, should give 64x64x64
 
 run setvariable shaketolerance 0.00000001
 
-run setvariable dt 0.002
+run setvariable dt 0.0005
 
 run dynamics

@@ -682,7 +682,6 @@ void Structure::parse_mlp(char *line,char *token,System *system)
     int i,nsel;
     std::vector<real> mlMassidx;
 
-    mlp.is_tani=0;
     if (MLPTypeToken=="tani") { mlp.is_tani=1; }
 
     mlp.ptname    = MLPFileToken;

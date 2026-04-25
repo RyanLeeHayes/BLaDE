@@ -298,6 +298,7 @@ class Potential {
   std::set<int> *angleExcl;
   std::set<int> *diheExcl;
   std::set<int> *msldExcl;
+  std::set<int> *mlpExcl; // eemlp, Nonbonded exclusion for ML region
   std::set<int> *allExcl;
   // std::vector<Int2> excls_tmp;
   // struct Int2 *excls;
