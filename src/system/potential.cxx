@@ -927,7 +927,9 @@ void Potential::initialize(System *system)
   angleExcl=new std::set<int>[atomCount];
   diheExcl=new std::set<int>[atomCount];
   msldExcl=new std::set<int>[atomCount];
+  #ifdef WITH_TORCH // eemlp
   mlpExcl=new std::set<int>[atomCount]; // eemlp, build mlpExcl for ML-ML nonbond interactions exclusion
+  #endif // eemlp
   allExcl=new std::set<int>[atomCount];
 
   // replaced struc->bondList with bondList_tmp
@@ -1740,15 +1742,18 @@ void Potential::initialize(System *system)
   
   // RESD Distance Restraint, 2 distances, eeresd-begin
   resdCount=system->structure->resdCount;
-  resds=(struct ResdPotential*)calloc(resdCount,sizeof(struct ResdPotential));
-  cudaMalloc(&resds_d,resdCount*sizeof(struct ResdPotential));
-  for (i=0; i<resdCount; i++) {
-    resds[i]=system->structure->resdList[i];
-  }
-  cudaMemcpy(resds_d,resds,resdCount*sizeof(struct ResdPotential),cudaMemcpyHostToDevice);  
+  if (resdCount > 0) { //eeresd-gaurd
+    resds=(struct ResdPotential*)calloc(resdCount,sizeof(struct ResdPotential));
+    cudaMalloc(&resds_d,resdCount*sizeof(struct ResdPotential));
+    for (i=0; i<resdCount; i++) {
+      resds[i]=system->structure->resdList[i];
+    }
+    cudaMemcpy(resds_d,resds,resdCount*sizeof(struct ResdPotential),cudaMemcpyHostToDevice);
+  }  //eeresd-gaurd
   // eeresd-end
 
   // eemlp-begin
+#ifdef WITH_TORCH
   MLPModelCount = system->structure->MLPModelCount;
   if (MLPModelCount > 0) {
     // allocate host array once
@@ -1758,13 +1763,10 @@ void Potential::initialize(System *system)
     mlp_h[0] = system->structure->MLPList[0];
     mlp_h[0].ptgpuid = system->gpu;
     MLPotential &h = mlp_h[0];
-
-#ifdef WITH_TORCH
     // load TorchScript model directly onto GPU
     torch::Device dev(torch::kCUDA, mlp_h[0].ptgpuid);
     h.model = torch::jit::load(h.ptname, dev);
     h.model.eval();
-#endif
 
     // fill mlp_d (host struct with device pointers)
     MLPotentialDev &d = mlp_d;
@@ -1788,7 +1790,8 @@ void Potential::initialize(System *system)
     cudaMemset(d.ml_qm_coords_s_d,     0, 3*h.ptnml * sizeof(float));
     cudaMemset(d.ml_qm_grad_s_d,       0, 3*h.ptnml * sizeof(float));
     cudaMemset(d.ml_energy_s_d,        0, sizeof(float));
-  }  // eemlp-end 
+  }  
+#endif  // eemlp-end 
 
   // Cleaning up output coordinates
   prettifyPlan=(int(*)[2])malloc(atomCount*sizeof(int[2]));
@@ -1886,7 +1889,9 @@ void Potential::calc_force(int step,System *system)
     getforce_boRest(system,calcEnergy);
     getforce_anRest(system,calcEnergy);
     getforce_diRest(system,calcEnergy);
-    getforce_resd(system,calcEnergy); //eeresd
+    if (resdCount > 0) {                //eeresd-gaurd
+      getforce_resd(system,calcEnergy); //eeresd
+    }                                   //eeresd-gaurd
     cudaEventRecord(r->biaspotComplete,r->biaspotStream);
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }
@@ -1895,7 +1900,9 @@ void Potential::calc_force(int step,System *system)
   if (system->id==helper) {
   cudaStreamWaitEvent(r->mlpotStream, r->forceBegin,0);
 #ifdef WITH_TORCH
-  gettorchforce_tani(system, calcEnergy);
+  if (MLPModelCount > 0) {
+    gettorchforce_tani(system, calcEnergy);
+  }
 #endif
   cudaEventRecord(r->mlpotComplete, r->mlpotStream);
   cudaStreamWaitEvent(r->updateStream, r->mlpotComplete, 0);

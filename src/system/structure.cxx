@@ -69,8 +69,10 @@ void Structure::setup_parse_structure()
   helpStructure["dihedral"]="[selection] [selection] [selection] [selection] [kconst] [angle0] [periodicity]\n";
   parseStructure["resd"]=&Structure::parse_resd; //eeresd
   helpStructure["resd"]="?structure resd [selection_dist1_atom1] [selection_dist1_atom2] [selection_dist2_atom1] [selection_dist2_atom2] [dist1_coefficient] [dist2_coefficient] [ref_dist_diff] [k_dist_diff]> Apply a CHARMM-style RESD restraint with linear combination of two distances (dist1 and dist2)\n"; // eeresd
+#ifdef WITH_TORCH
   parseStructure["mlp"]=&Structure::parse_mlp; //eemlp
   helpStructure["mlp"]="?structure mlp [atom selection] [tani] [TorchScript .pt filename] > Apply Torch-derived forces to selected atoms based on the given model TYPE (eg. tani) and TorchScript FILE \n"; // eemlp
+#endif
   parseStructure["print"]=&Structure::dump;
   helpStructure["print"]="?structure print> This prints selected contents of the structure data structure to standard out\n";
   parseStructure["help"]=&Structure::help;
@@ -723,36 +725,28 @@ void Structure::parse_mlp(char *line,char *token,System *system)
                 system->structure->atomList[i].atomTypeName[0],
                 system->structure->atomList[i].atomTypeName[1]);
 
-        if (mlp.is_tani==1) {
-                 if ((mlMassidx[nsel]==1.00800) || 
-                     (system->structure->atomList[i].atomTypeName[0]=='H')) {
-            mlp.mlZidx[nsel]=1;
-          } else if ((mlMassidx[nsel]==12.01100) ||
-                     (system->structure->atomList[i].atomTypeName[0]=='C')) {
-            mlp.mlZidx[nsel]=6;
-          } else if ((mlMassidx[nsel]==14.00700) ||
-                     (system->structure->atomList[i].atomTypeName[0]=='N')) {
-            mlp.mlZidx[nsel]=7;
-          } else if ((mlMassidx[nsel]==15.99940) ||
-                     (system->structure->atomList[i].atomTypeName[0]=='O')) {
-            mlp.mlZidx[nsel]=8;
-          } else if ((mlMassidx[nsel]==18.99800) ||
-                     (system->structure->atomList[i].atomTypeName[0]=='F')) {
-            mlp.mlZidx[nsel]=9;
-          } else if ((mlMassidx[nsel]==32.06000) ||
-                     (system->structure->atomList[i].atomTypeName[0]=='S')) {
-            mlp.mlZidx[nsel]=16;
-          } else if ((mlMassidx[nsel]==35.45300) ||
-                     (system->structure->atomList[i].atomTypeName[0]=='C' &&
-                      system->structure->atomList[i].atomTypeName[1]=='L')) {
-            mlp.mlZidx[nsel]=17;
-          } else {
-            fprintf(stderr,"[parse_mlp] unsupported element i=%d nsel=%d mass=%f type0=%c type1=%c\n",
-                    i, nsel, (double)mlMassidx[nsel],
-                    system->structure->atomList[i].atomTypeName[0],
-                    system->structure->atomList[i].atomTypeName[1]);
-            fatal(__FILE__,__LINE__,"Unsupported element with mass %f for tani MLP. Only H, C, N, O, F, S, Cl supported.\n",mlMassidx[nsel]);
+        if (mlp.is_tani == 1) {
+          const double m = (double)mlMassidx[nsel];
+          const char t0 = system->structure->atomList[i].atomTypeName[0];
+          const char t1 = system->structure->atomList[i].atomTypeName[1];
+                
+          int z = 0;
+                
+          if (m < 0.0) {fatal(__FILE__, __LINE__,"Negative atomic mass %f for tani MLP.\n", mlMassidx[nsel]);} 
+          else if (m <   3.5) {if (t0 == 'H' || (t0 == 'Q' && t1 == 'Q') ) z = 1;}    // H / link-H region
+          else if (m >= 11.5 && m < 13.5) {if (t0 == 'C')  z = 6;}    // Carbon
+          else if (m >= 13.5 && m < 15.5) {if (t0 == 'N')  z = 7;}    // Nitrogen 
+          else if (m >= 15.5 && m < 18.5) {if (t0 == 'O')  z = 8;}    // Oxygen
+          else if (m >= 18.5 && m < 19.5) {if (t0 == 'F')  z = 9;}    // Fluorine
+          else if (m >= 31.5 && m < 34.5) {if (t0 == 'S')  z = 16;}   // Sulfur 
+          else if (m >= 34.5 && m < 38.5) {if (t0 == 'C')  z = 17;}   // Chlorine  // optional stricter CHARMM-style check:  // if (t0 == 'C' && t1 == 'L') z = 17; //might not needed
+          else {z = 0;}
+        
+          if (z == 0) {
+            fprintf(stderr,"[parse_mlp] unsupported element i=%d nsel=%d mass=%f type0=%c type1=%c\n", i, nsel, m, t0, t1);
+            fatal(__FILE__,__LINE__,"Unsupported element with mass %f for tani MLP. Only H, C, N, O, F, S, Cl supported.\n",m);
           }
+          mlp.mlZidx[nsel] = z;
         }
 
         fprintf(stderr,"[parse_mlp] assigned Z=%d for i=%d nsel=%d\n",
