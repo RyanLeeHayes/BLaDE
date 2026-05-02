@@ -19,6 +19,10 @@
 #include "restrain/restrain.h"
 #include "holonomic/virtual.h"
 
+#ifdef WITH_TORCH
+#include "mlp/mlp.h" // eemlp
+#endif
+
 #ifdef USE_TEXTURE
 #include <string.h> // for memset
 #endif
@@ -84,6 +88,7 @@ Potential::Potential() {
   angleExcl=NULL;
   diheExcl=NULL;
   msldExcl=NULL;
+  mlpExcl=NULL; // eemlp, build mlpExcl for ML-ML nonbond interactions exclusion
   allExcl=NULL;
 
   exclCount=0;
@@ -136,6 +141,24 @@ Potential::Potential() {
   diRestCount=0;
   diRests=NULL;
   diRests_d=NULL;
+  resdCount=0;   // eeresd
+  resds=NULL;    // eeresd
+  resds_d=NULL;  // eeresd
+
+  // eemlp-begin
+  MLPModelCount = 0; 
+  mlp_h    = NULL;
+  mlp_d.ptnml        = 0;
+  mlp_d.mlnatoms     = 0;
+  mlp_d.mlatomidx    = NULL;
+  mlp_d.mlZidx       = NULL;
+  mlp_d.mlSidx       = NULL; // for species id
+  mlp_d.mlmaskid     = NULL;
+  // buffer
+  mlp_d.ml_qm_coords_s_d = NULL;
+  mlp_d.ml_energy_s_d    = NULL;
+  mlp_d.ml_qm_grad_s_d   = NULL;  
+  // eemlp-end
 
   prettifyPlan=NULL;
 }
@@ -186,6 +209,7 @@ Potential::~Potential()
   delete [] angleExcl;
   delete [] diheExcl;
   delete [] msldExcl;
+  delete [] mlpExcl; // eemlp, build mlpExcl for ML-ML nonbond interactions exclusion
   delete [] allExcl;
 
   if (excls) free(excls);
@@ -228,6 +252,20 @@ Potential::~Potential()
   if (anRests_d) cudaFree(anRests_d);
   if (diRests) free(diRests);
   if (diRests_d) cudaFree(diRests_d);
+  if (resds) free(resds);           // eeresd
+  if (resds_d) cudaFree(resds_d);   // eeresd
+
+  // eemlp-begin
+  if (mlp_h) delete[] mlp_h;  // dont use free() for struct having stl members
+  if (mlp_d.mlatomidx) cudaFree(mlp_d.mlatomidx);
+  if (mlp_d.mlZidx) cudaFree(mlp_d.mlZidx);
+  if (mlp_d.mlSidx) cudaFree(mlp_d.mlSidx);
+  if (mlp_d.mlmaskid) cudaFree(mlp_d.mlmaskid);
+  // buffer
+  if (mlp_d.ml_qm_coords_s_d) cudaFree(mlp_d.ml_qm_coords_s_d);
+  if (mlp_d.ml_energy_s_d)    cudaFree(mlp_d.ml_energy_s_d);
+  if (mlp_d.ml_qm_grad_s_d)   cudaFree(mlp_d.ml_qm_grad_s_d);
+  // eemlp-end
 
   if (prettifyPlan) free(prettifyPlan);
 }
@@ -487,6 +525,11 @@ void Potential::initialize(System *system)
   Msld *msld=system->msld;
   bool soft;
 
+#ifdef WITH_TORCH // eemlp-begin, build mask for ml atoms and ml-ml exclusion
+  const MLPotential *ml_tmp = (struc->MLPModelCount > 0) ? &struc->MLPList[0] : NULL;
+#endif
+// eemlp-end
+
   bonds_tmp.clear();
   angles_tmp.clear();
   dihes_tmp.clear();
@@ -524,6 +567,13 @@ void Potential::initialize(System *system)
       bp=param->bondParameter[type];
       bond.kb=bp.kb;
       bond.b0=bp.b0;
+
+#ifdef WITH_TORCH // eemlp-begin , Suppress classical bond if fully inside ML region
+      if (ml_tmp && ml_tmp->is_tani==1 && ml_tmp->mlmaskid[bond.idx[0]] && ml_tmp->mlmaskid[bond.idx[1]]) {
+        bond.kb=0.0; 
+      }
+#endif // eemlp-end
+
       // Separate out the constrained bonds
       if (system->structure->shakeHbond && (type.t[0][0]=='H' || type.t[1][0]=='H')) {
         fatal(__FILE__,__LINE__,"hbond constraints not yet implemented (NYI)\n");
@@ -562,6 +612,17 @@ void Potential::initialize(System *system)
     angle.angle0=ap.angle0;
     bond.kb=ap.kureyb;
     bond.b0=ap.ureyb0;
+
+#ifdef WITH_TORCH // eemlp-begin , Suppress classical angle and urey bradley if fully inside ML region
+    if (ml_tmp && ml_tmp->is_tani==1 &&
+        ml_tmp->mlmaskid[angle.idx[0]] &&
+        ml_tmp->mlmaskid[angle.idx[1]] &&
+        ml_tmp->mlmaskid[angle.idx[2]]) {
+      angle.kangle=0.0; 
+      bond.kb=0.0; 
+    }
+#endif // eemlp-end
+
     if (soft) {
       softAngles_tmp.push_back(angle);
     } else {
@@ -614,6 +675,17 @@ void Potential::initialize(System *system)
       dihe.kdih=dp[j].kdih;
       dihe.ndih=dp[j].ndih;
       dihe.dih0=dp[j].dih0;
+
+#ifdef WITH_TORCH // eemlp-begin , Suppress classical dihedral if fully inside ML region
+    if (ml_tmp && ml_tmp->is_tani==1 &&
+        ml_tmp->mlmaskid[dihe.idx[0]] &&
+        ml_tmp->mlmaskid[dihe.idx[1]] &&
+        ml_tmp->mlmaskid[dihe.idx[2]] &&
+        ml_tmp->mlmaskid[dihe.idx[3]]) {
+      dihe.kdih=0.0; 
+    }
+#endif // eemlp-end
+
       if (rest) dihe.kdih*=system->msld->restScaling;
       if (soft) {
         softDihes_tmp.push_back(dihe);
@@ -674,6 +746,18 @@ void Potential::initialize(System *system)
     impr.kimp=ip.kimp;
     impr.nimp=ip.nimp;
     impr.imp0=ip.imp0;
+
+#ifdef WITH_TORCH // eemlp-begin , Suppress classical improper if fully inside ML region
+    if (ml_tmp && ml_tmp->is_tani==1 &&
+        ml_tmp->mlmaskid[impr.idx[0]] &&
+        ml_tmp->mlmaskid[impr.idx[1]] &&
+        ml_tmp->mlmaskid[impr.idx[2]] &&
+        ml_tmp->mlmaskid[impr.idx[3]]) {
+      impr.kimp=0.0; 
+    }
+#endif // eemlp-end
+
+
     if (rest) impr.kimp*=system->msld->restScaling;
     if (soft) {
       softImprs_tmp.push_back(impr);
@@ -718,6 +802,21 @@ void Potential::initialize(System *system)
       }
       cmap.kcmapPtr=cmapTypeToPtr[type];
     }
+
+#ifdef WITH_TORCH // eemlp-begin , Suppress classical cmap if fully inside ML region
+    if (ml_tmp && ml_tmp->is_tani==1 &&
+        ml_tmp->mlmaskid[cmap.idx[0]] &&
+        ml_tmp->mlmaskid[cmap.idx[1]] &&
+        ml_tmp->mlmaskid[cmap.idx[2]] &&
+        ml_tmp->mlmaskid[cmap.idx[3]] &&
+        ml_tmp->mlmaskid[cmap.idx[4]] &&
+        ml_tmp->mlmaskid[cmap.idx[5]] &&
+        ml_tmp->mlmaskid[cmap.idx[6]] &&
+        ml_tmp->mlmaskid[cmap.idx[7]]) {
+      continue;
+    }
+#endif // eemlp-end
+
     if (soft) {
       softCmaps_tmp.push_back(cmap);
     } else {
@@ -828,6 +927,9 @@ void Potential::initialize(System *system)
   angleExcl=new std::set<int>[atomCount];
   diheExcl=new std::set<int>[atomCount];
   msldExcl=new std::set<int>[atomCount];
+  #ifdef WITH_TORCH // eemlp
+  mlpExcl=new std::set<int>[atomCount]; // eemlp, build mlpExcl for ML-ML nonbond interactions exclusion
+  #endif // eemlp
   allExcl=new std::set<int>[atomCount];
 
   // replaced struc->bondList with bondList_tmp
@@ -953,6 +1055,35 @@ void Potential::initialize(System *system)
       }
     }
   }
+
+#ifdef WITH_TORCH // eemlp-begin, build mlpExcl for ML-ML nonbond interactions exclusion
+  // Set mlpExcl: only unique ML-ML pairs, no self-pairs
+  if (ml_tmp && ml_tmp->is_tani==1) {
+    for (i = 0; i < atomCount; i++) {
+      if (!ml_tmp->mlmaskid[i]) continue;
+
+      for (j = i + 1; j < atomCount; j++) {
+        if (!ml_tmp->mlmaskid[j]) continue;
+
+        mlpExcl[i].insert(j);
+        mlpExcl[j].insert(i);
+        allExcl[i].insert(j);
+        allExcl[j].insert(i);
+      }
+    }
+  }
+   // Remove any ML-ML pairs from dihedral exclusions 
+   // to prevent addition of NB14 terms for those pairs, 
+   // since they will be fully handled by the ML potential.
+  if (ml_tmp && ml_tmp->is_tani==1) {
+    for (i = 0; i < atomCount; i++) {
+      for (std::set<int>::iterator jj = mlpExcl[i].begin(); jj != mlpExcl[i].end(); ++jj) {
+        diheExcl[i].erase(*jj);
+      }
+    }
+  }
+#endif // eemlp-end
+
 
   for (i=0; i<atomCount; i++) {
     for (std::set<int>::iterator jj=diheExcl[i].begin(); jj!=diheExcl[i].end(); jj++) {
@@ -1338,6 +1469,16 @@ void Potential::initialize(System *system)
               //   fprintf(stdout," %5d",consIdx[i]);
               // }
               // fprintf(stdout,"\n");
+
+#ifdef WITH_TORCH // eemlp-begin, skip shake for ML-ML included pairs 
+              if (ml_tmp && ml_tmp->is_tani==1 &&
+                  (ml_tmp->mlmaskid[tc.idx[0]] ||
+                   ml_tmp->mlmaskid[tc.idx[1]] ||
+                   ml_tmp->mlmaskid[tc.idx[2]])) {
+                continue;
+              }
+#endif // eemlp-end
+
               triangleCons_tmp.push_back(tc);
             } // else consIdx[2] should be in 0 position
           } // else consIdx[1] should be in 0 posiiton
@@ -1370,6 +1511,16 @@ void Potential::initialize(System *system)
         //   fprintf(stdout," %5d",consIdx[i]);
         // }
         // fprintf(stdout,"\n");
+
+#ifdef WITH_TORCH // eemlp-begin, skip shake for ML-ML included pairs
+        if (ml_tmp && ml_tmp->is_tani==1 &&
+            (ml_tmp->mlmaskid[bc.idx[0]] ||
+             ml_tmp->mlmaskid[bc.idx[1]] ||
+             ml_tmp->mlmaskid[bc.idx[2]])) {
+          continue;
+        }
+#endif // eemlp-end
+
         branch2Cons_tmp.push_back(bc);
       } else {
         consBad=true;
@@ -1401,6 +1552,17 @@ void Potential::initialize(System *system)
         //   fprintf(stdout," %5d",consIdx[i]);
         // }
         // fprintf(stdout,"\n");
+
+#ifdef WITH_TORCH // eemlp-begin, skip shake for ML-ML included pairs
+        if (ml_tmp && ml_tmp->is_tani==1 &&
+            (ml_tmp->mlmaskid[bc.idx[0]] ||
+             ml_tmp->mlmaskid[bc.idx[1]] ||
+             ml_tmp->mlmaskid[bc.idx[2]] ||
+             ml_tmp->mlmaskid[bc.idx[3]])) {
+          continue;
+        }
+#endif // eemlp-end
+
         branch3Cons_tmp.push_back(bc);
       } else {
         consBad=true;
@@ -1433,6 +1595,15 @@ void Potential::initialize(System *system)
           //   fprintf(stdout," %5d",consIdx[i]);
           // }
           // fprintf(stdout,"\n");
+
+#ifdef WITH_TORCH // eemlp-begin, skip shake for ML-ML included pairs
+          if (ml_tmp && ml_tmp->is_tani==1 &&
+              (ml_tmp->mlmaskid[bc.idx[0]] ||
+               ml_tmp->mlmaskid[bc.idx[1]])) {
+            continue;
+          }
+#endif // eemlp-end
+
           branch1Cons_tmp.push_back(bc);
         } // else consIdx[1] should be in position 0
       } // else consIdx[0] should be in position 0 because it has more partners
@@ -1569,6 +1740,60 @@ void Potential::initialize(System *system)
     diRests[i].block=system->structure->diRestList[i].block;
   }
   cudaMemcpy(diRests_d,diRests,diRestCount*sizeof(struct DiRestPotential),cudaMemcpyHostToDevice);
+  
+  // RESD Distance Restraint, 2 distances, eeresd-begin
+  resdCount=system->structure->resdCount;
+  if (resdCount > 0) { //eeresd-gaurd
+    resds=(struct ResdPotential*)calloc(resdCount,sizeof(struct ResdPotential));
+    cudaMalloc(&resds_d,resdCount*sizeof(struct ResdPotential));
+    for (i=0; i<resdCount; i++) {
+      resds[i]=system->structure->resdList[i];
+    }
+    cudaMemcpy(resds_d,resds,resdCount*sizeof(struct ResdPotential),cudaMemcpyHostToDevice);
+  }  //eeresd-gaurd
+  // eeresd-end
+
+  // eemlp-begin
+#ifdef WITH_TORCH
+  MLPModelCount = system->structure->MLPModelCount;
+  if (MLPModelCount > 0) {
+    // allocate host array once
+    // calloc seems to have some issue with struct containing torch::jit::script::Module
+    if (!mlp_h) {mlp_h = new MLPotential[MLPModelCount];}
+    // copy the first potential from structure
+    mlp_h[0] = system->structure->MLPList[0];
+    mlp_h[0].ptgpuid = system->gpu;
+    MLPotential &h = mlp_h[0];
+    // load TorchScript model directly onto GPU
+    torch::Device dev(torch::kCUDA, mlp_h[0].ptgpuid);
+    h.model = torch::jit::load(h.ptname, dev);
+    h.model.eval();
+
+    // fill mlp_d (host struct with device pointers)
+    MLPotentialDev &d = mlp_d;
+    // copy scalar meta by value (NO cudaMalloc here)
+    d.ptnml  = h.ptnml;
+    d.mlnatoms = h.mlnatoms; //same as atomCount
+    // allocate device arrays for the integer buffers
+    cudaMalloc(&d.mlatomidx,  sizeof(int) * h.ptnml);
+    if (!h.mlSidx.empty()) {cudaMalloc(&d.mlSidx, sizeof(int) * h.ptnml);}
+    cudaMalloc(&d.mlZidx, sizeof(int) * h.ptnml); 
+    cudaMalloc(&d.mlmaskid, sizeof(int) * atomCount);
+    // upload the corresponding host vectors
+    cudaMemcpy(d.mlatomidx,h.mlatomidx.data(),sizeof(int) * h.ptnml,cudaMemcpyHostToDevice);
+    cudaMemcpy(d.mlZidx,h.mlZidx.data(),sizeof(int) * h.ptnml,cudaMemcpyHostToDevice);
+    if (!h.mlSidx.empty()) {cudaMemcpy(d.mlSidx, h.mlSidx.data(),sizeof(int) * h.ptnml, cudaMemcpyHostToDevice);}
+    cudaMemcpy(d.mlmaskid,h.mlmaskid.data(),sizeof(int) * atomCount,cudaMemcpyHostToDevice);
+    // Buffer Array allocation and initialization
+    cudaMalloc(&d.ml_qm_coords_s_d,  3 * h.ptnml * sizeof(float));
+    cudaMalloc(&d.ml_qm_grad_s_d,    3 * h.ptnml  * sizeof(float));
+    cudaMalloc(&d.ml_energy_s_d,     sizeof(float));
+    cudaMemset(d.ml_qm_coords_s_d,     0, 3*h.ptnml * sizeof(float));
+    cudaMemset(d.ml_qm_grad_s_d,       0, 3*h.ptnml * sizeof(float));
+    cudaMemset(d.ml_energy_s_d,        0, sizeof(float));
+  }  
+#endif  // eemlp-end 
+
   // Cleaning up output coordinates
   prettifyPlan=(int(*)[2])malloc(atomCount*sizeof(int[2]));
   std::set<int> prettifyFound, prettifyMissing;
@@ -1665,9 +1890,24 @@ void Potential::calc_force(int step,System *system)
     getforce_boRest(system,calcEnergy);
     getforce_anRest(system,calcEnergy);
     getforce_diRest(system,calcEnergy);
+    if (resdCount > 0) {                //eeresd-gaurd
+      getforce_resd(system,calcEnergy); //eeresd
+    }                                   //eeresd-gaurd
     cudaEventRecord(r->biaspotComplete,r->biaspotStream);
     cudaStreamWaitEvent(r->updateStream,r->biaspotComplete,0);
   }
+
+  // eemlp-begin
+  if (system->id==helper) {
+  cudaStreamWaitEvent(r->mlpotStream, r->forceBegin,0);
+#ifdef WITH_TORCH
+  if (MLPModelCount > 0) {
+    gettorchforce_tani(system, calcEnergy);
+  }
+#endif
+  cudaEventRecord(r->mlpotComplete, r->mlpotStream);
+  cudaStreamWaitEvent(r->updateStream, r->mlpotComplete, 0);
+  } // eemlp-end
 
   if (system->domdec->id>=0) {
     cudaStreamWaitEvent(r->nbdirectStream,r->forceBegin,0);

@@ -1,0 +1,51 @@
+! *  DHFR with Folate and NADPH ligands
+! *  solvent using PBC w/ PME.  Total system contains 23,558 atoms,
+! *  21,069 atoms associated with water molecules and 2589 protein atoms.
+! *
+
+variables set dir ../test/etoh_torch_forces/etoh_in_water_with_tani
+
+parameters file {dir}/par_water_ions.prm
+parameters file {dir}/par_all36_cgenff.prm
+parameters file {dir}/par_all36m_prot.prm
+
+structure file psf {dir}/ethanol_rec.psf
+structure shake hbond
+
+selection define etohsel segid HETA
+
+structure mlp etohsel tani {dir}/ethanol.pt
+
+coordinates file crd {dir}/ethanol_rec.crd
+coordinates box cubi 60 60 60 90 90 90
+coordinates velocity 298
+
+msld nblocks 0
+
+structure shake hbond
+run setvariable gamma 5
+
+run setvariable fnmxtc prod.xtc
+run setvariable fnmnrg prod.nrg
+run setvariable fnmlmd prod.lmd_0
+
+run setvariable nsteps 10000
+run setvariable T 298
+run setvariable freqxtc 1
+run setvariable freqnrg 1 ! 200 ! charmm does it every 200 because of ntrfrq
+run setvariable freqnpt 0
+run setvariable freqlmd 10000
+run setvariable hrlmd no
+
+! Set nonbonded options
+run setvariable rswitch 7.5
+run setvariable rcut 9.0
+run setvariable invbetaewald 3.125
+run setvariable orderewald 4
+run setvariable gridspace 1.1 ! A is max grid spacing, should give 64x64x64
+
+run setvariable shaketolerance 0.00000001
+
+run setvariable dt 0.0005
+
+run dynamics

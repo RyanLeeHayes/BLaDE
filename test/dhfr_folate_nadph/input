@@ -1,0 +1,55 @@
+! *  DHFR with Folate and NADPH ligands
+! *  solvent using PBC w/ PME.  Total system contains 23,558 atoms,
+! *  21,069 atoms associated with water molecules and 2589 protein atoms.
+! *
+
+variables set dir ../test/dhfr_folate_nadph
+
+parameters file {dir}/par_all36m_prot.prm
+parameters file {dir}/par_water_ions.prm
+parameters file {dir}/hetb/lig.prm
+parameters file {dir}/hetd/lig.prm
+parameters file {dir}/par_all36_cgenff.prm
+
+structure file psf {dir}/dhfr_fol_nap.psf
+structure shake hbond
+
+!selection define atom1 atom HETD 1 C19 !segid resid atomname
+!selection define atom2 atom HETD 1 H24
+!selection define atom3 atom HETB 1 C4
+
+!structure resd atom1 atom2 atom2 atom3 1 -1 -1.6 1500
+
+coordinates file crd {dir}/dhfr_fol_nap.crd
+coordinates box cubi 71 71 71 90 90 90
+coordinates velocity 298
+
+msld nblocks 0
+
+structure shake hbond
+run setvariable gamma 5
+
+run setvariable fnmxtc prod.xtc
+run setvariable fnmnrg prod.nrg
+run setvariable fnmlmd prod.lmd_0
+
+run setvariable nsteps 10000
+run setvariable T 298
+run setvariable freqxtc 100
+run setvariable freqnrg 100 ! 200 ! charmm does it every 200 because of ntrfrq
+run setvariable freqnpt 0
+run setvariable freqlmd 10000
+run setvariable hrlmd no
+
+! Set nonbonded options
+run setvariable rswitch 7.5
+run setvariable rcut 9.0
+run setvariable invbetaewald 3.125
+run setvariable orderewald 4
+run setvariable gridspace 1.1 ! A is max grid spacing, should give 64x64x64
+
+run setvariable shaketolerance 0.00000001
+
+run setvariable dt 0.002
+
+run dynamics

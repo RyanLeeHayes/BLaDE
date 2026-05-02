@@ -37,6 +37,10 @@ Structure::Structure() {
   anRestList.clear();
   diRestCount=0;
   diRestList.clear();
+  resdCount=0;      // eeresd
+  resdList.clear(); // eeresd
+  MLPModelCount=0;  // eemlp
+  MLPList.clear();  // eemlp
 
   setup_parse_structure();
 }
@@ -63,6 +67,12 @@ void Structure::setup_parse_structure()
   helpStructure["harmonic"]="?structure harmonic [selection] [mass|none] [k real] [n real]> Apply harmonic restraints of k*(x-x0)^n to each atom in selection. x0 is taken from the current coordinates read in by coordinates. For none, k has units of kcal/mol/A^n, for mass, k is multiplied by the mass, and has units of kcal/mol/A^n/amu. structure harmonic reset clears all restraints\n";
   parseStructure["dihedral"]=&Structure::parse_diRest;
   helpStructure["dihedral"]="[selection] [selection] [selection] [selection] [kconst] [angle0] [periodicity]\n";
+  parseStructure["resd"]=&Structure::parse_resd; //eeresd
+  helpStructure["resd"]="?structure resd [selection_dist1_atom1] [selection_dist1_atom2] [selection_dist2_atom1] [selection_dist2_atom2] [dist1_coefficient] [dist2_coefficient] [ref_dist_diff] [k_dist_diff]> Apply a CHARMM-style RESD restraint with linear combination of two distances (dist1 and dist2)\n"; // eeresd
+#ifdef WITH_TORCH
+  parseStructure["mlp"]=&Structure::parse_mlp; //eemlp
+  helpStructure["mlp"]="?structure mlp [atom selection] [tani] [TorchScript .pt filename] > Apply Torch-derived forces to selected atoms based on the given model TYPE (eg. tani) and TorchScript FILE \n"; // eemlp
+#endif
   parseStructure["print"]=&Structure::dump;
   helpStructure["print"]="?structure print> This prints selected contents of the structure data structure to standard out\n";
   parseStructure["help"]=&Structure::help;
@@ -297,6 +307,83 @@ void Structure::parse_diRest(char *line,char *token,System *system)
     }
   diRestCount=diRestList.size();
 }
+
+// eeresd-begin
+void Structure::parse_resd(char *line,char *token,System *system)
+{
+  io_nexta(line,token);
+  if (strcmp(token,"reset")==0) {
+    resdList.clear();
+  } else {
+    std::string i1selection=token;
+    std::string i2selection=io_nexts(line);
+    std::string j1selection=io_nexts(line);
+    std::string j2selection=io_nexts(line);
+
+
+    int is,ns,i1,i2,j1,j2;
+    // sel 1 //distance1 atom1
+    if (system->selections->selectionMap.count(i1selection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized atom1_for_distance1 selection name %s for resd restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[i1selection].boolCount; is++) {
+      if (system->selections->selectionMap[i1selection].boolSelection[is]) {
+        i1=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in atom1_for_distance1 selection, found %d\n",ns);
+    // sel 2 //distance1 atom2
+    if (system->selections->selectionMap.count(i2selection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized atom2_for_distance1 selection name %s for resd restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[i2selection].boolCount; is++) {
+      if (system->selections->selectionMap[i2selection].boolSelection[is]) {
+        i2=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in atom2_for_distance1 selection, found %d\n",ns);
+    // sel 3 //distance2 atom1
+        if (system->selections->selectionMap.count(j1selection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized atom1_for_distance2 selection name %s for resd restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[j1selection].boolCount; is++) {
+      if (system->selections->selectionMap[j1selection].boolSelection[is]) {
+        j1=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in atom1_for_distance2 selection, found %d\n",ns);
+    // sel 4 //distance2 atom2
+        if (system->selections->selectionMap.count(j2selection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized atom2_for_distance2 selection name %s for resd restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[j2selection].boolCount; is++) {
+      if (system->selections->selectionMap[j2selection].boolSelection[is]) {
+        j2=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in atom2_for_distance2 selection, found %d\n",ns);
+    //
+    struct ResdPotential resd;
+    resd.i1=i1;
+    resd.i2=i2;
+    resd.j1=j1;
+    resd.j2=j2;
+    resd.ci=io_nextf(line);
+    resd.cj=io_nextf(line);
+    resd.rdist=io_nextf(line)*ANGSTROM;
+    resd.kdist=io_nextf(line)*KCAL_MOL/(ANGSTROM*ANGSTROM);
+    resdList.push_back(resd);
+  }
+  resdCount=resdList.size();
+} // eeresd-end
 
 void Structure::dump(char *line,char *token,System *system)
 {
@@ -563,6 +650,142 @@ void Structure::add_structure_psf_file(FILE *fp)
   }
 }
 
+// eemlp-begin
+void Structure::parse_mlp(char *line,char *token,System *system)
+{
+  io_nexta(line,token);
+
+  fprintf(stderr,"[parse_mlp] enter token=%s\n", token ? token : "(null)");
+
+  if (strcmp(token,"reset")==0) {
+    fprintf(stderr,"[parse_mlp] reset MLPList\n");
+    MLPList.clear();
+
+  } else if (system->selections->selectionMap.count(token)==1) {
+    std::string name=token;
+    std::string MLPTypeToken=io_nexts(line);
+    std::string MLPFileToken;
+
+    fprintf(stderr,"[parse_mlp] selection name=%s\n", name.c_str());
+    fprintf(stderr,"[parse_mlp] boolCount=%d atomCount=%d\n",
+            system->selections->selectionMap[name].boolCount,
+            system->structure->atomCount);
+
+    if (MLPTypeToken=="tani") {
+      MLPFileToken=io_nexts(line);
+      fprintf(stderr,"[parse_mlp] MLPTypeToken=%s MLPFileToken=%s\n",
+              MLPTypeToken.c_str(), MLPFileToken.c_str());
+    } else {
+      fprintf(stderr,"[parse_mlp] bad MLPTypeToken=%s\n", MLPTypeToken.c_str());
+      fatal(__FILE__,__LINE__,"Unrecognized MLP model type token %s. Currently only tani forces implemented.\n",MLPTypeToken.c_str());
+    }
+
+    struct MLPotential mlp;
+    int i,nsel;
+    std::vector<real> mlMassidx;
+
+    if (MLPTypeToken=="tani") { mlp.is_tani=1; }
+
+    mlp.ptname    = MLPFileToken;
+    mlp.mlnatoms  = system->structure->atomCount;
+
+    fprintf(stderr,"[parse_mlp] before resize mlnatoms=%d boolCount=%d\n",
+            mlp.mlnatoms,
+            system->selections->selectionMap[name].boolCount);
+
+    mlp.mlatomidx.resize(system->selections->selectionMap[name].boolCount);
+    mlMassidx.resize(system->selections->selectionMap[name].boolCount);
+    mlp.mlZidx.resize(system->selections->selectionMap[name].boolCount);
+    mlp.mlmaskid.resize(system->selections->selectionMap[name].boolCount);
+
+    fprintf(stderr,"[parse_mlp] after resize mlatomidx=%zu mlMassidx=%zu mlZidx=%zu mlmaskid=%zu\n",
+            mlp.mlatomidx.size(), mlMassidx.size(), mlp.mlZidx.size(), mlp.mlmaskid.size());
+
+    nsel=0;
+    for (i=0; i<system->selections->selectionMap[name].boolCount; i++) {
+
+      if (i < 5 || i == system->selections->selectionMap[name].boolCount-1) {
+        fprintf(stderr,"[parse_mlp] scan i=%d selected=%d\n",
+                i,
+                (int)system->selections->selectionMap[name].boolSelection[i]);
+      }
+
+      if (system->selections->selectionMap[name].boolSelection[i]) {
+        fprintf(stderr,"[parse_mlp] selected i=%d nsel=%d\n", i, nsel);
+
+        mlp.mlmaskid[i]=1;
+        mlp.mlatomidx[nsel]=i;
+
+        fprintf(stderr,"[parse_mlp] reading atomList[%d]\n", i);
+        mlMassidx[nsel]=system->structure->atomList[i].mass;
+
+        fprintf(stderr,"[parse_mlp] atom %d mass=%f atomTypeName[0]=%c atomTypeName[1]=%c\n",
+                i,
+                (double)mlMassidx[nsel],
+                system->structure->atomList[i].atomTypeName[0],
+                system->structure->atomList[i].atomTypeName[1]);
+
+        if (mlp.is_tani == 1) {
+          const double m = (double)mlMassidx[nsel];
+          const char t0 = system->structure->atomList[i].atomTypeName[0];
+          const char t1 = system->structure->atomList[i].atomTypeName[1];
+                
+          int z = 0;
+                
+          if (m < 0.0) {fatal(__FILE__, __LINE__,"Negative atomic mass %f for tani MLP.\n", mlMassidx[nsel]);} 
+          else if (m <   3.5) {if (t0 == 'H' || (t0 == 'Q' && t1 == 'Q') ) z = 1;}    // H / link-H region
+          else if (m >= 11.5 && m < 13.5) {if (t0 == 'C')  z = 6;}    // Carbon
+          else if (m >= 13.5 && m < 15.5) {if (t0 == 'N')  z = 7;}    // Nitrogen 
+          else if (m >= 15.5 && m < 18.5) {if (t0 == 'O')  z = 8;}    // Oxygen
+          else if (m >= 18.5 && m < 19.5) {if (t0 == 'F')  z = 9;}    // Fluorine
+          else if (m >= 31.5 && m < 34.5) {if (t0 == 'S')  z = 16;}   // Sulfur 
+          else if (m >= 34.5 && m < 38.5) {if (t0 == 'C')  z = 17;}   // Chlorine  // optional stricter CHARMM-style check:  // if (t0 == 'C' && t1 == 'L') z = 17; //might not needed
+          else {z = 0;}
+        
+          if (z == 0) {
+            fprintf(stderr,"[parse_mlp] unsupported element i=%d nsel=%d mass=%f type0=%c type1=%c\n", i, nsel, m, t0, t1);
+            fatal(__FILE__,__LINE__,"Unsupported element with mass %f for tani MLP. Only H, C, N, O, F, S, Cl supported.\n",m);
+          }
+          mlp.mlZidx[nsel] = z;
+        }
+
+        fprintf(stderr,"[parse_mlp] assigned Z=%d for i=%d nsel=%d\n",
+                mlp.mlZidx[nsel], i, nsel);
+
+        nsel++;
+      } else {
+        mlp.mlmaskid[i]=0;
+      }
+    }
+
+    fprintf(stderr,"[parse_mlp] loop done nsel=%d\n", nsel);
+
+    mlp.ptnml=nsel;
+
+    fprintf(stderr,"[parse_mlp] before compact resize ptnml=%d current mlatomidx=%zu mlMassidx=%zu mlZidx=%zu\n",
+            mlp.ptnml,
+            mlp.mlatomidx.size(), mlMassidx.size(), mlp.mlZidx.size());
+
+    mlp.mlatomidx.resize(mlp.ptnml);
+    mlMassidx.resize(mlp.ptnml);
+    mlp.mlZidx.resize(mlp.ptnml);
+
+    fprintf(stderr,"[parse_mlp] after compact resize mlatomidx=%zu mlMassidx=%zu mlZidx=%zu\n",
+            mlp.mlatomidx.size(), mlMassidx.size(), mlp.mlZidx.size());
+
+    fprintf(stderr,"[parse_mlp] before push_back MLPList.size=%zu\n", MLPList.size());
+    MLPList.push_back(mlp);
+    fprintf(stderr,"[parse_mlp] after push_back MLPList.size=%zu\n", MLPList.size());
+
+  } else {
+    fprintf(stderr,"[parse_mlp] unknown selection token=%s\n", token ? token : "(null)");
+    fatal(__FILE__,__LINE__,"Unrecognized selection name %s for mlp\n",token);
+  }
+
+  MLPModelCount=MLPList.size();
+  fprintf(stderr,"[parse_mlp] exit MLPModelCount=%d\n", MLPModelCount);
+} // eemlp-end
+
 void blade_init_structure(System *system)
 {
   system+=omp_get_thread_num();
@@ -767,3 +990,46 @@ void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nph
   system->structure->diRestList.push_back(dr);
   system->structure->diRestCount=system->structure->diRestList.size();
 }
+
+// eeresd-begin
+void blade_add_resd(System *system, int i1, int i2, int j1, int j2, double ci, double cj, double rdist, double kdist)
+{
+  system+=omp_get_thread_num();
+  struct ResdPotential resd;
+  resd.i1=i1-1;
+  resd.i2=i2-1;
+  resd.j1=j1-1;
+  resd.j2=j2-1;
+  resd.ci=ci;
+  resd.cj=cj;
+  resd.rdist=rdist*ANGSTROM;
+  resd.kdist=kdist*KCAL_MOL/(ANGSTROM*ANGSTROM);
+  system->structure->resdList.push_back(resd);
+  system->structure->resdCount=system->structure->resdList.size();
+}  // eeresd-end
+
+// eemlp-begin
+void blade_tani_internal_setup(System *system, const int is_tani, const char *ptname, const int ptnml, 
+                      const int *mlatomidx, const int *mlZidx,const int *mlmaskid, const int mlnatoms)
+{
+  system += omp_get_thread_num();
+  struct MLPotential mlp;
+  mlp.ptname    = ptname ? std::string(ptname) : std::string();
+  mlp.is_tani   = is_tani;    // 1 for TorchANI, -1 NOT TorchANI
+  mlp.ptnml     = ptnml;      // number of QM/ML atoms (mlnm2_c)
+  mlp.mlnatoms  = mlnatoms;   // natom_mlmm_c
+  mlp.mlatomidx.resize(ptnml);
+  mlp.mlZidx.resize(ptnml);
+  for (int i = 0; i < ptnml; ++i) {
+    // Fortran indices are 1-based → convert to 0-based for C++
+    mlp.mlatomidx[i]  = mlatomidx[i] - 1;
+    mlp.mlZidx[i] = mlZidx[i];
+  }
+  mlp.mlmaskid.resize(mlnatoms);
+  for (int i = 0; i < mlnatoms; ++i) {
+    mlp.mlmaskid[i] = mlmaskid[i];
+  }
+  system->structure->MLPList.clear();
+  system->structure->MLPList.push_back(mlp);
+  system->structure->MLPModelCount=system->structure->MLPList.size();
+} // eemlp-end

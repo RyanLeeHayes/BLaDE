@@ -92,6 +92,8 @@ Run::Run(System *system)
   termStringToInt["eenoe"]=eenoe;
   termStringToInt["eeharmonic"]=eeharmonic;
   termStringToInt["eemmfp"]=eemmfp;
+  termStringToInt["eeresd"]=eeresd; // eeresd
+  termStringToInt["eemlp"]=eemlp;   // eemlp 
   termStringToInt["bias"]=eebias;
   termStringToInt["potential"]=eepotential;
   termStringToInt["kinetic"]=eekinetic;
@@ -114,12 +116,14 @@ Run::Run(System *system)
   biaspotStream=0;
   nbdirectStream=0;
   nbrecipStream=0;
+  mlpotStream=0; // eemlp
 #else
   cudaStreamCreate(&updateStream);
   cudaStreamCreate(&bondedStream);
   cudaStreamCreate(&biaspotStream);
   cudaStreamCreate(&nbdirectStream);
   cudaStreamCreate(&nbrecipStream);
+  cudaStreamCreate(&mlpotStream); // eemlp
   // Set priorities if desired:
   // int low,high;
   // cudaDeviceGetStreamPriorityRange(&low,&high);
@@ -131,6 +135,7 @@ Run::Run(System *system)
   cudaEventCreate(&biaspotComplete);
   cudaEventCreate(&nbdirectComplete);
   cudaEventCreate(&nbrecipComplete);
+  cudaEventCreate(&mlpotComplete); // eemlp
   // cudaEventCreate(&forceComplete);
   cudaEventCreate(&communicate);
 
@@ -167,11 +172,13 @@ Run::~Run()
   cudaStreamDestroy(biaspotStream);
   cudaStreamDestroy(nbdirectStream);
   cudaStreamDestroy(nbrecipStream);
+  cudaStreamDestroy(mlpotStream); // eemlp
 #endif
   cudaEventDestroy(bondedComplete);
   cudaEventDestroy(biaspotComplete);
   cudaEventDestroy(nbdirectComplete);
   cudaEventDestroy(nbrecipComplete);
+  cudaEventDestroy(mlpotComplete); // eemlp
   cudaEventDestroy(communicate);
   if (communicate_omp) free(communicate_omp);
 }
