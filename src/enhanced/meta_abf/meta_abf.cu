@@ -309,7 +309,7 @@ void log_meta_abf(System* system, int step){
   MetaAdaptiveBiasingForce* m_abf = system->enhanced->meta_abf;
   State* state = system->state;
   Msld* msld = system->msld;
-  if(step % m_abf->log_freq == 0){
+  if(m_abf->log_freq != 0 && step % m_abf->log_freq == 0){
     state->recv_energy();
     if(!m_abf->do_sample){ printf("NOT ADDING SAMPLES!!!!\n");}
     printf("Step %d, U_enhanced: %8.2f:\n", step, system->state->energy[eeenhanced]);

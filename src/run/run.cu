@@ -33,7 +33,7 @@ Run::Run(System *system)
   gamma=1.0/PICOSECOND; // ps^-1
   fnmXTC="default.xtc";
   fnmLMD="default.lmd";
-  fnmLMD="default.lmd_frc";
+  fnmLMD_FRC="default.lmd_frc";
   fnmNRG="default.nrg";
   fnmCPI="";
   fnmCPO="default.cpt";
