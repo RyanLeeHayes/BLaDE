@@ -10,7 +10,6 @@
 #include "io/io.h"
 #include <string>
 
-
 MetaAdaptiveBiasingForce::~MetaAdaptiveBiasingForce(){
   if(counts) free(counts);
   if(counts_d) cudaFree(counts_d);
@@ -76,6 +75,7 @@ void parse_meta_abf(char* line, MetaAdaptiveBiasingForce* meta_abf){
 
 // This only gets called the first time enhanced->initialize() gets called
 void MetaAdaptiveBiasingForce::initialize(System* system){
+    printf("Initializing Meta-ABF!\n");
     // ABF Memory
     counts = (real*)calloc(n_bins, sizeof(real));
     cudaMalloc(&counts_d, n_bins*sizeof(real));
@@ -215,14 +215,13 @@ void getforce_meta_abf(System* system, int step, bool calcEnergy){
   }
   if (m_abf->do_meta) {
     int bins = 2*m_abf->half_search_bins + 1;
-    gpuCheck(cudaPeekAtLastError());
     cudaMemsetAsync(m_abf->meta_current_bias_d, 0, sizeof(real), run->enhancedStream);
     getforce_meta_kernel<<<(bins+BLBO-1)/BLBO,BLBO,shMem,run->enhancedStream>>>(
       m_abf->n_bins, bins, &state->lambda_fd[id], m_abf->meta_std, m_abf->meta_weights_d, 
       false, // update everything
       &state->lambdaForce_d[id], m_abf->meta_current_bias_d, pEnergy);
-    gpuCheck(cudaPeekAtLastError());
   }
+  gpuCheck(cudaPeekAtLastError());
 };
 
 void __global__ add_sample_abf(
@@ -231,9 +230,9 @@ void __global__ add_sample_abf(
   real* dUdL_avg, real* dUdL_std){
     // stable online average and std - Welford's
     real L = 1-lambda[0]; // lambda = reference state lambda, 1-L means binning means int_0^1 gives dG 0->1
-    int bin = get_histogram_index(n_bins, L, 0.0f, 1.0f);
+    int bin = get_histogram_index(n_bins, L, 0, 1);
     real dUdL = lambdaForce[1]-lambdaForce[0];
-    counts[bin] += 1.0f;
+    counts[bin] += 1;
     real prev_delta = dUdL - dUdL_avg[bin];
     dUdL_avg[bin] += prev_delta/counts[bin];
     dUdL_m2[bin] += prev_delta*(dUdL-dUdL_avg[bin]);
@@ -279,6 +278,7 @@ void sample_meta_abf(System* system, int step){
         m_abf->meta_bias_mag, m_abf->meta_current_bias_d, m_abf->temper_factor,m_abf->meta_weights_d);
     }
   }
+  gpuCheck(cudaPeekAtLastError());
 };
 
 void recv_meta_abf(System* system){

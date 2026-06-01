@@ -28,7 +28,7 @@ void parse_enhanced(char* line, System* system){
   }
 
   if (system->enhanced==NULL) {
-    printf("Initializing Enhanced class!\n");
+    printf("Instantiating Enhanced class!\n");
     system->enhanced=new Enhanced();
   }
   Enhanced* nhcd = system->enhanced;
@@ -64,7 +64,12 @@ void parse_enhanced(char* line, System* system){
     }
     nhcd->nbrecip_mode=sel;
   } else if (strcmp(token, "meta_abf") == 0){ // init class
-    nhcd->meta_abf = new MetaAdaptiveBiasingForce();
+    if (!nhcd->meta_abf){
+      printf("Instantiating Meta-ABF!\n");
+      nhcd->meta_abf = new MetaAdaptiveBiasingForce();
+    } else {
+      printf("Already instantiated Meta-ABF, reusing exising one!\n");
+    }
   } else if (strcmp(token, "meta_abf_option") == 0){ // see meta_abf.cu for availible options
     if(!nhcd->meta_abf){
       printf("Meta_ABF not defined yet!\n");
@@ -79,6 +84,7 @@ void parse_enhanced(char* line, System* system){
 
 // Gets called each time a new "run" function is called like "run dynamics" or "run minimize"
 void Enhanced::initialize(System* system){
+  printf("Initializing Enhanced Class!\n");
   if(meta_abf && !meta_abf->init) meta_abf->initialize(system); 
   init = true; 
 }
