@@ -349,6 +349,17 @@ void print_lmd(int step,System *system)
   }
 }
 
+void print_lmd_frc(int step, System* system){
+  real_f *lf=system->state->lambdaForce;
+  int i;
+  FILE *fp=system->run->fpLMD_FRC;
+  fprintf(fp,"%10d",step);
+  for (i=1; i<system->state->lambdaCount; i++) {
+    fprintf(fp," %8.6f",lf[i]);
+  }
+  fprintf(fp,"\n");
+}
+
 void print_nrg(int step,System *system)
 {
   FILE *fp=system->run->fpNRG;
@@ -384,6 +395,10 @@ void print_dynamics_output(int step,System *system)
     if (step % system->run->freqLMD == 0) {
       system->state->recv_lambda();
       print_lmd(step,system);
+    }
+    if (system->run->freqLMD_FRC != 0 && step % system->run->freqLMD_FRC == 0){
+      system->state->recv_lambda_force();
+      print_lmd_frc(step,system);
     }
     if (step % system->run->freqNRG == 0) {
       system->state->recv_energy();

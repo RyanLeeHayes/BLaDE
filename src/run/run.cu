@@ -6,6 +6,7 @@
 #include "system/system.h"
 #include "io/io.h"
 #include "msld/msld.h"
+#include "enhanced/enhanced.h"
 #include "system/state.h"
 #include "system/potential.h"
 #include "system/selections.h"
@@ -32,15 +33,18 @@ Run::Run(System *system)
   gamma=1.0/PICOSECOND; // ps^-1
   fnmXTC="default.xtc";
   fnmLMD="default.lmd";
+  fnmLMD="default.lmd_frc";
   fnmNRG="default.nrg";
   fnmCPI="";
   fnmCPO="default.cpt";
   fpXTC=NULL;
   fpXLMD=NULL;
   fpLMD=NULL;
+  fpLMD_FRC=NULL;
   fpNRG=NULL;
   freqXTC=1000;
   freqLMD=10;
+  freqLMD_FRC=0; // default to never print
   freqNRG=10;
   hrLMD=true;
   prettyXTC=false;
@@ -87,6 +91,7 @@ Run::Run(System *system)
   termStringToInt["nbrecipself"]=eenbrecipself;
   termStringToInt["nbrecipexcl"]=eenbrecipexcl;
   termStringToInt["lambda"]=eelambda;
+  termStringToInt["enhanced"]=eeenhanced;
   termStringToInt["theta"]=eetheta;
   termStringToInt["cats"]=eecats;
   termStringToInt["eenoe"]=eenoe;
@@ -117,6 +122,7 @@ Run::Run(System *system)
   nbdirectStream=0;
   nbrecipStream=0;
   mlpotStream=0; // eemlp
+  enhancedStream=0;
 #else
   cudaStreamCreate(&updateStream);
   cudaStreamCreate(&bondedStream);
@@ -124,6 +130,7 @@ Run::Run(System *system)
   cudaStreamCreate(&nbdirectStream);
   cudaStreamCreate(&nbrecipStream);
   cudaStreamCreate(&mlpotStream); // eemlp
+  cudaStreamCreate(&enhancedStream);
   // Set priorities if desired:
   // int low,high;
   // cudaDeviceGetStreamPriorityRange(&low,&high);
@@ -136,6 +143,7 @@ Run::Run(System *system)
   cudaEventCreate(&nbdirectComplete);
   cudaEventCreate(&nbrecipComplete);
   cudaEventCreate(&mlpotComplete); // eemlp
+  cudaEventCreate(&enhancedComplete);
   // cudaEventCreate(&forceComplete);
   cudaEventCreate(&communicate);
 
@@ -173,12 +181,14 @@ Run::~Run()
   cudaStreamDestroy(nbdirectStream);
   cudaStreamDestroy(nbrecipStream);
   cudaStreamDestroy(mlpotStream); // eemlp
+  cudaStreamDestroy(enhancedStream); // eemlp
 #endif
   cudaEventDestroy(bondedComplete);
   cudaEventDestroy(biaspotComplete);
   cudaEventDestroy(nbdirectComplete);
   cudaEventDestroy(nbrecipComplete);
   cudaEventDestroy(mlpotComplete); // eemlp
+  cudaEventDestroy(enhancedComplete);
   cudaEventDestroy(communicate);
   if (communicate_omp) free(communicate_omp);
 }
@@ -306,6 +316,10 @@ void Run::set_variable(char *line,char *token,System *system)
     if (fpLMD) fclose(fpLMD);
     fpLMD=NULL;
     fnmLMD=io_nexts(line);
+  } else if (strcmp(token,"fnmlmd_frc")==0){
+    if (fpLMD_FRC) fclose(fpLMD_FRC);
+    fpLMD_FRC=NULL;
+    fnmLMD_FRC=io_nexts(line);
   } else if (strcmp(token,"fnmnrg")==0) {
     if (fpNRG) fclose(fpNRG);
     fpNRG=NULL;
@@ -318,6 +332,8 @@ void Run::set_variable(char *line,char *token,System *system)
     freqXTC=io_nexti(line);
   } else if (strcmp(token,"freqlmd")==0) {
     freqLMD=io_nexti(line);
+  } else if (strcmp(token,"freqlmd_frc")==0) {
+    freqLMD_FRC=io_nexti(line);
   } else if (strcmp(token,"freqnrg")==0) {
     freqNRG=io_nexti(line);
   } else if (strcmp(token,"hrlmd")==0) {
@@ -561,6 +577,7 @@ void Run::dynamics_initialize(System *system)
     if (!fpXLMD) fpXLMD=xdrfile_open(fnmLMD.c_str(),"w");
     if (!fpXLMD) fatal(__FILE__,__LINE__,"Failed to open LMD file %s\n",fnmLMD.c_str());
   }
+  if (!fpLMD_FRC) fpLMD_FRC=fpopen(fnmLMD_FRC.c_str(),"w");
   if (!fpNRG) fpNRG=fpopen(fnmNRG.c_str(),"w");
 #ifdef REPLICAEXCHANGE
   if (!fpREx && freqREx>0) fpREx=fpopen(fnmREx.c_str(),"w");
@@ -578,6 +595,9 @@ void Run::dynamics_initialize(System *system)
   if (system->potential) delete system->potential;
   system->potential=new Potential();
   system->potential->initialize(system);
+
+  // don't delete so options don't need to be reset?
+  if (system->enhanced && !system->enhanced->init) system->enhanced->initialize(system);
 
   // Rectify bond constraints
   holonomic_rectify(system);
