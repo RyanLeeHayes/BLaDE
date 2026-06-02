@@ -120,7 +120,7 @@ void MetaAdaptiveBiasingForce::initialize(System* system){
     init=true;
 };
 
-int __device__ get_histogram_index(int n_bins, real x, real l, real u){
+int __host__ __device__ get_histogram_index(int n_bins, real x, real l, real u){
   // first part gets x progress through range [0, 1] 
   // bins centered on l and u have half width -> n_bins-1
   return (int)round(((x-l)/(u-l)) * (n_bins-1)); 
@@ -305,6 +305,19 @@ void print_real_array(real* arr, int len){
   }
 }
 
+real eval_weights_at_point(real L, real* weights, real std, int bins, int search){
+  int current_bin = get_histogram_index(bins, L, 0, 1);
+  real U = 0;
+  for(int i = current_bin-search; i <= current_bin+search; i++){
+    int i_mirrored = i < 0 ? -i : i;
+    i_mirrored = i >= bins ? 2*(bins-1)-i : i;
+    real L_center = i*(1.0/(bins-1.0));
+    real dist = (L-L_center)/std;
+    U += weights[i_mirrored]*exp(-.5*dist*dist);
+  }
+  return U;
+}
+
 void log_meta_abf(System* system, int step){
   MetaAdaptiveBiasingForce* m_abf = system->enhanced->meta_abf;
   State* state = system->state;
@@ -328,6 +341,15 @@ void log_meta_abf(System* system, int step){
       real factor = exp(-m_abf->meta_current_bias/(kT*(m_abf->temper_factor-1.0)));
       printf("Current Bias: %5.2f, Temper Factor: %5.2f,  Decay Factor: %5.2f\n", m_abf->meta_current_bias, m_abf->temper_factor, factor);
     }
+    real dG_meta = 0;
+    real dG_TI = 0;
+    if (m_abf->do_meta){
+      printf("Meta Weights: ");
+      print_real_array(m_abf->meta_weights, m_abf->n_bins);
+      printf("\n");
+      dG_meta = eval_weights_at_point(1, m_abf->meta_weights, m_abf->meta_std, m_abf->n_bins, m_abf->half_search_bins);
+      dG_meta -= eval_weights_at_point(0, m_abf->meta_weights, m_abf->meta_std, m_abf->n_bins, m_abf->half_search_bins);
+    }
     if (m_abf->do_abf){
       printf("Counts: ");
       print_real_array(m_abf->counts, m_abf->n_bins);
@@ -338,19 +360,15 @@ void log_meta_abf(System* system, int step){
       printf("std(dU/dL): ");
       print_real_array(m_abf->dUdL_std, m_abf->n_bins);
       printf("\n");
-      real sum = 0;
       real bin_width = 1.0/(m_abf->n_bins-1.0);
       for(int i = 0; i < m_abf->n_bins-1; i++){
-        sum += bin_width*(m_abf->dUdL_avg[i] + m_abf->dUdL_avg[i+1])/2.0;
+        dG_TI += bin_width*(m_abf->dUdL_avg[i] + m_abf->dUdL_avg[i+1])/2.0;
       }
       // index zero is l0=1, index n_bins-1 is l0=0
-      printf("dG sub0->sub1: %f\n", sum);
     }
-    if (m_abf->do_meta){
-      printf("Meta Bias: ");
-      print_real_array(m_abf->meta_weights, m_abf->n_bins);
-      printf("\n");
-    }
+    printf("dG_{0->1,meta}: %f\n", dG_meta);
+    printf("dG_{0->1,TI}: %f\n", dG_TI);
+    printf("dG_{0->1,combined}: %f\n", dG_meta+dG_TI);
     printf("\n");
   }
 };
