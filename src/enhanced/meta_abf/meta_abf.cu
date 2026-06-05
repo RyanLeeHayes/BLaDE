@@ -378,8 +378,9 @@ void write_meta_abf(std::string dir_name, System* system, int step){
   MetaAdaptiveBiasingForce* m_abf = system->enhanced->meta_abf;
   if (step % m_abf->write_restart_freq == 0){
     std::string filename = dir_name + "/" +  m_abf->fnm_meta_abf;
+    std::string tmp_filename = filename + "_tmp";
     recv_meta_abf(system);
-    FILE* fp = fopen(filename.c_str(), "w");
+    FILE* fp = fopen(tmp_filename.c_str(), "w");
     if(!fp){
       printf("Error: could not open %s for writing!\n", filename.c_str());
       printf("Exiting...\n"); exit(1);
@@ -421,6 +422,10 @@ void write_meta_abf(std::string dir_name, System* system, int step){
     fprintf(fp, "\n");
     fflush(fp);
     fclose(fp);
+    if(rename(tmp_filename.c_str(), filename.c_str()) != 0){              
+      printf("Error: could not move %s to %s!\n", tmp_filename.c_str(), filename.c_str());  
+      printf("Exiting...\n"); exit(1);                                
+    }
   }
 };
 
