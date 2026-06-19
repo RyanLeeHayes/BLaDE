@@ -149,7 +149,7 @@ void State::min_dest(System *system)
   }
 }
 
-void State::min_move(int step, int nsteps, System *system)
+void State::min_move(int step,int nsteps,System *system)
 {
   Run *r=system->run;
   real_e grads2[2];
