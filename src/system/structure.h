@@ -95,6 +95,9 @@ class Structure {
   void parse_shake(char *line,char *token,System *system);
   void parse_noe(char *line,char *token,System *system);
   void parse_harmonic(char *line,char *token,System *system);
+  void parse_dihedral(char *line,char *token,System *system);
+  void parse_boRest(char *line,char *token,System *system);
+  void parse_anRest(char *line,char *token,System *system);
   void parse_diRest(char *line,char *token,System *system);
   void parse_resd(char *line,char *token,System *system); // eeresd
   void parse_mlp(char *line,char *token,System *system); // eemlp

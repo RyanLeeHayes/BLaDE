@@ -65,8 +65,14 @@ void Structure::setup_parse_structure()
   helpStructure["noe"]="?structure noe [selection] [selection] [rmin] [kmin] [rmax] [kmax] [rpeak] [rswitch] [nswitch]> Apply a CHARMM-style NOE restraint between a pair of atoms\n";
   parseStructure["harmonic"]=&Structure::parse_harmonic;
   helpStructure["harmonic"]="?structure harmonic [selection] [mass|none] [k real] [n real]> Apply harmonic restraints of k*(x-x0)^n to each atom in selection. x0 is taken from the current coordinates read in by coordinates. For none, k has units of kcal/mol/A^n, for mass, k is multiplied by the mass, and has units of kcal/mol/A^n/amu. structure harmonic reset clears all restraints\n";
-  parseStructure["dihedral"]=&Structure::parse_diRest;
+  parseStructure["dihedral"]=&Structure::parse_dihedral;
   helpStructure["dihedral"]="[selection] [selection] [selection] [selection] [kconst] [angle0] [periodicity]\n";
+  parseStructure["boRest"]=&Structure::parse_boRest;
+  helpStructure["boRest"]="[selection] [selection] [kconst] [r0] [block]> Apply quadratic harmonic potential on the rij between two selected atoms, scaled by the block's lambda.\n";
+  parseStructure["anRest"]=&Structure::parse_anRest;
+  helpStructure["anRest"]="[selection] [selection] [selection] [kconst] [angle0] [block]> Apply quadratic harmonic potential on the angle formed by three selected atoms, scaled by the block's lambda.\n";
+  parseStructure["diRest"]=&Structure::parse_diRest;
+  helpStructure["diRest"]="[selection] [selection] [selection] [selection] [kconst] [angle0] [block]> Apply quadratic harmonic potential on the dihedral angle form by four selected atoms, scaled by the block's lambda.\n";
   parseStructure["resd"]=&Structure::parse_resd; //eeresd
   helpStructure["resd"]="?structure resd [selection_dist1_atom1] [selection_dist1_atom2] [selection_dist2_atom1] [selection_dist2_atom2] [dist1_coefficient] [dist2_coefficient] [ref_dist_diff] [k_dist_diff]> Apply a CHARMM-style RESD restraint with linear combination of two distances (dist1 and dist2)\n"; // eeresd
 #ifdef WITH_TORCH
@@ -239,7 +245,7 @@ void Structure::parse_harmonic(char *line,char *token,System *system)
   harmCount=harmList.size();
 }
 
-void Structure::parse_diRest(char *line,char *token,System *system)
+void Structure::parse_dihedral(char *line,char *token,System *system)
 {
   io_nexta(line,token);
   if (strcmp(token,"reset")==0) {
@@ -305,6 +311,170 @@ void Structure::parse_diRest(char *line,char *token,System *system)
     dr.block=0; // Assume dihedral restraint is not scaled by lambda
     diRestList.push_back(dr);
     }
+  diRestCount=diRestList.size();
+}
+
+void Structure::parse_boRest(char *line, char *token, System *system){
+  io_nexta(line,token);
+  if (strcmp(token,"reset")==0) {
+    boRestList.clear();
+  } else {
+    std::string iselection=token;
+    std::string jselection=io_nexts(line);
+    int is,ns,i,j;
+    if (system->selections->selectionMap.count(iselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized first selection name %s for bond restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[iselection].boolCount; is++) {
+      if (system->selections->selectionMap[iselection].boolSelection[is]) {
+        i=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in first selection, found %d\n",ns);
+    if (system->selections->selectionMap.count(jselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized second selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[jselection].boolCount; is++) {
+      if (system->selections->selectionMap[jselection].boolSelection[is]) {
+        j=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in second selection, found %d\n",ns);
+    struct BoRestPotential br;
+    br.idx[0]=i;
+    br.idx[1]=j;
+    br.kr=io_nextf(line)*(KCAL_MOL/ANGSTROM/ANGSTROM);
+    br.r0=io_nextf(line)*ANGSTROM;
+    br.block=io_nexti(line); 
+    boRestList.push_back(br);
+  }
+  boRestCount=boRestList.size();
+}
+
+void Structure::parse_anRest(char *line, char *token, System *system){
+  io_nexta(line,token);
+  if (strcmp(token,"reset")==0) {
+    anRestList.clear();
+  } else {
+    std::string iselection=token;
+    std::string jselection=io_nexts(line);
+    std::string kselection=io_nexts(line);
+    int is,ns,i,j,k;
+    if (system->selections->selectionMap.count(iselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized first selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[iselection].boolCount; is++) {
+      if (system->selections->selectionMap[iselection].boolSelection[is]) {
+        i=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in first selection, found %d\n",ns);
+    if (system->selections->selectionMap.count(jselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized second selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[jselection].boolCount; is++) {
+      if (system->selections->selectionMap[jselection].boolSelection[is]) {
+        j=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in second selection, found %d\n",ns);
+    if (system->selections->selectionMap.count(kselection)!=1){
+      fatal(__FILE__,__LINE__,"Unrecognized third selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[kselection].boolCount; is++) {
+       if (system->selections->selectionMap[kselection].boolSelection[is]) {
+        k=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in third selection, found %d\n",ns);
+    struct AnRestPotential br;
+    br.idx[0]=i;
+    br.idx[1]=j;
+    br.idx[2]=k;
+    br.kt=io_nextf(line)*KCAL_MOL;
+    br.t0=io_nextf(line)*DEGREES;
+    br.block=io_nexti(line); // Assume dihedral restraint is not scaled by lambda
+    anRestList.push_back(br);
+  }
+  anRestCount=anRestList.size();
+}
+
+// Multiplicity = 0
+void Structure::parse_diRest(char *line,char *token,System *system){
+  io_nexta(line,token);
+  if (strcmp(token,"reset")==0) {
+    diRestList.clear();
+  } else {
+    std::string iselection=token;
+    std::string jselection=io_nexts(line);
+    std::string kselection=io_nexts(line);
+    std::string lselection=io_nexts(line); 
+    int is,ns,i,j,k,l;
+    if (system->selections->selectionMap.count(iselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized first selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[iselection].boolCount; is++) {
+      if (system->selections->selectionMap[iselection].boolSelection[is]) {
+        i=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in first selection, found %d\n",ns);
+    if (system->selections->selectionMap.count(jselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized second selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[jselection].boolCount; is++) {
+      if (system->selections->selectionMap[jselection].boolSelection[is]) {
+        j=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in second selection, found %d\n",ns);
+    if (system->selections->selectionMap.count(kselection)!=1){
+      fatal(__FILE__,__LINE__,"Unrecognized third selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[kselection].boolCount; is++) {
+       if (system->selections->selectionMap[kselection].boolSelection[is]) {
+        k=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in third selection, found %d\n",ns);
+    if (system->selections->selectionMap.count(lselection)!=1){
+      fatal(__FILE__,__LINE__,"Unrecognized fourth selection name %s for dihedral restraints\n",token);
+    }
+    ns=0;
+    for (is=0; is<system->selections->selectionMap[lselection].boolCount; is++) {
+       if (system->selections->selectionMap[lselection].boolSelection[is]) {
+        l=is;
+        ns++;
+      }
+    }
+    if (ns!=1) fatal(__FILE__,__LINE__,"Expected 1 atom in fourth selection, found %d\n",ns);
+    struct DiRestPotential dr;
+    dr.idx[0]=i;
+    dr.idx[1]=j;
+    dr.idx[2]=k;
+    dr.idx[3]=l;
+    dr.kphi=io_nextf(line)*KCAL_MOL;
+    dr.phi0=io_nextf(line)*DEGREES;
+    dr.nphi=0; // harmonic restraint
+    dr.block=io_nexti(line);
+    diRestList.push_back(dr);
+  }
   diRestCount=diRestList.size();
 }
 
