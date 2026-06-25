@@ -54,6 +54,10 @@ class Msld {
   real_f* dcdt_d; // [nBlock] derivative of constraint w.r.t. theta.i -> -'ve der w.r.t. theta0
   real well_width = 1.0; // flat bottom harmonic starting outside of [-w, w]
   real well_k = 100.0; // strength of fb harmonic
+  real N_target = 2;
+  real imp_m = 0;
+  real imp_alpha = 10;
+  real imp_xi = 0;
 
   bool scaleTerms[6]; // bond,ureyb,angle,dihe,impr,cmap
 

@@ -419,6 +419,14 @@ void parse_msld(char *line,System *system)
 #warning "No units on width or k"
   } else if (strcmp(token, "well_k")==0){
     system->msld->well_k=io_nextf(line);
+  } else if (strcmp(token, "N_target")==0){
+    system->msld->N_target=io_nextf(line);
+  } else if (strcmp(token, "imp_m")==0){
+    system->msld->imp_m=io_nextf(line);
+  } else if (strcmp(token, "imp_alpha")==0){
+    system->msld->imp_alpha=io_nextf(line);
+  } else if (strcmp(token, "imp_xi")==0){
+    system->msld->imp_xi=io_nextf(line);
   } else if (strcmp(token,"print")==0) {
     system->selections->dump();
   } else {
@@ -797,9 +805,8 @@ __device__ bool solve_constraint(real_x* thetas, real_x* theta0, int subs){
 __global__ void calc_lambda_from_theta_kernel(
   real_x *lambda,real_x *theta,
   int siteCount,int *siteBound,real fnex,
-  bool new_implicit, real_x* theta0
-)
-{
+  bool new_implicit, real_x* theta0, real* dcdt
+){
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int j,ji,jf;
   real_x lLambda;
@@ -821,6 +828,10 @@ __global__ void calc_lambda_from_theta_kernel(
     } else { // newton constraint
       bool result = solve_constraint(&(theta[ji]), &theta0[i], jf-ji); // calculates theta0 via newton iteration
       real left = constraint(&theta[ji], theta0[i], &lambda[ji], jf-ji); // fills lambdas
+      real norm = d_constraint(&theta[ji], theta0[i], &dcdt[ji], jf-ji); // loops over subs 1x
+      for(int j = ji; j<jf; j++){ // dcdt is not normalized in d_constraint
+        dcdt[j] /= norm;
+      }
     }
   }
 }
@@ -831,7 +842,7 @@ void Msld::calc_lambda_from_theta(cudaStream_t stream,System *system)
   if (!fix) { // ffix
     calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(
       s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex,
-      new_implicit, theta0_d);
+      new_implicit, theta0_d, dcdt_d);
   } else {
     cudaMemcpy(s->theta_d,s->lambda_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice);
   }
@@ -843,7 +854,7 @@ void Msld::init_lambda_from_theta(cudaStream_t stream,System *system)
   if (!fix) { // ffix
     calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(
       s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex,
-      new_implicit, theta0_d
+      new_implicit, theta0_d, dcdt_d
     );
   } else {
     cudaMemcpy(s->lambda_d,s->theta_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice);
@@ -880,6 +891,9 @@ __global__ void calc_thetaForce_from_lambdaForce_kernel(
         dot += lambdaForce[j]*dcdt[j];
       }
       atomicAdd(&thetaForce[i], dcdt[i]*(lambdaForce[i]-dot/norm));
+      for(int j = ji; j<jf; j++){ // dcdt is not normalized in d_constraintf
+       dcdt[j] /= norm;
+      }
     }
   }
 }
@@ -1111,7 +1125,7 @@ __global__ void getforce_thetaFlatHarmonic_kernel(
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   extern __shared__ real sEnergy[];
   real lEnergy=0;
-  if (i<blockCount){
+  if (i<blockCount && i != 0){
       int site = lambdaSite[i];
       int subs = blocksPerSite[site];
       // flat bottom harmonic
@@ -1132,6 +1146,47 @@ __global__ void getforce_thetaFlatHarmonic_kernel(
     real_sum_reduce(lEnergy,sEnergy,energy);
   }
 }
+
+__global__ void getforce_theta_targetBias_kernel(
+  real* theta, real_f* thetaForce, 
+  real_e* energy, int blockCount, 
+  int* lambdaSite, int* blocksPerSite,real kbT,
+  real k, real N_target,
+  real alpha, real phi, 
+  real_x* theta0, real_f* dcdt)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  extern __shared__ real sEnergy[];
+  real lEnergy=0;
+  if (i<blockCount && i != 0){
+      int site = lambdaSite[i];
+      int subs = blocksPerSite[site];
+      int blockStart = 0;
+      for(int j = 0; j < site; j++){
+        blockStart += blocksPerSite[j];
+      }
+      real N_approx = 0;
+      real dNdTi = 0;
+      for(int j = blockStart; j < blockStart+subs; j++){
+        real expA = exp(-alpha*(theta[j] - theta0[site] + phi));
+        real expA_1 = 1.0 + expA;
+        N_approx += 1.0 / expA_1;
+        real dij = j == i ? 1.0 : 0.0;
+        dNdTi += alpha*(dij-dcdt[i])*expA/(expA_1*expA_1);
+      }
+      real over = N_approx > N_target ? N_approx - N_target : 0.0;
+      lEnergy = i==blockStart ? (k*kbT)*over*over : 0; // first block calculates potential
+      real dUdTi = 2.0*(k*kbT)*over*dNdTi; // all blocks calculate force on its lambda
+      atomicAdd(&thetaForce[i], dUdTi);
+  }
+  // Energy, if requested
+  if (energy) {
+    __syncthreads();
+    real_sum_reduce(lEnergy,sEnergy,energy);
+  }
+}
+
+
 
 void Msld::getforce_thetaBias(System *system,bool calcEnergy)
 {
@@ -1167,6 +1222,14 @@ void Msld::getforce_thetaBias(System *system,bool calcEnergy)
       pEnergy,blockCount,
       lambdaSite_d, blocksPerSite_d, 
       well_width, well_k);
+
+    if (abs(system->msld->imp_m) > 1e-4){ // effectively turned off
+      getforce_theta_targetBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(
+        s->theta_fd,s->thetaForce_d,pEnergy,blockCount,lambdaSite_d,blocksPerSite_d,kB*r->T,
+        imp_m, N_target,imp_alpha, imp_xi,
+        theta0_d, dcdt_d);
+    }
+
   }
 }
 
