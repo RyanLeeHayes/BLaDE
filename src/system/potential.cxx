@@ -8,6 +8,7 @@
 #include "system/parameters.h"
 #include "system/structure.h"
 #include "msld/msld.h"
+#include "enhanced/enhanced.h"
 #include "system/state.h"
 #include "run/run.h"
 #include "domdec/domdec.h"
@@ -1924,6 +1925,17 @@ void Potential::calc_force(int step,System *system)
   }
 
   calc_virtual_force(system);
+
+  // Enhanced Sampling, wait on all other forces
+  if(system->enhanced && system->enhanced->active){
+    cudaStreamWaitEvent(r->enhancedStream, r->bondedComplete);
+    cudaStreamWaitEvent(r->enhancedStream, r->nbrecipComplete);
+    cudaStreamWaitEvent(r->enhancedStream, r->nbdirectComplete);
+    cudaStreamWaitEvent(r->enhancedStream, r->biaspotComplete);
+    getforce_enhanced(system, step, calcEnergy); // calc force and samples
+    cudaEventRecord(r->enhancedComplete, r->enhancedStream);
+    cudaStreamWaitEvent(r->updateStream,r->enhancedComplete,0);
+  }
 
   // cudaEventRecord(r->forceComplete,r->updateStream);
 }
