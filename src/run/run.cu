@@ -94,11 +94,11 @@ Run::Run(System *system)
   termStringToInt["enhanced"]=eeenhanced;
   termStringToInt["theta"]=eetheta;
   termStringToInt["cats"]=eecats;
-  termStringToInt["eenoe"]=eenoe;
-  termStringToInt["eeharmonic"]=eeharmonic;
-  termStringToInt["eemmfp"]=eemmfp;
-  termStringToInt["eeresd"]=eeresd; // eeresd
-  termStringToInt["eemlp"]=eemlp;   // eemlp 
+  termStringToInt["noe"]=eenoe;
+  termStringToInt["harmonic"]=eeharmonic;
+  termStringToInt["mmfp"]=eemmfp;
+  termStringToInt["resd"]=eeresd; // eeresd
+  termStringToInt["mlp"]=eemlp;   // eemlp 
   termStringToInt["bias"]=eebias;
   termStringToInt["potential"]=eepotential;
   termStringToInt["kinetic"]=eekinetic;
