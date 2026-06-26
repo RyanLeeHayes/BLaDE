@@ -310,7 +310,7 @@ real eval_weights_at_point(real L, real* weights, real std, int bins, int search
   real U = 0;
   for(int i = current_bin-search; i <= current_bin+search; i++){
     int i_mirrored = i < 0 ? -i : i;
-    i_mirrored = i >= bins ? 2*(bins-1)-i : i;
+    i_mirrored = i >= bins ? 2*(bins-1)-i : i_mirrored;
     real L_center = i*(1.0/(bins-1.0));
     real dist = (L-L_center)/std;
     U += weights[i_mirrored]*exp(-.5*dist*dist);
@@ -439,68 +439,71 @@ void MetaAdaptiveBiasingForce::restart(System* system){
   }
   printf("MetaABF: reading restart file %s\n", fnm.c_str());
 
-  char line[4096];
+  // Width-limited "%s" so the token read can never overflow `token`.
   char token[MAXLENGTHSTRING];
-  while(fgets(line, sizeof(line), fp)){
-    char* pos = line;
-    int nread=0;
-    if(sscanf(pos, "%s%n", token, &nread) != 1) continue;
-    pos += nread;
+  char tokfmt[16];
+  snprintf(tokfmt, sizeof(tokfmt), "%%%ds", MAXLENGTHSTRING - 1);
+
+  // Reads n_bins values into arr, into a double temp first so it works
+  // whether `real` is float or double. Fails loudly on a short read.
+  auto read_array = [&](real* arr, const char* name){
+    for(int i = 0; i < n_bins; i++){
+      double v;
+      if(fscanf(fp, " %lf", &v) != 1){
+        printf("Error: failed reading '%s' value %d of %d.\n", name, i, n_bins);
+        fclose(fp); exit(1);
+      }
+      arr[i] = (real)v;
+    }
+    printf("Read '%s' from file: ", name);
+    print_real_array(arr, n_bins);
+    printf("\n");
+  };
+
+  while(fscanf(fp, tokfmt, token) == 1){
     if(strcmp(token, "target_site") == 0){
       int read_target_site;
-      sscanf(pos, " %d", &read_target_site);
+      if(fscanf(fp, " %d", &read_target_site) != 1){
+        printf("Error: failed reading target_site value.\n"); fclose(fp); exit(1);
+      }
       if(read_target_site != target_site){
         printf("Warning: restart target_site (%d) differs from current target_site (%d). Using current.\n",
                read_target_site, target_site);
       }
     } else if(strcmp(token, "n_bins") == 0){
       int read_n_bins;
-      sscanf(pos, " %d", &read_n_bins);
+      if(fscanf(fp, " %d", &read_n_bins) != 1){
+        printf("Error: failed reading n_bins value.\n"); fclose(fp); exit(1);
+      }
       if(read_n_bins != n_bins){
         printf("Error: restart n_bins (%d) does not match current n_bins (%d)!\n",
                read_n_bins, n_bins);
-        printf("Exiting...\n"); exit(1);
+        printf("Exiting...\n"); fclose(fp); exit(1);
       }
     } else if(strcmp(token, "counts") == 0){
-      for(int i = 0; i < n_bins; i++){
-        nread = 0;
-        int read = sscanf(pos, " %f%n", &counts[i], &nread);
-        pos += nread;
-      }
+      read_array(counts, "counts");
     } else if(strcmp(token, "dUdL_m2") == 0){
-      for(int i = 0; i < n_bins; i++){
-        int nread = 0;
-        sscanf(pos, " %f%n", &dUdL_m2[i], &nread);
-        pos += nread;
-      }
+      read_array(dUdL_m2, "dUdL_m2");
     } else if(strcmp(token, "dUdL_avg") == 0){
-      for(int i = 0; i < n_bins; i++){
-        int nread = 0;
-        sscanf(pos, " %f%n", &dUdL_avg[i], &nread);
-        pos += nread;
-      }
+      read_array(dUdL_avg, "dUdL_avg");
     } else if(strcmp(token, "meta_weights") == 0){
-      for(int i = 0; i < n_bins; i++){
-        int nread = 0;
-        sscanf(pos, " %f%n", &meta_weights[i], &nread);
-        pos += nread;
-      }
+      read_array(meta_weights, "meta_weights");
     }
+    // Unrecognized tokens are consumed and ignored; because fscanf("%s")
+    // always advances, stray tokens/values can't cause an infinite loop.
   }
-
   fclose(fp);
 
-  // Compute std
+  // Compute std (fabs, not integer abs)
   for(int i = 0; i < n_bins; i++){
-    dUdL_std[i] = abs(counts[i]) > 1e-3 ? sqrt(dUdL_m2[i]/counts[i]) : 0;
+    dUdL_std[i] = fabs(counts[i]) > 1e-3 ? sqrt(dUdL_m2[i]/counts[i]) : 0;
   }
 
-  // Update GPU memory with memory from file
-  cudaMemcpy(counts_d, counts, n_bins*sizeof(real), cudaMemcpyDefault);
-  cudaMemcpy(dUdL_m2_d, dUdL_m2, n_bins*sizeof(real), cudaMemcpyDefault);
-  cudaMemcpy(dUdL_avg_d, dUdL_avg, n_bins*sizeof(real), cudaMemcpyDefault);
-  cudaMemcpy(dUdL_std_d, dUdL_std, n_bins*sizeof(real), cudaMemcpyDefault);
+  // Update GPU memory with values from file
+  cudaMemcpy(counts_d,       counts,       n_bins*sizeof(real), cudaMemcpyDefault);
+  cudaMemcpy(dUdL_m2_d,      dUdL_m2,      n_bins*sizeof(real), cudaMemcpyDefault);
+  cudaMemcpy(dUdL_avg_d,     dUdL_avg,     n_bins*sizeof(real), cudaMemcpyDefault);
+  cudaMemcpy(dUdL_std_d,     dUdL_std,     n_bins*sizeof(real), cudaMemcpyDefault);
   cudaMemcpy(meta_weights_d, meta_weights, n_bins*sizeof(real), cudaMemcpyDefault);
-
   printf("MetaABF: restart complete.\n");
 };
