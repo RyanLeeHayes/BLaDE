@@ -9,8 +9,11 @@
 #include "system/state.h"
 #include "system/potential.h"
 #include "system/selections.h"
+#include "rng/rng_cpu.h" // DrudeIns - provenance marker for Drude PR.
+#include "rng/rng_gpu.h" // DrudeIns - provenance marker for Drude PR.
 #include "holonomic/rectify.h"
 #include "domdec/domdec.h"
+#include "drude/drude_plugin.h" // DrudeIns - include Drude plugin interface
 #include "main/gpu_check.h"
 
 #ifdef REPLICAEXCHANGE
@@ -30,6 +33,9 @@ Run::Run(System *system)
   dt=0.001*PICOSECOND; // ps
   T=300; // K
   gamma=1.0/PICOSECOND; // ps^-1
+  Tdrude=1.0; // DrudeIns - default Drude relative-mode temperature in K
+  gammaDrude=20.0/PICOSECOND; // DrudeIns - default Drude relative-mode friction in ps^-1
+  maxDrudeDistance=0.2*ANGSTROM; // DrudeIns - default hard-wall distance (0.02 nm)
   fnmXTC="default.xtc";
   fnmLMD="default.lmd";
   fnmNRG="default.nrg";
@@ -86,6 +92,7 @@ Run::Run(System *system)
   termStringToInt["nbrecip"]=eenbrecip;
   termStringToInt["nbrecipself"]=eenbrecipself;
   termStringToInt["nbrecipexcl"]=eenbrecipexcl;
+  termStringToInt["drude"]=eedrude; // DrudeIns - expose drude term in run setterm
   termStringToInt["lambda"]=eelambda;
   termStringToInt["theta"]=eetheta;
   termStringToInt["cats"]=eecats;
@@ -216,9 +223,11 @@ void Run::setup_parse_run()
   parseRun["reset"]=&Run::reset;
   helpRun["reset"]="?run reset> Resets the run data structure to it's default values\n";
   parseRun["setvariable"]=&Run::set_variable;
-  helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Available \"name\"s are: dt (time step in ps), nsteps (number of steps of dynamics to run), fnmxtc (filename for the coordinate output), fnmlmd (filename for the lambda output), fnmnrg (filename for the energy output)\n";
+  // helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Available \"name\"s are: dt (time step in ps), nsteps (number of steps of dynamics to run), fnmxtc (filename for the coordinate output), fnmlmd (filename for the lambda output), fnmnrg (filename for the energy output)\n"; // DrudeDel - setvariable help text before Drude runtime controls
+  helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Includes dt, nsteps, seed, T, gamma, Tdrude, gammaDrude, maxDrudeDistance, fnmxtc, fnmlmd, fnmnrg, and related run controls.\n"; // DrudeIns - document Drude runtime controls
   parseRun["setterm"]=&Run::set_term;
-  helpRun["setterm"]="?run setterm [term] [on|off]> Turn terms (including bond, angle, dihe, impr, nb14 nbdirect, nbrecip, nbrecipself, nbrecipexcl, lambda, and bias) on or off\n";
+  // helpRun["setterm"]="?run setterm [term] [on|off]> Turn terms (including bond, angle, dihe, impr, nb14 nbdirect, nbrecip, nbrecipself, nbrecipexcl, lambda, and bias) on or off\n"; // DrudeDel - previous setterm help text without drude term
+  helpRun["setterm"]="?run setterm [term] [on|off]> Turn terms (including bond, angle, dihe, impr, nb14, nbdirect, nbrecip, nbrecipself, nbrecipexcl, drude, lambda, and bias) on or off\n"; // DrudeIns - add drude to documented setterm options
   parseRun["energy"]=&Run::energy;
   helpRun["energy"]="?run energy> Calculate energy of current conformation or from fnmcpi checkpoint in file\"\n";
   parseRun["test"]=&Run::test;
@@ -255,6 +264,9 @@ void Run::dump(char *line,char *token,System *system)
   fprintf(stdout,"RUN PRINT> dt=%f (time step input in ps)\n",dt/PICOSECOND);
   fprintf(stdout,"RUN PRINT> T=%f (temperature in K)\n",T);
   fprintf(stdout,"RUN PRINT> gamma=%f (friction input in ps^-1)\n",gamma*PICOSECOND);
+  fprintf(stdout,"RUN PRINT> Tdrude=%f (Drude relative-mode temperature in K)\n",Tdrude); // DrudeIns - print Drude thermostat target
+  fprintf(stdout,"RUN PRINT> gammaDrude=%f (Drude relative-mode friction input in ps^-1)\n",gammaDrude*PICOSECOND); // DrudeIns - print Drude thermostat friction
+  fprintf(stdout,"RUN PRINT> maxDrudeDistance=%f (Drude hard-wall distance input in A, 0 disables)\n",maxDrudeDistance/ANGSTROM); // DrudeIns - print Drude hard-wall setting
   fprintf(stdout,"RUN PRINT> nsteps=%d (number of time steps for dynamics)\n",nsteps);
   fprintf(stdout,"RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
   fprintf(stdout,"RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
@@ -296,6 +308,11 @@ void Run::set_variable(char *line,char *token,System *system)
     dt=PICOSECOND*io_nextf(line);
   } else if (strcmp(token,"nsteps")==0) {
     nsteps=io_nexti(line);
+  } else if (strcmp(token,"seed")==0) { // DrudeIns - provenance marker for Drude PR.
+    int seed=io_nexti(line); // DrudeIns - provenance marker for Drude PR.
+    if (seed<0) fatal(__FILE__,__LINE__,"seed must be >= 0 (got %d)\n",seed); // DrudeIns - provenance marker for Drude PR.
+    if (system->rngCPU) system->rngCPU->set_seed((unsigned long)seed); // DrudeIns - provenance marker for Drude PR.
+    if (system->rngGPU) system->rngGPU->set_seed((unsigned long long)seed); // DrudeIns - provenance marker for Drude PR.
   } else if (strcmp(token,"fnmxtc")==0) {
     if (fpXTC) xdrfile_close(fpXTC);
     fpXTC=NULL;
@@ -327,7 +344,17 @@ void Run::set_variable(char *line,char *token,System *system)
   } else if (strcmp(token,"T")==0) {
     T=io_nextf(line);
   } else if (strcmp(token,"gamma")==0) {
-    gamma=io_nextf(line)/PICOSECOND;
+    // gamma=io_nextf(line)/PICOSECOND; // DrudeDel - pre-existing BLaDE bug: accepted negative gamma, producing silent NaN via sqrt(negative) in Langevin thermostat noise term. Discovered during Drude dual-thermostat testing.
+    gamma=io_nextf(line)/PICOSECOND; // DrudeIns - general BLaDE bugfix (not Drude-specific): parse gamma with non-negative validation. Affects all simulations using Langevin thermostat.
+    if (gamma<0) fatal(__FILE__,__LINE__,"gamma must be >= 0 (got %f ps^-1)\n",gamma*PICOSECOND); // DrudeIns - general BLaDE bugfix: reject invalid negative friction before it silently corrupts thermostat forces.
+  } else if (strcmp(token,"Tdrude")==0) { // DrudeIns - parse Drude thermostat temperature token
+    Tdrude=io_nextf(line); // DrudeIns - set Drude relative-mode thermostat temperature in K
+  } else if (strcmp(token,"gammaDrude")==0) { // DrudeIns - parse Drude thermostat friction token
+    // gammaDrude=io_nextf(line)/PICOSECOND; // DrudeDel - accepted negative Drude friction and could produce silent NaN in relative thermostat noise
+    gammaDrude=io_nextf(line)/PICOSECOND; // DrudeIns - set Drude relative-mode friction in ps^-1
+    if (gammaDrude<0) fatal(__FILE__,__LINE__,"gammaDrude must be >= 0 (got %f ps^-1)\n",gammaDrude*PICOSECOND); // DrudeIns - fail fast on invalid negative Drude friction
+  } else if (strcmp(token,"maxDrudeDistance")==0 || strcmp(token,"maxdrudedistance")==0) { // DrudeIns - parse Drude hard-wall token
+    maxDrudeDistance=io_nextf(line)*ANGSTROM; // DrudeIns - set hard-wall distance in Angstrom
   } else if (strcmp(token,"invbetaewald")==0) {
     betaEwald=1/(io_nextf(line)*ANGSTROM);
     cutoffs.betaEwald=betaEwald;
@@ -430,7 +457,8 @@ void Run::test(char *line,char *token,System *system)
   real dx;
   int i,j,ij,s;
   int ij0,imax,jmax;
-  real_e F,E[2];
+  // real_e F,E[2]; // DrudeDel - pre-existing BLaDE bug in "run test alchemical": F was declared as real_e but cudaMemcpy read sizeof(real) bytes from a real_f buffer, causing type-width mismatch on mixed-precision builds (real_f=float, real_e=double). Discovered during Drude alchemical FD validation.
+  real_e E[2]; // DrudeIns - general BLaDE bugfix (not Drude-specific): removed mismatched F variable; force is now read via correctly-typed real_f below.
 
   // Initialize data structures
   dynamics_initialize(system);
@@ -492,8 +520,11 @@ void Run::test(char *line,char *token,System *system)
           system->state->restore_position();
         }
         if (system->id==0) {
-          cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
-          fprintf(stdout,"ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
+          // cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost); // DrudeDel - pre-existing BLaDE bug: sizeof(real) != sizeof(real_f) on mixed-precision builds, reading wrong number of bytes from forceBuffer_d. Discovered during Drude alchemical FD validation.
+          real_f Ffd; // DrudeIns - general BLaDE bugfix (not Drude-specific): read forceBuffer with matching scalar type real_f to avoid width mismatch.
+          cudaMemcpy(&Ffd,&system->state->forceBuffer_d[ij],sizeof(real_f),cudaMemcpyDeviceToHost); // DrudeIns - general BLaDE bugfix: sizeof(real_f) matches forceBuffer_d element type.
+          fprintf(stdout,"ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n", // DrudeIns - provenance marker for Drude PR.
+            ij,E[0],E[1],(E[1]-E[0])/dx,(double)Ffd); // DrudeIns - general BLaDE bugfix: stable double conversion for diagnostic output.
         }
       }
     }
@@ -525,6 +556,10 @@ void Run::dynamics(char *line,char *token,System *system)
 
   // Initialize data structures
   dynamics_initialize(system);
+  if (system->drudePlugin && system->drudePlugin->is_active(system) && freqNPT>0) { // DrudeIns - reject unvalidated atom-wise MC barostat only for active dynamics
+    fatal(__FILE__,__LINE__,
+      "Drude dynamics currently supports NVT only. Set run setvariable freqnpt 0 before run dynamics.\n");
+  }
 
   // Run dynamics
   t1=clock();
@@ -578,6 +613,9 @@ void Run::dynamics_initialize(System *system)
   if (system->potential) delete system->potential;
   system->potential=new Potential();
   system->potential->initialize(system);
+  if (system->drudePlugin) { // DrudeIns - initialize Drude plugin runtime after potential setup
+    system->drudePlugin->initialize(system); // DrudeIns - prepare Drude plugin internal data/buffers
+  } // DrudeIns - provenance marker for Drude PR.
 
   // Rectify bond constraints
   holonomic_rectify(system);

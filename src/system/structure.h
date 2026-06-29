@@ -2,6 +2,7 @@
 #define SYSTEM_STRUCTURE_H
 
 #include <stdio.h>
+#include <map> // DrudeIns - provenance marker for Drude PR.
 #include <string>
 #include <vector>
 
@@ -28,6 +29,17 @@ struct AtomStructure {
   std::string atomTypeName;
   real charge;
   real mass;
+  real polarizability; // DrudeIns - provenance marker for Drude PR.
+  real thole; // DrudeIns - provenance marker for Drude PR.
+}; // DrudeIns - provenance marker for Drude PR.
+
+struct DrudeAnisotropyStructure { // DrudeIns - provenance marker for Drude PR.
+  int parentIdx; // DrudeIns - provenance marker for Drude PR.
+  int axis1Idx; // DrudeIns - provenance marker for Drude PR.
+  int axis3Idx; // DrudeIns - provenance marker for Drude PR.
+  int axis4Idx; // DrudeIns - provenance marker for Drude PR.
+  real aniso12; // DrudeIns - provenance marker for Drude PR.
+  real aniso34; // DrudeIns - provenance marker for Drude PR.
 };
 
 
@@ -54,6 +66,8 @@ class Structure {
 
   int cmapCount;
   std::vector<struct Int8> cmapList;
+
+  std::map<int,struct DrudeAnisotropyStructure> drudeAnisotropyByParent; // DrudeIns - provenance marker for Drude PR.
 
   int virt2Count;
   std::vector<struct VirtualSite2> virt2List;

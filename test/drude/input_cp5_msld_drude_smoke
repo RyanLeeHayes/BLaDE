@@ -1,0 +1,47 @@
+! CP5 smoke: minimal MSLD + Drude coexistence (with Drude spring active)
+
+variables set dir test/drude
+
+parameters file {dir}/../toppar/par_all36_prot.prm
+parameters file {dir}/../toppar_water_ions/par_water_ions.prm
+
+structure file psf {dir}/data/drude_2atom.psf
+coordinates file crd {dir}/data/drude_2atom.crd
+coordinates box cubi 50.0 50.0 50.0 90 90 90
+coordinates velocity 300
+
+selection define allsel all
+
+! Minimal legal MSLD setup:
+! site0: block0 (implicit default)
+! site1: block1 and block2
+msld nblocks 2
+msld call 1 allsel
+msld call 2 allsel
+msld initialize 1 1 -0.2 0.0 5.0 0.0 0.0
+msld initialize 2 1  0.2 0.0 5.0 0.0 0.0
+
+drude clear
+drude enable 1
+drude spring 1 0 1000.0 0.0
+
+run setterm nbdirect off
+run setterm nbrecip off
+run setterm nbrecipself off
+run setterm nbrecipexcl off
+run setterm nb14 off
+
+run setvariable dt 0.001
+run setvariable nsteps 1000
+run setvariable T 300
+run setvariable gamma 20
+run setvariable Tdrude 10
+run setvariable gammaDrude 20
+run setvariable maxDrudeDistance 0.05
+run setvariable freqnpt 0
+run setvariable freqnrg 100
+run setvariable freqxtc 1000
+run setvariable fnmxtc cp5_msld_drude_smoke.xtc
+run setvariable fnmnrg cp5_msld_drude_smoke.nrg
+
+run dynamics

@@ -51,7 +51,8 @@ R
 #include "rng/rng_cpu.h"
  
 /* Period parameters */
-#define MT_N 624
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+#define MT_N RNG_CPU_MT_N // DrudeIns - provenance marker for Drude PR.
 #define MT_M 397
 #define MT_MATRIX_A 0x9908b0dfUL   /* constant vector a */
 #define MT_UPPER_MASK 0x80000000UL /* most significant w-r bits */
@@ -72,6 +73,13 @@ RngCPU::~RngCPU()
 {
   free_mtstate(mtState);
 }
+ // DrudeIns - provenance marker for Drude PR.
+void RngCPU::set_seed(unsigned long s) // DrudeIns - provenance marker for Drude PR.
+{ // DrudeIns - provenance marker for Drude PR.
+  init_genrand(s,mtState->mt,&(mtState->mti)); // DrudeIns - provenance marker for Drude PR.
+  mtState->nextReal=(real)0; // DrudeIns - provenance marker for Drude PR.
+  mtState->bNextReal=false; // DrudeIns - provenance marker for Drude PR.
+} // DrudeIns - provenance marker for Drude PR.
 
 
 
@@ -212,4 +220,3 @@ void RngCPU::free_mtstate(struct MTState* mts)
   free(mts->mt);
   free(mts);
 }
-

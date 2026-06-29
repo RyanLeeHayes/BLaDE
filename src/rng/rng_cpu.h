@@ -3,6 +3,8 @@
 
 #include "main/defines.h"
 
+static const int RNG_CPU_MT_N = 624; // DrudeIns - provenance marker for Drude PR.
+
 struct MTState
 {
   unsigned long *mt; /* the array for the state vector  */
@@ -25,9 +27,9 @@ class RngCPU
 
   struct MTState* alloc_mtstate(unsigned long s);
   void free_mtstate(struct MTState* mts);
+  void set_seed(unsigned long s); // DrudeIns - provenance marker for Drude PR.
   real rand_normal();
   real rand_uniform();
 };
 
 #endif
-

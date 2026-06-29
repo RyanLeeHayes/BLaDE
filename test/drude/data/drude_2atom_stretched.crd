@@ -1,0 +1,6 @@
+* two-atom drude oscillator stretched coordinates
+* generated for hardwall stress test
+*
+         2 EXT
+         1         1  DRUD      PRT            25.0000000000       25.0000000000       25.0000000000  DRUD      1                 0.0000000000
+         2         1  DRUD      DRU            25.3000000000       25.0000000000       25.0000000000  DRUD      1                 0.0000000000

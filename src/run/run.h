@@ -51,6 +51,9 @@ class Run {
   real dt;
   real T;
   real gamma;
+  real Tdrude; // DrudeIns - Drude relative-mode target temperature
+  real gammaDrude; // DrudeIns - Drude relative-mode Langevin friction
+  real maxDrudeDistance; // DrudeIns - hard-wall distance (input in A via setvariable)
 
   // Minimization variables
   real dxAtomMax; // maximum step length

@@ -1,4 +1,6 @@
 #include <omp.h>
+#include <math.h> // DrudeIns - provenance marker for Drude PR.
+#include <set> // DrudeIns - provenance marker for Drude PR.
 #include <string.h>
 
 #include "system/system.h"
@@ -9,6 +11,66 @@
 #include "system/potential.h"
 #include "main/defines.h"
 #include "io/io.h"
+
+static bool structure_read_next_psf_section_line(FILE *fp,char *line) // DrudeIns - provenance marker for Drude PR.
+{ // DrudeIns - provenance marker for Drude PR.
+  while (fgets(line,MAXLENGTHSTRING,fp)) { // DrudeIns - provenance marker for Drude PR.
+    if (strstr(line,"!")) return true; // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
+  line[0]='\0'; // DrudeIns - provenance marker for Drude PR.
+  return false; // DrudeIns - provenance marker for Drude PR.
+} // DrudeIns - provenance marker for Drude PR.
+
+static real structure_round5(real value) // DrudeIns - provenance marker for Drude PR.
+{ // DrudeIns - provenance marker for Drude PR.
+  return (real)(floor((double)value*100000.0+0.5)/100000.0); // DrudeIns - provenance marker for Drude PR.
+} // DrudeIns - provenance marker for Drude PR.
+
+static void structure_openmm_anisotropy_factors(real k11,real k22,real k33, // DrudeIns - provenance marker for Drude PR.
+  real *aniso12,real *aniso34) // DrudeIns - provenance marker for Drude PR.
+{ // DrudeIns - provenance marker for Drude PR.
+  double a=(double)k11+(double)k22+3.0*(double)k33; // DrudeIns - provenance marker for Drude PR.
+  double b=2.0*(double)k11*(double)k22+ // DrudeIns - provenance marker for Drude PR.
+    4.0*(double)k11*(double)k33+ // DrudeIns - provenance marker for Drude PR.
+    4.0*(double)k22*(double)k33+ // DrudeIns - provenance marker for Drude PR.
+    6.0*(double)k33*(double)k33; // DrudeIns - provenance marker for Drude PR.
+  double c=3.0*(double)k33*((double)k11+(double)k33)*((double)k22+(double)k33); // DrudeIns - provenance marker for Drude PR.
+  double disc=b*b-4.0*a*c; // DrudeIns - provenance marker for Drude PR.
+
+  if (!isfinite(a) || !isfinite(b) || !isfinite(c) || fabs(a)<1e-12) { // DrudeIns - provenance marker for Drude PR.
+    fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+      "Invalid Drude anisotropy tensor: k11=%g k22=%g k33=%g\n", // DrudeIns - provenance marker for Drude PR.
+      (double)k11,(double)k22,(double)k33); // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
+  if (disc<0.0 && disc>-1e-7) disc=0.0; // DrudeIns - provenance marker for Drude PR.
+  if (!isfinite(disc) || disc<0.0) { // DrudeIns - provenance marker for Drude PR.
+    fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+      "Invalid Drude anisotropy discriminant: k11=%g k22=%g k33=%g disc=%g\n", // DrudeIns - provenance marker for Drude PR.
+      (double)k11,(double)k22,(double)k33,disc); // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
+
+  double drudeK=(sqrt(disc)-b)/(2.0*a); // DrudeIns - provenance marker for Drude PR.
+  double denom12=(double)k11+(double)k33+drudeK; // DrudeIns - provenance marker for Drude PR.
+  double denom34=(double)k22+(double)k33+drudeK; // DrudeIns - provenance marker for Drude PR.
+  double a12=drudeK/denom12; // DrudeIns - provenance marker for Drude PR.
+  double a34=drudeK/denom34; // DrudeIns - provenance marker for Drude PR.
+  if (!isfinite(drudeK) || !isfinite(a12) || !isfinite(a34) || // DrudeIns - provenance marker for Drude PR.
+      a12<=0.0 || a34<=0.0 || 3.0-a12-a34<=0.0) { // DrudeIns - provenance marker for Drude PR.
+    fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+      "Invalid Drude anisotropy factors from tensor: k11=%g k22=%g k33=%g drudeK=%g aniso12=%g aniso34=%g\n", // DrudeIns - provenance marker for Drude PR.
+      (double)k11,(double)k22,(double)k33,drudeK,a12,a34); // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
+
+  *aniso12=structure_round5((real)a12); // DrudeIns - provenance marker for Drude PR.
+  *aniso34=structure_round5((real)a34); // DrudeIns - provenance marker for Drude PR.
+} // DrudeIns - provenance marker for Drude PR.
+
+static void structure_check_psf_atom_index(int idx,int atomCount,const char *tag) // DrudeIns - provenance marker for Drude PR.
+{ // DrudeIns - provenance marker for Drude PR.
+  if (idx<0 || idx>=atomCount) { // DrudeIns - provenance marker for Drude PR.
+    fatal(__FILE__,__LINE__,"Atom %d in %s is out of range\n",idx,tag); // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
+} // DrudeIns - provenance marker for Drude PR.
 
 
 
@@ -21,7 +83,6 @@ Structure::Structure() {
   diheCount=0;
   imprCount=0;
   cmapCount=0;
-
   virt2Count=0;
   virt3Count=0;
 
@@ -437,6 +498,9 @@ void Structure::add_structure_psf_file(FILE *fp)
     at.atomTypeName=io_nexts(line);
     at.charge=io_nextf(line);
     at.mass=io_nextf(line);
+    io_nexti(line,0); // DrudeIns - provenance marker for Drude PR.
+    at.polarizability=fabs((double)io_nextf(line,(real)0))*ANGSTROM*ANGSTROM*ANGSTROM; // DrudeIns - provenance marker for Drude PR.
+    at.thole=io_nextf(line,(real)0); // DrudeIns - provenance marker for Drude PR.
     atomList.push_back(at);
   }
 
@@ -625,9 +689,53 @@ void Structure::add_structure_psf_file(FILE *fp)
     }
   }
   
+  // Read Drude anisotropy records before CMAP, matching CHARMM/OpenMM PSF order. // DrudeIns - provenance marker for Drude PR.
+  drudeAnisotropyByParent.clear(); // DrudeIns - provenance marker for Drude PR.
+
+  bool haveSectionLine=structure_read_next_psf_section_line(fp,line); // DrudeIns - provenance marker for Drude PR.
+  if (haveSectionLine && strstr(line,"!NUMANISO")) { // DrudeIns - provenance marker for Drude PR.
+    int anisoCount=io_nexti(line,fp,"psf number of drude anisotropy records"); // DrudeIns - provenance marker for Drude PR.
+    fprintf(stdout,"Reading PSF, expect !NUMANISO: got %s",line); // DrudeIns - provenance marker for Drude PR.
+
+    std::vector<real> k11List; // DrudeIns - provenance marker for Drude PR.
+    std::vector<real> k22List; // DrudeIns - provenance marker for Drude PR.
+    std::vector<real> k33List; // DrudeIns - provenance marker for Drude PR.
+    k11List.reserve(anisoCount); // DrudeIns - provenance marker for Drude PR.
+    k22List.reserve(anisoCount); // DrudeIns - provenance marker for Drude PR.
+    k33List.reserve(anisoCount); // DrudeIns - provenance marker for Drude PR.
+    for (i=0; i<anisoCount; i++) { // DrudeIns - provenance marker for Drude PR.
+      k11List.push_back(io_nextf(line,fp,"psf drude anisotropy k11")); // DrudeIns - provenance marker for Drude PR.
+      k22List.push_back(io_nextf(line,fp,"psf drude anisotropy k22")); // DrudeIns - provenance marker for Drude PR.
+      k33List.push_back(io_nextf(line,fp,"psf drude anisotropy k33")); // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+
+    for (i=0; i<anisoCount; i++) { // DrudeIns - provenance marker for Drude PR.
+      struct DrudeAnisotropyStructure aniso; // DrudeIns - provenance marker for Drude PR.
+      aniso.parentIdx=io_nexti(line,fp,"psf drude anisotropy parent atom")-1; // DrudeIns - provenance marker for Drude PR.
+      aniso.axis1Idx=io_nexti(line,fp,"psf drude anisotropy axis1 atom")-1; // DrudeIns - provenance marker for Drude PR.
+      aniso.axis3Idx=io_nexti(line,fp,"psf drude anisotropy axis3 atom")-1; // DrudeIns - provenance marker for Drude PR.
+      aniso.axis4Idx=io_nexti(line,fp,"psf drude anisotropy axis4 atom")-1; // DrudeIns - provenance marker for Drude PR.
+      structure_check_psf_atom_index(aniso.parentIdx,atomCount,"drude anisotropy parent"); // DrudeIns - provenance marker for Drude PR.
+      structure_check_psf_atom_index(aniso.axis1Idx,atomCount,"drude anisotropy axis1"); // DrudeIns - provenance marker for Drude PR.
+      structure_check_psf_atom_index(aniso.axis3Idx,atomCount,"drude anisotropy axis3"); // DrudeIns - provenance marker for Drude PR.
+      structure_check_psf_atom_index(aniso.axis4Idx,atomCount,"drude anisotropy axis4"); // DrudeIns - provenance marker for Drude PR.
+      structure_openmm_anisotropy_factors(k11List[i],k22List[i],k33List[i], // DrudeIns - provenance marker for Drude PR.
+        &aniso.aniso12,&aniso.aniso34); // DrudeIns - provenance marker for Drude PR.
+      if (drudeAnisotropyByParent.count(aniso.parentIdx)>0) { // DrudeIns - provenance marker for Drude PR.
+        fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+          "Duplicate Drude anisotropy record for parent atom %d\n",aniso.parentIdx); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+      drudeAnisotropyByParent[aniso.parentIdx]=aniso; // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+    haveSectionLine=structure_read_next_psf_section_line(fp,line); // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
+
   // Read cmaps
   if (headerInfo.count("CMAP")) {
-    fgets(line, MAXLENGTHSTRING, fp);
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    if (!haveSectionLine) { // DrudeIns - provenance marker for Drude PR.
+      fatal(__FILE__,__LINE__,"End of file while searching for PSF CMAP section\n"); // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
     cmapCount=io_nexti(line,fp,"psf number of cmaps");
     fprintf(stdout,"Reading PSF, expect !NCRTERM: got %s",line);
     cmapList.clear();
@@ -816,7 +924,10 @@ void blade_add_atom(System *system,
   at.atomName=atomName;
   at.atomTypeName=atomTypeName;
   at.charge=charge;
-  at.mass=mass;
+  // DrudeDel - original atom initializer stopped at mass; Drude metadata defaults are added below.
+  at.mass=mass; // DrudeIns - provenance marker for Drude PR.
+  at.polarizability=(real)0; // DrudeIns - provenance marker for Drude PR.
+  at.thole=(real)0; // DrudeIns - provenance marker for Drude PR.
   system+=omp_get_thread_num();
   system->structure->atomList.push_back(at);
   system->structure->atomCount=system->structure->atomList.size();
@@ -1033,4 +1144,3 @@ void blade_tani_internal_setup(System *system, const int is_tani, const char *pt
   system->structure->MLPList.push_back(mlp);
   system->structure->MLPModelCount=system->structure->MLPList.size();
 } // eemlp-end
-

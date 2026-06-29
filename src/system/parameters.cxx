@@ -129,33 +129,78 @@ void parse_parameters(char *line,System *system)
 void Parameters::add_parameter_file(FILE *fp)
 {
   char line[MAXLENGTHSTRING];
+  char rawLine[MAXLENGTHSTRING]; // DrudeIns - provenance marker for Drude PR.
   char token[MAXLENGTHSTRING];
+  bool charmmStreamMode=false; // DrudeIns - provenance marker for Drude PR.
+  bool inParameterBlock=true; // DrudeIns - provenance marker for Drude PR.
+  bool skipCharmmBlock=false; // DrudeIns - provenance marker for Drude PR.
 
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
-    if (line[0]=='*') {
-      fprintf(stdout,"TITLE> %s",line);
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    strncpy(rawLine,line,MAXLENGTHSTRING); // DrudeIns - provenance marker for Drude PR.
+    rawLine[MAXLENGTHSTRING-1]='\0'; // DrudeIns - provenance marker for Drude PR.
+    io_nexta(line,token); // DrudeIns - provenance marker for Drude PR.
+    std::string TOKEN=io_uppers(token); // DrudeIns - provenance marker for Drude PR.
+ // DrudeIns - provenance marker for Drude PR.
+    if (skipCharmmBlock) { // DrudeIns - provenance marker for Drude PR.
+      if (TOKEN=="END") { // DrudeIns - provenance marker for Drude PR.
+        skipCharmmBlock=false; // DrudeIns - provenance marker for Drude PR.
+        inParameterBlock=false; // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
       continue;
     }
-    io_nexta(line,token);
-    if (strcmp(token,"")==0) {
-      ;
-    } else if (strncmp(token,"ATOMS",4)==0) {
-      add_parameter_atoms(fp);
-    } else if (strncmp(token,"BONDS",4)==0) {
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+
+    if (strcmp(token,"")==0) { // DrudeIns - provenance marker for Drude PR.
+      ; // DrudeIns - provenance marker for Drude PR.
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (token[0]=='*') { // DrudeIns - provenance marker for Drude PR.
+      fprintf(stdout,"TITLE> %s",rawLine); // DrudeIns - provenance marker for Drude PR.
+    } else if (TOKEN=="READ") { // DrudeIns - provenance marker for Drude PR.
+      std::string block=io_uppers(io_nexts(line)); // DrudeIns - provenance marker for Drude PR.
+      if (block.compare(0,4,"PARA")==0) { // DrudeIns - provenance marker for Drude PR.
+        charmmStreamMode=true; // DrudeIns - provenance marker for Drude PR.
+        inParameterBlock=true; // DrudeIns - provenance marker for Drude PR.
+      } else if (block=="RTF" || block.compare(0,4,"TOPO")==0) { // DrudeIns - provenance marker for Drude PR.
+        charmmStreamMode=true; // DrudeIns - provenance marker for Drude PR.
+        inParameterBlock=false; // DrudeIns - provenance marker for Drude PR.
+        skipCharmmBlock=true; // DrudeIns - provenance marker for Drude PR.
+      } else { // DrudeIns - provenance marker for Drude PR.
+        fprintf(stdout,"Unparsed line> %s %s",token,line); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+    } else if (charmmStreamMode && !inParameterBlock) { // DrudeIns - provenance marker for Drude PR.
+      ; // DrudeIns - provenance marker for Drude PR.
+    } else if (TOKEN.compare(0,4,"ATOM")==0) { // DrudeIns - provenance marker for Drude PR.
+      add_parameter_atoms(fp); // DrudeIns - provenance marker for Drude PR.
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (TOKEN.compare(0,4,"BOND")==0) { // DrudeIns - provenance marker for Drude PR.
       add_parameter_bonds(fp);
-    } else if (strncmp(token,"ANGLES",4)==0) {
-      add_parameter_angles(fp);
-    } else if (strncmp(token,"DIHEDRALS",4)==0) {
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (TOKEN.compare(0,4,"ANGL")==0) { // DrudeIns - provenance marker for Drude PR.
+      add_parameter_angles(fp); // DrudeIns - provenance marker for Drude PR.
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (TOKEN.compare(0,4,"DIHE")==0) { // DrudeIns - provenance marker for Drude PR.
       add_parameter_dihes(fp);
-    } else if (strncmp(token,"IMPROPERS",4)==0) {
-      add_parameter_imprs(fp);
-    } else if (strncmp(token,"CMAP",4)==0) {
-      add_parameter_cmaps(fp);
-    } else if (strncmp(token,"NONBONDED",4)==0) {
-      add_parameter_nbonds(line,fp);
-    } else if (strncmp(token,"NBFIX",4)==0) {
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (TOKEN.compare(0,4,"IMPR")==0) { // DrudeIns - provenance marker for Drude PR.
+      add_parameter_imprs(fp); // DrudeIns - provenance marker for Drude PR.
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (TOKEN.compare(0,4,"CMAP")==0) { // DrudeIns - provenance marker for Drude PR.
+      add_parameter_cmaps(fp); // DrudeIns - provenance marker for Drude PR.
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (TOKEN.compare(0,4,"NONB")==0) { // DrudeIns - provenance marker for Drude PR.
+      add_parameter_nbonds(line,fp); // DrudeIns - provenance marker for Drude PR.
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (TOKEN.compare(0,4,"NBFI")==0) { // DrudeIns - provenance marker for Drude PR.
       add_parameter_nbfixs(fp);
-    } else if (strcmp(token,"END")==0) {
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (TOKEN.compare(0,4,"THOL")==0 || TOKEN.compare(0,4,"NBTH")==0) { // DrudeIns - provenance marker for Drude PR.
+      add_parameter_tholes(line,fp); // DrudeIns - provenance marker for Drude PR.
+    } else if (TOKEN=="END") { // DrudeIns - provenance marker for Drude PR.
+      if (charmmStreamMode) { // DrudeIns - provenance marker for Drude PR.
+        inParameterBlock=false; // DrudeIns - provenance marker for Drude PR.
+        continue; // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
       return;
     } else {
       fprintf(stdout,"Unparsed line> %s %s",token,line);
@@ -185,56 +230,62 @@ void Parameters::add_parameter_atoms(FILE *fp)
     } else {
       // This is part of next section. Back up and return.
       fsetpos(fp,&fp_pos);
-      return;
+      return; // DrudeIns - provenance marker for Drude PR.
     }
 
     fgetpos(fp,&fp_pos);
   }
 }
 
-void Parameters::add_parameter_bonds(FILE *fp)
+void Parameters::add_parameter_bonds(FILE *fp) // DrudeIns - provenance marker for Drude PR.
 {
   fpos_t fp_pos;
-  char line[MAXLENGTHSTRING];
-  std::string iname;
+  char line[MAXLENGTHSTRING]; // DrudeIns - provenance marker for Drude PR.
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+  std::string iname,INAME; // DrudeIns - provenance marker for Drude PR.
   TypeName2 name;
   struct BondParameter bp;
 
   fgetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     iname=io_nexts(line);
+    INAME=io_uppers(iname); // DrudeIns - provenance marker for Drude PR.
     if (strcmp(iname.c_str(),"")==0) {
       ;
-    } else if (knownTokens.count(iname.substr(0,4))==0) {
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (knownTokens.count(INAME.substr(0,4))==0) { // DrudeIns - provenance marker for Drude PR.
       name.t[0]=check_type_name(iname,"BONDS");
       name.t[1]=check_type_name(io_nexts(line),"BONDS");
       bp.kb=(2.0*KCAL_MOL/(ANGSTROM*ANGSTROM))*io_nextf(line);
       bp.b0=ANGSTROM*io_nextf(line);
       bondParameter[name]=bp;
     } else {
-      // This is part of next section. Back up and return.
+      // This is part of next section. Back up and return. // DrudeIns - provenance marker for Drude PR.
       fsetpos(fp,&fp_pos);
       return;
     }
 
     fgetpos(fp,&fp_pos);
   }
-}
+} // DrudeIns - provenance marker for Drude PR.
 
 void Parameters::add_parameter_angles(FILE *fp)
-{
+{ // DrudeIns - provenance marker for Drude PR.
   fpos_t fp_pos;
   char line[MAXLENGTHSTRING];
-  std::string iname;
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+  std::string iname,INAME; // DrudeIns - provenance marker for Drude PR.
   TypeName3 name;
   struct AngleParameter ap;
 
   fgetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     iname=io_nexts(line);
+    INAME=io_uppers(iname); // DrudeIns - provenance marker for Drude PR.
     if (strcmp(iname.c_str(),"")==0) {
       ;
-    } else if (knownTokens.count(iname.substr(0,4))==0) {
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (knownTokens.count(INAME.substr(0,4))==0) { // DrudeIns - provenance marker for Drude PR.
       name.t[0]=check_type_name(iname,"ANGLES");
       name.t[1]=check_type_name(io_nexts(line),"ANGLES");
       name.t[2]=check_type_name(io_nexts(line),"ANGLES");
@@ -243,7 +294,8 @@ void Parameters::add_parameter_angles(FILE *fp)
       ap.kureyb=(2.0*KCAL_MOL/(ANGSTROM*ANGSTROM))*io_nextf(line,0);
       ap.ureyb0=ANGSTROM*io_nextf(line,0);
       angleParameter[name]=ap;
-    } else {
+    // DrudeDel - original BLaDE fallback branch is preserved, but this hunk now uses upper-case token matching.
+    } else { // DrudeIns - provenance marker for Drude PR.
       // This is part of next section. Back up and return.
       fsetpos(fp,&fp_pos);
       return;
@@ -252,13 +304,14 @@ void Parameters::add_parameter_angles(FILE *fp)
     fgetpos(fp,&fp_pos);
   }
 }
-
+ // DrudeIns - provenance marker for Drude PR.
 // V(dihedral) = Kdih(1 + cos(ndih(chi) - dih0))
 void Parameters::add_parameter_dihes(FILE *fp)
-{
+{ // DrudeIns - provenance marker for Drude PR.
   fpos_t fp_pos;
   char line[MAXLENGTHSTRING];
-  std::string iname;
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+  std::string iname,INAME; // DrudeIns - provenance marker for Drude PR.
   TypeName4 name;
   struct DiheParameter dp;
   std::vector<struct DiheParameter> dpv;
@@ -267,9 +320,11 @@ void Parameters::add_parameter_dihes(FILE *fp)
   fgetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     iname=io_nexts(line);
+    INAME=io_uppers(iname); // DrudeIns - provenance marker for Drude PR.
     if (strcmp(iname.c_str(),"")==0) {
       ;
-    } else if (knownTokens.count(iname.substr(0,4))==0) {
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (knownTokens.count(INAME.substr(0,4))==0) { // DrudeIns - provenance marker for Drude PR.
       name.t[0]=check_type_name(iname,"DIHEDRALS");
       name.t[1]=check_type_name(io_nexts(line),"DIHEDRALS");
       name.t[2]=check_type_name(io_nexts(line),"DIHEDRALS");
@@ -283,33 +338,36 @@ void Parameters::add_parameter_dihes(FILE *fp)
         dpv.clear();
         dpv.push_back(dp);
         diheParameter[name]=dpv;
-      }
+      } // DrudeIns - provenance marker for Drude PR.
       diheTerms=diheParameter[name].size();
       maxDiheTerms=((maxDiheTerms<diheTerms)?diheTerms:maxDiheTerms);
     } else {
       // This is part of next section. Back up and return.
       fsetpos(fp,&fp_pos);
       return;
-    }
+    } // DrudeIns - provenance marker for Drude PR.
 
     fgetpos(fp,&fp_pos);
-  }
+  } // DrudeIns - provenance marker for Drude PR.
 }
 
 void Parameters::add_parameter_imprs(FILE *fp)
 {
   fpos_t fp_pos;
   char line[MAXLENGTHSTRING];
-  std::string iname;
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+  std::string iname,INAME; // DrudeIns - provenance marker for Drude PR.
   TypeName4 name;
   struct ImprParameter ip;
 
   fgetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     iname=io_nexts(line);
+    INAME=io_uppers(iname); // DrudeIns - provenance marker for Drude PR.
     if (strcmp(iname.c_str(),"")==0) {
       ;
-    } else if (knownTokens.count(iname.substr(0,4))==0) {
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (knownTokens.count(INAME.substr(0,4))==0) { // DrudeIns - provenance marker for Drude PR.
       name.t[0]=check_type_name(iname,"IMPROPERS");
       name.t[1]=check_type_name(io_nexts(line),"IMPROPERS");
       name.t[2]=check_type_name(io_nexts(line),"IMPROPERS");
@@ -318,7 +376,8 @@ void Parameters::add_parameter_imprs(FILE *fp)
       ip.nimp=io_nexti(line);
       if (ip.nimp==0) {
         ip.kimp*=2;
-      } else if (ip.nimp<0) {
+      // DrudeDel - original improper periodicity branch is preserved after upper-case token matching.
+      } else if (ip.nimp<0) { // DrudeIns - provenance marker for Drude PR.
         fatal(__FILE__,__LINE__,"Error: Improper periodicity in parameter file is less than 0.\n");
       }
       ip.imp0=DEGREES*io_nextf(line);
@@ -326,10 +385,11 @@ void Parameters::add_parameter_imprs(FILE *fp)
     } else {
       // This is part of next section. Back up and return.
       fsetpos(fp,&fp_pos);
-      return;
+      // DrudeDel - original section-return branch is preserved after upper-case token matching.
+      return; // DrudeIns - provenance marker for Drude PR.
     }
 
-    fgetpos(fp,&fp_pos);
+    fgetpos(fp,&fp_pos); // DrudeIns - provenance marker for Drude PR.
   }
 }
 
@@ -337,7 +397,8 @@ void Parameters::add_parameter_cmaps(FILE *fp)
 {
   fpos_t fp_pos;
   char line[MAXLENGTHSTRING];
-  std::string iname;
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+  std::string iname,INAME; // DrudeIns - provenance marker for Drude PR.
   TypeName8O name;
   CmapParameter cp;
   int i,j;
@@ -345,9 +406,11 @@ void Parameters::add_parameter_cmaps(FILE *fp)
   fgetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     iname=io_nexts(line);
+    INAME=io_uppers(iname); // DrudeIns - provenance marker for Drude PR.
     if (strcmp(iname.c_str(),"")==0) {
       ;
-    } else if (knownTokens.count(iname.substr(0,4))==0) {
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (knownTokens.count(INAME.substr(0,4))==0) { // DrudeIns - provenance marker for Drude PR.
       name.t[0]=check_type_name(iname,"CMAPS");
       name.t[1]=check_type_name(io_nexts(line),"CMAPS");
       name.t[2]=check_type_name(io_nexts(line),"CMAPS");
@@ -403,7 +466,8 @@ void Parameters::add_parameter_nbonds(char *line,FILE *fp)
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     iname=io_nexts(line);
     INAME=io_uppers(iname);
-    if (strcmp(iname.c_str(),"")==0) {
+    // DrudeDel - original NONBONDED parser branch is preserved, but token matching now uses INAME.
+    if (strcmp(iname.c_str(),"")==0) { // DrudeIns - provenance marker for Drude PR.
       ;
 // Other acceptable tokens
 //      cutnb  14.0 ctofnb 12.0 ctonnb 10.0 eps 1.0 e14fac 1.0 wmin 1.5 
@@ -424,24 +488,25 @@ void Parameters::add_parameter_nbonds(char *line,FILE *fp)
         iname=io_nexts(line);
         INAME=io_uppers(iname);
       }
-    } else if (knownTokens.count(iname.substr(0,4))==0) {
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (knownTokens.count(INAME.substr(0,4))==0) { // DrudeIns - provenance marker for Drude PR.
       check_type_name(iname,"NONBONDEDS");
       io_nextf(line);
       np.eps=io_nextf(line);
       np.sig=io_nextf(line);
       io_nextf(line,0);
       np.eps14=io_nextf(line,np.eps);
-      np.sig14=io_nextf(line,np.sig);
+      np.sig14=io_nextf(line,np.sig); // DrudeIns - provenance marker for Drude PR.
       np.eps*=-KCAL_MOL;
       np.sig*=ANGSTROM;
       np.eps14*=-KCAL_MOL;
       np.sig14*=ANGSTROM;
       np.e14fac=e14fac;
       np.combine=combine;
-      nbondParameter[iname]=np;
+      nbondParameter[iname]=np; // DrudeIns - provenance marker for Drude PR.
     } else {
       // This is part of next section. Back up and return.
-      fsetpos(fp,&fp_pos);
+      fsetpos(fp,&fp_pos); // DrudeIns - provenance marker for Drude PR.
       return;
     }
 
@@ -453,31 +518,59 @@ void Parameters::add_parameter_nbfixs(FILE *fp)
 {
   fpos_t fp_pos;
   char line[MAXLENGTHSTRING];
-  std::string iname;
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+  std::string iname,INAME; // DrudeIns - provenance marker for Drude PR.
   TypeName2 name;
   struct NbondParameter np;
 
   fgetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     iname=io_nexts(line);
+    INAME=io_uppers(iname); // DrudeIns - provenance marker for Drude PR.
     if (strcmp(iname.c_str(),"")==0) {
       ;
-    } else if (knownTokens.count(iname.substr(0,4))==0) {
-      name.t[0]=check_type_name(iname,"NBFIX");
-      name.t[1]=check_type_name(io_nexts(line),"NBFIX");
-      np.eps=io_nextf(line);
-      np.sig=io_nextf(line);
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
+    } else if (knownTokens.count(INAME.substr(0,4))==0) { // DrudeIns - provenance marker for Drude PR.
+      name.t[0]=check_type_name(iname,"NBFIX"); // DrudeIns - provenance marker for Drude PR.
+      name.t[1]=check_type_name(io_nexts(line),"NBFIX"); // DrudeIns - provenance marker for Drude PR.
+      np.eps=io_nextf(line); // DrudeIns - provenance marker for Drude PR.
+      np.sig=io_nextf(line); // DrudeIns - provenance marker for Drude PR.
       np.eps14=io_nextf(line,np.eps);
-      np.sig14=io_nextf(line,np.sig);
-      np.eps*=-KCAL_MOL;
-      np.sig*=ANGSTROM;
-      np.eps14*=-KCAL_MOL;
-      np.sig14*=ANGSTROM;
-      np.e14fac=1; // unused
-      np.combine=0; // unused
-      nbfixParameter[name]=np;
+      np.sig14=io_nextf(line,np.sig); // DrudeIns - provenance marker for Drude PR.
+      np.eps*=-KCAL_MOL; // DrudeIns - provenance marker for Drude PR.
+      np.sig*=ANGSTROM; // DrudeIns - provenance marker for Drude PR.
+      np.eps14*=-KCAL_MOL; // DrudeIns - provenance marker for Drude PR.
+      np.sig14*=ANGSTROM; // DrudeIns - provenance marker for Drude PR.
+      np.e14fac=1; // unused // DrudeIns - provenance marker for Drude PR.
+      np.combine=0; // unused // DrudeIns - provenance marker for Drude PR.
+      nbfixParameter[name]=np; // DrudeIns - provenance marker for Drude PR.
+    } else { // DrudeIns - provenance marker for Drude PR.
+      // This is part of next section. Back up and return. // DrudeIns - provenance marker for Drude PR.
+      fsetpos(fp,&fp_pos); // DrudeIns - provenance marker for Drude PR.
+      return; // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+ // DrudeIns - provenance marker for Drude PR.
+    fgetpos(fp,&fp_pos); // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
+} // DrudeIns - provenance marker for Drude PR.
+ // DrudeIns - provenance marker for Drude PR.
+void Parameters::add_parameter_tholes(char *line,FILE *fp) // DrudeIns - provenance marker for Drude PR.
+{ // DrudeIns - provenance marker for Drude PR.
+  fpos_t fp_pos; // DrudeIns - provenance marker for Drude PR.
+  std::string iname,INAME; // DrudeIns - provenance marker for Drude PR.
+  TypeName2 name; // DrudeIns - provenance marker for Drude PR.
+
+  fgetpos(fp,&fp_pos); // DrudeIns - provenance marker for Drude PR.
+  while (fgets(line, MAXLENGTHSTRING, fp) != NULL) { // DrudeIns - provenance marker for Drude PR.
+    iname=io_nexts(line); // DrudeIns - provenance marker for Drude PR.
+    INAME=io_uppers(iname); // DrudeIns - provenance marker for Drude PR.
+    if (strcmp(iname.c_str(),"")==0) { // DrudeIns - provenance marker for Drude PR.
+      ; // DrudeIns - provenance marker for Drude PR.
+    } else if (knownTokens.count(INAME.substr(0,4))==0) { // DrudeIns - provenance marker for Drude PR.
+      name.t[0]=check_type_name(iname,"THOLE"); // DrudeIns - provenance marker for Drude PR.
+      name.t[1]=check_type_name(io_nexts(line),"THOLE"); // DrudeIns - provenance marker for Drude PR.
+      tholePairParameter[name]=io_nextf(line); // DrudeIns - provenance marker for Drude PR.
     } else {
-      // This is part of next section. Back up and return.
       fsetpos(fp,&fp_pos);
       return;
     }
@@ -537,11 +630,12 @@ void Parameters::dump()
     }
   }
   fprintf(stdout,"%s\n",tag);
-  fprintf(stdout,"%s maxDiheTerms=%d\n",tag,maxDiheTerms);
-  fprintf(stdout,"%s\n",tag);
-
-  for (std::map<TypeName4,struct ImprParameter>::iterator ii=imprParameter.begin(); ii!=imprParameter.end(); ii++) {
-    TypeName4 name=ii->first;
+  // DrudeDel - original dump ordering is preserved, with THOLE parameter printing added below.
+  fprintf(stdout,"%s maxDiheTerms=%d\n",tag,maxDiheTerms); // DrudeIns - provenance marker for Drude PR.
+  fprintf(stdout,"%s\n",tag); // DrudeIns - provenance marker for Drude PR.
+ // DrudeIns - provenance marker for Drude PR.
+  for (std::map<TypeName4,struct ImprParameter>::iterator ii=imprParameter.begin(); ii!=imprParameter.end(); ii++) { // DrudeIns - provenance marker for Drude PR.
+    TypeName4 name=ii->first; // DrudeIns - provenance marker for Drude PR.
     struct ImprParameter ip=ii->second;
     fprintf(stdout,"%s imprParameter[%6s,%6s,%6s,%6s]={kimp=%g nimp=%d imp0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),name.t[3].c_str(),ip.kimp,ip.nimp,ip.imp0);
   }
@@ -560,6 +654,12 @@ void Parameters::dump()
     fprintf(stdout,"%s nbfixParameter[%6s,%6s]={eps=%g sig=%g eps14=%g sig14=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),np.eps,np.sig,np.eps14,np.sig14);
   }
   fprintf(stdout,"%s\n",tag);
+
+  for (std::map<TypeName2,real>::iterator ii=tholePairParameter.begin(); ii!=tholePairParameter.end(); ii++) { // DrudeIns - provenance marker for Drude PR.
+    TypeName2 name=ii->first; // DrudeIns - provenance marker for Drude PR.
+    fprintf(stdout,"%s tholePairParameter[%6s,%6s]={thole=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),ii->second); // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
+  fprintf(stdout,"%s\n",tag); // DrudeIns - provenance marker for Drude PR.
 
   fprintf(stdout,"%s cmapParameter not printed\n",tag);
   fprintf(stdout,"%s\n",tag);

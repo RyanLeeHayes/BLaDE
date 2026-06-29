@@ -1,0 +1,38 @@
+! CP3-B2 target: autobuild emits all four core/drude NBTHOLE sub-pairs.
+
+variables set dir test/drude
+
+parameters file {dir}/../toppar/par_all36_prot.prm
+parameters file {dir}/../toppar_water_ions/par_water_ions.prm
+parameters file {dir}/data/par_cp3_patch.prm
+
+structure file psf {dir}/data/drude_4atom_nbthole_openmm.psf
+coordinates file crd {dir}/data/drude_4atom_cp3.crd
+coordinates box cubi 50.0 50.0 50.0 90 90 90
+
+msld nblocks 0
+
+drude clear
+drude enable 1
+drude autobuild springs
+drude nbtholecutoff 5.0
+drude autobuild nbthole
+drude print
+
+run setterm bond off
+run setterm angle off
+run setterm dihe off
+run setterm impr off
+run setterm cmap off
+run setterm drude on
+run setterm nbdirect on
+run setterm nbrecip on
+run setterm nbrecipself on
+run setterm nbrecipexcl on
+run setterm nb14 on
+
+run setvariable fnmnrg cp3_nbthole_autobuild_all4_on.nrg
+run setvariable invbetaewald 3.2
+run setvariable rcut 10.0
+run setvariable rswitch 8.5
+run energy

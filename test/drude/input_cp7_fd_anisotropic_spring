@@ -1,0 +1,39 @@
+! CP7 finite-difference test for anisotropic Drude spring force
+
+variables set dir test/drude
+
+parameters file {dir}/../toppar/par_all36_prot.prm
+parameters file {dir}/../toppar_water_ions/par_water_ions.prm
+parameters file {dir}/data/par_cp3_patch.prm
+
+structure file psf {dir}/data/drude_5atom_aniso.psf
+coordinates file crd {dir}/data/drude_5atom_aniso.crd
+coordinates box cubi 50.0 50.0 50.0 90 90 90
+coordinates velocity 10
+
+msld nblocks 0
+
+drude clear
+drude enable 1
+drude spring 1 0 1000.0 0.0
+drude anisotropy 1 2 3 4 0.6 1.5
+
+run setterm bond off
+run setterm angle off
+run setterm dihe off
+run setterm impr off
+run setterm cmap off
+run setterm nbdirect off
+run setterm nbrecip off
+run setterm nbrecipself off
+run setterm nbrecipexcl off
+run setterm nb14 off
+
+run setvariable dt 0.001
+run setvariable T 0
+run setvariable gamma 0
+run setvariable fnmnrg cp7_fd_anisotropic_spring.nrg
+run setvariable fnmcpo cp7_fd_anisotropic_spring.cpt
+
+selection define allsel all
+run test spatial allsel 0.0005

@@ -10,6 +10,7 @@
 
 #include "main/defines.h"
 #include "system/system.h"
+#include "drude/drude_plugin.h" // DrudeIns - access Drude diagnostics counters for checkpoint persistence
 
 // parse_whatever
 #include "io/io.h"
@@ -21,6 +22,8 @@
 #include "system/potential.h"
 #include "system/state.h"
 #include "run/run.h"
+#include "rng/rng_cpu.h" // DrudeIns - provenance marker for Drude PR.
+#include "rng/rng_gpu.h" // DrudeIns - provenance marker for Drude PR.
 #include "xdr/xdrfile.h"
 #include "xdr/xdrfile_xtc.h"
 
@@ -432,6 +435,32 @@ void write_checkpoint_file(const char *fnm,System *system)
     fprintf(fp,"%f %f %f\n",system->state->box.a.x,system->state->box.a.y,system->state->box.a.z);
     fprintf(fp,"%f %f %f\n",system->state->box.b.x,system->state->box.b.y,system->state->box.b.z);
 
+    fprintf(fp,"DrudeRun 3\n"); // DrudeIns - write Drude runtime controls for self-describing restart.
+    fprintf(fp,"%f %f %f\n", // DrudeIns - store [Tdrude (K), gammaDrude (ps^-1), maxDrudeDistance (A)].
+      (double)system->run->Tdrude, // DrudeIns - checkpoint Tdrude in Kelvin.
+      (double)(system->run->gammaDrude*PICOSECOND), // DrudeIns - checkpoint gammaDrude in ps^-1.
+      (double)(system->run->maxDrudeDistance/ANGSTROM)); // DrudeIns - checkpoint maxDrudeDistance in Angstrom.
+    if (system->drudePlugin) { // DrudeIns - persist Drude hard-wall diagnostics across restart.
+      fprintf(fp,"DrudeDiag 2\n"); // DrudeIns - emit Drude diagnostic section header.
+      fprintf(fp,"%d %lld\n", // DrudeIns - write [hardwallCountLast, hardwallCountTotal].
+        system->drudePlugin->hardwallCountLast, // DrudeIns - last-step hardwall collision count.
+        system->drudePlugin->hardwallCountTotal); // DrudeIns - cumulative hardwall collision count.
+    } // DrudeIns - Drude diagnostic section is optional.
+    if (system->rngCPU && system->rngCPU->mtState) { // DrudeIns - provenance marker for Drude PR.
+      fprintf(fp,"RngCPUState 4\n"); // DrudeIns - provenance marker for Drude PR.
+      fprintf(fp,"%d %d %.17g %d\n", // DrudeIns - provenance marker for Drude PR.
+        system->rngCPU->mtState->mti, // DrudeIns - provenance marker for Drude PR.
+        (int)system->rngCPU->mtState->bNextReal, // DrudeIns - provenance marker for Drude PR.
+        (double)system->rngCPU->mtState->nextReal, // DrudeIns - provenance marker for Drude PR.
+        RNG_CPU_MT_N); // DrudeIns - provenance marker for Drude PR.
+      for (i=0; i<RNG_CPU_MT_N; i++) { // DrudeIns - provenance marker for Drude PR.
+        fprintf(fp,"%lu%s",system->rngCPU->mtState->mt[i],(i+1==RNG_CPU_MT_N? "\n" : " ")); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+    if (system->rngGPU) { // DrudeIns - provenance marker for Drude PR.
+      system->rngGPU->write_checkpoint_state(fp); // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+
     fclose(fp);
   }
 }
@@ -441,6 +470,7 @@ void read_checkpoint_file(const char *fnm,System *system)
   FILE *fp;
   int i;
   double v;
+  char sectionName[MAXLENGTHSTRING]; // DrudeIns - optional trailing checkpoint section tag(s)
 
   if (system->id==0) {
     fp=fpopen(fnm,"r");
@@ -503,6 +533,97 @@ void read_checkpoint_file(const char *fnm,System *system)
     system->state->box.b.y=v;
     fscanf(fp,"%lf\n",&v);
     system->state->box.b.z=v;
+
+    // DrudeIns - optional Drude trailing sections for backward-compatible checkpoints.
+    while (fscanf(fp,"%1023s",sectionName)==1) { // DrudeIns - iterate optional checkpoint sections.
+      if (strcmp(sectionName,"DrudeRun")==0) { // DrudeIns - parse runtime Drude controls.
+        int sectionCount=0; // DrudeIns - number of payload values in DrudeRun section.
+        double checkpointTdrude=0; // DrudeIns - checkpointed Drude thermostat target temperature.
+        double checkpointGammaDrude=0; // DrudeIns - checkpointed Drude thermostat friction in ps^-1.
+        double checkpointMaxDrudeDistance=0; // DrudeIns - checkpointed hard-wall cutoff in Angstrom.
+        if (fscanf(fp,"%d",&sectionCount)!=1 || sectionCount<3) { // DrudeIns - validate mandatory DrudeRun arity.
+          fatal(__FILE__,__LINE__, // DrudeIns - reject malformed DrudeRun section header.
+            "Checkpoint DrudeRun section is malformed. Expected \"DrudeRun <count>=3\" header\n"); // DrudeIns - explicit malformed-header diagnostic.
+        } // DrudeIns - DrudeRun header validated.
+        if (fscanf(fp,"%lf %lf %lf", // DrudeIns - parse mandatory DrudeRun payload.
+          &checkpointTdrude,&checkpointGammaDrude,&checkpointMaxDrudeDistance)!=3) { // DrudeIns - validate mandatory payload parse count.
+          fatal(__FILE__,__LINE__, // DrudeIns - reject malformed DrudeRun payload.
+            "Checkpoint DrudeRun section is malformed. Expected values: Tdrude gammaDrude maxDrudeDistance\n"); // DrudeIns - explicit malformed-payload diagnostic.
+        } // DrudeIns - DrudeRun payload parse completed.
+        system->run->Tdrude=checkpointTdrude; // DrudeIns - restore Tdrude from checkpoint.
+        system->run->gammaDrude=checkpointGammaDrude/PICOSECOND; // DrudeIns - restore gammaDrude in internal units.
+        system->run->maxDrudeDistance=checkpointMaxDrudeDistance*ANGSTROM; // DrudeIns - restore maxDrudeDistance in internal units.
+        for (i=3; i<sectionCount; i++) { // DrudeIns - forward-compatible skip for future DrudeRun payload extensions.
+          if (fscanf(fp,"%lf",&v)!=1) { // DrudeIns - ensure optional payload entries are parseable.
+            fatal(__FILE__,__LINE__, // DrudeIns - reject malformed optional DrudeRun payload extension.
+              "Checkpoint DrudeRun section is malformed. Failed to skip optional payload value %d/%d\n", // DrudeIns - explicit malformed-extension diagnostic.
+              i+1,sectionCount); // DrudeIns - report index/count for malformed extension entry.
+          } // DrudeIns - optional DrudeRun payload value consumed.
+        } // DrudeIns - optional DrudeRun payload skip complete.
+      } else if (strcmp(sectionName,"DrudeDiag")==0) { // DrudeIns - parse hard-wall diagnostics section.
+        int sectionCount=0; // DrudeIns - number of payload values in DrudeDiag section.
+        int checkpointHardwallLast=0; // DrudeIns - checkpointed hardwall count for last reported step.
+        long long checkpointHardwallTotal=0; // DrudeIns - checkpointed cumulative hardwall count.
+        if (fscanf(fp,"%d",&sectionCount)!=1 || sectionCount!=2) { // DrudeIns - validate fixed DrudeDiag arity.
+          fatal(__FILE__,__LINE__, // DrudeIns - reject malformed DrudeDiag section header.
+            "Checkpoint DrudeDiag section is malformed. Expected \"DrudeDiag 2\" header\n"); // DrudeIns - explicit malformed-header diagnostic.
+        } // DrudeIns - DrudeDiag header validated.
+        if (fscanf(fp,"%d %lld",&checkpointHardwallLast,&checkpointHardwallTotal)!=2) { // DrudeIns - parse DrudeDiag payload.
+          fatal(__FILE__,__LINE__, // DrudeIns - reject malformed DrudeDiag payload.
+            "Checkpoint DrudeDiag section is malformed. Expected two values: hardwallCountLast hardwallCountTotal\n"); // DrudeIns - explicit malformed-payload diagnostic.
+        } // DrudeIns - DrudeDiag payload parse completed.
+        if (system->drudePlugin) { // DrudeIns - restore counters only when Drude plugin is active.
+          system->drudePlugin->hardwallCountLast=checkpointHardwallLast; // DrudeIns - restore last-step hardwall counter.
+          system->drudePlugin->hardwallCountTotal=checkpointHardwallTotal; // DrudeIns - restore cumulative hardwall counter.
+        } // DrudeIns - DrudeDiag counters restored.
+      } else if (strcmp(sectionName,"RngCPUState")==0) { // DrudeIns - provenance marker for Drude PR.
+        int sectionCount=0; // DrudeIns - provenance marker for Drude PR.
+        int checkpointMti=0; // DrudeIns - provenance marker for Drude PR.
+        int checkpointHasNext=0; // DrudeIns - provenance marker for Drude PR.
+        int stateWords=0; // DrudeIns - provenance marker for Drude PR.
+        double checkpointNextReal=0; // DrudeIns - provenance marker for Drude PR.
+        if (fscanf(fp,"%d",&sectionCount)!=1 || sectionCount!=4) { // DrudeIns - provenance marker for Drude PR.
+          fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+            "Checkpoint RngCPUState section is malformed. Expected \"RngCPUState 4\" header\n"); // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+        if (fscanf(fp,"%d %d %lf %d", // DrudeIns - provenance marker for Drude PR.
+          &checkpointMti,&checkpointHasNext,&checkpointNextReal,&stateWords)!=4 || // DrudeIns - provenance marker for Drude PR.
+          stateWords!=RNG_CPU_MT_N) { // DrudeIns - provenance marker for Drude PR.
+          fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+            "Checkpoint RngCPUState section is incompatible or malformed\n"); // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+        if (system->rngCPU && system->rngCPU->mtState) { // DrudeIns - provenance marker for Drude PR.
+          system->rngCPU->mtState->mti=checkpointMti; // DrudeIns - provenance marker for Drude PR.
+          system->rngCPU->mtState->bNextReal=(checkpointHasNext!=0); // DrudeIns - provenance marker for Drude PR.
+          system->rngCPU->mtState->nextReal=(real)checkpointNextReal; // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+        for (i=0; i<stateWords; i++) { // DrudeIns - provenance marker for Drude PR.
+          unsigned long word=0; // DrudeIns - provenance marker for Drude PR.
+          if (fscanf(fp,"%lu",&word)!=1) { // DrudeIns - provenance marker for Drude PR.
+            fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+              "Checkpoint RngCPUState section is malformed at state word %d/%d\n", // DrudeIns - provenance marker for Drude PR.
+              i+1,stateWords); // DrudeIns - provenance marker for Drude PR.
+          } // DrudeIns - provenance marker for Drude PR.
+          if (system->rngCPU && system->rngCPU->mtState) { // DrudeIns - provenance marker for Drude PR.
+            system->rngCPU->mtState->mt[i]=word; // DrudeIns - provenance marker for Drude PR.
+          } // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+      } else if (strcmp(sectionName,"RngGPUState")==0) { // DrudeIns - provenance marker for Drude PR.
+        int sectionCount=0; // DrudeIns - provenance marker for Drude PR.
+        if (fscanf(fp,"%d",&sectionCount)!=1 || sectionCount<3) { // DrudeIns - provenance marker for Drude PR.
+          fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+            "Checkpoint RngGPUState section is malformed. Expected \"RngGPUState <count>=3\" header\n"); // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+        if (!system->rngGPU) { // DrudeIns - provenance marker for Drude PR.
+          fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+            "Checkpoint contains RngGPUState but system has no GPU RNG\n"); // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+        system->rngGPU->read_checkpoint_state(fp,sectionCount); // DrudeIns - provenance marker for Drude PR.
+      } else { // DrudeIns - reject unknown trailing checkpoint sections.
+        fatal(__FILE__,__LINE__, // DrudeIns - unknown trailing section is fatal to prevent silent corruption.
+          "Checkpoint contains unrecognized trailing section \"%s\"\n",sectionName); // DrudeIns - explicit unknown-section diagnostic.
+      } // DrudeIns - trailing checkpoint section dispatch complete.
+    } // DrudeIns - no more optional checkpoint sections.
 
     fclose(fp);
 

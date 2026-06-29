@@ -1,0 +1,6 @@
+* two-atom drude oscillator boundary-short coordinates
+* generated for hardwall minimum-image test
+*
+         2 EXT
+         1         1  DRUD      PRT             0.0100000000       25.0000000000       25.0000000000  DRUD      1                 0.0000000000
+         2         1  DRUD      DRU            49.9900000000       25.0000000000       25.0000000000  DRUD      1                 0.0000000000

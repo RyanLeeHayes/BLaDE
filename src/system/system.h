@@ -23,6 +23,7 @@ class RngGPU;
 class Potential;
 class State;
 class Domdec;
+class DrudePlugin; // DrudeIns - forward declaration for optional plugin pointer
 
 class System {
   public:
@@ -45,6 +46,7 @@ class System {
   State *state;
   Potential *potential;
   Domdec *domdec;
+  DrudePlugin *drudePlugin; // DrudeIns - optional Drude plugin owned by System
 
   std::map<std::string,void (System::*)(char*,char*,System*)> parseSystem;
   std::map<std::string,std::string> helpSystem;
@@ -63,6 +65,7 @@ class System {
   void parse_system_structure(char *line,char *token,System *system);
   void parse_system_selection(char *line,char *token,System *system);
   void parse_system_msld(char *line,char *token,System *system);
+  void parse_system_drude(char *line,char *token,System *system); // DrudeIns - top-level drude directive handler
   void parse_system_coordinates(char *line,char *token,System *system);
   void parse_system_run(char *line,char *token,System *system);
   void parse_system_stream(char *line,char *token,System *system);
