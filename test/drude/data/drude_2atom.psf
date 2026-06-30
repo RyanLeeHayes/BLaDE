@@ -1,0 +1,26 @@
+PSF
+
+       1 !NTITLE
+ REMARKS two-atom drude oscillator test system
+
+       2 !NATOM
+       1 DRUD     1 DRUD PRT   OT      0.000000      11.600000           0
+       2 DRUD     1 DRUD DRU   OT      0.000000       0.400000           0
+
+       0 !NBOND: bonds
+
+       0 !NTHETA: angles
+
+       0 !NPHI: dihedrals
+
+       0 !NIMPHI: impropers
+
+       0 !NDON: donors
+
+       0 !NACC: acceptors
+
+       0 !NNB
+       0       0
+       0 !NGRP NST2
+
+       0       0 !NUMLP NUMLPH

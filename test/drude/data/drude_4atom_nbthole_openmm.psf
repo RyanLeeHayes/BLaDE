@@ -1,0 +1,34 @@
+PSF EXT DRUDE XPLOR
+
+       1 !NTITLE
+ REMARKS four-atom Drude NBTHOLE all-subpair OpenMM oracle fixture
+
+       4 !NATOM
+       1 DRUD     1 DRU1 PRT   OT      1.000000      11.600000           0 -0.157000       1.30000
+       2 DRUD     1 DRU1 DRU   OT     -0.600000       0.400000           0  0.000000       0.00000
+       3 DRUD     2 DRU2 PRT   HT     -0.300000      11.600000           0 -0.157000       1.30000
+       4 DRUD     2 DRU2 DRU   HT     -0.500000       0.400000           0  0.000000       0.00000
+
+       2 !NBOND: bonds
+       1       2       3       4
+
+       0 !NTHETA: angles
+
+       0 !NPHI: dihedrals
+
+       0 !NIMPHI: impropers
+
+       0 !NDON: donors
+
+       0 !NACC: acceptors
+
+       0 !NNB
+       0       0       0       0
+
+       0       0 !NGRP NST2
+
+
+       0       0 !NUMLP NUMLPH
+
+
+       0 !NUMANISO

@@ -1,0 +1,19 @@
+* CP3 test parameter patch: provide OT-OT bond term for synthetic Drude topologies.
+*
+
+BOND
+OT   OT   300.0  1.0
+HT   HT   300.0  1.0
+OT   CT3  300.0  1.0
+CT3  CT3  300.0  1.0
+CT3  HT   300.0  1.0
+
+THOLE
+OT   OT   2.600
+OT   HT   2.600
+
+DIHEDRAL
+OT   HT   HT   HT   0.0  1  0.0
+OT   CT3  CT3  HT   0.0  1  0.0
+
+END

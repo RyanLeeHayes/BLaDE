@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdlib.h>
+#include <set> // DrudeIns - provenance marker for Drude PR.
 
 #include "system/potential.h"
 #include "system/system.h"
@@ -18,6 +19,7 @@
 #include "nbdirect/nbdirect.h"
 #include "restrain/restrain.h"
 #include "holonomic/virtual.h"
+#include "drude/drude_plugin.h" // DrudeIns - include Drude plugin force dispatch interface
 
 #ifdef WITH_TORCH
 #include "mlp/mlp.h" // eemlp
@@ -35,6 +37,13 @@ bool operator<(const CountType& a,const CountType& b)
   // Sort in descending order type count, not ascending
   return a.count>b.count || (a.count==b.count && a.type<b.type);
 }
+
+static inline long long drude_potential_ordered_pair_key(int a,int b) // DrudeIns - provenance marker for Drude PR.
+{ // DrudeIns - provenance marker for Drude PR.
+  int lo=(a<b? a : b); // DrudeIns - provenance marker for Drude PR.
+  int hi=(a<b? b : a); // DrudeIns - provenance marker for Drude PR.
+  return (((long long)lo)<<32)|(unsigned int)hi; // DrudeIns - provenance marker for Drude PR.
+} // DrudeIns - provenance marker for Drude PR.
 
 // Class constructors
 Potential::Potential() {
@@ -542,6 +551,27 @@ void Potential::initialize(System *system)
   softCmaps_tmp.clear();
   cons_tmp.clear();
 
+  std::set<long long> drudeSpringBondKeys; // DrudeIns - provenance marker for Drude PR.
+  std::set<int> drudeSpringAtoms; // DrudeIns - provenance marker for Drude PR.
+  if (system->drudePlugin && system->drudePlugin->enabled) { // DrudeIns - provenance marker for Drude PR.
+    int structureAtomCount=struc->atomList.size(); // DrudeIns - provenance marker for Drude PR.
+    for (i=0; i<system->drudePlugin->springPairs_tmp.size(); i++) { // DrudeIns - provenance marker for Drude PR.
+      int drudeIdx=system->drudePlugin->springPairs_tmp[i].idx[0]; // DrudeIns - provenance marker for Drude PR.
+      int parentIdx=system->drudePlugin->springPairs_tmp[i].idx[1]; // DrudeIns - provenance marker for Drude PR.
+      if (drudeIdx<0 || drudeIdx>=structureAtomCount || // DrudeIns - provenance marker for Drude PR.
+          parentIdx<0 || parentIdx>=structureAtomCount) { // DrudeIns - provenance marker for Drude PR.
+        fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+          "Drude spring pair index out of range during bonded setup: (%d,%d), atomCount=%d\n", // DrudeIns - provenance marker for Drude PR.
+          drudeIdx,parentIdx,structureAtomCount); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+      if (drudeIdx==parentIdx) { // DrudeIns - provenance marker for Drude PR.
+        fatal(__FILE__,__LINE__,"Drude spring pair has identical atom indices (%d)\n",drudeIdx); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+      drudeSpringBondKeys.insert(drude_potential_ordered_pair_key(drudeIdx,parentIdx)); // DrudeIns - provenance marker for Drude PR.
+      drudeSpringAtoms.insert(drudeIdx); // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
+
   for (i=0; i<struc->bondList.size(); i++) {
     TypeName2 type;
     struct BondPotential bond;
@@ -557,6 +587,9 @@ void Potential::initialize(System *system)
         cons_tmp[bond.idx[j]].insert(bond.idx[1-j]);
       }
     } else {
+      if (drudeSpringBondKeys.count(drude_potential_ordered_pair_key(bond.idx[0],bond.idx[1]))>0) { // DrudeIns - provenance marker for Drude PR.
+        continue; // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
       // Add to bonds
       // Get their MSLD scaling
       soft=msld->bond_scaling(bond.idx,bond.siteBlock);
@@ -937,8 +970,18 @@ void Potential::initialize(System *system)
   bondList_tmp.clear();
   for (i=0; i<struc->bondList.size(); i++) {
     Int2 ij=struc->bondList[i];
+    if (drudeSpringAtoms.count(ij.i[0])>0 || drudeSpringAtoms.count(ij.i[1])>0) { // DrudeIns - provenance marker for Drude PR.
+      continue; // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
     bondList_tmp.push_back(ij);
   }
+  int drudeInheritanceBondInsertCount=0; // DrudeIns - CP3 exclusion diagnostics
+  int drudeInheritanceAngleInsertCount=0; // DrudeIns - CP3 exclusion diagnostics
+  int drudeScreenedSubPairInsertCount=0; // DrudeIns - CP3 exclusion diagnostics
+  int drudeScreenedEnergyWarningCount=0; // DrudeIns - CP3 screenedpair consistency diagnostics
+  int drudeScreenedDiheEraseCount=0; // DrudeIns - screenedpair-owned Drude 1-4 route diagnostics
+  int drudeNbtholePairValidatedCount=0; // DrudeIns - CP3 NBTHOLE diagnostics
+  int drudeNbthole14PairValidatedCount=0; // DrudeIns - CP3 NBTHOLE diagnostics
   // Set virtExcl
   for (i=0; i<struc->virt2List.size(); i++) {
     Int2 ij;
@@ -1027,6 +1070,48 @@ void Potential::initialize(System *system)
       }
     }
   }
+  // DrudeIns - explicit parent-inheritance exclusions.  Drude particles never enter
+  // the graph-derived 1-4/NB14 set; they inherit parent 1-2 and 1-3 shells as // DrudeIns - provenance marker for Drude PR.
+  // full exclusions instead, matching OpenMM's CharmmPsfFile topology builder. // DrudeIns - provenance marker for Drude PR.
+  if (system->drudePlugin && system->drudePlugin->enabled) { // DrudeIns - provenance marker for Drude PR.
+    std::vector< std::set<int> > parentBondExcl(bondExcl,bondExcl+atomCount); // DrudeIns - provenance marker for Drude PR.
+    std::vector< std::set<int> > parentAngleExcl(angleExcl,angleExcl+atomCount); // DrudeIns - provenance marker for Drude PR.
+    for (i=0; i<system->drudePlugin->springPairs_tmp.size(); i++) { // DrudeIns - provenance marker for Drude PR.
+      int drudeIdx=system->drudePlugin->springPairs_tmp[i].idx[0]; // DrudeIns - provenance marker for Drude PR.
+      int parentIdx=system->drudePlugin->springPairs_tmp[i].idx[1]; // DrudeIns - provenance marker for Drude PR.
+      if (drudeIdx<0 || drudeIdx>=atomCount || parentIdx<0 || parentIdx>=atomCount) { // DrudeIns - provenance marker for Drude PR.
+        fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+          "Drude spring pair index out of range during exclusion setup: (%d,%d), atomCount=%d\n", // DrudeIns - provenance marker for Drude PR.
+          drudeIdx,parentIdx,atomCount); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+      if (allExcl[drudeIdx].count(parentIdx)==0 && system->msld->interacting(drudeIdx,parentIdx)) { // DrudeIns - provenance marker for Drude PR.
+        bondExcl[drudeIdx].insert(parentIdx); // DrudeIns - provenance marker for Drude PR.
+        bondExcl[parentIdx].insert(drudeIdx); // DrudeIns - provenance marker for Drude PR.
+        allExcl[drudeIdx].insert(parentIdx); // DrudeIns - provenance marker for Drude PR.
+        allExcl[parentIdx].insert(drudeIdx); // DrudeIns - provenance marker for Drude PR.
+        drudeInheritanceBondInsertCount++; // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+    for (i=0; i<system->drudePlugin->springPairs_tmp.size(); i++) { // DrudeIns - provenance marker for Drude PR.
+      int drudeIdx=system->drudePlugin->springPairs_tmp[i].idx[0]; // DrudeIns - provenance marker for Drude PR.
+      int parentIdx=system->drudePlugin->springPairs_tmp[i].idx[1]; // DrudeIns - provenance marker for Drude PR.
+      std::set<int> inherited; // DrudeIns - provenance marker for Drude PR.
+      inherited.insert(parentBondExcl[parentIdx].begin(),parentBondExcl[parentIdx].end()); // DrudeIns - provenance marker for Drude PR.
+      inherited.insert(parentAngleExcl[parentIdx].begin(),parentAngleExcl[parentIdx].end()); // DrudeIns - provenance marker for Drude PR.
+      for (std::set<int>::iterator kk=inherited.begin(); kk!=inherited.end(); kk++) { // DrudeIns - provenance marker for Drude PR.
+        int neigh=*kk; // DrudeIns - provenance marker for Drude PR.
+        if (neigh==drudeIdx) continue; // DrudeIns - provenance marker for Drude PR.
+        if (neigh==parentIdx) continue; // DrudeIns - provenance marker for Drude PR.
+        if (allExcl[drudeIdx].count(neigh)==0 && system->msld->interacting(drudeIdx,neigh)) { // DrudeIns - provenance marker for Drude PR.
+          angleExcl[drudeIdx].insert(neigh); // DrudeIns - provenance marker for Drude PR.
+          angleExcl[neigh].insert(drudeIdx); // DrudeIns - provenance marker for Drude PR.
+          allExcl[drudeIdx].insert(neigh); // DrudeIns - provenance marker for Drude PR.
+          allExcl[neigh].insert(drudeIdx); // DrudeIns - provenance marker for Drude PR.
+          drudeInheritanceAngleInsertCount++; // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
   // Set msldExcl
   // #warning "This is an N^2 algorithm, need to set up better data structures in Msld class to make it N"
   /*for (i=0; i<atomCount; i++) {
@@ -1056,6 +1141,170 @@ void Potential::initialize(System *system)
     }
   }
 
+  // DrudeIns - CP3 screened-pair exclusion closure and dihedral overlap guard.
+  if (system->drudePlugin && system->drudePlugin->enabled) { // DrudeIns - provenance marker for Drude PR.
+    std::map<int,int> drudeToParentTmp; // DrudeIns - provenance marker for Drude PR.
+    for (i=0; i<system->drudePlugin->springPairs_tmp.size(); i++) { // DrudeIns - provenance marker for Drude PR.
+      drudeToParentTmp[system->drudePlugin->springPairs_tmp[i].idx[0]]= // DrudeIns - provenance marker for Drude PR.
+        system->drudePlugin->springPairs_tmp[i].idx[1]; // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+    for (i=0; i<system->drudePlugin->screenedPairs_tmp.size(); i++) { // DrudeIns - provenance marker for Drude PR.
+      DrudeScreenedPairPotential &pp=system->drudePlugin->screenedPairs_tmp[i]; // DrudeIns - provenance marker for Drude PR.
+      int parent1=pp.idx[1]; // DrudeIns - provenance marker for Drude PR.
+      int parent2=pp.idx[3]; // DrudeIns - provenance marker for Drude PR.
+      if (pp.idx[0]<0 || pp.idx[0]>=atomCount || // DrudeIns - provenance marker for Drude PR.
+          pp.idx[1]<0 || pp.idx[1]>=atomCount || // DrudeIns - provenance marker for Drude PR.
+          pp.idx[2]<0 || pp.idx[2]>=atomCount || // DrudeIns - provenance marker for Drude PR.
+          pp.idx[3]<0 || pp.idx[3]>=atomCount) { // DrudeIns - provenance marker for Drude PR.
+        fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+          "Drude screened pair index out of range at entry %d: (%d,%d,%d,%d), atomCount=%d\n", // DrudeIns - provenance marker for Drude PR.
+          i,pp.idx[0],pp.idx[1],pp.idx[2],pp.idx[3],atomCount); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+      bool hasSpring1=(drudeToParentTmp.count(pp.idx[0])==1 && drudeToParentTmp[pp.idx[0]]==pp.idx[1]); // DrudeIns - provenance marker for Drude PR.
+      bool hasSpring2=(drudeToParentTmp.count(pp.idx[2])==1 && drudeToParentTmp[pp.idx[2]]==pp.idx[3]); // DrudeIns - provenance marker for Drude PR.
+      if (hasSpring1 && hasSpring2) { // DrudeIns - provenance marker for Drude PR.
+        bool parentTopologyClose=(bondExcl[parent1].count(parent2)>0 || // DrudeIns - provenance marker for Drude PR.
+          angleExcl[parent1].count(parent2)>0 || // DrudeIns - provenance marker for Drude PR.
+          bondExcl[parent2].count(parent1)>0 || // DrudeIns - provenance marker for Drude PR.
+          angleExcl[parent2].count(parent1)>0); // DrudeIns - provenance marker for Drude PR.
+        if (!parentTopologyClose) { // DrudeIns - provenance marker for Drude PR.
+          fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+            "Drude screenedpair (%d,%d)-(%d,%d) must be a 1-2 or 1-3 parent topology pair. " // DrudeIns - provenance marker for Drude PR.
+            "Found parent atoms (%d,%d) outside bond/angle exclusion shells.\n", // DrudeIns - provenance marker for Drude PR.
+            pp.idx[0],pp.idx[1],pp.idx[2],pp.idx[3],parent1,parent2); // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+        real expectedEnergyScale=kELECTRIC*charge[pp.idx[0]]*charge[pp.idx[2]]; // DrudeIns - provenance marker for Drude PR.
+        real absExpected=fabs(expectedEnergyScale); // DrudeIns - provenance marker for Drude PR.
+        real absInput=fabs(pp.energyScale); // DrudeIns - provenance marker for Drude PR.
+        if (absExpected>(real)1e-6) { // DrudeIns - provenance marker for Drude PR.
+          real relDiff=fabs(pp.energyScale-expectedEnergyScale)/absExpected; // DrudeIns - provenance marker for Drude PR.
+          if (relDiff>(real)0.10) { // DrudeIns - provenance marker for Drude PR.
+            drudeScreenedEnergyWarningCount++; // DrudeIns - provenance marker for Drude PR.
+            if (system->id==0) { // DrudeIns - provenance marker for Drude PR.
+              fprintf(stdout, // DrudeIns - provenance marker for Drude PR.
+                "DRUDE WARNING> screenedpair (%d,%d)-(%d,%d) energyScale=%g differs from kE*qD1*qD2=%g by %.2f%%\n", // DrudeIns - provenance marker for Drude PR.
+                pp.idx[0],pp.idx[1],pp.idx[2],pp.idx[3], // DrudeIns - provenance marker for Drude PR.
+                (double)pp.energyScale,(double)expectedEnergyScale,(double)(100*relDiff)); // DrudeIns - provenance marker for Drude PR.
+            } // DrudeIns - provenance marker for Drude PR.
+          } // DrudeIns - provenance marker for Drude PR.
+        } else if (absInput>(real)1e-6) { // DrudeIns - provenance marker for Drude PR.
+          drudeScreenedEnergyWarningCount++; // DrudeIns - provenance marker for Drude PR.
+          if (system->id==0) { // DrudeIns - provenance marker for Drude PR.
+            fprintf(stdout, // DrudeIns - provenance marker for Drude PR.
+              "DRUDE WARNING> screenedpair (%d,%d)-(%d,%d) uses non-zero energyScale=%g while qD1*qD2 is near zero\n", // DrudeIns - provenance marker for Drude PR.
+              pp.idx[0],pp.idx[1],pp.idx[2],pp.idx[3],(double)pp.energyScale); // DrudeIns - provenance marker for Drude PR.
+          } // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+      int first[4]={pp.idx[0],pp.idx[0],pp.idx[1],pp.idx[1]}; // DrudeIns - provenance marker for Drude PR.
+      int second[4]={pp.idx[2],pp.idx[3],pp.idx[2],pp.idx[3]}; // DrudeIns - provenance marker for Drude PR.
+      for (j=0; j<4; j++) { // DrudeIns - provenance marker for Drude PR.
+        int a=first[j]; // DrudeIns - provenance marker for Drude PR.
+        int b=second[j]; // DrudeIns - provenance marker for Drude PR.
+        if (a==b) continue; // DrudeIns - provenance marker for Drude PR.
+        int lo=(a<b? a : b); // DrudeIns - provenance marker for Drude PR.
+        int hi=(a<b? b : a); // DrudeIns - provenance marker for Drude PR.
+        if (diheExcl[lo].count(hi)>0) { // DrudeIns - provenance marker for Drude PR.
+          bool involvesDrude=(drudeToParentTmp.count(a)==1 || drudeToParentTmp.count(b)==1); // DrudeIns - provenance marker for Drude PR.
+          if (!involvesDrude) { // DrudeIns - provenance marker for Drude PR.
+            fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+              "Drude screenedpair (%d,%d)-(%d,%d) would erase core-core 1-4 pair (%d,%d). " // DrudeIns - provenance marker for Drude PR.
+              "Use NBTHOLE14 or fix the topology instead.\n", // DrudeIns - provenance marker for Drude PR.
+              pp.idx[0],pp.idx[1],pp.idx[2],pp.idx[3],lo,hi); // DrudeIns - provenance marker for Drude PR.
+          } // DrudeIns - provenance marker for Drude PR.
+          // Drude screened pairs own Drude-containing sub-pairs; do not also route them through nb14. // DrudeIns - provenance marker for Drude PR.
+          diheExcl[lo].erase(hi); // DrudeIns - provenance marker for Drude PR.
+          diheExcl[hi].erase(lo); // DrudeIns - provenance marker for Drude PR.
+          drudeScreenedDiheEraseCount++; // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+        if (allExcl[a].count(b)==0 && system->msld->interacting(a,b)) { // DrudeIns - provenance marker for Drude PR.
+          allExcl[a].insert(b); // DrudeIns - provenance marker for Drude PR.
+          allExcl[b].insert(a); // DrudeIns - provenance marker for Drude PR.
+          drudeScreenedSubPairInsertCount++; // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
+
+  // DrudeIns - CP3 NBTHOLE pair consistency validation against exclusion sets.
+  if (system->drudePlugin && system->drudePlugin->enabled) { // DrudeIns - provenance marker for Drude PR.
+    for (i=0; i<system->drudePlugin->nbtholePairs_tmp.size(); i++) { // DrudeIns - provenance marker for Drude PR.
+      DrudeNBTholePairPotential &pp=system->drudePlugin->nbtholePairs_tmp[i]; // DrudeIns - provenance marker for Drude PR.
+      int a=pp.idx[0]; // DrudeIns - provenance marker for Drude PR.
+      int b=pp.idx[1]; // DrudeIns - provenance marker for Drude PR.
+      if (a<0 || a>=atomCount || b<0 || b>=atomCount) { // DrudeIns - provenance marker for Drude PR.
+        fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+          "Drude NBTHOLE pair (%d,%d) out of range during exclusion validation\n",a,b); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+      int lo=(a<b? a : b); // DrudeIns - provenance marker for Drude PR.
+      int hi=(a<b? b : a); // DrudeIns - provenance marker for Drude PR.
+      if (allExcl[lo].count(hi)>0) { // DrudeIns - provenance marker for Drude PR.
+        fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+          "Drude NBTHOLE pair (%d,%d) is excluded from nbdirect. " // DrudeIns - provenance marker for Drude PR.
+          "Use drude nbthole14 for excluded/1-4 correction pairs.\n", // DrudeIns - provenance marker for Drude PR.
+          lo,hi); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+      drudeNbtholePairValidatedCount++; // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+    for (i=0; i<system->drudePlugin->nbthole14Pairs_tmp.size(); i++) { // DrudeIns - provenance marker for Drude PR.
+      DrudeNBTholePairPotential &pp=system->drudePlugin->nbthole14Pairs_tmp[i]; // DrudeIns - provenance marker for Drude PR.
+      int a=pp.idx[0]; // DrudeIns - provenance marker for Drude PR.
+      int b=pp.idx[1]; // DrudeIns - provenance marker for Drude PR.
+      if (a<0 || a>=atomCount || b<0 || b>=atomCount) { // DrudeIns - provenance marker for Drude PR.
+        fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+          "Drude NBTHOLE14 pair (%d,%d) out of range during exclusion validation\n",a,b); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+      int lo=(a<b? a : b); // DrudeIns - provenance marker for Drude PR.
+      int hi=(a<b? b : a); // DrudeIns - provenance marker for Drude PR.
+      if (diheExcl[lo].count(hi)==0) { // DrudeIns - provenance marker for Drude PR.
+        fatal(__FILE__,__LINE__, // DrudeIns - provenance marker for Drude PR.
+          "Drude NBTHOLE14 pair (%d,%d) is not a 1-4 exclusion pair.\n", // DrudeIns - provenance marker for Drude PR.
+          lo,hi); // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+      drudeNbthole14PairValidatedCount++; // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+
+    // DrudeIns - CP3 soft guard: Drude atom types are expected to have zero LJ parameters.
+    std::set<int> drudeAtoms; // DrudeIns - provenance marker for Drude PR.
+    int drudeLJWarningCount=0; // DrudeIns - provenance marker for Drude PR.
+    for (i=0; i<system->drudePlugin->springPairs_tmp.size(); i++) { // DrudeIns - provenance marker for Drude PR.
+      drudeAtoms.insert(system->drudePlugin->springPairs_tmp[i].idx[0]); // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+    for (std::set<int>::iterator ii=drudeAtoms.begin(); ii!=drudeAtoms.end(); ii++) { // DrudeIns - provenance marker for Drude PR.
+      int idx=*ii; // DrudeIns - provenance marker for Drude PR.
+      std::string type=struc->atomList[idx].atomTypeName; // DrudeIns - provenance marker for Drude PR.
+      if (param->nbondParameter.count(type)==1) { // DrudeIns - provenance marker for Drude PR.
+        struct NbondParameter np=param->nbondParameter[type]; // DrudeIns - provenance marker for Drude PR.
+        if (fabs(np.eps)>(real)1e-12 || fabs(np.sig)>(real)1e-12 || // DrudeIns - provenance marker for Drude PR.
+            fabs(np.eps14)>(real)1e-12 || fabs(np.sig14)>(real)1e-12) { // DrudeIns - provenance marker for Drude PR.
+          fprintf(stdout, // DrudeIns - provenance marker for Drude PR.
+            "DRUDE WARNING> atom %d type %s has non-zero LJ parameters; " // DrudeIns - provenance marker for Drude PR.
+            "CP3 expects Drude types to use zero LJ.\n", // DrudeIns - provenance marker for Drude PR.
+            idx,type.c_str()); // DrudeIns - provenance marker for Drude PR.
+          drudeLJWarningCount++; // DrudeIns - provenance marker for Drude PR.
+        } // DrudeIns - provenance marker for Drude PR.
+      } // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+    if (system->id==0 && (drudeInheritanceBondInsertCount>0 || // DrudeIns - provenance marker for Drude PR.
+        drudeInheritanceAngleInsertCount>0 || // DrudeIns - provenance marker for Drude PR.
+        drudeScreenedSubPairInsertCount>0 || // DrudeIns - provenance marker for Drude PR.
+        drudeScreenedEnergyWarningCount>0 || // DrudeIns - provenance marker for Drude PR.
+        drudeScreenedDiheEraseCount>0 || // DrudeIns - provenance marker for Drude PR.
+        drudeNbtholePairValidatedCount>0 || // DrudeIns - provenance marker for Drude PR.
+        drudeNbthole14PairValidatedCount>0 || // DrudeIns - provenance marker for Drude PR.
+        drudeLJWarningCount>0)) { // DrudeIns - provenance marker for Drude PR.
+      fprintf(stdout, // DrudeIns - provenance marker for Drude PR.
+        "DRUDE EXCL> inheritanceBondAdded=%d inheritanceAngleAdded=%d screenedSubPairsAdded=%d screenedEnergyWarnings=%d screenedDiheErased=%d nbtholePairs=%d nbthole14Pairs=%d ljWarnings=%d\n", // DrudeIns - provenance marker for Drude PR.
+        drudeInheritanceBondInsertCount, // DrudeIns - provenance marker for Drude PR.
+        drudeInheritanceAngleInsertCount, // DrudeIns - provenance marker for Drude PR.
+        drudeScreenedSubPairInsertCount, // DrudeIns - provenance marker for Drude PR.
+        drudeScreenedEnergyWarningCount, // DrudeIns - provenance marker for Drude PR.
+        drudeScreenedDiheEraseCount, // DrudeIns - provenance marker for Drude PR.
+        drudeNbtholePairValidatedCount, // DrudeIns - provenance marker for Drude PR.
+        drudeNbthole14PairValidatedCount, // DrudeIns - provenance marker for Drude PR.
+        drudeLJWarningCount); // DrudeIns - provenance marker for Drude PR.
+    } // DrudeIns - provenance marker for Drude PR.
+  } // DrudeIns - provenance marker for Drude PR.
 #ifdef WITH_TORCH // eemlp-begin, build mlpExcl for ML-ML nonbond interactions exclusion
   // Set mlpExcl: only unique ML-ML pairs, no self-pairs
   if (ml_tmp && ml_tmp->is_tani==1) {
@@ -1865,6 +2114,9 @@ void Potential::calc_force(int step,System *system)
     getforce_cmap(system,calcEnergy);
     getforce_nb14(system,calcEnergy);
     getforce_nbex(system,calcEnergy);
+    if (system->drudePlugin) { // DrudeIns - optional Drude force path
+      system->drudePlugin->getforce(system,calcEnergy); // DrudeIns - add Drude plugin forces into bonded stream
+    } // DrudeIns - provenance marker for Drude PR.
     cudaEventRecord(r->bondedComplete,r->bondedStream);
     cudaStreamWaitEvent(r->updateStream,r->bondedComplete,0);
   }
@@ -1912,6 +2164,9 @@ void Potential::calc_force(int step,System *system)
   if (system->domdec->id>=0) {
     cudaStreamWaitEvent(r->nbdirectStream,r->forceBegin,0);
     getforce_nbdirect(system,calcEnergy);
+    if (system->drudePlugin && system->id==helper) { // DrudeIns - CP3 NBTHOLE correction hook on nbdirect stream
+      system->drudePlugin->getforce_nbthole(system,calcEnergy); // DrudeIns - add NBTHOLE correction after nbdirect real-space force
+    } // DrudeIns - provenance marker for Drude PR.
     cudaEventRecord(r->nbdirectComplete,r->nbdirectStream);
     cudaStreamWaitEvent(r->updateStream,r->nbdirectComplete,0);
   }
@@ -1927,4 +2182,3 @@ void Potential::calc_force(int step,System *system)
 
   // cudaEventRecord(r->forceComplete,r->updateStream);
 }
-

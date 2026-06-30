@@ -17,6 +17,7 @@
 #include "system/potential.h"
 #include "system/state.h"
 #include "domdec/domdec.h"
+#include "drude/drude_plugin.h" // DrudeIns - include Drude parser/lifecycle interface
 #include "main/gpu_check.h"
 
 
@@ -38,6 +39,7 @@ System::System() {
   potential=NULL;
   state=NULL;
   domdec=NULL;
+  drudePlugin=NULL; // DrudeIns - initialize optional Drude plugin pointer
   setup_parse_system();
 }
 
@@ -55,6 +57,7 @@ System::~System() {
   if (potential) delete(potential);
   if (state) delete(state);
   if (domdec) delete(domdec);
+  if (drudePlugin) delete(drudePlugin); // DrudeIns - release optional Drude plugin
 }
 
 
@@ -89,6 +92,8 @@ void System::setup_parse_system()
   helpSystem["selection"]="?selection> Sets selections of atoms for use in various other commands, including structure (you may want to delete a selection of atoms) and msld (you need to indicate which atoms are in which groups).\n";
   parseSystem["msld"]=&System::parse_system_msld;
   helpSystem["msld"]="?msld> Set up MSLD data structures. Determines which atoms are in which groups, how to scale their interactions, and so on. Should be done after calls of structure, because if the indices of atoms change after calls to msld, an error will occur.\n";
+  parseSystem["drude"]=&System::parse_system_drude; // DrudeIns - add top-level drude parser entry
+  helpSystem["drude"]="?drude> Configure drude plugin terms. Use drude help for details.\n"; // DrudeIns - drude command help text
   parseSystem["coordinates"]=&System::parse_system_coordinates;
   helpSystem["coordinates"]="?coordinates> Sets the initial conditions of the system, including starting spatial coordinates. Must be called after structure is complete, must be called before run.\n";
   parseSystem["run"]=&System::parse_system_run;
@@ -140,6 +145,11 @@ void System::parse_system_msld(char *line,char *token,System *system)
 {
   parse_msld(line,system);
 }
+
+void System::parse_system_drude(char *line,char *token,System *system) // DrudeIns - define drude directive parser entry
+{ // DrudeIns - provenance marker for Drude PR.
+  parse_drude(line,system); // DrudeIns - dispatch drude directive to plugin parser
+} // DrudeIns - provenance marker for Drude PR.
 
 void System::parse_system_coordinates(char *line,char *token,System *system)
 {

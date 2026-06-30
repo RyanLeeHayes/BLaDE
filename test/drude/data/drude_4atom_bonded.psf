@@ -1,0 +1,29 @@
+PSF
+
+       1 !NTITLE
+ REMARKS four-atom drude system with parent-parent bond for CP3 exclusion checks
+
+       4 !NATOM
+       1 DRUD     1 DRU1 PRT   OT      0.600000      11.600000           0
+       2 DRUD     1 DRU1 DRU   OT     -0.600000       0.400000           0
+       3 DRUD     2 DRU2 PRT   OT      0.500000      11.600000           0
+       4 DRUD     2 DRU2 DRU   OT     -0.500000       0.400000           0
+
+       1 !NBOND: bonds
+       1       3
+
+       0 !NTHETA: angles
+
+       0 !NPHI: dihedrals
+
+       0 !NIMPHI: impropers
+
+       0 !NDON: donors
+
+       0 !NACC: acceptors
+
+       0 !NNB
+       0       0       0       0
+       0 !NGRP NST2
+
+       0       0 !NUMLP NUMLPH

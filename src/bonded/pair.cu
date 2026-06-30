@@ -143,12 +143,22 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
   
 
 __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy,bool usevdWSwitch,bool usePME)
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
 {
-  real rinv=1/r;
   real br=rc.betaEwald*r;
   real kqq=kELECTRIC*pp.qxq;
+  // real rinv=1/r; // DrudeDel - pre-existing BLaDE bug: division by zero when r=0 for overlapping excluded pairs in reciprocal correction (function_pair). Any system with coincident excluded atoms triggers 1/0 -> NaN energy/force. The original code had "#warning No nan guard" acknowledging this. Discovered during Drude r->0 overlap testing.
+  // #warning "No nan guard" // DrudeDel - removed: the guard is now implemented below.
+  if (r<((real)1e-8)) { // DrudeIns - general BLaDE bugfix (not Drude-specific): analytic r->0 limit for excluded reciprocal correction. Protects all simulations with overlapping excluded atom pairs.
+    fpair[0]=0; // DrudeIns - general BLaDE bugfix: force vanishes at r=0 by L'Hopital limit of erfc(beta*r)/r^2.
+    if (calcEnergy) { // DrudeIns - general BLaDE bugfix: energy has finite limit at r=0.
+      lE[0]=-kqq*((real)1.128379167095513)*rc.betaEwald; // DrudeIns - general BLaDE bugfix: lim(r->0) -q*erfc(beta*r)/r = -q*(2/sqrt(pi))*beta.
+    } // DrudeIns - general BLaDE bugfix: energy branch end.
+    return; // DrudeIns - general BLaDE bugfix: skip 1/r path at overlap.
+  } // DrudeIns - general BLaDE bugfix: overlap guard end.
+  real rinv=1/r; // DrudeIns - general BLaDE bugfix: safe after overlap guard.
+  // DrudeDel - original BLaDE line(s) removed or replaced for Drude support in this hunk.
 
-#warning "No nan guard"
   // fpair[0]=kqq*(erff(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
   fpair[0]=kqq*(erff(br)*rinv-((real)1.128379167095513)*rc.betaEwald*expf(-br*br))*rinv;
   if (calcEnergy) {

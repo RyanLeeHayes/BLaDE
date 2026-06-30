@@ -11,6 +11,7 @@
 #include "holonomic/holonomic.h"
 #include "update/pressure.h"
 #include "update/rex.h"
+#include "drude/drude_plugin.h" // DrudeIns - Drude integrator hook interface
 
 #include "main/real3.h"
 
@@ -264,7 +265,13 @@ void State::update(int step,System *system)
   // update_OO<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
   // holonomic_velocity(system); // superfluous, I think
   // update_hbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
+  if (system->drudePlugin) { // DrudeIns - pre O-step hook for Drude dual thermostat
+    system->drudePlugin->pre_thermostat(system); // DrudeIns - capture pre O-step state and draw pair random numbers
+  } // DrudeIns - provenance marker for Drude PR.
   update_OOhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
+  if (system->drudePlugin) { // DrudeIns - post O-step hook for Drude pair correction
+    system->drudePlugin->post_thermostat(system); // DrudeIns - enforce COM/relative dual thermostat update
+  } // DrudeIns - provenance marker for Drude PR.
   // Velocity Constraint
   // holonomic_velocity(system); // superfluous, I think
   // Update spatial coordinates
@@ -272,6 +279,9 @@ void State::update(int step,System *system)
   // update_R<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2); // done in OOhbpR
   // Position Constraint
   holonomic_position(system);
+  if (system->drudePlugin) { // DrudeIns - final position-safe hook for Drude hard wall
+    system->drudePlugin->apply_hardwall(system,system->run->step); // DrudeIns - clamp Drude displacement and collect diagnostics
+  } // DrudeIns - provenance marker for Drude PR.
   // Project lambdas
   system->msld->calc_lambda_from_theta(r->updateStream,system);
   }

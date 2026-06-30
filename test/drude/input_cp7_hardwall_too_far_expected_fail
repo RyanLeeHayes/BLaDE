@@ -1,0 +1,39 @@
+! CP7 hard-wall too-far negative test: OpenMM aborts when r > 2*maxDrudeDistance.
+
+variables set dir test/drude
+
+parameters file {dir}/../toppar/par_all36_prot.prm
+parameters file {dir}/../toppar_water_ions/par_water_ions.prm
+
+structure file psf {dir}/data/drude_2atom.psf
+coordinates file crd {dir}/data/drude_2atom_stretched.crd
+coordinates box cubi 50.0 50.0 50.0 90 90 90
+coordinates velocity 0
+
+msld nblocks 0
+
+drude clear
+drude enable 1
+drude spring 1 0 1000.0 0.0
+
+run setterm nbdirect off
+run setterm nbrecip off
+run setterm nbrecipself off
+run setterm nbrecipexcl off
+run setterm nb14 off
+
+run setvariable dt 0.001
+run setvariable nsteps 1
+run setvariable T 0
+run setvariable gamma 0
+run setvariable Tdrude 0
+run setvariable gammaDrude 0
+run setvariable maxDrudeDistance 0.1
+run setvariable freqnpt 0
+run setvariable freqnrg 1
+run setvariable freqxtc 100
+run setvariable fnmxtc cp7_hardwall_too_far_expected_fail.xtc
+run setvariable fnmnrg cp7_hardwall_too_far_expected_fail.nrg
+run setvariable fnmcpo cp7_hardwall_too_far_expected_fail.cpt
+
+run dynamics

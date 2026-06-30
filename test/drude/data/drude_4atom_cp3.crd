@@ -1,0 +1,8 @@
+* four-atom drude coordinates for CP3 electrostatics checks
+* generated for BLaDE drude CP3 tests
+*
+         4 EXT
+         1         1  DRU1      PRT            25.0000000000       25.0000000000       25.0000000000  DRUD      1                 0.0000000000
+         2         1  DRU1      DRU            25.1000000000       25.0000000000       25.0000000000  DRUD      1                 0.0000000000
+         3         2  DRU2      PRT            27.0000000000       25.0000000000       25.0000000000  DRUD      2                 0.0000000000
+         4         2  DRU2      DRU            26.9000000000       25.0000000000       25.0000000000  DRUD      2                 0.0000000000

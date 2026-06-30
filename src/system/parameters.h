@@ -132,6 +132,7 @@ class Parameters {
     std::map<TypeName8O,CmapParameter> cmapParameter;
     std::map<std::string,struct NbondParameter> nbondParameter;
     std::map<TypeName2,struct NbondParameter> nbfixParameter;
+    std::map<TypeName2,real> tholePairParameter; // DrudeIns - provenance marker for Drude PR.
 
     int maxDiheTerms; // Number of Fourier componenets in the biggest dihedral
     std::set<std::string> knownTokens;
@@ -150,6 +151,7 @@ class Parameters {
     cmapParameter.clear();
     nbondParameter.clear();
     nbfixParameter.clear();
+    tholePairParameter.clear(); // DrudeIns - provenance marker for Drude PR.
 
     maxDiheTerms=0;
     knownTokens.clear();
@@ -161,6 +163,8 @@ class Parameters {
     knownTokens.insert("CMAP");
     knownTokens.insert("NONB");
     knownTokens.insert("NBFI");
+    knownTokens.insert("THOL"); // DrudeIns - provenance marker for Drude PR.
+    knownTokens.insert("NBTH"); // DrudeIns - provenance marker for Drude PR.
     knownTokens.insert("HBON");
     knownTokens.insert("END");
   }
@@ -177,6 +181,7 @@ class Parameters {
     cmapParameter.clear();
     nbondParameter.clear();
     nbfixParameter.clear();
+    tholePairParameter.clear(); // DrudeIns - provenance marker for Drude PR.
     knownTokens.clear();
   }
 
@@ -190,6 +195,7 @@ class Parameters {
   void add_parameter_cmaps(FILE *fp);
   void add_parameter_nbonds(char *line,FILE *fp);
   void add_parameter_nbfixs(FILE *fp);
+  void add_parameter_tholes(char *line,FILE *fp); // DrudeIns - provenance marker for Drude PR.
   void dump();
   std::string check_type_name(std::string type,const char *tag);
   std::string require_type_name(std::string type,const char *tag);

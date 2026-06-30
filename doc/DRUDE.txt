@@ -1,0 +1,141 @@
+Drude Command Reference
+
+The drude command configures the GPU Drude plugin for extended-Lagrangian Drude dynamics.
+The implementation targets CHARMM/OpenMM-style Drude polarizable models with explicit Drude particles.
+
+drude help
+
+Prints command help for all Drude directives.
+
+drude enable 0|1
+
+Turns Drude configuration on or off.
+
+drude clear
+
+Clears all configured Drude spring, screened, NBTHOLE, and NBTHOLE14 pairs and resets Drude runtime options to defaults.
+
+drude spring drudeIdx parentIdx kCharmm r0A
+
+Adds one Drude-parent spring pair. kCharmm is the CHARMM KDRUDE-style spring constant in kcal/mol/A^2, so the potential is kCharmm*(r-r0A)^2. The plugin converts it internally to the 0.5*k*(r-r0)^2 convention used by the force kernel.
+
+drude screenedpair d1 p1 d2 p2 screeningScale energyScale
+
+Adds one Thole-screened Drude dipole interaction. screeningScale is the pair Thole width a_ij used in S(u), where u=a_ij*r. Autobuild computes this from parsed per-atom polarizability and Thole data.
+
+drude nbtholepair a1 a2 screeningScale energyScale
+drude nbthole a1 a2 screeningScale energyScale
+
+Adds one non-excluded NBTHOLE atom-pair correction. This is a low-level pair term; for CHARMM/OpenMM-style Drude systems, prefer drude autobuild nbthole so the full parent/Drude charge-pair set is generated.
+
+drude nbthole14 a1 a2 screeningScale energyScale
+drude nbthole14pair a1 a2 screeningScale energyScale
+
+Adds one NBTHOLE14 atom-pair correction for a 1-4 excluded pair. For CHARMM/OpenMM-style Drude systems, autobuild emits the core-core 1-4 correction used by OpenMM's CHARMM reader.
+
+drude nbtholecutoff distanceA
+
+Sets the NBTHOLE short-range cutoff in Angstrom for non-excluded correction pairs.
+
+drude defaultmass massInAMU
+
+Sets the default Drude particle mass used when a Drude atom is massless.
+
+drude mass drudeIdx massInAMU
+
+Sets an explicit per-atom Drude mass override for one Drude atom index.
+
+drude autobuild [all|springs|screened|nbthole]
+
+Auto-builds Drude topology terms from loaded PSF and parameter data.
+all (default): build springs + screened + NBTHOLE + NBTHOLE14.
+springs: build only Drude-parent springs.
+screened: build screened dipole pairs from existing spring pairs and parsed Drude parameters.
+nbthole: build NBTHOLE/NBTHOLE14 pairs from existing spring pairs and parsed NBTHOLE parameters.
+For non-excluded parent pairs, autobuild emits all four OpenMM/CHARMM NBTHOLE sub-pairs: core-core, core-Drude, Drude-core, and Drude-Drude, each with the real per-particle charge product. For parent 1-4 pairs, autobuild emits the OpenMM/CHARMM NBTHOLE14 core-core correction. Parent 1-2/1-3 pairs remain handled by Drude screened-pair terms, not NBTHOLE.
+
+drude print
+
+Prints current Drude configuration, counters, and runtime diagnostics.
+
+Run variables used by Drude dynamics:
+
+run setvariable Tdrude value
+run setvariable gammaDrude value
+run setvariable maxDrudeDistance value
+run setvariable seed value
+
+Run-term switch:
+
+run setterm drude on|off
+
+Implemented scope:
+
+- Drude-parent springs, including anisotropic spring terms from PSF ANISOTROPY records.
+- Thole screened dipole pairs and NBTHOLE/NBTHOLE14 corrections.
+- Drude autobuild from PSF and parameter data.
+- Hard-wall distance limiting for Drude-parent pairs.
+- Dual Langevin thermostatting for system and Drude relative modes.
+- Checkpoint/restart of active Langevin RNG streams in the standalone BLaDE build.
+
+Supported production path:
+
+- The validated Drude dynamics path is single-GPU NVT with the extended-Lagrangian dual Langevin thermostat. freqNPT defaults to 50, so BLaDE's Monte Carlo barostat is on by default; every Drude dynamics deck must set run setvariable freqnpt 0. Active Drude dynamics aborts at once if freqNPT is greater than 0, because that barostat scales every atom position and has not been validated against OpenMM's molecule-center barostat behavior for Drude dipoles.
+- OpenMM DrudeNoseHooverIntegrator is not implemented. Use the dual Langevin path above; it is a complete extended-Lagrangian Drude thermostat, but it is not a Nose-Hoover trajectory/integrator match.
+- For SWM4/Drude water or ion systems that produce step-0 NaN with constrained hydrogen bonds or a 1 fs step, start from an unconstrained or relaxed coordinate set and use 0.5 fs for initial Drude equilibration. A minimal startup pattern is:
+
+  drude autobuild all
+  run setvariable dt 0.0005
+  run setvariable Tdrude 1
+  run setvariable gammaDrude 20
+  run setvariable maxDrudeDistance 0.2
+  run setvariable freqnpt 0
+  run setterm drude on
+  run dynamics
+
+- The hard-wall guard follows OpenMM's instability signal: if any Drude-parent distance is already greater than 2*maxDrudeDistance, BLaDE aborts instead of silently clamping the oscillator. This check runs at the energy-report frequency (freqNRG), not every step, so a too-far event in the last few steps (or when freqNRG is larger than the run length) can finish without aborting; set run setvariable freqnrg 1 to check every step when debugging unstable startup coordinates.
+
+Physics conventions matched to CHARMM/OpenMM:
+
+- Thole screened dipole interactions use the full Coulomb S(u)/r form without erfc damping, and the corresponding parent/Drude charge pairs are excluded from PME.
+- Anisotropic Drude springs use k_i = K/a_i with a1+a2+a3=3, where K is set by the Drude charge and polarizability.
+- MSLD scaling of same-block Drude electrostatics is linear in lambda; with MSLD inactive, pairScale=1 and the terms reduce to the ordinary CHARMM/OpenMM Drude form.
+
+Validation against OpenMM:
+
+- On the 85885-atom polarizable RNA, the Drude energy terms match OpenMM term by term (kcal/mol): springs 76628.81 vs 76624.91, Thole screened -11034.53 vs -11034.27, NBTHOLE plus NBTHOLE14 +272.08 vs +272.07. The small gaps are single-precision (FLOAT) rounding.
+- The total energy differs by about 0.75% (-197758.58 vs -199244.45). This comes from BLaDE using LJPME and OpenMM using PME for Lennard-Jones, not from the Drude terms.
+- The small-system OpenMM 1:1 checks (isotropic and anisotropic springs, Thole screened, NBTHOLE all four sub-pairs, NBTHOLE14, hard wall) all pass against OpenMM's own compiled code.
+
+Known limitations:
+
+- The default PRECISION=FLOAT build keeps forces, velocities, PME spread/gather, and Drude OU thermostat arithmetic in single precision. This is equivalent to OpenMM single precision and should be disclosed for production Drude runs. Use a PRECISION=DOUBLE build to quantify FLOAT-vs-DOUBLE behavior for the target system.
+- The shipped Drude test entry point is test/drude/run_core_drude_suite.sh. It is a self-contained BLaDE regression gate and does not call OpenMM DrudeLangevinIntegrator.computeDrudeTemperature(); absolute Drude-temperature floors should be checked separately with OpenMM for the target system.
+- SCF/Born-Oppenheimer Drude integration is not implemented. The plugin implements the extended-Lagrangian dual-thermostat Drude path.
+- PME grid selection is inherited from BLaDE run controls and is not Drude-adaptive.
+- The RNG generator is not bitwise-compatible with OpenMM. Standalone checkpointed runs preserve BLaDE RNG continuity, but OpenMM bitwise trajectory matching is not expected.
+- In BLADE_IN_CHARMM embedded builds, the cuRAND host generator state is not serializable through the current checkpoint format. Such checkpoints write an explicit placeholder RngGPUState marker and restart prints a warning before continuing with the current GPU random stream. Use standalone BLaDE for deterministic Drude active-noise restart validation.
+- Drude spring displacements use BLaDE's minimum-image displacement helper. For bonded Drude-parent pairs this should be a no-op in normal systems and is more robust across periodic boundaries, but OpenMM's reference spring code uses the raw coordinate difference.
+- The hard-wall limiter uses minimum-image distances. BLaDE now raises the same instability error as OpenMM when a pair is already beyond 2*maxDrudeDistance, and still applies an extra post-bounce re-clamp for residual overshoot inside the ordinary bounce regime.
+- MSLD lambda scaling on screened/NBTHOLE/NBTHOLE14/nbdirect terms is a BLaDE alchemical extension. With MSLD inactive, pairScale=1 and these paths reduce to the OpenMM/CHARMM Drude terms.
+- The thermostat is the Drude relative/center-of-mass Ornstein-Uhlenbeck step used inside BLaDE's BAOAB-style splitting; OpenMM's DrudeLangevinIntegrator presents this as a monolithic integrator step.
+- OpenMM's CHARMM reader emits NBTHOLE14 corrections per matching dihedral. BLaDE autobuild de-duplicates by parent atom pair, so repeated 1-4 paths with an NBTHOLE14 parameter can differ.
+- OpenMM's CHARMM NBTHOLE interaction groups are generated only for distinct atom types. BLaDE honors same-type NBTHOLE entries if they are present in the parameter table.
+- BLaDE evaluates NBTHOLE14 with the same minimum-image and cutoff machinery as its bonded Drude correction path. OpenMM's generated CustomBondForce NBTHOLE14 path is uncut and does not use periodic wrapping.
+- Large NBTHOLE sets use a neighbor-style active list when the pair count is at least 2048. This is a performance path and should be validated separately for unusually large NBTHOLE tables.
+
+Handoff implementation notes:
+
+- Drude PSF support adds polarizability/thole fields and NUMANISO storage to the core Structure data model so autobuild can bind CHARMM/OpenMM Drude metadata.
+- PSF atom parsing reads optional IMOVE, polarizability, and Thole columns for all PSF inputs. Missing optional columns default to zero for non-Drude PSFs.
+- Parameter loading accepts CHARMM stream files that contain read rtf/read para blocks: topology blocks are skipped and parameter sections are parsed.
+
+Shipped core regression test:
+
+Run from the BLaDE repository root after building ./build/blade:
+
+  OMP_NUM_THREADS=1 ./test/drude/run_core_drude_suite.sh
+
+Or point the runner at another BLaDE executable:
+
+  BLADE_EXE=/path/to/blade ./test/drude/run_core_drude_suite.sh

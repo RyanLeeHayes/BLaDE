@@ -29,6 +29,7 @@ typedef enum eeterm {
   eenbrecip,
   eenbrecipself,
   eenbrecipexcl,
+  eedrude, // DrudeIns - Drude plugin energy term toggle
   eelambda,
   eetheta,
   eecats,
