@@ -35,6 +35,7 @@ class Control {
   }
 };
 
+void printlog(const char* format, ...);
 void fatal(const char* fnm,int i,const char* format, ...);
 void arrested_development(System *system,int howLong);
 FILE* fpopen(const char* fnm,const char* type);
@@ -57,9 +58,9 @@ void io_strncpy(char *targ,char *dest,int n);
 
 void interpretter(const char *fnm,System *system);
 
-void print_nrg(int step,System *system);
+void print_nrg(long int step,System *system);
 void display_nrg(System *system);
-void print_dynamics_output(int step,System *system);
+void print_dynamics_output(long int step,System *system);
 
 void write_checkpoint_file(const char *fnm,System *system);
 void read_checkpoint_file(const char *fnm,System *system);
@@ -67,6 +68,18 @@ void read_checkpoint_file(const char *fnm,System *system);
 // Library functions
 extern "C" {
   void blade_interpretter(const char *fnm,System *system);
+
+  // blade_log
+  // 
+  // Platform-independent logging function.
+  //
+  // BLaDE declares this function but might NOT implement it.
+  // The implementation must be provided by whoever links BLaDE:
+  //
+  // - Standalone: src/io/io.cxx (fprintf to stdout)
+  // - CHARMM: blade_api/blade_main.F90 (routes to OUTU)
+  // - Other: provide your own implementation
+  void blade_log(const char* message);
 }
 
 #endif

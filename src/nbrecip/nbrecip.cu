@@ -63,7 +63,7 @@ void getforce_ewaldself(System *system,bool calcEnergy)
   real_e *pEnergy=NULL;
   real prefactor=-system->run->betaEwald*(kELECTRIC/sqrt(M_PI));
 
-  if (r->usePME==false) return;
+  if (r->elecMethod!=epme) return;
   if (r->calcTermFlag[eenbrecipself]==false) return;
 
   if (calcEnergy) {
@@ -476,9 +476,6 @@ __global__ void getforce_ewald_gather_kernel(
     } else {
       lEnergy=0;
     }
-    // if (!isfinite(lEnergy)) { // code to look for causes of nan in lEnergy
-    //   printf("Error: lEnergy is not finite for atom %d\n",iAtom);
-    // }
     // note, had to use reduction without shared memory here for a while to avoid errors. That seems to have passed.
     real_sum_reduce(lEnergy,sEnergy,energy);
     // real_sum_reduce(lEnergy,energy);
@@ -496,7 +493,7 @@ void getforce_ewaldTT(System *system,box_type kbox,bool calcEnergy)
   int shMem=0;
   real_e *pEnergy=NULL;
 
-  if (r->usePME==false) return;
+  if (r->elecMethod!=epme) return;
   if (r->calcTermFlag[eenbrecip]==false) return;
 
   if (calcEnergy) {

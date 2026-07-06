@@ -42,6 +42,7 @@ Msld::Msld() {
   restScaling=1.0;
 
   gamma=1.0/PICOSECOND; // ps^-1
+  thetaFriction=NULL;
   fnex=5.5;
 
   theta0_d=NULL;
@@ -84,6 +85,9 @@ Msld::Msld() {
   softNotBondExponent=1.0;
 
   fix=false; // ffix
+
+  blockFixed=NULL;
+  blockFixed_d=NULL;
 }
 
 Msld::~Msld() {
@@ -94,6 +98,8 @@ Msld::~Msld() {
   if (thetaVelocity) free(thetaVelocity);
   if (thetaMass) free(thetaMass);
   if (lambdaCharge) free(lambdaCharge);
+  if (thetaFriction) free(thetaFriction);
+  if (blockFixed) free(blockFixed);
   if (variableBias) free(variableBias);
   if (kThetaCollBias) free(kThetaCollBias);
   if (nThetaCollBias) free(nThetaCollBias);
@@ -110,6 +116,7 @@ Msld::~Msld() {
 
   if (theta0_d) cudaFree(theta0_d);
   if (dcdt_d) cudaFree(dcdt_d);
+  if (blockFixed_d) cudaFree(blockFixed_d);
 
   if (blocksPerSite) free(blocksPerSite);
   if (blocksPerSite_d) cudaFree(blocksPerSite_d);
@@ -161,7 +168,12 @@ void parse_msld(char *line,System *system)
     system->msld->thetaVelocity=(real_v*)calloc(system->msld->blockCount,sizeof(real_v));
     system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->thetaMass[0]=1;
+    system->msld->thetaFriction=(real*)calloc(system->msld->blockCount,sizeof(real));
     system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
+    system->msld->blockFixed=(bool*)calloc(system->msld->blockCount,sizeof(bool));
+    for (i=0; i<system->msld->blockCount; i++) {
+      system->msld->blockFixed[i]=false;
+    }
 
     cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
     cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
@@ -169,7 +181,7 @@ void parse_msld(char *line,System *system)
     cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real));
 
     // NYI - this would be a lot easier to read if these were split in to parsing functions.
-    fprintf(stdout,"NYI - Initialize all blocks in first site %s:%d\n",__FILE__,__LINE__);
+    printlog("NYI - Initialize all blocks in first site %s:%d\n",__FILE__,__LINE__);
   } else if (strcmp(token,"call")==0) {
     i=io_nexti(line);
     if (i<0 || i>=system->msld->blockCount) {
@@ -210,6 +222,9 @@ void parse_msld(char *line,System *system)
     system->msld->lambdaCharge[i]=io_nextf(line);
   } else if (strcmp(token,"gamma")==0) {
     system->msld->gamma=io_nextf(line)/PICOSECOND; // units: ps^-1
+    for (i=0; i<system->msld->blockCount; i++) {
+      system->msld->thetaFriction[i]=system->msld->gamma;
+    }
   } else if (strcmp(token,"fnex")==0) {
     system->msld->fnex=io_nextf(line);
   } else if (strcmp(token,"bias")==0) {
@@ -293,7 +308,7 @@ void parse_msld(char *line,System *system)
               if (!(k>0)) k=0;
             }
             k*=kB*T;
-            // fprintf(stdout,"theta bias: site %d, temperature %f, Ns %f, bias %f\n",i,T,Ns,k);
+            // printlog("theta bias: site %d, temperature %f, Ns %f, bias %f\n",i,T,Ns,k);
           }
           system->msld->kThetaIndeBias[i]=k;
         }
@@ -598,6 +613,10 @@ bool Msld::nbex_scaling(int idx[2],int siteBlock[2])
     block[1]=ab;
   }
 
+  // Mode 0 (OFF): No PME
+  // Mode 1 (ON): Treat PME exclusions with same scaling as other interactions
+  // Mode 2 (EX): Same as ON, but scale intrasubstituent exclusions by lambda squared
+  // Mode 3 (NN): Always scale exclusions by the product of lambdas
   if (msldEwaldType==1) {
     if (block[0]==block[1]) {
       block[1]=0;
@@ -678,7 +697,7 @@ void Msld::initialize(System *system)
   if (blocksPerSite[0]!=1) fatal(__FILE__,__LINE__,"Only one block allowed in site 0\n");
   siteBound[0]=0;
   for (i=0; i<siteCount; i++) {
-    if (i && blocksPerSite[i]<2) fatal(__FILE__,__LINE__,"At least two blocks are required in each site. %d found at site %d\n",blocksPerSite[i],i);
+    if (i && blocksPerSite[i]<2 && !(blocksPerSite[i]==1 && blockFixed && blockFixed[siteBound[i]])) fatal(__FILE__,__LINE__,"At least two blocks are required in each site (unless single block is fixed). %d found at site %d\n",blocksPerSite[i],i);
     siteBound[i+1]=siteBound[i]+blocksPerSite[i];
   }
   cudaMemcpy(blocksPerSite_d,blocksPerSite,siteCount*sizeof(int),cudaMemcpyHostToDevice);
@@ -688,6 +707,19 @@ void Msld::initialize(System *system)
   // New newton constraint
   cudaMalloc(&theta0_d, siteCount*sizeof(real_x));
   cudaMalloc(&dcdt_d, blockCount*sizeof(real_f));
+
+  // Per-block fixed flags
+  cudaMalloc(&blockFixed_d, blockCount*sizeof(bool));
+  cudaMemcpy(blockFixed_d, blockFixed, blockCount*sizeof(bool), cudaMemcpyHostToDevice);
+
+  // Zero mass and velocity for fixed blocks so integrator skips them
+  // (isfinite(1/sqrt(0)) == false, so update kernels won't touch these DOFs)
+  for (i=0; i<blockCount; i++) {
+    if (blockFixed[i]) {
+      thetaMass[i]=0;
+      thetaVelocity[i]=0;
+    }
+  }
 
   // Atom restraints
   atomRestraintCount=atomRestraints.size();
@@ -797,7 +829,8 @@ __device__ bool solve_constraint(real_x* thetas, real_x* theta0, int subs){
 __global__ void calc_lambda_from_theta_kernel(
   real_x *lambda,real_x *theta,
   int siteCount,int *siteBound,real fnex,
-  bool new_implicit, real_x* theta0
+  bool new_implicit, real_x* theta0,
+  bool *blockFixed
 )
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -809,14 +842,25 @@ __global__ void calc_lambda_from_theta_kernel(
     ji=siteBound[i];
     jf=siteBound[i+1];
     if(!new_implicit){
+      real_x fixsum=0;
+      norm=0;
       for (j=ji; j<jf; j++) {
-        lLambda=exp(fnex*sin(theta[j]*ANGSTROM));
-        lambda[j]=lLambda;
-        norm+=lLambda;
+        if (blockFixed[j]) {
+          fixsum+=theta[j];
+        } else {
+          lLambda=exp(fnex*sin(theta[j]*ANGSTROM));
+          lambda[j]=lLambda;
+          norm+=lLambda;
+        }
       }
-      norm=1/norm;
+      real_x Rfrac=1.0-fixsum;
+      if (norm>0) norm=Rfrac/norm;
       for (j=ji; j<jf; j++) {
-        lambda[j]*=norm;
+        if (blockFixed[j]) {
+          lambda[j]=theta[j];
+        } else {
+          lambda[j]*=norm;
+        }
       }
     } else { // newton constraint
       bool result = solve_constraint(&(theta[ji]), &theta0[i], jf-ji); // calculates theta0 via newton iteration
@@ -831,7 +875,7 @@ void Msld::calc_lambda_from_theta(cudaStream_t stream,System *system)
   if (!fix) { // ffix
     calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(
       s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex,
-      new_implicit, theta0_d);
+      new_implicit, theta0_d, blockFixed_d);
   } else {
     cudaMemcpy(s->theta_d,s->lambda_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice);
   }
@@ -843,7 +887,7 @@ void Msld::init_lambda_from_theta(cudaStream_t stream,System *system)
   if (!fix) { // ffix
     calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(
       s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex,
-      new_implicit, theta0_d
+      new_implicit, theta0_d, blockFixed_d
     );
   } else {
     cudaMemcpy(s->lambda_d,s->theta_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice);
@@ -854,7 +898,8 @@ __global__ void calc_thetaForce_from_lambdaForce_kernel(
   real *lambda,real *theta,
   real_f *lambdaForce,real_f *thetaForce,
   int blockCount,int *lambdaSite,int *siteBound,real fnex,
-  bool new_implicit, real_x* theta0, real* dcdt 
+  bool new_implicit, real_x* theta0, real* dcdt,
+  bool *blockFixed
 )
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -862,17 +907,29 @@ __global__ void calc_thetaForce_from_lambdaForce_kernel(
   real li, fi;
 
   if (i<blockCount) {
+    if (blockFixed[i]) return; // No theta force for fixed blocks
     li=lambda[i];
     fi=lambdaForce[i];
     ji=siteBound[lambdaSite[i]];
     jf=siteBound[lambdaSite[i]+1];
     if(!new_implicit){
+      // Exclude fixed blocks from force sum, scale by 1/Rfrac
+      real_x fixsum=0;
+      real_x dynamic_sum=0;
       for (j=ji; j<jf; j++) {
-        fi+=-lambda[j]*lambdaForce[j];
+        if (blockFixed[j]) {
+          fixsum+=lambda[j];
+        } else {
+          dynamic_sum+=lambda[j]*lambdaForce[j];
+        }
+      }
+      real_x Rfrac=1.0-fixsum;
+      if (Rfrac>0) {
+        fi=fi-dynamic_sum/Rfrac;
       }
       fi*=li*fnex*cosf(ANGSTROM*theta[i])*ANGSTROM;
       atomicAdd(&thetaForce[i],fi);
-    } else { // newton solved constraint
+    } else { // newton solved constraint -- blockFixed not yet supported in this path
       int subs = jf - ji;
       real norm = d_constraintf(&theta[ji], theta0[lambdaSite[i]], &dcdt[ji], subs); // loops over subs 1x
       real dot = 0;
@@ -892,7 +949,7 @@ void Msld::calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system)
       s->lambda_fd,s->theta_fd,
       s->lambdaForce_d,s->thetaForce_d,
       blockCount,lambdaSite_d,siteBound_d,fnex,
-      new_implicit, theta0_d, dcdt_d);
+      new_implicit, theta0_d, dcdt_d, blockFixed_d);
   }
 }
 
@@ -975,10 +1032,8 @@ __global__ void getforce_variableBias_kernel(real *lambda,real_f *lambdaForce,re
       fi=vb.n*vb.k*pow(li-lj,vb.n-1);
       fj=-fi;
     } else if (vb.type==4) {
-      real bicut=0.8;
-      real bicut2in=1.5625; // 1/(bicut*bicut)
-      lEnergy=((li>bicut)?(-vb.k):(-vb.k*(1-bicut2in*(li-bicut)*(li-bicut))));
-      fi=((li>bicut)?0:(2*vb.k*bicut2in*(li-bicut)));
+      lEnergy=((li>vb.l0)?(-vb.k):(-vb.k*(1-(li-vb.l0)*(li-vb.l0)/(vb.l0*vb.l0))));
+      fi=((li>vb.l0)?0:(2*vb.k*(li-vb.l0)/(vb.l0*vb.l0)));
       fj=0;
     } else if (vb.type==5) {
       lEnergy=-vb.k*li;
@@ -1332,7 +1387,9 @@ void blade_init_msld(System *system,int nblocks)
   system->msld->thetaVelocity=(real_v*)calloc(system->msld->blockCount,sizeof(real_v));
   system->msld->thetaMass=(real*)calloc(system->msld->blockCount,sizeof(real));
   system->msld->thetaMass[0]=1;
+  system->msld->thetaFriction=(real*)calloc(system->msld->blockCount,sizeof(real));
   system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
+  system->msld->blockFixed=(bool*)calloc(system->msld->blockCount,sizeof(bool));
 
   cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
   cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
@@ -1392,6 +1449,20 @@ void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCor
   system->msld->softBondExponent=softBondExponent;
   system->msld->softNotBondExponent=softNotBondExponent;
   system->msld->fix=fix;
+}
+
+void blade_add_msld_block_friction(System *system,int blockIdx,double friction)
+{
+  system+=omp_get_thread_num();
+  blockIdx-=1; // Fortran 1-based to C 0-based
+  system->msld->thetaFriction[blockIdx]=friction;
+}
+
+void blade_set_msld_block_fixed(System *system,int blockIdx,int fixed)
+{
+  system+=omp_get_thread_num();
+  blockIdx-=1; // Fortran 1-based to C 0-based
+  system->msld->blockFixed[blockIdx]=(bool)fixed;
 }
 
 void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n)

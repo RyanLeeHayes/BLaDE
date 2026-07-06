@@ -24,14 +24,32 @@
 #include "xdr/xdrfile.h"
 #include "xdr/xdrfile_xtc.h"
 
+#ifndef BLADE_IN_CHARMM
+void blade_log(const char* buffer)
+{
+  fprintf(stdout,"%s",buffer);
+}
+#endif
+
+void printlog(const char* format, ...)
+{
+  va_list args;
+  char buffer[MAXLENGTHSTRING];
+
+  va_start(args,format);
+  vsnprintf(buffer,MAXLENGTHSTRING,format,args);
+  blade_log(buffer);
+  va_end(args);
+}
+
 void fatal(const char* fnm,int i,const char* format, ...)
 {
   va_list args;
 
   va_start(args,format);
-  fprintf(stdout,"FATAL ERROR:\n");
-  fprintf(stdout,"%s:%d\n",fnm,i);
-  vfprintf(stdout,format,args);
+  printlog("FATAL ERROR:\n");
+  printlog("%s:%d\n",fnm,i);
+  printlog(format,args);
   va_end(args);
 
   exit(1);
@@ -55,7 +73,7 @@ FILE* fpopen(const char* fnm,const char* type)
 {
   FILE *fp;
 
-  fprintf(stdout,"Opening file %s for %s\n",fnm,type);
+  printlog("Opening file %s for %s\n",fnm,type);
   fp=fopen(fnm,type);
   if (fp==NULL) {
     fatal(__FILE__,__LINE__,"Error: Unable to open file %s\n",fnm);
@@ -278,7 +296,7 @@ void interpretter(const char *fnm,System *system)
   fgetpos(fp,&system->control[level-1].fp_pos);
   // fsetpos(fp,&fp_pos);
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
-    fprintf(stdout,"IN%d> %s",level,line);
+    printlog("IN%d> %s",level,line);
     system->variables->substitute(line);
     io_nexta(line,token);
     system->parse_system(line,token,system);
@@ -290,7 +308,7 @@ void interpretter(const char *fnm,System *system)
   system->control.pop_back();
 }
 
-void print_xtc(int step,System *system)
+void print_xtc(long int step,System *system)
 {
   XDRFILE *fp=system->run->fpXTC;
   float box[3][3]={{0,0,0},{0,0,0},{0,0,0}};
@@ -323,14 +341,14 @@ void print_xtc(int step,System *system)
   write_xtc(fp,N,step,(float) (step*system->run->dt/PICOSECOND),box,xXTC,1000.0);
 }
 
-void print_lmd(int step,System *system)
+void print_lmd(long int step,System *system)
 {
   real_x *l=system->state->lambda;
   int i;
 
   if (system->run->hrLMD) {
     FILE *fp=system->run->fpLMD;
-    fprintf(fp,"%10d",step);
+    fprintf(fp,"%10ld",step);
     for (i=1; i<system->state->lambdaCount; i++) {
       fprintf(fp," %8.6f",(real)l[i]);
     }
@@ -349,13 +367,13 @@ void print_lmd(int step,System *system)
   }
 }
 
-void print_nrg(int step,System *system)
+void print_nrg(long int step,System *system)
 {
   FILE *fp=system->run->fpNRG;
   real_e *e=system->state->energy;
   int i;
 
-  fprintf(fp,"%10d",step);
+  fprintf(fp,"%10ld",step);
   for (i=0; i<eeend; i++) {
     fprintf(fp," %12.4f",e[i]);
   }
@@ -368,12 +386,12 @@ void display_nrg(System *system)
   int i;
 
   for (i=0; i<eeend; i++) {
-    fprintf(stdout," %12.4f",e[i]);
+    printlog(" %12.4f",e[i]);
   }
-  fprintf(stdout,"\n");
+  printlog("\n");
 }
 
-void print_dynamics_output(int step,System *system)
+void print_dynamics_output(long int step,System *system)
 {
   if (system->id==0) {
     if (step % system->run->freqXTC == 0) {
@@ -402,7 +420,7 @@ void write_checkpoint_file(const char *fnm,System *system)
 
     system->state->recv_state();
 
-    fprintf(fp,"Step %d\n",system->run->step0);
+    fprintf(fp,"Step %ld\n",system->run->step0);
 
     fprintf(fp,"Position %d\n",system->state->atomCount);
     for (i=0; i<system->state->atomCount; i++) {

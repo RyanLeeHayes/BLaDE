@@ -1136,7 +1136,7 @@ void Potential::initialize(System *system)
     }
   }
 
-  if (system->run->usePME) {
+  if (system->run->elecMethod==epme) {
 
   for (i=0; i<atomCount; i++) {
     for (std::set<int>::iterator jj=allExcl[i].begin(); jj!=allExcl[i].end(); jj++) {
@@ -1174,7 +1174,7 @@ void Potential::initialize(System *system)
   }
   cudaMemcpy(nb14s_d,nb14s,nb14Count*sizeof(struct Nb14Potential),cudaMemcpyHostToDevice);
 
-  if (system->run->usePME) {
+  if (system->run->elecMethod==epme) {
 
   nbexCount=nbexs_tmp.size();
   nbexs=(struct NbExPotential*)calloc(nbexCount,sizeof(struct NbExPotential));
@@ -1194,7 +1194,7 @@ void Potential::initialize(System *system)
   }
   cudaMemcpy(excls_d,excls,exclCount*sizeof(struct ExclPotential),cudaMemcpyHostToDevice);
 
-  if (system->run->usePME) {
+  if (system->run->elecMethod==epme) {
 
   // Choose PME grid sizes
   int goodSizes[]={32,27,24,20,18,16};
@@ -1209,10 +1209,10 @@ void Potential::initialize(System *system)
         ;
       }
       gridDimPME[i]=j*goodSizes[k-1];
+      printlog("PME grid(%d) size: %d\n",i,gridDimPME[i]);
     } else {
       gridDimPME[i]=system->run->grid[i];
     }
-    fprintf(stdout,"PME grid(%d) size: %d\n",i,gridDimPME[i]);
   }
 
   cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal));
@@ -1436,11 +1436,11 @@ void Potential::initialize(System *system)
       consH.push_back(consType[i][0]=='H');
     }
     // // Print it out for debugging purposes
-    // fprintf(stdout,"CONS:");
+    // printlog("CONS:");
     // for (i=0; i<consIdx.size(); i++) {
-    //   fprintf(stdout," %5d",consIdx[i]);
+    //   printlog(" %5d",consIdx[i]);
     // }
-    // fprintf(stdout,"\n");
+    // printlog("\n");
     if (consIdx.size()==3) {
       // Check for triangle
       if (cons_tmp[consIdx[1]].size()==2 && cons_tmp[consIdx[2]].size()==2) {
@@ -1464,11 +1464,11 @@ void Potential::initialize(System *system)
                 }
               }
               // // Print it out for debugging purposes
-              // fprintf(stdout,"Triangle:");
+              // printlog("Triangle:");
               // for (i=0; i<consIdx.size(); i++) {
-              //   fprintf(stdout," %5d",consIdx[i]);
+              //   printlog(" %5d",consIdx[i]);
               // }
-              // fprintf(stdout,"\n");
+              // printlog("\n");
 
 #ifdef WITH_TORCH // eemlp-begin, skip shake for ML-ML included pairs 
               if (ml_tmp && ml_tmp->is_tani==1 &&
@@ -1506,11 +1506,11 @@ void Potential::initialize(System *system)
           }
         }
         // // Print it out for debugging purposes
-        // fprintf(stdout,"Branch2:");
+        // printlog("Branch2:");
         // for (i=0; i<consIdx.size(); i++) {
-        //   fprintf(stdout," %5d",consIdx[i]);
+        //   printlog(" %5d",consIdx[i]);
         // }
-        // fprintf(stdout,"\n");
+        // printlog("\n");
 
 #ifdef WITH_TORCH // eemlp-begin, skip shake for ML-ML included pairs
         if (ml_tmp && ml_tmp->is_tani==1 &&
@@ -1547,11 +1547,11 @@ void Potential::initialize(System *system)
           }
         }
         // // Print it out for debugging purposes
-        // fprintf(stdout,"Branch3:");
+        // printlog("Branch3:");
         // for (i=0; i<consIdx.size(); i++) {
-        //   fprintf(stdout," %5d",consIdx[i]);
+        //   printlog(" %5d",consIdx[i]);
         // }
-        // fprintf(stdout,"\n");
+        // printlog("\n");
 
 #ifdef WITH_TORCH // eemlp-begin, skip shake for ML-ML included pairs
         if (ml_tmp && ml_tmp->is_tani==1 &&
@@ -1590,11 +1590,11 @@ void Potential::initialize(System *system)
             }
           }
           // // Print it out for debugging purposes
-          // fprintf(stdout,"Branch1:");
+          // printlog("Branch1:");
           // for (i=0; i<consIdx.size(); i++) {
-          //   fprintf(stdout," %5d",consIdx[i]);
+          //   printlog(" %5d",consIdx[i]);
           // }
-          // fprintf(stdout,"\n");
+          // printlog("\n");
 
 #ifdef WITH_TORCH // eemlp-begin, skip shake for ML-ML included pairs
           if (ml_tmp && ml_tmp->is_tani==1 &&
@@ -1701,45 +1701,52 @@ void Potential::initialize(System *system)
   cudaMemcpy(harms_d,harms,harmCount*sizeof(struct HarmonicPotential),cudaMemcpyHostToDevice);
   // Distance/bond restraints
   boRestCount=system->structure->boRestCount;
-  boRests=(struct BoRestPotential*)calloc(boRestCount,sizeof(struct BoRestPotential));
-  cudaMalloc(&boRests_d,boRestCount*sizeof(struct BoRestPotential));
-  for (i=0; i<boRestCount; i++) {
-    for (j=0; j<2; j++) {
-      boRests[i].idx[j]=system->structure->boRestList[i].idx[j];
+  if (boRestCount>0) {
+    boRests=(struct BoRestPotential*)calloc(boRestCount,sizeof(struct BoRestPotential));
+    cudaMalloc(&boRests_d,boRestCount*sizeof(struct BoRestPotential));
+    for (i=0; i<boRestCount; i++) {
+      for (j=0; j<2; j++) {
+        boRests[i].idx[j]=system->structure->boRestList[i].idx[j];
+      }
+      boRests[i].kr=system->structure->boRestList[i].kr;
+      boRests[i].r0=system->structure->boRestList[i].r0;
+      boRests[i].block=system->structure->boRestList[i].block;
     }
-    boRests[i].kr=system->structure->boRestList[i].kr;
-    boRests[i].r0=system->structure->boRestList[i].r0;
-    boRests[i].block=system->structure->boRestList[i].block;
+    cudaMemcpy(boRests_d,boRests,boRestCount*sizeof(struct BoRestPotential),cudaMemcpyHostToDevice);
   }
-  cudaMemcpy(boRests_d,boRests,boRestCount*sizeof(struct BoRestPotential),cudaMemcpyHostToDevice);
   // Angle restraints
   anRestCount=system->structure->anRestCount;
-  anRests=(struct AnRestPotential*)calloc(anRestCount,sizeof(struct AnRestPotential));
-  cudaMalloc(&anRests_d,anRestCount*sizeof(struct AnRestPotential));
-  for (i=0; i<anRestCount; i++) {
-    for (j=0; j<3; j++) {
-      anRests[i].idx[j]=system->structure->anRestList[i].idx[j];
+  if (anRestCount>0) {
+    anRests=(struct AnRestPotential*)calloc(anRestCount,sizeof(struct AnRestPotential));
+    cudaMalloc(&anRests_d,anRestCount*sizeof(struct AnRestPotential));
+    for (i=0; i<anRestCount; i++) {
+      for (j=0; j<3; j++) {
+        anRests[i].idx[j]=system->structure->anRestList[i].idx[j];
+      }
+      anRests[i].kt=system->structure->anRestList[i].kt;
+      anRests[i].t0=system->structure->anRestList[i].t0;
+      anRests[i].block=system->structure->anRestList[i].block;
     }
-    anRests[i].kt=system->structure->anRestList[i].kt;
-    anRests[i].t0=system->structure->anRestList[i].t0;
-    anRests[i].block=system->structure->anRestList[i].block;
+    cudaMemcpy(anRests_d,anRests,anRestCount*sizeof(struct AnRestPotential),cudaMemcpyHostToDevice);
   }
-  cudaMemcpy(anRests_d,anRests,anRestCount*sizeof(struct AnRestPotential),cudaMemcpyHostToDevice);
   // Dihedral restraints
   diRestCount=system->structure->diRestCount;
-  diRests=(struct DiRestPotential*)calloc(diRestCount,sizeof(struct DiRestPotential));
-  cudaMalloc(&diRests_d,diRestCount*sizeof(struct DiRestPotential));
-  for (i=0; i<diRestCount; i++) {
-    // Get participating atoms
-    for (j=0; j<4; j++) {
-      diRests[i].idx[j]=system->structure->diRestList[i].idx[j];
+  if (diRestCount>0) {
+    diRests=(struct DiRestPotential*)calloc(diRestCount,sizeof(struct DiRestPotential));
+    cudaMalloc(&diRests_d,diRestCount*sizeof(struct DiRestPotential));
+    for (i=0; i<diRestCount; i++) {
+      // Get participating atoms
+      for (j=0; j<4; j++) {
+        diRests[i].idx[j]=system->structure->diRestList[i].idx[j];
+      }
+      diRests[i].kphi=system->structure->diRestList[i].kphi;
+      diRests[i].nphi=system->structure->diRestList[i].nphi;
+      diRests[i].phi0=system->structure->diRestList[i].phi0;
+      diRests[i].width=system->structure->diRestList[i].width;
+      diRests[i].block=system->structure->diRestList[i].block;
     }
-    diRests[i].kphi=system->structure->diRestList[i].kphi;
-    diRests[i].nphi=system->structure->diRestList[i].nphi;
-    diRests[i].phi0=system->structure->diRestList[i].phi0;
-    diRests[i].block=system->structure->diRestList[i].block;
+    cudaMemcpy(diRests_d,diRests,diRestCount*sizeof(struct DiRestPotential),cudaMemcpyHostToDevice);
   }
-  cudaMemcpy(diRests_d,diRests,diRestCount*sizeof(struct DiRestPotential),cudaMemcpyHostToDevice);
   
   // RESD Distance Restraint, 2 distances, eeresd-begin
   resdCount=system->structure->resdCount;
@@ -1836,7 +1843,7 @@ void Potential::reset_force(System *system,bool calcEnergy)
   }
 }
 
-void Potential::calc_force(int step,System *system)
+void Potential::calc_force(long int step,System *system)
 {
   bool calcEnergy=(step%system->run->freqNRG==0);
   int helper=(system->idCount==2); // 0 unless there are 2 GPUs, then it's 1.

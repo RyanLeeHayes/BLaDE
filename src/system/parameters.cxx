@@ -133,7 +133,7 @@ void Parameters::add_parameter_file(FILE *fp)
 
   while (fgets(line, MAXLENGTHSTRING, fp) != NULL) {
     if (line[0]=='*') {
-      fprintf(stdout,"TITLE> %s",line);
+      printlog("TITLE> %s",line);
       continue;
     }
     io_nexta(line,token);
@@ -158,7 +158,7 @@ void Parameters::add_parameter_file(FILE *fp)
     } else if (strcmp(token,"END")==0) {
       return;
     } else {
-      fprintf(stdout,"Unparsed line> %s %s",token,line);
+      printlog("Unparsed line> %s %s",token,line);
     }
   }
 }
@@ -361,7 +361,6 @@ void Parameters::add_parameter_cmaps(FILE *fp)
         fatal(__FILE__,__LINE__,"CMAP grid is greater than 60 points per 360 degrees (%d). Have you really thought about how much memory that will take?\n",cp.ngrid);
       }
       cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
-    fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
 
       for (i=0; i<cp.ngrid; i++) {
         for (j=0; j<cp.ngrid; j++) {
@@ -493,37 +492,37 @@ void Parameters::dump()
   std::string key;
   char tag[]="PRINT PARAMETERS>";
 
-  fprintf(stdout,"%s atomTypeCount=%d\n",tag,atomTypeCount);
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s atomTypeCount=%d\n",tag,atomTypeCount);
+  printlog("%s\n",tag);
 
   for (std::map<std::string,int>::iterator ii=atomTypeMap.begin(); ii!=atomTypeMap.end(); ii++) {
-    fprintf(stdout,"%s atomTypeMap[%6s]=%5d\n",tag,ii->first.c_str(),ii->second);
+    printlog("%s atomTypeMap[%6s]=%5d\n",tag,ii->first.c_str(),ii->second);
   }
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s\n",tag);
 
   for (i=0; i<atomTypeCount; i++) {
-    fprintf(stdout,"%s atomType[%5d]=%6s\n",tag,i,atomType[i].c_str());
+    printlog("%s atomType[%5d]=%6s\n",tag,i,atomType[i].c_str());
   }
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s\n",tag);
 
   for (std::map<std::string,real>::iterator ii=atomMass.begin(); ii!=atomMass.end(); ii++) {
-    fprintf(stdout,"%s atomMass[%6s]=%g\n",tag,ii->first.c_str(),ii->second);
+    printlog("%s atomMass[%6s]=%g\n",tag,ii->first.c_str(),ii->second);
   }
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s\n",tag);
 
   for (std::map<TypeName2,struct BondParameter>::iterator ii=bondParameter.begin(); ii!=bondParameter.end(); ii++) {
     TypeName2 name=ii->first;
     struct BondParameter bp=ii->second;
-    fprintf(stdout,"%s bondParameter[%6s,%6s]={kb=%g b0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),bp.kb,bp.b0);
+    printlog("%s bondParameter[%6s,%6s]={kb=%g b0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),bp.kb,bp.b0);
   }
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s\n",tag);
 
   for (std::map<TypeName3,struct AngleParameter>::iterator ii=angleParameter.begin(); ii!=angleParameter.end(); ii++) {
     TypeName3 name=ii->first;
     struct AngleParameter ap=ii->second;
-    fprintf(stdout,"%s angleParameter[%6s,%6s,%6s]={kangle=%g angle0=%g kureyb=%g ureyb0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),ap.kangle,ap.angle0,ap.kureyb,ap.ureyb0);
+    printlog("%s angleParameter[%6s,%6s,%6s]={kangle=%g angle0=%g kureyb=%g ureyb0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),ap.kangle,ap.angle0,ap.kureyb,ap.ureyb0);
   }
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s\n",tag);
 
   for (std::map<TypeName4,std::vector<struct DiheParameter> >::iterator ii=diheParameter.begin(); ii!=diheParameter.end(); ii++) {
     TypeName4 name=ii->first;
@@ -532,44 +531,44 @@ void Parameters::dump()
     sprintf(varName,"diheParameter[%6s,%6s,%6s,%6s]",name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),name.t[3].c_str());
     for (int j=0; j<dpv.size(); j++) {
       struct DiheParameter dp=dpv[j];
-      fprintf(stdout,"%s %s={kdih=%g ndih=%d dih0=%g}\n",tag,varName,dp.kdih,dp.ndih,dp.dih0);
+      printlog("%s %s={kdih=%g ndih=%d dih0=%g}\n",tag,varName,dp.kdih,dp.ndih,dp.dih0);
       sprintf(varName,"                                          ");
     }
   }
-  fprintf(stdout,"%s\n",tag);
-  fprintf(stdout,"%s maxDiheTerms=%d\n",tag,maxDiheTerms);
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s\n",tag);
+  printlog("%s maxDiheTerms=%d\n",tag,maxDiheTerms);
+  printlog("%s\n",tag);
 
   for (std::map<TypeName4,struct ImprParameter>::iterator ii=imprParameter.begin(); ii!=imprParameter.end(); ii++) {
     TypeName4 name=ii->first;
     struct ImprParameter ip=ii->second;
-    fprintf(stdout,"%s imprParameter[%6s,%6s,%6s,%6s]={kimp=%g nimp=%d imp0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),name.t[3].c_str(),ip.kimp,ip.nimp,ip.imp0);
+    printlog("%s imprParameter[%6s,%6s,%6s,%6s]={kimp=%g nimp=%d imp0=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),name.t[2].c_str(),name.t[3].c_str(),ip.kimp,ip.nimp,ip.imp0);
   }
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s\n",tag);
 
   for (std::map<std::string,struct NbondParameter>::iterator ii=nbondParameter.begin(); ii!=nbondParameter.end(); ii++) {
     std::string name=ii->first;
     struct NbondParameter np=ii->second;
-    fprintf(stdout,"%s nbondParameter[%6s]={eps=%g sig=%g eps14=%g sig14=%g}\n",tag,name.c_str(),np.eps,np.sig,np.eps14,np.sig14);
+    printlog("%s nbondParameter[%6s]={eps=%g sig=%g eps14=%g sig14=%g}\n",tag,name.c_str(),np.eps,np.sig,np.eps14,np.sig14);
   }
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s\n",tag);
 
   for (std::map<TypeName2,struct NbondParameter>::iterator ii=nbfixParameter.begin(); ii!=nbfixParameter.end(); ii++) {
     TypeName2 name=ii->first;
     struct NbondParameter np=ii->second;
-    fprintf(stdout,"%s nbfixParameter[%6s,%6s]={eps=%g sig=%g eps14=%g sig14=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),np.eps,np.sig,np.eps14,np.sig14);
+    printlog("%s nbfixParameter[%6s,%6s]={eps=%g sig=%g eps14=%g sig14=%g}\n",tag,name.t[0].c_str(),name.t[1].c_str(),np.eps,np.sig,np.eps14,np.sig14);
   }
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s\n",tag);
 
-  fprintf(stdout,"%s cmapParameter not printed\n",tag);
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s cmapParameter not printed\n",tag);
+  printlog("%s\n",tag);
 
 }
 
 std::string Parameters::check_type_name(std::string type,const char *tag)
-{ 
+{
   if (atomTypeMap.count(type)==0) {
-    fprintf(stdout,"Warning: atom type %s found in %s but not declared in ATOMS\n",type.c_str(),tag);
+    printlog("Warning: atom type %s found in %s but not declared in ATOMS\n",type.c_str(),tag);
   }
   return type;
 }
@@ -710,7 +709,6 @@ void blade_add_parameter_cmaps(System *system,
   }
   system+=omp_get_thread_num();
   cp.kcmap=(real*)calloc(cp.ngrid*cp.ngrid,sizeof(real));
-  fprintf(stdout,"allocating kcmap=%p\n",cp.kcmap);
   system->parameters->cmapParameter[name]=cp;
 }
 

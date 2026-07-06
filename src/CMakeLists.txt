@@ -39,6 +39,7 @@ if (PRECISION STREQUAL "DOUBLE")
 endif()
 
 ## Add compiler definition flags here
+# add_definitions(-DBLADEASLIBRARY) # only define in CHARMM
 # add_definitions(-DPROFILESERIAL)
 
 ## Use for debugging kernels

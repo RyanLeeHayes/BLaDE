@@ -39,9 +39,9 @@ void replica_exchange(System *system)
       // and print it
       /*if (system->verbose>0) {
         for (int i=0; i<eeend; i++) {
-          fprintf(stdout," %12.4f",s->energy[i]);
+          printlog(" %12.4f",s->energy[i]);
         }
-        fprintf(stdout,"\n");
+        printlog("\n");
       }*/
 
       s->backup_position();
@@ -92,7 +92,7 @@ void replica_exchange(System *system)
         MPI_Sendrecv(&r->replica,1,MPI_INT,rankPartner,14,
           &newReplica,1,MPI_INT,rankPartner,14,
           MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Accept\n",r->step,rank,r->replica,dW);
+        printlog("Step %d , Rank %d , Replica %d, dW %f, Accept\n",r->step,rank,r->replica,dW);
         r->replica=newReplica;
         // Swap velocities
         n=s->lambdaCount+3*s->atomCount;
@@ -105,7 +105,7 @@ void replica_exchange(System *system)
           n*sizeof(real_v),cudaMemcpyHostToDevice);
       } else {
         // maintain replica indices
-        fprintf(stdout,"Step %d , Rank %d , Replica %d, dW %f, Reject\n",r->step,rank,r->replica,dW);
+        printlog("Step %d , Rank %d , Replica %d, dW %f, Reject\n",r->step,rank,r->replica,dW);
         // Restore positions
         s->restore_position();
       }

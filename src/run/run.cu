@@ -48,8 +48,8 @@ Run::Run(System *system)
   betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
-  vfSwitch=true;
-  usePME=true;
+  vdwMethod=evfswitch; // default to VFSWITCH (force switching)
+  elecMethod=epme;    // default to PME
   gridSpace=1.0*ANGSTROM;
   grid[0]=-1;
   grid[1]=-1;
@@ -233,13 +233,13 @@ void Run::help(char *line,char *token,System *system)
 {
   std::string name=io_nexts(line);
   if (name=="") {
-    fprintf(stdout,"?run> Available directives are:\n");
+    printlog("?run> Available directives are:\n");
     for (std::map<std::string,std::string>::iterator ii=helpRun.begin(); ii!=helpRun.end(); ii++) {
-      fprintf(stdout," %s",ii->first.c_str());
+      printlog(" %s",ii->first.c_str());
     }
-    fprintf(stdout,"\n");
+    printlog("\n");
   } else if (helpRun.count(token)==1) {
-    fprintf(stdout,helpRun[name].c_str());
+    printlog(helpRun[name].c_str());
   } else {
     error(line,token,system);
   }
@@ -252,34 +252,36 @@ void Run::error(char *line,char *token,System *system)
 
 void Run::dump(char *line,char *token,System *system)
 {
-  fprintf(stdout,"RUN PRINT> dt=%f (time step input in ps)\n",dt/PICOSECOND);
-  fprintf(stdout,"RUN PRINT> T=%f (temperature in K)\n",T);
-  fprintf(stdout,"RUN PRINT> gamma=%f (friction input in ps^-1)\n",gamma*PICOSECOND);
-  fprintf(stdout,"RUN PRINT> nsteps=%d (number of time steps for dynamics)\n",nsteps);
-  fprintf(stdout,"RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
-  fprintf(stdout,"RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
-  fprintf(stdout,"RUN PRINT> fnmnrg=%s (file name for energy output)\n",fnmNRG.c_str());
-  fprintf(stdout,"RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n",fnmCPI.c_str());
-  fprintf(stdout,"RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n",fnmCPO.c_str());
-  fprintf(stdout,"RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n",betaEwald*ANGSTROM);
-  fprintf(stdout,"RUN PRINT> rcut=%f (input in A)\n",rCut/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> rswitch=%f (input in A)\n",rSwitch/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> vfswitch=%d\n",vfSwitch);
-  fprintf(stdout,"RUN PRINT> usepme=%d\n",usePME);
-  fprintf(stdout,"RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n",grid[0],grid[1],grid[2]);
-  fprintf(stdout,"RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwald);
-  fprintf(stdout,"RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n",shakeTolerance);
-  fprintf(stdout,"RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
-  fprintf(stdout,"RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation/(ANGSTROM*ANGSTROM*ANGSTROM));
-  fprintf(stdout,"RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure/ATMOSPHERE);
-  fprintf(stdout,"RUN PRINT> dxatommax=%f (Maximum minimization atom displacement in A)\n",dxAtomMax/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> dxrmsinit=%f (Starting minimization rms displacement in A)\n",dxRMSInit/ANGSTROM);
-  fprintf(stdout,"RUN PRINT> mintype=%d (minimization algorithm. 0 is steepest descent, etc)\n",minType);
-  fprintf(stdout,"RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n",(int)domdecHeuristic);
+  printlog("RUN PRINT> dt=%f (time step input in ps)\n",dt/PICOSECOND);
+  printlog("RUN PRINT> T=%f (temperature in K)\n",T);
+  printlog("RUN PRINT> gamma=%f (friction input in ps^-1)\n",gamma*PICOSECOND);
+  printlog("RUN PRINT> nsteps=%ld (number of time steps for dynamics)\n",nsteps);
+  printlog("RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
+  printlog("RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
+  printlog("RUN PRINT> fnmnrg=%s (file name for energy output)\n",fnmNRG.c_str());
+  printlog("RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n",fnmCPI.c_str());
+  printlog("RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n",fnmCPO.c_str());
+  printlog("RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n",betaEwald*ANGSTROM);
+  printlog("RUN PRINT> rcut=%f (input in A)\n",rCut/ANGSTROM);
+  printlog("RUN PRINT> rswitch=%f (input in A)\n",rSwitch/ANGSTROM);
+  const char *vdwMethodNames[] = {"VFSWITCH", "VSWITCH", "VSHIFT"};
+  const char *elecMethodNames[] = {"FSWITCH", "PME", "FSHIFT"};
+  printlog("RUN PRINT> vdwmethod=%s (vfswitch, vswitch, or vshift)\n",vdwMethodNames[vdwMethod]);
+  printlog("RUN PRINT> elecmethod=%s (fswitch, pme, or fshift)\n",elecMethodNames[elecMethod]);
+  printlog("RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace/ANGSTROM);
+  printlog("RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n",grid[0],grid[1],grid[2]);
+  printlog("RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwald);
+  printlog("RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n",shakeTolerance);
+  printlog("RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
+  printlog("RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation/(ANGSTROM*ANGSTROM*ANGSTROM));
+  printlog("RUN PRINT> pressure=%f (pressure for pressure coupling, input in atmospheres)\n",pressure/ATMOSPHERE);
+  printlog("RUN PRINT> dxatommax=%f (Maximum sdfd minimization atom displacement in A)\n",dxAtomMax/ANGSTROM);
+  printlog("RUN PRINT> dxrmsinit=%f (Starting minimization rms displacement in A)\n",dxRMSInit/ANGSTROM);
+  printlog("RUN PRINT> mintype=%d (minimization algorithm. 0 is steepest descent, etc)\n",minType);
+  printlog("RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n",(int)domdecHeuristic);
 #ifdef REPLICAEXCHANGE
-  fprintf(stdout,"RUN PRINT> fnmrex=%s (file name for replica exchange)\n",fnmREx.c_str());
-  fprintf(stdout,"RUN PRINT> freqrex=%d (frequency of replica exchange attempts. Use {rexrank} (NYI) to access 0 ordinalized replica index in script)\n",freqREx);
+  printlog("RUN PRINT> fnmrex=%s (file name for replica exchange)\n",fnmREx.c_str());
+  printlog("RUN PRINT> freqrex=%d (frequency of replica exchange attempts. Use {rexrank} (NYI) to access 0 ordinalized replica index in script)\n",freqREx);
 #endif
 }
 
@@ -338,9 +340,31 @@ void Run::set_variable(char *line,char *token,System *system)
     rSwitch=io_nextf(line)*ANGSTROM;
     cutoffs.rSwitch=rSwitch;
   } else if (strcmp(token,"vfswitch")==0) {
-    vfSwitch=io_nextb(line);
+    vdwMethod=(EVdw)io_nextb(line);
   } else if (strcmp(token,"usepme")==0) {
-    usePME=io_nextb(line);
+    elecMethod=(EElec)io_nextb(line);
+  } else if (strcmp(token,"vdwmethod")==0) {
+    std::string minString=io_nexts(line);
+    if (strcmp(minString.c_str(), "vfswitch")==0){
+      vdwMethod=evfswitch;
+    } else if (strcmp(minString.c_str(),"vswitch")==0) {
+      vdwMethod=evswitch;
+    } else if (strcmp(minString.c_str(),"vshift")==0) {
+      vdwMethod=evshift;
+    } else {
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for vdw method vdwMethod. Options are: vfswitch, vswitch, or vshift\n",minString.c_str());
+    }
+  } else if (strcmp(token,"elecmethod")==0) {
+    std::string minString=io_nexts(line);
+    if (strcmp(minString.c_str(), "fswitch")==0){
+      elecMethod=efswitch;
+    } else if (strcmp(minString.c_str(),"pme")==0) {
+      elecMethod=epme;
+    } else if (strcmp(minString.c_str(),"fshift")==0) {
+      elecMethod=efshift;
+    } else {
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for electrostatic method elecMethod. Options are: fswitch, pme, or fshift\n",minString.c_str());
+    }
   } else if (strcmp(token,"gridspace")==0) {
     gridSpace=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"grid")==0) {
@@ -493,7 +517,7 @@ void Run::test(char *line,char *token,System *system)
         }
         if (system->id==0) {
           cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
-          fprintf(stdout,"ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
+          printlog("ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
         }
       }
     }
@@ -530,7 +554,7 @@ void Run::dynamics(char *line,char *token,System *system)
   t1=clock();
   for (step=step0; step<step0+nsteps; step++) {
     if (system->verbose>0) {
-      fprintf(stdout,"Step %d\n",step);
+      printlog("Step %d\n",step);
     }
     system->domdec->update_domdec(system,(step%system->domdec->freqDomdec)==0);
     system->potential->calc_force(step,system);
@@ -541,7 +565,7 @@ void Run::dynamics(char *line,char *token,System *system)
   }
   t2=clock();
 // Note: omp_get_wtime may be of more interest when parallelizing
-  fprintf(stdout,"Elapsed dynamics time: %f\n",(t2-t1)*1.0/CLOCKS_PER_SEC);
+  printlog("Elapsed dynamics time: %f\n",(t2-t1)*1.0/CLOCKS_PER_SEC);
 
   dynamics_finalize(system);
 }
@@ -645,8 +669,9 @@ void blade_add_run_flags(System *system,
   system->run->betaEwald=betaEwald;
   system->run->rCut=rCut;
   system->run->rSwitch=rSwitch;
-  system->run->vfSwitch=vdWfSwitch==1;
-  system->run->usePME=elecPME==1;
+  // Set enum values from parameters
+  system->run->vdwMethod=(EVdw)vdWfSwitch;
+  system->run->elecMethod=(EElec)elecPME;
   system->run->gridSpace=gridSpace; // grid spacing for PME calculation
   system->run->grid[0]=gridx; // if gridSpace is negative, use these values
   system->run->grid[1]=gridy; // if gridSpace is negative, use these values
@@ -684,7 +709,7 @@ void blade_add_run_dynopts(System *system,
 void blade_run_energy(System *system)
 {
   system+=omp_get_thread_num();
-  
+
   if (!system->run) {
     system->run=new Run(system);
   }

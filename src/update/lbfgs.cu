@@ -9,6 +9,7 @@
 #include <cuda_runtime.h>
 #include "update/lbfgs.h"
 #include "main/real3.h" // for real_sum_reduce
+#include "io/io.h"
 
 /*
     Cuda Kernels
@@ -153,12 +154,12 @@ bool LBFGS::converged(){
     grad_pos_mag = grad_mag / std::max(1.0, sqrt(grad_pos_mag));
 
     if (verbose){
-      printf("   rmsg = %f\n", rmsg);
-      printf("    |g| = %f\n", grad_mag);
-      printf("|g|/|x| = %f\n", grad_pos_mag);
+      printlog("   rmsg = %f\n", rmsg);
+      printlog("    |g| = %f\n", grad_mag);
+      printlog("|g|/|x| = %f\n", grad_pos_mag);
     }
     if(rmsg < eps_tol){
-        if (verbose) printf("Structure minimized!!\n");
+        if (verbose) printlog("Structure minimized!!\n");
         minimized=true;
     }
     return rmsg < eps_tol;
@@ -237,7 +238,7 @@ void LBFGS::update_sk_yk() {
 
     // Check curvature s.T H s = s.T y > 0 for positive def matrix satisfying secant eq Hs=y (required for L-BFGS)
     if(sy < 1e-10){ 
-        printf("Curvature condition (sy = %e) not satistied! Clearing L-BFGS memory!\n", sy);
+        printlog("Curvature condition (sy = %e) not satistied! Clearing L-BFGS memory!\n", sy);
         cudaMemset(s_d, 0, m*DOF*sizeof(real_x));
         cudaMemset(y_d, 0, m*DOF*sizeof(real_x));
         gamma_norm();
@@ -255,7 +256,7 @@ void LBFGS::update_sk_yk() {
     cudaMemcpy(rho_d+index, &rho, sizeof(real_x), cudaMemcpyDefault);
     cudaMemcpy(s_d + index*DOF, s_tmp_d, DOF*sizeof(real_x), cudaMemcpyDefault);
     cudaMemcpy(y_d + index*DOF, y_tmp_d, DOF*sizeof(real_x), cudaMemcpyDefault);
-    //printf("iter: %d, k: %d, index: %d, rho: %f, gamma: %f\n", step_count, k, index, rho, gamma);
+    //printlog("iter: %d, k: %d, index: %d, rho: %f, gamma: %f\n", step_count, k, index, rho, gamma);
 }
 
 /*
@@ -285,7 +286,7 @@ real_x cubic_interp(real_x a, real_x fa, real_x ga, real_x b, real_x fb, real_x 
     real_x d2 = sign(b - a)*sqrt(d1*d1 - ga*gb);
     real_x arg = b - (b-a)*(gb + d2 - d1)/(gb - ga + 2*d2);
     if(isinf(arg) || isnan(arg) || abs(arg - a) < 1e-7 || abs(arg - b) < 1e-7 || arg < 0){
-        //printf("Quadratic interpolation failed! arg: %f, a: %f, b: %f\n", arg, a, b);
+        //printlog("Quadratic interpolation failed! arg: %f, a: %f, b: %f\n", arg, a, b);
         return (a + b) / 2.0;
     }
     return arg;
@@ -309,8 +310,8 @@ real_x LBFGS::linesearch(real_x f0){
     real_x phii[2];
     phi(ai, phii);
     if (verbose){
-      printf("alpha: %f, phi: %f, phi': %f\n", aim1, phi0[0], phi0[1]);
-      printf("alpha: %f, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
+      printlog("alpha: %f, phi: %f, phi': %f\n", aim1, phi0[0], phi0[1]);
+      printlog("alpha: %f, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
     }
     for(int i = 0; i < max_iter; i++){
         // Check strong wolfe condition
@@ -321,7 +322,7 @@ real_x LBFGS::linesearch(real_x f0){
         real_x tmp = ai;
         ai = cubic_interp(aim1, phiim1[0], phiim1[1], ai, phii[0], phii[1]);
         phi(ai, phii);
-        if (verbose) printf("alpha: %f, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
+        if (verbose) printlog("alpha: %f, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
         aim1 = tmp;
         memcpy(phiim1, phii, 2*sizeof(real_x));
         if(ai < 0 || ai > amax){
@@ -333,6 +334,6 @@ real_x LBFGS::linesearch(real_x f0){
     ai = 1e-4; // default step size, a small enough step should decrease function if s.y > 0 
     phi(ai, phii);
     Uf = phii[0];
-    printf("Linesearch failed! Defaulting to ai = %e, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
+    printlog("Linesearch failed! Defaulting to ai = %e, phi: %f, phi': %f\n", ai, phii[0], phii[1]);
     return ai;
 }
