@@ -1,0 +1,50 @@
+! CHARMM input file for Multi-Site lambda-dynamics
+! MSLD references:
+!    J.L. Knight and C.L. Brooks III. Multi-site lambda-dynamics: 
+!       free energy method for simulating Structure-Activity Relationship 
+!       studies. J. Chem. Theory Comput. 7, 2728-2739 (2011). 
+!    J.L. Knight and C.L. Brooks III. Applying efficient 
+!       implicit non-geometric constraints in free energy simulations.
+!       J. Comput. Chem. 32, 3423-3432 (2011). 
+! Stream file for MSLD created by process.py
+! Written by Ryan Hayes 2016-06-18
+!
+
+verbose 0
+
+variables set temp 298.15
+
+variables set sysname drd3
+stream prep/{sysname}.inp
+
+!---------------------------------------------------------------------------
+! Minimization iter 0
+!---------------------------------------------------------------------------
+
+variables set min_steps 1000
+stream mini.inp
+exit
+
+!---------------------------------------------------------------------------
+! Dynamics Iteration Loop
+!---------------------------------------------------------------------------
+
+!!!! SET NUMBER OF CYCLES !!!!
+variables set max_itt 5
+variables set ns_per_iter .001
+variables calculate steps_per int * {ns_per_iter} 500000
+
+! Loop to current iteration
+variables set ii 1
+variables set complete 0
+while <= {ii} {max_itt}
+  if not -f res/{sysname}_prod{ii}.res
+    ! New Iteration, read from previous 
+    variables set itt {ii} 
+    variables calculate ittm1 int - {ii} 1
+    stream dynamics_iteration.inp
+  endif
+  variables calculate ii int + {ii} 1
+endwhile
+
+! If we've reached here we are done with dynamics {max_itt} ns of dynamics

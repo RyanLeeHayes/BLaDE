@@ -110,6 +110,13 @@ void State::min_init(System *system)
     cudaMalloc(&minDirection_d,3*atomCount*sizeof(real_v));
   }
   if (system->run->minType==elbfgs){
+    Potential* p = system->potential;
+    int sum = p->triangleConsCount + p->branch1ConsCount + p->branch2ConsCount + p->branch3ConsCount;
+    if(sum > 0){
+      printlog("L-BFGS Check: Total SHAKE Constraints = %d\n", sum);
+      fatal(__FILE__,__LINE__,"Error, cannot minimize using L-BFGS with constraints. Ensure \"structure shake none\" is in your minimize file.\n",
+      sum);
+    }
     // Function called by L-BFGS class to get energy & gradient 
     std::function<real_x()> energy_and_grad = [system](){
       // Potential & Grad Eval -> step=0 to calc energy

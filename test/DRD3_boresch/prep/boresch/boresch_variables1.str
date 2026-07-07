@@ -1,0 +1,40 @@
+variables set ligsegid  HETA
+
+variables set l1name  C3
+variables set l2name  C7 
+variables set l3name  C1
+
+variables set protsegid  PROA
+
+variables set p1resid  VAL
+variables set p1resnum  74
+variables set p1name  CB
+
+variables set p2resid  CYS
+variables set p2resnum  20
+variables set p2name CA 
+
+variables set p3resid  ALA
+variables set p3resnum  178
+variables set p3name  CB
+
+variables set distance  14.5656750353865
+variables set thetaa  79.80488236292338
+variables set thetab  58.260283004910434
+variables set phia  24.350899762652205
+variables set phib  117.85681193351016
+variables set phic  128.95705389829786
+
+variables set distancek  20.0
+variables set thetaak  339.4542227783704
+variables set thetabk  20.0
+variables set phiak  205.51209782093645
+variables set phibk  20.0
+variables set phick  20.0
+
+variables calculate distancek real * {distancek} 5
+variables calculate thetaak real * {thetaak} 5
+variables calculate thetabk real * {thetabk} 5
+variables calculate phiak real * {phiak} 5
+variables calculate phibk real * {phibk} 5
+variables calculate phick real * {phick} 5

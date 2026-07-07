@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Slurm titles
+#SBATCH --job-name=DRD3
+#SBATCH -p free-gpu 
+
+# Compute
+#SBATCH --nodes=1                  ## (-N) number of nodes to use
+#SBATCH --ntasks=1                 ## (-n) number of tasks to launch ($SLURM_NTASKS)
+#SBATCH --gres=gpu:1  
+#SBATCH --array=1-40%1
+
+# File IO
+#SBATCH --output=output/%a_%A.log        ## std output file
+
+export OMP_NUM_THREADS=1
+
+# You might need to change the path to the blade
+../../build/blade main.inp
