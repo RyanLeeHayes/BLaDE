@@ -146,7 +146,7 @@ void Variables::calculate(char *line,char *token,System *system)
 void Variables::dump(char *line,char *token,System *system)
 {
   for (std::map<std::string,std::string>::iterator ii=data.begin(); ii!=data.end(); ii++) {
-    fprintf(stdout,"variables print> %s = %s\n",ii->first.c_str(),ii->second.c_str());
+    printlog("variables print> %s = %s\n",ii->first.c_str(),ii->second.c_str());
   }
 }
 
@@ -155,13 +155,13 @@ void Variables::help(char *line,char *token,System *system)
   char name[MAXLENGTHSTRING];
   io_nexta(line,name);
   if (name=="") {
-    fprintf(stdout,"?variables> Available directives are:\n");
+    printlog("?variables> Available directives are:\n");
     for (std::map<std::string,std::string>::iterator ii=helpVariables.begin(); ii!=helpVariables.end(); ii++) {
-      fprintf(stdout," %s",ii->first.c_str());
+      printlog(" %s",ii->first.c_str());
     }
-    fprintf(stdout,"\n");
+    printlog("\n");
   } else if (helpVariables.count(name)==1) {
-    fprintf(stdout,helpVariables[name].c_str());
+    printlog(helpVariables[name].c_str());
   } else {
     error(line,name,system);
   }
@@ -191,7 +191,7 @@ void Variables::substitute(char *line)
       }
     }
     if ((openBrace==-1) != (closeBrace==-1)) {
-      fprintf(stdout,"DEBUG: openBrace %d closeBrace %d\n",openBrace,closeBrace);
+      printlog("DEBUG: openBrace %d closeBrace %d\n",openBrace,closeBrace);
       fatal(__FILE__,__LINE__,"Mismatched curly braces in string \"%s\"\n",line);
     }
 
@@ -203,7 +203,7 @@ void Variables::substitute(char *line)
 
       // get value
       if (data.count(token)==0) {
-        fprintf(stdout,"DEBUG: openBrace %d closeBrace %d\n",openBrace,closeBrace);
+        printlog("DEBUG: openBrace %d closeBrace %d\n",openBrace,closeBrace);
         fatal(__FILE__,__LINE__,"Unrecognized variable token name {%s} in line \"%s\"\n",token.c_str(),line);
       }
       value=data[token];
@@ -222,5 +222,5 @@ void Variables::substitute(char *line)
       anySubstitutions=true;
     }
   }
-  if (anySubstitutions) fprintf(stdout,"SUBSTITUTE> %s",line);
+  if (anySubstitutions) printlog("SUBSTITUTE> %s",line);
 }

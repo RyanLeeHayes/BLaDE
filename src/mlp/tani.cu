@@ -7,6 +7,7 @@
 #include "system/system.h"
 #include "system/state.h"
 #include "run/run.h"
+#include "io/io.h"
 #include "system/potential.h"
 #include "domdec/domdec.h"
 #include "main/real3.h"
@@ -202,18 +203,15 @@ void gettorchforce_tani(System *system, bool calcEnergy)
     try {
         out_iv = p->mlp_h[0].model.forward(inputs);
     } catch (const c10::Error &e) {
-        std::fprintf(stderr, "TANI-DBG> model.forward FAILED: %s\n", e.what());
-        std::fflush(stderr);
+        printlog("TANI-DBG> model.forward FAILED: %s\n", e.what());
         return;
     } catch (...) {
-        std::fprintf(stderr, "TANI-DBG> model.forward FAILED: unknown exception\n");
-        std::fflush(stderr);
+        printlog("TANI-DBG> model.forward FAILED: unknown exception\n");
         return;
     }
 
     if (!out_iv.isTuple()) {
-        std::fprintf(stderr, "TANI-DBG> model output is not tuple-like\n");
-        std::fflush(stderr);
+        printlog("TANI-DBG> model output is not tuple-like\n");
         return;
     }
 
@@ -221,15 +219,13 @@ void gettorchforce_tani(System *system, bool calcEnergy)
     const auto& elems = out_tuple->elements();
 
     if (elems.size() < 2) {
-        std::fprintf(stderr, "TANI-DBG> model output tuple has size < 2\n");
-        std::fflush(stderr);
+        printlog("TANI-DBG> model output tuple has size < 2\n");
         return;
     }
 
     at::Tensor eT = elems[1].toTensor().contiguous();
     if (!eT.defined()) {
-        std::fprintf(stderr, "TANI-DBG> energy tensor is undefined\n");
-        std::fflush(stderr);
+        printlog("TANI-DBG> energy tensor is undefined\n");
         return;
     }
 
@@ -247,18 +243,15 @@ void gettorchforce_tani(System *system, bool calcEnergy)
             false
         );
     } catch (const c10::Error &e) {
-        std::fprintf(stderr, "TANI-DBG> autograd FAILED: %s\n", e.what());
-        std::fflush(stderr);
+        printlog("TANI-DBG> autograd FAILED: %s\n", e.what());
         return;
     } catch (...) {
-        std::fprintf(stderr, "TANI-DBG> autograd FAILED: unknown exception\n");
-        std::fflush(stderr);
+        printlog("TANI-DBG> autograd FAILED: unknown exception\n");
         return;
     }
 
     if (grads.empty() || !grads[0].defined()) {
-        std::fprintf(stderr, "TANI-DBG> autograd returned empty/undefined gradient\n");
-        std::fflush(stderr);
+        printlog("TANI-DBG> autograd returned empty/undefined gradient\n");
         return;
     }
 

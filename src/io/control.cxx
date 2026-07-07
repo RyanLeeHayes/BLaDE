@@ -142,7 +142,7 @@ void parse_if(char *line,System *system)
 
   condition=(bool)variables_calculate(line);
   while (condition==false) {
-    fprintf(stdout,"if/elseif> evaluated as false\n");
+    printlog("if/elseif> evaluated as false\n");
     find_next_if(system);
 
     fgetpos(fp,&fp_pos);
@@ -163,7 +163,7 @@ void parse_if(char *line,System *system)
       fatal(__FILE__,__LINE__,"Bug in code, shouldn't reach this line. Sorry.\n");
     }
   }
-  fprintf(stdout,"if/elseif/else> evaluated as true\n");
+  printlog("if/elseif/else> evaluated as true\n");
 }
 
 void parse_elseif(char *line,System *system)
@@ -216,9 +216,9 @@ void evaluate_while(char *line,System *system)
   bool condition=(bool)variables_calculate(line);
 
   if (condition) {
-    fprintf(stdout,"while> evaluated as true\n");
+    printlog("while> evaluated as true\n");
   } else {
-    fprintf(stdout,"while> evaluated as false\n");
+    printlog("while> evaluated as false\n");
     finish_control(system);
   }
 }

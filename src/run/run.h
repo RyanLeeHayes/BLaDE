@@ -25,6 +25,18 @@ typedef enum emin {
   esdfd, // steepest descent with finite difference to choose step length
   eminend} EMin;
 
+typedef enum eelec {
+  efswitch, // force switching (no PME, no shift)
+  epme,     // Particle Mesh Ewald
+  efshift,  // force switching with shift
+  eelecend} EElec;
+
+typedef enum evdw {
+  evfswitch, // 0: force switching (VFSWITCH)
+  evswitch,  // 1: potential switching (VSWITCH)
+  evshift,   // 2: potential shift (VSHIFT)
+  evdwend} EVdw;
+
 class Run {
   public:
   std::map<std::string,void(Run::*)(char*,char*,System*)> parseRun;
@@ -47,7 +59,7 @@ class Run {
 
   long int step; // current step
   long int step0; // starting step
-  int nsteps; // steps in next dynamics call
+  long int nsteps; // steps in next dynamics call
   real dt;
   real T;
   real gamma;
@@ -67,8 +79,8 @@ class Run {
   real betaEwald;
   real rCut;
   real rSwitch;
-  bool vfSwitch;   //added by clb3
-  bool usePME;
+  EVdw vdwMethod;   // VDW method: evfswitch, evswitch, or evshift
+  EElec elecMethod; // electrostatic method: efswitch, epme, or efshift
   real gridSpace; // grid spacing for PME calculation
   int grid[3];
   int orderEwald; // interpolation order (4, 6, or 8 typically)

@@ -7,6 +7,8 @@
 
 
 
+// Removal of this atomicAdd gives 6% performance improvement
+
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
 // From http://stackoverflow.com/questions/16077464/atomicadd-for-real-on-gpu
 // And https://stackoverflow.com/questions/37566987/cuda-atomicadd-for-doubles-definition-error
@@ -25,6 +27,7 @@ double atomicAdd(double* address, double val)
     return __longlong_as_double(old);
 }
 #endif
+
 
 __device__ static inline
 double atomicAdd(double* address, float val)

@@ -271,14 +271,15 @@ __global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,
       // Save the block bounds into the blockBounds array
       if (i<domainDiv.x*domainDiv.y) {
         int j0=cumBlocks[is0];
-        if (j0+blocksInColumn<=maxBlocks) {
+        // if (j0+blocksInColumn<=maxBlocks) {
         for (j=0; j<blocksInColumn; j++) {
           blockBounds[j+j0]=lowerPos+32*j;
         }
-        } else if (j0<maxBlocks) {
-// #warning "printf in kernel, this doesn't affect occupancy of 93.8\% on 2080 TI."
-          printf("Error: Overflow of maxBlocks. Use \"run setvariable domdecheuristic off\" - except that reallocation is not implemented here\n");
-        }
+        // } else if (j0<maxBlocks) {
+        // warning "printf in kernel, this doesn't affect occupancy of 93.8\% on 2080 TI."
+        //   printf("Error: Overflow of maxBlocks. Use \"run setvariable domdecheuristic off\" - except that reallocation is not implemented here\n");
+        // Removed checks because block can't overflow anymore with new maxBlocks 2026-07-03
+        // }
       }
 
       __syncthreads();

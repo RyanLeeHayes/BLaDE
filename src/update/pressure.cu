@@ -162,15 +162,15 @@ void pressure_coupling(System *system)
     kT=s->leapParms1->kT;
     dW=energyNew-energyOld+r->pressure*(volumeNew-volumeOld)-N*kT*log(volumeNew/volumeOld);
     if (system->verbose>0) {
-      fprintf(stdout,"dW= %f, dV= %f\n",dW,volumeNew-volumeOld);
+      printlog("dW= %f, dV= %f\n",dW,volumeNew-volumeOld);
     }
     if (system->rngCPU->rand_uniform()<exp(-dW/kT)) { // accept move
       if (system->verbose>0) {
-        fprintf(stdout,"Volume move accepted. New volume=%f\n",volumeNew);
+        printlog("Volume move accepted. New volume=%f\n",volumeNew);
       }
     } else {
       if (system->verbose>0) {
-        fprintf(stdout,"Volume move rejected. Old volume=%f\n",volumeOld);
+        printlog("Volume move rejected. Old volume=%f\n",volumeOld);
       }
       s->restore_position();
     }

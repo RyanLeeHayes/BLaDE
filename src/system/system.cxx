@@ -23,7 +23,7 @@
 
 // Class constructors
 System::System() {
-  fprintf(stdout,"Creating a copy of system\n");
+  printlog("Creating a copy of system\n");
   verbose=0;
   variables=new Variables;
   parameters=NULL;
@@ -42,7 +42,7 @@ System::System() {
 }
 
 System::~System() {
-  fprintf(stdout,"Destroying a copy of system\n");
+  printlog("Destroying a copy of system\n");
   if (variables) delete(variables);
   if (parameters) delete(parameters);
   if (structure) delete(structure);
@@ -208,13 +208,13 @@ void System::help(char *line,char *token,System *system)
 {
   std::string name=io_nexts(line);
   if (name=="") {
-    fprintf(stdout,"?> This program uses a script to allow you to set up and run alchemical molecular simulations. Each line of the script starts with a directive, followed by other subdirectives. Comments after ! characters are ignored. At any point in the script, you may put help after a directive or subdirective to get documentation on how to use it. Top level directives are listed at the end of this help section. Directives can be divided into directives that set up and manipulate the system, and directives that alter the control flow and allow you to script the set up.\n\nSystem manipulation directives:\nThe general work flow is to set up the potential energy function parameters with calls to parameters, then set up the atoms, bond connectivity, and other potential terms with calls to structure, then set up the msld alchemical treatment with calls to msld, then set up the initial conditions or starting structure with calls to state. After all of that you are ready to call run to calculate energy, minimize the structure, or run dynamics.\n\nScripting control directives:\nStream allows you to start execution of another script from this point in the current script. Set allows you to set internal variables which can be accessed in subsequent commands by enclosing the variable name in {}. (Variable names can also contain variables via nested {{}}). Functions (function/endfunction) can be defined for later use and called (call), if (if/elseif/else/endif) and while (while/endwhile) loops are also available. Some of these features may not yet be implemented, see the listing below for what's available.\n\nSeveral available directives are:\n");
+    printlog("?> This program uses a script to allow you to set up and run alchemical molecular simulations. Each line of the script starts with a directive, followed by other subdirectives. Comments after ! characters are ignored. At any point in the script, you may put help after a directive or subdirective to get documentation on how to use it. Top level directives are listed at the end of this help section. Directives can be divided into directives that set up and manipulate the system, and directives that alter the control flow and allow you to script the set up.\n\nSystem manipulation directives:\nThe general work flow is to set up the potential energy function parameters with calls to parameters, then set up the atoms, bond connectivity, and other potential terms with calls to structure, then set up the msld alchemical treatment with calls to msld, then set up the initial conditions or starting structure with calls to state. After all of that you are ready to call run to calculate energy, minimize the structure, or run dynamics.\n\nScripting control directives:\nStream allows you to start execution of another script from this point in the current script. Set allows you to set internal variables which can be accessed in subsequent commands by enclosing the variable name in {}. (Variable names can also contain variables via nested {{}}). Functions (function/endfunction) can be defined for later use and called (call), if (if/elseif/else/endif) and while (while/endwhile) loops are also available. Some of these features may not yet be implemented, see the listing below for what's available.\n\nSeveral available directives are:\n");
     for (std::map<std::string,std::string>::iterator ii=helpSystem.begin(); ii!=helpSystem.end(); ii++) {
-      fprintf(stdout," %s",ii->first.c_str());
+      printlog(" %s",ii->first.c_str());
     }
-    fprintf(stdout,"\n");
+    printlog("\n");
   } else if (helpSystem.count(token)==1) {
-    fprintf(stdout,helpSystem[name].c_str());
+    printlog(helpSystem[name].c_str());
   } else {
     error(line,token,system);
   }
@@ -259,7 +259,7 @@ System* init_system(int ngpus,int *gpus)
       int accessible;
       gpuCheck(cudaDeviceCanAccessPeer(&accessible,
         system[id].gpu,system[id].mothership_gpu));
-      fprintf(stdout,"Device %d %s access device %d directly\n",
+      printlog("Device %d %s access device %d directly\n",
         system[id].gpu,(accessible? "can" : "cannot"),system[id].mothership_gpu);
       if (accessible) {
         gpuCheck(cudaDeviceEnablePeerAccess(system[id].mothership_gpu,0)); // host, required 0

@@ -26,7 +26,13 @@ __global__ void getforce_noe_kernel(int noeCount,struct NoePotential *noes,real3
     // Geometry
     noep=noes[i];
     xi=position[noep.i];
-    xj=position[noep.j];
+    // If PNOE is turned on, then second position
+    // is taken as c0x, c0y, c0z
+    if (noep.is_pnoe) {
+      xj = {noep.c0x, noep.c0y, noep.c0z};
+    } else {
+      xj = position[noep.j];
+    }
     dr=real3_subpbc<flagBox>(xi,xj,box);
     r=real3_mag<real>(dr);
     if (r<noep.rmin) {
@@ -45,9 +51,11 @@ __global__ void getforce_noe_kernel(int noeCount,struct NoePotential *noes,real3
         if (energy) lEnergy=((real)0.5)*fnoe*r_r0;
       }
     }
-    // Spatial force
-    at_real3_scaleinc(&force[noep.i], fnoe/r,dr);
-    at_real3_scaleinc(&force[noep.j],-fnoe/r,dr);
+    // Spatial force (guard against division by zero when atom is at reference)
+    if (r > 0) {
+      at_real3_scaleinc(&force[noep.i], fnoe/r, dr);
+      if (!noep.is_pnoe) at_real3_scaleinc(&force[noep.j], -fnoe/r, dr);
+    }
   }
 
   // Energy, if requested
@@ -167,7 +175,7 @@ __global__ void getforce_bondRestraint_kernel(int boRestCount,struct BoRestPoten
   real3 xi,xj;
   int b;
   real l=1;
-  
+
   if (i<boRestCount) {
     // Geometry
     br=boRests[i];
@@ -179,7 +187,7 @@ __global__ void getforce_bondRestraint_kernel(int boRestCount,struct BoRestPoten
     dr=real3_subpbc<flagBox>(xi,xj,box);
 // NOTE #warning "Unprotected sqrt"
     r=real3_mag<real>(dr);
-    
+
     // Scaling
     b=br.block;
     if (b) {
@@ -269,7 +277,7 @@ __global__ void getforce_angleRestraint_kernel(int anRestCount,struct AnRestPote
     xi=position[ii];
     xj=position[jj];
     xk=position[kk];
-    
+
     drij=real3_subpbc<flagBox>(xi,xj,box);
     drkj=real3_subpbc<flagBox>(xk,xj,box);
     dotp=real3_dot<real>(drij,drkj);
@@ -350,7 +358,10 @@ __device__ void function_torsion(DiRestPotential dr,real phi,real *fphi,real *lE
 {
   real dphi;
   if (dr.nphi>0) {
-    dphi=dr.nphi*phi-dr.phi0;
+    // Periodic potential: E = kphi * (1 - cos(nphi*(phi - phi0)))
+    // CHARMM CONS DIHE formula: E = K*(1+cos(n*phi - phi0)) where phi0 = n*phimin + PI
+    // Since BLaDE receives phimin directly: E = K*(1 - cos(n*(phi - phimin)))
+    dphi=dr.nphi*(phi-dr.phi0);
     dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
     fphi[0]=dr.kphi*dr.nphi*sinf(dphi);
     if (calcEnergy) {
@@ -358,8 +369,19 @@ __device__ void function_torsion(DiRestPotential dr,real phi,real *fphi,real *lE
     }
   }
   else {
+    // Harmonic with optional flat-bottom: E = 0.5 * kphi * max(0, |dphi| - width)^2
+    // CHARMM CONS DIHE uses E = K*(phi-phi0)^2 (no 0.5 factor, corrected in input)
+    // CHARMM GEO MMFP DIHE (harmonic) uses E = 0.5*K*(phi-phi0)^2
     dphi=phi-dr.phi0;
     dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
+    // Apply flat-bottom if width > 0
+    if (dr.width>0) {
+      if (fabsf(dphi)<=dr.width) { // Inside flat region - no force or energy
+        dphi=0;
+      } else { // Outside flat region - apply harmonic from edge
+        dphi-=copysign(dr.width,dphi);
+      }
+    }
     fphi[0]=dr.kphi*dphi;
     if (calcEnergy) {
       lE[0]=((real)0.5)*dr.kphi*dphi*dphi;

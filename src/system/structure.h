@@ -122,11 +122,11 @@ extern "C" {
   void blade_add_virt2(System *system,int v,int h1,int h2,double dist,double scale);
   void blade_add_virt3(System *system,int v,int h1,int h2,int h3,double dist,double theta,double phi);
   void blade_add_shake(System *system,int shakeHbond);
-  void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rmax,double kmax,double rpeak,double rswitch,double nswitch);
+  void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rmax,double kmax,double rpeak,double rswitch,double nswitch,double c0x,double c0y,double c0z,bool is_pnoe);
   void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double z0,double n);
   void blade_add_borest(System *system,int i,int j,double kr,double r0,int lambdaBlock);
   void blade_add_anrest(System *system,int i,int j,int k,double kt,double t0,int lambdaBlock);
-  void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,int lambdaBlock);
+  void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,double width,int lambdaBlock);
   void blade_add_resd(System *system, int i1, int i2, int j1, int j2, double ci, double cj, double rdist, double kdist); // eeresd
   void blade_tani_internal_setup(System *system, const int is_tani, const char *ptname, const int ptnml,  // eemlp
                       const int *mlatomidx, const int *mlZidx,const int *mlmaskid, const int mlnatoms);   // eemlp

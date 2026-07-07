@@ -32,7 +32,7 @@ void Selections::insert(char *line,char *token,Structure *structure)
   // } else if (selectionMap.count(name)==1) {
   //   fatal(__FILE__,__LINE__,"Cannot define selection with name %s, one already exists. Use selection delete [name] to remove it.\n",token);
   } else {
-    fprintf(stdout,"SELECTION> add %s to selections after parsing %s\n",name.c_str(),line);
+    printlog("SELECTION> add %s to selections after parsing %s\n",name.c_str(),line);
     selectionMap[name]=parse_selection_string(line,structure);
   }
 }
@@ -225,8 +225,8 @@ void Selections::dump()
   int i,trueCount;
   char tag[]="PRINT SELECTIONS>";
 
-  fprintf(stdout,"%s selectionCount=%d\n",tag,selectionMap.size());
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s selectionCount=%d\n",tag,(int)selectionMap.size());
+  printlog("%s\n",tag);
 
   for (std::map<std::string,Selection>::iterator ii=selectionMap.begin(); ii!=selectionMap.end(); ii++) {
     trueCount=0;
@@ -235,9 +235,9 @@ void Selections::dump()
         trueCount++;
       }
     }
-    fprintf(stdout,"%s selection[%s]={contains %d atoms}\n",tag,ii->first.c_str(),trueCount);
+    printlog("%s selection[%s]={contains %d atoms}\n",tag,ii->first.c_str(),trueCount);
   }
-  fprintf(stdout,"%s\n",tag);
+  printlog("%s\n",tag);
 
 }
 
@@ -270,7 +270,7 @@ void parse_selection(char *line,System *system)
     system->selections->count(line,token,system);
   } else if (strcmp(token,"limit")==0) {
     system->selections->limit=io_nexti(line);
-    fprintf(stdout,"New selection limit set to %d (be careful, selections can take up a lot of memory. Use selection delete [name] when done with a selection.)\n",system->selections->limit);
+    printlog("New selection limit set to %d (be careful, selections can take up a lot of memory. Use selection delete [name] when done with a selection.)\n",system->selections->limit);
   } else if (strcmp(token,"print")==0) {
     system->selections->dump();
   } else {

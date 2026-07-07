@@ -109,13 +109,13 @@ void Structure::help(char *line,char *token,System *system)
   char name[MAXLENGTHSTRING];
   io_nexta(line,name);
   if (name=="") {
-    fprintf(stdout,"?structure > Available directives are:\n");
+    printlog("?structure > Available directives are:\n");
     for (std::map<std::string,std::string>::iterator ii=helpStructure.begin(); ii!=helpStructure.end(); ii++) {
-      fprintf(stdout," %s",ii->first.c_str());
+      printlog(" %s",ii->first.c_str());
     }
-    fprintf(stdout,"\n");
+    printlog("\n");
   } else if (helpStructure.count(name)==1) {
-    fprintf(stdout,helpStructure[name].c_str());
+    printlog(helpStructure[name].c_str());
   } else {
     error(line,name,system);
   }
@@ -308,6 +308,8 @@ void Structure::parse_dihedral(char *line,char *token,System *system)
     dr.kphi=io_nextf(line)*KCAL_MOL;
     dr.phi0=io_nextf(line)*DEGREES;
     dr.nphi=io_nexti(line);
+#warning "Need to set width"
+    dr.width=0;
     dr.block=0; // Assume dihedral restraint is not scaled by lambda
     diRestList.push_back(dr);
     }
@@ -472,6 +474,7 @@ void Structure::parse_diRest(char *line,char *token,System *system){
     dr.kphi=io_nextf(line)*KCAL_MOL;
     dr.phi0=io_nextf(line)*DEGREES;
     dr.nphi=0; // harmonic restraint
+    dr.width=0;
     dr.block=io_nexti(line);
     diRestList.push_back(dr);
   }
@@ -557,7 +560,7 @@ void Structure::parse_resd(char *line,char *token,System *system)
 
 void Structure::dump(char *line,char *token,System *system)
 {
-  fprintf(stdout,"%s:%d IMPLEMENT Structure::dump function.\n",__FILE__,__LINE__);
+  printlog("%s:%d IMPLEMENT Structure::dump function.\n",__FILE__,__LINE__);
 }
 
 void Structure::add_structure_psf_file(FILE *fp)
@@ -575,14 +578,14 @@ void Structure::add_structure_psf_file(FILE *fp)
     fatal(__FILE__,__LINE__,"First line of PSF must start with PSF\n");
   }
   for (token=io_nexts(line); strcmp(token.c_str(),"")!=0; token=io_nexts(line)) {
-    fprintf(stdout,"Reading PSF, found header string: '%s'\n",token.c_str());
+    printlog("Reading PSF, found header string: '%s'\n",token.c_str());
     headerInfo.insert(token);
   }
 
   // "Read" title
   fgets(line, MAXLENGTHSTRING, fp);
   j=io_nexti(line,fp,"psf number of title lines");
-  fprintf(stdout,"Reading PSF, expect !NTITLE: got %s",line);
+  printlog("Reading PSF, expect !NTITLE: got %s",line);
   for (i=0; i<j; i++) {
     fgets(line, MAXLENGTHSTRING, fp);
   }
@@ -590,7 +593,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Read atoms
   fgets(line, MAXLENGTHSTRING, fp);
   atomCount=io_nexti(line,fp,"psf number of atoms");
-  fprintf(stdout,"Reading PSF, expect !NATOM: got %s",line);
+  printlog("Reading PSF, expect !NATOM: got %s",line);
   atomList.clear();
   atomList.reserve(atomCount);
   for (i=0; i<atomCount; i++) {
@@ -613,7 +616,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Read bonds
   fgets(line, MAXLENGTHSTRING, fp);
   bondCount=io_nexti(line,fp,"psf number of bonds");
-  fprintf(stdout,"Reading PSF, expect !NBOND: bonds: got %s",line);
+  printlog("Reading PSF, expect !NBOND: bonds: got %s",line);
   bondList.clear();
   bondList.reserve(bondCount);
   fgets(line, MAXLENGTHSTRING, fp);
@@ -632,7 +635,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Read angles
   fgets(line, MAXLENGTHSTRING, fp);
   angleCount=io_nexti(line,fp,"psf number of angles");
-  fprintf(stdout,"Reading PSF, expect !NTHETA: angles: got %s",line);
+  printlog("Reading PSF, expect !NTHETA: angles: got %s",line);
   angleList.clear();
   angleList.reserve(angleCount);
   fgets(line, MAXLENGTHSTRING, fp);
@@ -651,7 +654,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Read dihes
   fgets(line, MAXLENGTHSTRING, fp);
   diheCount=io_nexti(line,fp,"psf number of dihedrals");
-  fprintf(stdout,"Reading PSF, expect !NPHI: dihedrals: got %s",line);
+  printlog("Reading PSF, expect !NPHI: dihedrals: got %s",line);
   diheList.clear();
   diheList.reserve(diheCount);
   fgets(line, MAXLENGTHSTRING, fp);
@@ -670,7 +673,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Read imprs
   fgets(line, MAXLENGTHSTRING, fp);
   imprCount=io_nexti(line,fp,"psf number of impropers");
-  fprintf(stdout,"Reading PSF, expect !NIMPHI: impropers: got %s",line);
+  printlog("Reading PSF, expect !NIMPHI: impropers: got %s",line);
   imprList.clear();
   imprList.reserve(imprCount);
   fgets(line, MAXLENGTHSTRING, fp);
@@ -689,7 +692,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Ignore donors
   fgets(line, MAXLENGTHSTRING, fp);
   j=io_nexti(line,fp,"psf number of donors");
-  fprintf(stdout,"Reading PSF, expect !NDON: donors: got %s",line);
+  printlog("Reading PSF, expect !NDON: donors: got %s",line);
   for (i=0; i<2*j; i++) {
     io_nexti(line,fp,"psf donor atom");
   }
@@ -697,7 +700,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Ignore acceptors
   fgets(line, MAXLENGTHSTRING, fp);
   j=io_nexti(line,fp,"psf number of acceptors");
-  fprintf(stdout,"Reading PSF, expect !NACC: acceptors: got %s",line);
+  printlog("Reading PSF, expect !NACC: acceptors: got %s",line);
   for (i=0; i<2*j; i++) {
     io_nexti(line,fp,"psf acceptor atom");
   }
@@ -705,7 +708,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Not even sure what this section is...
   fgets(line, MAXLENGTHSTRING, fp);
   j=io_nexti(line,fp,"psf nnb???");
-  fprintf(stdout,"Reading PSF, expect !NNB: got %s",line);
+  printlog("Reading PSF, expect !NNB: got %s",line);
   for (i=0; i<atomCount; i++) {
     io_nexti(line,fp,"psf nnb???");
   }
@@ -713,7 +716,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   // Or this one...
   fgets(line, MAXLENGTHSTRING, fp);
   j=io_nexti(line,fp,"psf ngrp???");
-  fprintf(stdout,"Reading PSF, expect !NGRP NST2: got %s",line);
+  printlog("Reading PSF, expect !NGRP NST2: got %s",line);
   for (i=0; i<3*j; i++) {
     io_nexti(line,fp,"psf ngrp???");
   }
@@ -722,7 +725,7 @@ void Structure::add_structure_psf_file(FILE *fp)
     // OR this one...
     fgets(line, MAXLENGTHSTRING, fp);
     j=io_nexti(line,fp,"psf molnt???");
-    fprintf(stdout,"Reading PSF, expect !MOLNT: got %s",line);
+    printlog("Reading PSF, expect !MOLNT: got %s",line);
     for (i=0; i<atomCount; i++) {
       io_nexti(line,fp,"psf molnt???");
     }
@@ -732,7 +735,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   fgets(line, MAXLENGTHSTRING, fp);
   i=io_nexti(line,fp,"psf lone pairs");
   j=io_nexti(line,fp,"psf lone pair hosts");
-  fprintf(stdout,"Reading PSF, expect !NUMLP NUMLPH: got %s",line);
+  printlog("Reading PSF, expect !NUMLP NUMLPH: got %s",line);
   if (i!=0 || j!=0) {
     int virtCount;
     int virtHostCount;
@@ -799,7 +802,7 @@ void Structure::add_structure_psf_file(FILE *fp)
   if (headerInfo.count("CMAP")) {
     fgets(line, MAXLENGTHSTRING, fp);
     cmapCount=io_nexti(line,fp,"psf number of cmaps");
-    fprintf(stdout,"Reading PSF, expect !NCRTERM: got %s",line);
+    printlog("Reading PSF, expect !NCRTERM: got %s",line);
     cmapList.clear();
     cmapList.reserve(cmapCount);
     fgets(line, MAXLENGTHSTRING, fp);
@@ -825,10 +828,10 @@ void Structure::parse_mlp(char *line,char *token,System *system)
 {
   io_nexta(line,token);
 
-  fprintf(stderr,"[parse_mlp] enter token=%s\n", token ? token : "(null)");
+  printlog("[parse_mlp] enter token=%s\n", token ? token : "(null)");
 
   if (strcmp(token,"reset")==0) {
-    fprintf(stderr,"[parse_mlp] reset MLPList\n");
+    printlog("[parse_mlp] reset MLPList\n");
     MLPList.clear();
 
   } else if (system->selections->selectionMap.count(token)==1) {
@@ -836,17 +839,17 @@ void Structure::parse_mlp(char *line,char *token,System *system)
     std::string MLPTypeToken=io_nexts(line);
     std::string MLPFileToken;
 
-    fprintf(stderr,"[parse_mlp] selection name=%s\n", name.c_str());
-    fprintf(stderr,"[parse_mlp] boolCount=%d atomCount=%d\n",
+    printlog("[parse_mlp] selection name=%s\n", name.c_str());
+    printlog("[parse_mlp] boolCount=%d atomCount=%d\n",
             system->selections->selectionMap[name].boolCount,
             system->structure->atomCount);
 
     if (MLPTypeToken=="tani") {
       MLPFileToken=io_nexts(line);
-      fprintf(stderr,"[parse_mlp] MLPTypeToken=%s MLPFileToken=%s\n",
+      printlog("[parse_mlp] MLPTypeToken=%s MLPFileToken=%s\n",
               MLPTypeToken.c_str(), MLPFileToken.c_str());
     } else {
-      fprintf(stderr,"[parse_mlp] bad MLPTypeToken=%s\n", MLPTypeToken.c_str());
+      printlog("[parse_mlp] bad MLPTypeToken=%s\n", MLPTypeToken.c_str());
       fatal(__FILE__,__LINE__,"Unrecognized MLP model type token %s. Currently only tani forces implemented.\n",MLPTypeToken.c_str());
     }
 
@@ -859,7 +862,7 @@ void Structure::parse_mlp(char *line,char *token,System *system)
     mlp.ptname    = MLPFileToken;
     mlp.mlnatoms  = system->structure->atomCount;
 
-    fprintf(stderr,"[parse_mlp] before resize mlnatoms=%d boolCount=%d\n",
+    printlog("[parse_mlp] before resize mlnatoms=%d boolCount=%d\n",
             mlp.mlnatoms,
             system->selections->selectionMap[name].boolCount);
 
@@ -868,28 +871,28 @@ void Structure::parse_mlp(char *line,char *token,System *system)
     mlp.mlZidx.resize(system->selections->selectionMap[name].boolCount);
     mlp.mlmaskid.resize(system->selections->selectionMap[name].boolCount);
 
-    fprintf(stderr,"[parse_mlp] after resize mlatomidx=%zu mlMassidx=%zu mlZidx=%zu mlmaskid=%zu\n",
+    printlog("[parse_mlp] after resize mlatomidx=%zu mlMassidx=%zu mlZidx=%zu mlmaskid=%zu\n",
             mlp.mlatomidx.size(), mlMassidx.size(), mlp.mlZidx.size(), mlp.mlmaskid.size());
 
     nsel=0;
     for (i=0; i<system->selections->selectionMap[name].boolCount; i++) {
 
       if (i < 5 || i == system->selections->selectionMap[name].boolCount-1) {
-        fprintf(stderr,"[parse_mlp] scan i=%d selected=%d\n",
+        printlog("[parse_mlp] scan i=%d selected=%d\n",
                 i,
                 (int)system->selections->selectionMap[name].boolSelection[i]);
       }
 
       if (system->selections->selectionMap[name].boolSelection[i]) {
-        fprintf(stderr,"[parse_mlp] selected i=%d nsel=%d\n", i, nsel);
+        printlog("[parse_mlp] selected i=%d nsel=%d\n", i, nsel);
 
         mlp.mlmaskid[i]=1;
         mlp.mlatomidx[nsel]=i;
 
-        fprintf(stderr,"[parse_mlp] reading atomList[%d]\n", i);
+        printlog("[parse_mlp] reading atomList[%d]\n", i);
         mlMassidx[nsel]=system->structure->atomList[i].mass;
 
-        fprintf(stderr,"[parse_mlp] atom %d mass=%f atomTypeName[0]=%c atomTypeName[1]=%c\n",
+        printlog("[parse_mlp] atom %d mass=%f atomTypeName[0]=%c atomTypeName[1]=%c\n",
                 i,
                 (double)mlMassidx[nsel],
                 system->structure->atomList[i].atomTypeName[0],
@@ -913,13 +916,13 @@ void Structure::parse_mlp(char *line,char *token,System *system)
           else {z = 0;}
         
           if (z == 0) {
-            fprintf(stderr,"[parse_mlp] unsupported element i=%d nsel=%d mass=%f type0=%c type1=%c\n", i, nsel, m, t0, t1);
+            printlog("[parse_mlp] unsupported element i=%d nsel=%d mass=%f type0=%c type1=%c\n", i, nsel, m, t0, t1);
             fatal(__FILE__,__LINE__,"Unsupported element with mass %f for tani MLP. Only H, C, N, O, F, S, Cl supported.\n",m);
           }
           mlp.mlZidx[nsel] = z;
         }
 
-        fprintf(stderr,"[parse_mlp] assigned Z=%d for i=%d nsel=%d\n",
+        printlog("[parse_mlp] assigned Z=%d for i=%d nsel=%d\n",
                 mlp.mlZidx[nsel], i, nsel);
 
         nsel++;
@@ -928,11 +931,11 @@ void Structure::parse_mlp(char *line,char *token,System *system)
       }
     }
 
-    fprintf(stderr,"[parse_mlp] loop done nsel=%d\n", nsel);
+    printlog("[parse_mlp] loop done nsel=%d\n", nsel);
 
     mlp.ptnml=nsel;
 
-    fprintf(stderr,"[parse_mlp] before compact resize ptnml=%d current mlatomidx=%zu mlMassidx=%zu mlZidx=%zu\n",
+    printlog("[parse_mlp] before compact resize ptnml=%d current mlatomidx=%zu mlMassidx=%zu mlZidx=%zu\n",
             mlp.ptnml,
             mlp.mlatomidx.size(), mlMassidx.size(), mlp.mlZidx.size());
 
@@ -940,20 +943,20 @@ void Structure::parse_mlp(char *line,char *token,System *system)
     mlMassidx.resize(mlp.ptnml);
     mlp.mlZidx.resize(mlp.ptnml);
 
-    fprintf(stderr,"[parse_mlp] after compact resize mlatomidx=%zu mlMassidx=%zu mlZidx=%zu\n",
+    printlog("[parse_mlp] after compact resize mlatomidx=%zu mlMassidx=%zu mlZidx=%zu\n",
             mlp.mlatomidx.size(), mlMassidx.size(), mlp.mlZidx.size());
 
-    fprintf(stderr,"[parse_mlp] before push_back MLPList.size=%zu\n", MLPList.size());
+    printlog("[parse_mlp] before push_back MLPList.size=%zu\n", MLPList.size());
     MLPList.push_back(mlp);
-    fprintf(stderr,"[parse_mlp] after push_back MLPList.size=%zu\n", MLPList.size());
+    printlog("[parse_mlp] after push_back MLPList.size=%zu\n", MLPList.size());
 
   } else {
-    fprintf(stderr,"[parse_mlp] unknown selection token=%s\n", token ? token : "(null)");
+    printlog("[parse_mlp] unknown selection token=%s\n", token ? token : "(null)");
     fatal(__FILE__,__LINE__,"Unrecognized selection name %s for mlp\n",token);
   }
 
   MLPModelCount=MLPList.size();
-  fprintf(stderr,"[parse_mlp] exit MLPModelCount=%d\n", MLPModelCount);
+  printlog("[parse_mlp] exit MLPModelCount=%d\n", MLPModelCount);
 } // eemlp-end
 
 void blade_init_structure(System *system)
@@ -1087,9 +1090,19 @@ void blade_add_shake(System *system,int shakeHbond)
   system->structure->shakeHbond=shakeHbond;
 }
 
-void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rmax,double kmax,double rpeak,double rswitch,double nswitch)
+void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rmax,double kmax,double rpeak,double rswitch,double nswitch,double c0x,double c0y,double c0z,bool is_pnoe)
 {
   system+=omp_get_thread_num();
+
+  // Input validation
+  int atomCount = system->structure->atomCount;
+  if (i < 1 || i > atomCount) {
+    fatal(__FILE__,__LINE__,"BLaDE NOE: invalid atom index i=%d (atomCount=%d)\n", i, atomCount);
+  }
+  if (!is_pnoe && (j < 1 || j > atomCount)) {
+    fatal(__FILE__,__LINE__,"BLaDE NOE: invalid atom index j=%d (atomCount=%d)\n", j, atomCount);
+  }
+
   struct NoePotential noe;
   noe.i=i-1;
   noe.j=j-1;
@@ -1100,6 +1113,11 @@ void blade_add_noe(System *system,int i,int j,double rmin,double kmin,double rma
   noe.rpeak=rpeak*ANGSTROM;
   noe.rswitch=rswitch*ANGSTROM;
   noe.nswitch=nswitch;
+#warning "Absolute noe position restraints untested with Monte Carlo barostat and non-orthogonal boxes"
+  noe.c0x=c0x*ANGSTROM;
+  noe.c0y=c0y*ANGSTROM;
+  noe.c0z=c0z*ANGSTROM;
+  noe.is_pnoe=is_pnoe;
   system->structure->noeList.push_back(noe);
   system->structure->noeCount=system->structure->noeList.size();
 }
@@ -1145,7 +1163,7 @@ void blade_add_anrest(System *system,int i,int j,int k,double kt,double t0,int l
   system->structure->anRestCount=system->structure->anRestList.size();
 }
 
-void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,int lambdaBlock)
+void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,double width,int lambdaBlock)
 {
   system+=omp_get_thread_num();
   struct DiRestPotential dr;
@@ -1155,6 +1173,7 @@ void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nph
   dr.idx[3]=l-1;
   dr.kphi=kphi*KCAL_MOL;
   dr.phi0=phi0*DEGREES;
+  dr.width=width*DEGREES;  // flat-bottom half-width in radians (default 0)
   dr.nphi = nphi;
   dr.block=lambdaBlock-1;
   system->structure->diRestList.push_back(dr);
