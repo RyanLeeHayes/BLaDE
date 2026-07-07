@@ -183,7 +183,7 @@ void State::min_move(int step,int nsteps,System *system)
         }
       } 
       prevEnergy=currEnergy;
-      gradRMS=-1; // Unknown
+      gradRMS=r->lbfgs->rmsg;
     }
   } else if (r->minType==esd) {
     if (system->id==0) {

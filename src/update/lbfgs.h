@@ -11,6 +11,7 @@ public:
     int m=7; // Number of previous gradients to use for hessian approximation (5-7)
     bool verbose=false;
     bool minimized=false;
+    real_x rmsg = 0; // |g| / sqrt(DOF)
     real_x U0, Uf;
 
     LBFGS(int m, real_x eps, int DOF, bool verbose, std::function<real_x()> user_grad, real_x *position, real_x *gradient);
@@ -23,7 +24,6 @@ private:
     real_x c2 = .9; // curvature cond.
     // Convergence
     real_x eps_tol = 1; // rms criteria 
-    real_x rmsg = 0; // |g| / sqrt(DOF)
     real_x grad_mag = 0; // |g| 
     real_x grad_pos_mag = 0; // |g| / max(1, |dx|)
 
