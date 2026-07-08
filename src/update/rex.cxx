@@ -4,6 +4,7 @@
 #include "domdec/domdec.h"
 #include "system/potential.h"
 #include "rng/rng_cpu.h"
+#include "io/io.h"
 
 #ifdef REPLICAEXCHANGE
 #include <mpi.h>

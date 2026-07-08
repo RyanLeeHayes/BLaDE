@@ -10,6 +10,7 @@
 # Options:
 #   -j N, --jobs N      Parallel build jobs (default: nproc)
 #   --double            Use double precision (default: float)
+#   --rx                Compile with MPI for replica exchange (default: off)
 #   --gromacs           Use NMPS/GROMACS units (default: AKMA/CHARMM)
 #   --install [PREFIX]  Build and install (default PREFIX: /usr/local)
 #   --clean             Remove build directory
@@ -21,6 +22,7 @@ BUILD_DIR="${SCRIPT_DIR}/build"
 
 # Defaults
 UNITS="AKMA"
+RX="OFF"
 PRECISION="FLOAT"
 JOBS=$(nproc)
 DO_INSTALL=false
@@ -37,6 +39,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --double)
             PRECISION="DOUBLE"
+            shift
+            ;;
+        --rx)
+            RX="ON"
             shift
             ;;
         --gromacs)
@@ -86,6 +92,7 @@ cd "${BUILD_DIR}"
 if [ ! -f "Makefile" ] || $RECONFIGURE; then
     echo "Configuring: UNITS=${UNITS}, PRECISION=${PRECISION}"
     cmake -DUNITS="${UNITS}" \
+          -DRX="${RX}" \
           -DPRECISION="${PRECISION}" \
           -DBLADE_STANDALONE=ON \
           -DCMAKE_BUILD_TYPE=Release \

@@ -45,11 +45,13 @@ void printlog(const char* format, ...)
 void fatal(const char* fnm,int i,const char* format, ...)
 {
   va_list args;
+  char buffer[MAXLENGTHSTRING];
 
   va_start(args,format);
   printlog("FATAL ERROR:\n");
   printlog("%s:%d\n",fnm,i);
-  printlog(format,args);
+  vsnprintf(buffer,MAXLENGTHSTRING,format,args); // printlog doesn't work here because of nested variadic functions
+  blade_log(buffer);
   va_end(args);
 
   exit(1);

@@ -281,7 +281,7 @@ void Run::dump(char *line,char *token,System *system)
   printlog("RUN PRINT> domdecheuristic=%d (use heuristics for domdec limits without checking their validity)\n",(int)domdecHeuristic);
 #ifdef REPLICAEXCHANGE
   printlog("RUN PRINT> fnmrex=%s (file name for replica exchange)\n",fnmREx.c_str());
-  printlog("RUN PRINT> freqrex=%d (frequency of replica exchange attempts. Use {rexrank} (NYI) to access 0 ordinalized replica index in script)\n",freqREx);
+  printlog("RUN PRINT> freqrex=%d (frequency of replica exchange attempts. Use {rexrank} to access 0 ordinalized replica index in script)\n",freqREx);
 #endif
 }
 
