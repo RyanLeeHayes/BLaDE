@@ -3,7 +3,7 @@
 source ../modules
 MSLDEXE=../build/blade
 
-rm output_?.nvvp output_?.nsight
+rm output_*
 export OMP_NUM_THREADS=1
 
 # Old nvvp profiler
@@ -12,6 +12,7 @@ export OMP_NUM_THREADS=1
 # view profiles with nvvp
 
 # New nsys profiler
-# ncu -o output_0.nsight $MSLDEXE input
-nsys profile -o output_0.nsight $MSLDEXE input
+# ncu --set full -o output_0.ncu-rep $MSLDEXE input
+# for ncu compile with nvcc option -lineinfo and view kernel usage with ncu-ui
+nsys profile -o output_0.nsys-rep $MSLDEXE input
 # use nsys-ui to view profiles

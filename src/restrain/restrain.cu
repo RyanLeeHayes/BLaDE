@@ -363,9 +363,9 @@ __device__ void function_torsion(DiRestPotential dr,real phi,real *fphi,real *lE
     // Since BLaDE receives phimin directly: E = K*(1 - cos(n*(phi - phimin)))
     dphi=dr.nphi*(phi-dr.phi0);
     dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
-    fphi[0]=dr.kphi*dr.nphi*sinf(dphi);
+    fphi[0]=dr.kphi*dr.nphi*sin(dphi);
     if (calcEnergy) {
-      lE[0]=dr.kphi*(1-cosf(dphi));
+      lE[0]=dr.kphi*(1-cos(dphi));
     }
   }
   else {
@@ -376,7 +376,7 @@ __device__ void function_torsion(DiRestPotential dr,real phi,real *fphi,real *lE
     dphi-=(2*((real)M_PI))*floor((dphi+((real)M_PI))/(2*((real)M_PI)));
     // Apply flat-bottom if width > 0
     if (dr.width>0) {
-      if (fabsf(dphi)<=dr.width) { // Inside flat region - no force or energy
+      if (fabs(dphi)<=dr.width) { // Inside flat region - no force or energy
         dphi=0;
       } else { // Outside flat region - apply harmonic from edge
         dphi-=copysign(dr.width,dphi);

@@ -313,9 +313,9 @@ __device__ void function_torsion(DihePotential dp,real phi,real *fphi,real *lE,b
   real dphi;
 
   dphi=dp.ndih*phi-dp.dih0;
-  fphi[0]=-dp.kdih*dp.ndih*sinf(dphi);
+  fphi[0]=-dp.kdih*dp.ndih*sin(dphi);
   if (calcEnergy) {
-    lE[0]=dp.kdih*(cosf(dphi)+1);
+    lE[0]=dp.kdih*(cos(dphi)+1);
   }
 }
 
@@ -325,9 +325,9 @@ __device__ void function_torsion(ImprPotential ip,real phi,real *fphi,real *lE,b
 
   if (ip.nimp>0) {
     dphi=ip.nimp*phi-ip.imp0;
-    fphi[0]=-ip.kimp*ip.nimp*sinf(dphi);
+    fphi[0]=-ip.kimp*ip.nimp*sin(dphi);
     if (calcEnergy) {
-      lE[0]=ip.kimp*(cosf(dphi)+1);
+      lE[0]=ip.kimp*(cos(dphi)+1);
     }
   } else {
     dphi=phi-ip.imp0;

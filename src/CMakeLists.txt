@@ -25,6 +25,10 @@ if (RX STREQUAL "ON")
 endif()
 
 find_package(CUDA 10.0)
+# useful CUDA_NVCC_FLAGS:
+# -lineinfo # use for ncu profiling
+# -use_fast_math # dangerous for trig functions and provides no performance benefit on __CUDA_ARCH__ 800
+# -gencode arch=compute_70,code=sm_70 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_80,code=compute_80 # cmake seems to ignore the CMAKE_CUDA_ARCHITECTURES flag
 set (CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -ccbin ${CMAKE_CXX_COMPILER}")
 
 find_package(OpenMP REQUIRED)
@@ -35,6 +39,11 @@ set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS
 set(UNITS "NMPS" CACHE STRING "AKMA (CHARMM) or NMPS (GROMACS)")
 if (UNITS STREQUAL "AKMA")
   add_definitions(-DCHARMM_UNITS)
+endif()
+
+set(PROFILE "OFF" CACHE STRING "ON or OFF")
+if (PROFILE STREQUAL "ON")
+  add_definitions(-DPROFILESERIAL)
 endif()
 
 if (RX STREQUAL "ON")

@@ -15,6 +15,7 @@
 #define fasterfc erfc
 #else
 // Directly from CHARMM source code, charmm/source/domdec_gpu/gpu_utils.h
+// Note 2026-07-09: on __CUDA_ARCH__ 800, this is still faster than erfc
 // #warning "From CHARMM, not fully compatible"
 static __forceinline__ __device__ float __internal_fmad(float a, float b, float c)
 {
@@ -298,12 +299,12 @@ __global__ void getforce_nbdirect_kernel(
                 }
               } else if (elecMethod==1) { // PME
                 real br=cutoffs.betaEwald*rEff;
-                // real erfcrinv=erfcf(br)*rinv;
+                // real erfcrinv=erfc(br)*rinv;
                 real erfcrinv=fasterfc(br)*rinv;
-                // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*expf(-br*br))*rinv;
-                // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+1.128379167095513f*cutoffs.betaEwald*expf(-br*br))*rinv;
-                // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)(2/sqrt(M_PI)))*cutoffs.betaEwald*expf(-br*br))*rinv;
-                fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)1.128379167095513)*cutoffs.betaEwald*expf(-br*br))*rinv;
+                // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+(2/sqrt(M_PI))*cutoffs.betaEwald*exp(-br*br))*rinv;
+                // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+1.128379167095513f*cutoffs.betaEwald*exp(-br*br))*rinv;
+                // fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)(2/sqrt(M_PI)))*cutoffs.betaEwald*exp(-br*br))*rinv;
+                fij=-kELECTRIC*inp.q*jtmpnp_q*(erfcrinv+((real)1.128379167095513)*cutoffs.betaEwald*exp(-br*br))*rinv;
                 if (calcEnergy || (calcAlch && (bi || bjtmp))) {
                   eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
                 }

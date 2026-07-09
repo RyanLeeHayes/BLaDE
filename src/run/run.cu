@@ -19,7 +19,8 @@
 
 
 
-// #warning "Hardcoded serial kernels"
+// Uncomment the following line to ensure kernels run one at a time for cleaner profiling. Will degrade performance.
+// Alternative cmake flag -DPROFILE=ON is available to avoid editing source code
 // #define PROFILESERIAL
 
 // Class constructors

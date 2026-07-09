@@ -158,8 +158,8 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
       real br=rc.betaEwald*r;
 
       real erfcrinv=(fasterfc(br)+pp.e14fac-1)*rinv;
-      // fpair[0]+=kqq*(-erfcf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
-      fpair[0]+=kqq*(-erfcrinv-((real)1.128379167095513)*rc.betaEwald*expf(-br*br))*rinv;
+      // fpair[0]+=kqq*(-erfc(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*exp(-br*br))*rinv;
+      fpair[0]+=kqq*(-erfcrinv-((real)1.128379167095513)*rc.betaEwald*exp(-br*br))*rinv;
       if (calcEnergy) {
         lE[0]+=kqq*erfcrinv;
       }
@@ -184,10 +184,10 @@ __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,rea
   real kqq=kELECTRIC*pp.qxq;
 
 #warning "No nan guard"
-  // fpair[0]=kqq*(erff(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*expf(-br*br))*rinv;
-  fpair[0]=kqq*(erff(br)*rinv-((real)1.128379167095513)*rc.betaEwald*expf(-br*br))*rinv;
+  // fpair[0]=kqq*(erf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*exp(-br*br))*rinv;
+  fpair[0]=kqq*(erf(br)*rinv-((real)1.128379167095513)*rc.betaEwald*exp(-br*br))*rinv;
   if (calcEnergy) {
-    lE[0]=-kqq*erff(br)*rinv;
+    lE[0]=-kqq*erf(br)*rinv;
   }
 }
 

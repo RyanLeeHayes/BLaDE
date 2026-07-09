@@ -30,6 +30,7 @@ Msld::Msld() {
   lambdaSite_d=NULL;
   lambdaBias_d=NULL;
   lambdaCharge_d=NULL;
+  netCharge_d=NULL;
 
   blocksPerSite=NULL;
   blocksPerSite_d=NULL;
@@ -79,7 +80,11 @@ Msld::Msld() {
   msldEwaldType=2; // 1-3, not set up to read arguments currently (1=on, 2=ex, 3=nn)
 
   kRestraint=59.2*KCAL_MOL/(ANGSTROM*ANGSTROM);
-  kChargeRestraint=0;
+  kChargeRestraint1=0;
+  kChargeRestraint2=0;
+  kChargeRestraint3=0;
+  q0ChargeRestraint3=0;
+  wChargeRestraint3=0;
   softBondRadius=1.0*ANGSTROM;
   softBondExponent=2.0;
   softNotBondExponent=1.0;
@@ -109,6 +114,7 @@ Msld::~Msld() {
   if (lambdaSite_d) cudaFree(lambdaSite_d);
   if (lambdaBias_d) cudaFree(lambdaBias_d);
   if (lambdaCharge_d) cudaFree(lambdaCharge_d);
+  if (netCharge_d) cudaFree(netCharge_d);
   if (variableBias_d) cudaFree(variableBias_d);
   if (kThetaCollBias_d) cudaFree(kThetaCollBias_d);
   if (nThetaCollBias_d) cudaFree(nThetaCollBias_d);
@@ -179,6 +185,7 @@ void parse_msld(char *line,System *system)
     cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
     cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
     cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real));
+    cudaMalloc(&(system->msld->netCharge_d),sizeof(real));
 
     // NYI - this would be a lot easier to read if these were split in to parsing functions.
     printlog("NYI - Initialize all blocks in first site %s:%d\n",__FILE__,__LINE__);
@@ -219,6 +226,7 @@ void parse_msld(char *line,System *system)
     system->msld->thetaVelocity[i]=io_nextf(line);
     system->msld->thetaMass[i]=io_nextf(line);
     system->msld->lambdaBias[i]=io_nextf(line);
+#warning "Don't read lambdaCharge from here"
     system->msld->lambdaCharge[i]=io_nextf(line);
   } else if (strcmp(token,"gamma")==0) {
     system->msld->gamma=io_nextf(line)/PICOSECOND; // units: ps^-1
@@ -350,8 +358,16 @@ void parse_msld(char *line,System *system)
     std::string parameterToken=io_nexts(line);
     if (parameterToken=="krestraint") {
       system->msld->kRestraint=io_nextf(line)*KCAL_MOL/(ANGSTROM*ANGSTROM);
-    } else if (parameterToken=="kchargerestraint") {
-      system->msld->kChargeRestraint=io_nextf(line)*KCAL_MOL;
+    } else if (parameterToken=="kchargerestraint1") {
+      system->msld->kChargeRestraint1=io_nextf(line)*ANGSTROM*ANGSTROM; // *qe
+    } else if (parameterToken=="kchargerestraint2") {
+      system->msld->kChargeRestraint2=io_nextf(line); // dimensionless boolean
+    } else if (parameterToken=="kchargerestraint3") {
+      system->msld->kChargeRestraint3=io_nextf(line)*KCAL_MOL; // *qe^-2
+    } else if (parameterToken=="q0chargerestraint3") {
+      system->msld->q0ChargeRestraint3=io_nextf(line); // *qe
+    } else if (parameterToken=="wchargerestraint3") {
+      system->msld->wChargeRestraint3=io_nextf(line); // *qe
     } else if (parameterToken=="softbondradius") {
       system->msld->softBondRadius=io_nextf(line)*ANGSTROM;
     } else if (parameterToken=="softbondexponent") {
@@ -426,7 +442,6 @@ void parse_msld(char *line,System *system)
     }
   } else if (strcmp(token,"fix")==0) { // ffix
     system->msld->fix=io_nextb(line); // ffix
-// NYI - charge restraints, put Q in initialize
   } else if (strcmp(token, "piecewise")==0){
     system->msld->new_implicit=io_nextb(line);
   } else if (strcmp(token, "well_width")==0){
@@ -655,6 +670,14 @@ bool Msld::interacting(int i,int j)
 void Msld::initialize(System *system)
 {
   int i,j;
+
+  // Determine charges
+  for (i=0; i<blockCount; i++) {
+    lambdaCharge[i]=0;
+  }
+  for (i=0; i<system->structure->atomCount; i++) {
+    lambdaCharge[atomBlock[i]]+=system->structure->atomList[i].charge;
+  }
 
   // Send the biases over
   cudaMemcpy(atomBlock_d,atomBlock,system->structure->atomCount*sizeof(int),cudaMemcpyHostToDevice);
@@ -927,7 +950,7 @@ __global__ void calc_thetaForce_from_lambdaForce_kernel(
       if (Rfrac>0) {
         fi=fi-dynamic_sum/Rfrac;
       }
-      fi*=li*fnex*cosf(ANGSTROM*theta[i])*ANGSTROM;
+      fi*=li*fnex*cos(ANGSTROM*theta[i])*ANGSTROM;
       atomicAdd(&thetaForce[i],fi);
     } else { // newton solved constraint -- blockFixed not yet supported in this path
       int subs = jf - ji;
@@ -1016,9 +1039,9 @@ __global__ void getforce_variableBias_kernel(real *lambda,real_f *lambdaForce,re
       fi=vb.k*vb.l0*lj/((li+vb.l0)*(li+vb.l0));
       fj=vb.k*li/(li+vb.l0);
     } else if (vb.type==10) {
-      lEnergy=vb.k*lj*(1-expf(vb.l0*li));
-      fi=vb.k*lj*(-vb.l0*expf(vb.l0*li));
-      fj=vb.k*(1-expf(vb.l0*li));
+      lEnergy=vb.k*lj*(1-exp(vb.l0*li));
+      fi=vb.k*lj*(-vb.l0*exp(vb.l0*li));
+      fj=vb.k*(1-exp(vb.l0*li));
     } else if (vb.type==1) {
       lEnergy=((li<vb.l0)?(vb.k*pow(li-vb.l0,vb.n)):0);
       fi=((li<vb.l0)?(vb.n*vb.k*pow(li-vb.l0,vb.n-1)):0);
@@ -1297,60 +1320,115 @@ void Msld::getforce_atomRestraints(System *system,bool calcEnergy)
   }
 }
 
-__global__ void getforce_chargeRestraints_kernel(real *lambda,real_f *lambdaForce,real_e *energy,int blockCount,real kChargeRestraint,real *lambdaCharge)
+__global__ void getforce_chargeRestraintsQ_kernel(real *lambda,int blockCount,real *lambdaCharge,real *netCharge)
 {
   int i=threadIdx.x;
   int j;
-  real netCharge=0;
-  extern __shared__ real sEnergy[];
+  real lCharge=0;
+  extern __shared__ real sCharge[];
 
   for (j=i; j<blockCount; j+=BLMS) {
-    netCharge+=lambda[j]*lambdaCharge[j];
+    lCharge+=lambda[j]*lambdaCharge[j];
   }
 
   __syncthreads();
-  netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,1);
-  netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,2);
-  netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,4);
-  netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,8);
-  netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,16);
+  lCharge+=__shfl_down_sync(0xFFFFFFFF,lCharge,1);
+  lCharge+=__shfl_down_sync(0xFFFFFFFF,lCharge,2);
+  lCharge+=__shfl_down_sync(0xFFFFFFFF,lCharge,4);
+  lCharge+=__shfl_down_sync(0xFFFFFFFF,lCharge,8);
+  lCharge+=__shfl_down_sync(0xFFFFFFFF,lCharge,16);
   __syncthreads();
   if ((0x1F & threadIdx.x)==0) {
-    sEnergy[threadIdx.x>>5]=netCharge;
+    sCharge[threadIdx.x>>5]=lCharge;
   }
   __syncthreads();
-  netCharge=0;
+  lCharge=0;
   if (threadIdx.x < (blockDim.x>>5)) {
-    netCharge=sEnergy[threadIdx.x];
+    lCharge=sCharge[threadIdx.x];
   }
   if (threadIdx.x < 32) {
-    if (blockDim.x>=64) netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,1);
-    if (blockDim.x>=128) netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,2);
-    if (blockDim.x>=256) netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,4);
-    if (blockDim.x>=512) netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,8);
-    if (blockDim.x>=1024) netCharge+=__shfl_down_sync(0xFFFFFFFF,netCharge,16);
-  }
-  if (threadIdx.x==0) {
-    sEnergy[0]=netCharge;
-    if (energy) {
-      atomicAdd(energy,(real_e)(0.5*kChargeRestraint*netCharge*netCharge));
-    }
+    if (blockDim.x>=64) lCharge+=__shfl_down_sync(0xFFFFFFFF,lCharge,1);
+    if (blockDim.x>=128) lCharge+=__shfl_down_sync(0xFFFFFFFF,lCharge,2);
+    if (blockDim.x>=256) lCharge+=__shfl_down_sync(0xFFFFFFFF,lCharge,4);
+    if (blockDim.x>=512) lCharge+=__shfl_down_sync(0xFFFFFFFF,lCharge,8);
+    if (blockDim.x>=1024) lCharge+=__shfl_down_sync(0xFFFFFFFF,lCharge,16);
   }
   __syncthreads();
-  netCharge=sEnergy[0];
+  if (threadIdx.x==0) {
+    netCharge[0]=lCharge;
+  }
+}
+
+__global__ void getforce_chargeRestraints1_kernel(real *lambda,real_f *lambdaForce,real_e *energy,int blockCount,real k,real *lambdaCharge,real *netCharge)
+{
+  int i=threadIdx.x;
+  int j;
 
   for (j=i; j<blockCount; j+=BLMS) {
     if (j>0) {
-      atomicAdd(&lambdaForce[j],kChargeRestraint*netCharge*lambdaCharge[j]);
+      atomicAdd(&lambdaForce[j],k*lambdaCharge[j]);
+    }
+  }
+
+  if (threadIdx.x==0) {
+    if (energy) {
+      atomicAdd(energy,(real_e)(k*netCharge[0]));
     }
   }
 }
 
-void Msld::getforce_chargeRestraints(System *system,bool calcEnergy)
+__global__ void getforce_chargeRestraints2_kernel(real *lambda,real_f *lambdaForce,real_e *energy,int blockCount,real k,real *lambdaCharge,real *netCharge)
+{
+  int i=threadIdx.x;
+  int j;
+
+  for (j=i; j<blockCount; j+=BLMS) {
+    if (j>0) {
+      atomicAdd(&lambdaForce[j],k*netCharge[0]*lambdaCharge[j]);
+    }
+  }
+
+  if (threadIdx.x==0) {
+    if (energy) {
+      atomicAdd(energy,(real_e)(((real)0.5)*k*netCharge[0]*netCharge[0]));
+    }
+  }
+}
+
+__global__ void getforce_chargeRestraints3_kernel(real *lambda,real_f *lambdaForce,real_e *energy,int blockCount,real k,real q0,real w,real *lambdaCharge,real *netCharge)
+{
+  int i=threadIdx.x;
+  int j;
+
+  real dQ=netCharge[0]-q0;
+  if (w>0) {
+    if (fabsf(dQ)<=w) { // Inside flat region - no force or energy
+      dQ=0;
+    } else { // Outside flat region - apply harmonic from edge
+      dQ-=copysign(w,dQ);
+    }
+  }
+
+  for (j=i; j<blockCount; j+=BLMS) {
+    if (j>0) {
+      atomicAdd(&lambdaForce[j],k*dQ*lambdaCharge[j]);
+    }
+  }
+
+  if (threadIdx.x==0) {
+    if (energy) {
+      atomicAdd(energy,(real_e)(((real)0.5)*k*dQ*dQ));
+    }
+  }
+}
+
+template <bool flagBox,typename box_type>
+void getforce_chargeRestraintsT(System *system,box_type kbox,bool calcEnergy)
 {
   cudaStream_t stream=0;
   Run *r=system->run;
   State *s=system->state;
+  Msld *m=system->msld;
   real_e *pEnergy=NULL;
   int shMem=0;
 
@@ -1364,8 +1442,30 @@ void Msld::getforce_chargeRestraints(System *system,bool calcEnergy)
     stream=system->run->biaspotStream;
   }
 
-  if (kChargeRestraint>0) {
-    getforce_chargeRestraints_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,blockCount,kChargeRestraint,lambdaCharge_d);
+  if (m->kChargeRestraint1==0 && m->kChargeRestraint2==0 && m->kChargeRestraint3==0) return;
+
+  real Vinv=boxxx(kbox)*boxyy(kbox)*boxzz(kbox);
+  getforce_chargeRestraintsQ_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_fd,m->blockCount,m->lambdaCharge_d,m->netCharge_d);
+  if (m->kChargeRestraint1!=0 && r->elecMethod==epme) {
+    real k=-(2*M_PI/3)*kELECTRIC*m->kChargeRestraint1*Vinv;
+    getforce_chargeRestraints1_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,m->blockCount,k,m->lambdaCharge_d,m->netCharge_d);
+  }
+  if (m->kChargeRestraint2!=0 && r->elecMethod==epme) {
+    if (m->kChargeRestraint2!=1) fatal(__FILE__,__LINE__,"Only kChargeRestraint2 values of 0 or 1 are allowed\n");
+    real k=-M_PI*kELECTRIC*m->kChargeRestraint2*Vinv/(r->betaEwald*r->betaEwald);
+    getforce_chargeRestraints2_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,m->blockCount,k,m->lambdaCharge_d,m->netCharge_d);
+  }
+  if (m->kChargeRestraint3!=0) {
+    getforce_chargeRestraints3_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,m->blockCount,m->kChargeRestraint3,m->q0ChargeRestraint3,m->wChargeRestraint3,m->lambdaCharge_d,m->netCharge_d);
+  }
+}
+
+void Msld::getforce_chargeRestraints(System *system,bool calcEnergy)
+{
+  if (system->state->typeBox) {
+    getforce_chargeRestraintsT<true>(system,system->state->kTricBox_f,calcEnergy);
+  } else {
+    getforce_chargeRestraintsT<false>(system,system->state->kOrthBox_f,calcEnergy);
   }
 }
 
@@ -1395,6 +1495,7 @@ void blade_init_msld(System *system,int nblocks)
   cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
   cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
   cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real));
+  cudaMalloc(&(system->msld->netCharge_d),sizeof(real));
 }
 
 void blade_dest_msld(System *system)
@@ -1435,7 +1536,7 @@ void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int s
   system->msld->scaleTerms[5]=scaleCmap;
 }
 
-void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent,int fix)
+void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent,int fix)
 {
   system+=omp_get_thread_num();
   system->msld->gamma=gamma;
@@ -1444,11 +1545,19 @@ void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCor
   system->msld->useSoftCore14=useSoftCore14;
   system->msld->msldEwaldType=msldEwaldType;
   system->msld->kRestraint=kRestraint;
-  system->msld->kChargeRestraint=kChargeRestraint;
   system->msld->softBondRadius=softBondRadius;
   system->msld->softBondExponent=softBondExponent;
   system->msld->softNotBondExponent=softNotBondExponent;
   system->msld->fix=fix;
+}
+
+void blade_add_msld_charges(System *system,double kChargeRestraint1,double kChargeRestraint2,double kChargeRestraint3,double q0ChargeRestraint3,double wChargeRestraint3)
+{
+  system->msld->kChargeRestraint1=kChargeRestraint1;
+  system->msld->kChargeRestraint2=kChargeRestraint2;
+  system->msld->kChargeRestraint3=kChargeRestraint3;
+  system->msld->q0ChargeRestraint3=q0ChargeRestraint3;
+  system->msld->wChargeRestraint3=wChargeRestraint3;
 }
 
 void blade_add_msld_block_friction(System *system,int blockIdx,double friction)

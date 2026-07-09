@@ -10,6 +10,7 @@
 // Removal of this atomicAdd gives 6% performance improvement
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
+#warning "Unless your GPUs are really old, you should compile with a higher cuda architecture for optimal performance"
 // From http://stackoverflow.com/questions/16077464/atomicadd-for-real-on-gpu
 // And https://stackoverflow.com/questions/37566987/cuda-atomicadd-for-doubles-definition-error
 __device__ static inline
@@ -34,6 +35,20 @@ double atomicAdd(double* address, float val)
 {
   return atomicAdd(address,(double)val);
 }
+
+
+
+// Transcendental functions seem to overload automatically in cuda
+// __device__ static inline
+// float sqrtT(float a) {return sqrtf(a);}
+// __device__ static inline
+// double sqrtT(double a) {return sqrt(a);}
+// The preceding functions provide no benefit when used, while the following hurt performance
+// __device__ static inline
+// float sqrtTbad(float a) {return sqrt((double)a);}
+// __device__ static inline
+// double sqrtTbad(double a) {return sqrt(a);}
+
 
 
 

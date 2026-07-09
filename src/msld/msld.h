@@ -33,6 +33,7 @@ class Msld {
   int *lambdaSite_d;
   real *lambdaBias_d;
   real *lambdaCharge_d;
+  real *netCharge_d;
 
   int siteCount;
   int *blocksPerSite;
@@ -86,7 +87,15 @@ class Msld {
   int msldEwaldType; // 1=normal scaling 2=normal scaling squared self interactions 3=correct scaling
 
   real kRestraint;
-  real kChargeRestraint;
+  // Discrete solvent linear correction (kChargerRestraint1)
+  // dx.doi.org/10.1063/1.4826261
+  // A citation for net charge - neutralizing background interaction (kChargeRestraint2)
+  // dx.doi.org/10.1021/acs.jctc.6b00552
+  real kChargeRestraint1; // linear discrete solvent correction bias -(2*pi/3)*kELECTRIC*gamma*NH2O*q/V, gamma=0.76414 e*A^2, kCR1=gamma*NH2O
+  real kChargeRestraint2; // quadratic net charge neutralization volume bias -(pi/2)*kELECTRIC*q^2/V/betaEwald^2 kCR2=0 (off) or 1 (on)
+  real kChargeRestraint3; // quadratic flat bottom charge restraint 0.5*kCR3*(abs(q-q0CR3)-wCR3)^2 if abs(q-q0CR3)-wCR3>0
+  real q0ChargeRestraint3;
+  real wChargeRestraint3;
   real softBondRadius;
   real softBondExponent;
   real softNotBondExponent;
@@ -137,7 +146,8 @@ extern "C" {
   void blade_add_msld_atomassignment(System *system,int atomIdx,int blockIdx);
   void blade_add_msld_initialconditions(System *system,int blockIdx,int siteIdx,double theta0,double thetaVelocity,double thetaMass,double fixBias,double blockCharge);
   void blade_add_msld_termscaling(System *system,int scaleBond,int scaleUrey,int scaleAngle,int scaleDihe,int scaleImpr,int scaleCmap);
-  void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double kChargeRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent,int fix);
+  void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent,int fix);
+  void blade_add_msld_charges(System *system,double kChargeRestraint1,double kChargeRestraint2,double kChargeRestraint3,double q0ChargeRestraint3,double wChargeRestraint3);
   void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n);
   void blade_add_msld_thetacollbias(System *system,int sites,int i,double k,double n);
   void blade_add_msld_thetaindebias(System *system,int sites,int i,double k);
