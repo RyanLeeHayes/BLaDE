@@ -236,7 +236,6 @@ void State::initialize(System *system)
     free(h_noise);
   }
 
-#warning "Running nvprof on 2080s causes seg faults in the next command and at later locations"
   system->msld->calc_lambda_from_theta(0,system);
 }
 

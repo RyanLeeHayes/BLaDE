@@ -822,7 +822,7 @@ __device__ bool solve_constraint(real_x* thetas, real_x* theta0, int subs){
   // pointers should start at site
   int max_iter = 50;
   real_x tol = 1e-12; // needs to be tight to ensure lambdas aren't > 1 or sum != 1
-  int prev = 0;
+  // int prev = 0;
   real_x x0 = -1e9; // very negative number
   real_x x1 = 0;
   // x0=max(thetas)-1
