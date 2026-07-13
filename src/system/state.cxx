@@ -372,7 +372,7 @@ void State::check_nan_flag()
 {
   cudaMemcpy(&nanFlag,nanFlag_d,sizeof(int),cudaMemcpyDeviceToHost);
   if (nanFlag != -1) {
-    fatal(__FILE__,__LINE__,"NaN/Inf detected at atom %d (0 indexed). Check structure or parameters.",nanFlag);
+    fatal(__FILE__,__LINE__,"NaN/Inf detected at atom %d (0 indexed). Check structure or parameters.\n",nanFlag);
   }
 }
 

@@ -91,8 +91,6 @@ class Run {
   real volumeFluctuation;
   real pressure;
 
-  bool domdecHeuristic;
-
   std::map<std::string,int> termStringToInt;
   std::map<int,bool> calcTermFlag;
 

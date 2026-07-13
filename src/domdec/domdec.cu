@@ -20,7 +20,8 @@ Domdec::Domdec()
   domain=NULL;
   domain_d=NULL;
   localToGlobal_d=NULL;
-  globalToLocal_d=NULL;
+  globalToLane_d=NULL;
+  globalToBlock_d=NULL;
   localPosition_d=NULL;
   localForce_d=NULL;
   localNbonds_d=NULL;
@@ -35,13 +36,14 @@ Domdec::Domdec()
   blockPartnerCount_d=NULL;
   blockPartners_d=NULL;
   localExcls_d=NULL;
+  firstExcl_d=NULL;
+  mapExcl_d=NULL;
   exclSort_d=NULL;
   sortedExcls_d=NULL;
 #ifdef USE_TEXTURE
   sortedExcls_tex=0;
 #endif
   blockExcls_d=NULL;
-  blockExclCount_d=NULL;
   overflowFlag_d=NULL;
 }
 
@@ -50,7 +52,8 @@ Domdec::~Domdec()
   if (domain) free(domain);
   if (domain_d) cudaFree(domain_d);
   if (localToGlobal_d) cudaFree(localToGlobal_d);
-  if (globalToLocal_d) cudaFree(globalToLocal_d);
+  if (globalToLane_d) cudaFree(globalToLane_d);
+  if (globalToBlock_d) cudaFree(globalToBlock_d);
   if (localPosition_d) cudaFree(localPosition_d);
   if (localForce_d) cudaFree(localForce_d);
   if (localNbonds_d) cudaFree(localNbonds_d);
@@ -65,13 +68,14 @@ Domdec::~Domdec()
   if (blockPartnerCount_d) cudaFree(blockPartnerCount_d);
   if (blockPartners_d) cudaFree(blockPartners_d);
   if (localExcls_d) cudaFree(localExcls_d);
+  if (firstExcl_d) cudaFree(firstExcl_d);
+  if (mapExcl_d) cudaFree(mapExcl_d);
   if (exclSort_d) cudaFree(exclSort_d);
   if (sortedExcls_d) cudaFree(sortedExcls_d);
 #ifdef USE_TEXTURE
   if (sortedExcls_tex) cudaDestroyTextureObject(sortedExcls_tex);
 #endif
   if (blockExcls_d) cudaFree(blockExcls_d);
-  if (blockExclCount_d) cudaFree(blockExclCount_d);
   if (overflowFlag_d) cudaFree(overflowFlag_d);
 }
 
@@ -135,19 +139,15 @@ void Domdec::initialize(System *system)
   if (system->verbose > 0) {
     printlog("freqDomdec=%d (how many steps before domain reset)\n",freqDomdec);
     printlog("cullPad=%g (spatial padding for considering which blocks could interact\n",cullPad);
-    printlog("maxBlockExclCount=%d (can reallocate dynamically with \"run setvariable domdecheuristic off\")\n",maxBlockExclCount);
+    printlog("maxBlockExclCount=%d (will reallocate dynamically)\n",maxBlockExclCount);
   }
 
+  // global count used to be padded to be larger than atomCount so blocks always started at 0, modulus 32. That caused problems.
   domain=(int*)calloc(globalCount,sizeof(int));
   cudaMalloc(&domain_d,globalCount*sizeof(int));
   cudaMalloc(&localToGlobal_d,globalCount*sizeof(int));
-  cudaMalloc(&globalToLocal_d,globalCount*sizeof(int));
-  // #warning "Arbitrarily doubled localPosition_d localForce_d and localNbonds_d size to account for padding. Won't work for small systems. Do something more intelligent."
-  // cudaMalloc(&localPosition_d,2*globalCount*sizeof(real3));
-  // cudaMalloc(&localForce_d,2*globalCount*sizeof(real3_f));
-  // cudaMalloc(&localNbonds_d,2*globalCount*sizeof(struct NbondPotential));
-  // Yup, eventually came back to bite me. Doing it right:
-  // See also localForce_d size in src/system/potential.cxx
+  cudaMalloc(&globalToLane_d,globalCount*sizeof(int));
+  cudaMalloc(&globalToBlock_d,globalCount*sizeof(int));
   cudaMalloc(&localPosition_d,32*maxBlocks*sizeof(real3));
   cudaMalloc(&localForce_d,32*maxBlocks*sizeof(real3_f));
   cudaMalloc(&localNbonds_d,32*maxBlocks*sizeof(struct NbondPotential));
@@ -163,10 +163,11 @@ void Domdec::initialize(System *system)
   cudaMalloc(&blockPartners_d,maxBlocks*maxPartnersPerBlock*sizeof(struct DomdecBlockPartners));
 
   cudaMalloc(&localExcls_d,(system->potential->exclCount+1)*sizeof(struct ExclPotential));
+  cudaMalloc(&firstExcl_d,(system->potential->exclCount+1)*sizeof(int));
+  cudaMalloc(&mapExcl_d,(system->potential->exclCount+1)*sizeof(int));
   cudaMalloc(&exclSort_d,(system->potential->exclCount+1)*sizeof(struct DomdecBlockSort));
   cudaMalloc(&sortedExcls_d,system->potential->exclCount*sizeof(struct ExclPotential));
   cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int));
-  cudaMalloc(&blockExclCount_d,sizeof(int));
   cudaMalloc(&overflowFlag_d,sizeof(int));
 
 #ifdef USE_TEXTURE

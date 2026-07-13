@@ -306,7 +306,7 @@ __global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,
   }
 }
 
-__global__ void assign_blocks_localNbonds_kernel(int blockCount,int *blockBounds,int *localToGlobal,int *globalToLocal,NbondPotential *nbonds,NbondPotential *localNbonds)
+__global__ void assign_blocks_localNbonds_kernel(int blockCount,int *blockBounds,int *localToGlobal,int *globalToLane,int *globalToBlock,NbondPotential *nbonds,NbondPotential *localNbonds)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int iBlock=i/32;
@@ -318,7 +318,9 @@ __global__ void assign_blocks_localNbonds_kernel(int blockCount,int *blockBounds
     iLocal+=(i&31);
     if ((i&31)<atomsInBlock) {
       iGlobal=localToGlobal[iLocal];
-      globalToLocal[iGlobal]=iLocal;
+      // globalToLocal[iGlobal]=iLocal;
+      globalToLane[iGlobal]=(i&31);
+      globalToBlock[iGlobal]=iBlock;
       localNbonds[i]=nbonds[iGlobal];
     }
   }
@@ -414,7 +416,7 @@ void Domdec::assign_blocks(System *system)
 
     cudaMemcpy(blockCount,blockCount_d,(idCount+1)*sizeof(int),cudaMemcpyDeviceToHost);
 
-    assign_blocks_localNbonds_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,globalToLocal_d,system->potential->nbonds_d,localNbonds_d);
+    assign_blocks_localNbonds_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,globalToLane_d,globalToBlock_d,system->potential->nbonds_d,localNbonds_d);
 
     // Redundant with pack_positions, needed for call to cull
     assign_blocks_localPosition_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,(real3*)system->state->position_fd,localPosition_d,blockVolume_d);

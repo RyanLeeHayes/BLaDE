@@ -13,7 +13,7 @@ bool operator<(const ExclPotential& a,const ExclPotential& b)
          (a.idx[1]<b.idx[1])));
 }
 
-__global__ void global_to_local_excl_kernel(int exclCount,struct ExclPotential *excls,int *globalToLocal,int id,int *domain,struct ExclPotential *localExcls)
+__global__ void global_to_local_excl_kernel(int exclCount,struct ExclPotential *excls,int *globalToBlock,int id,int *domain,struct ExclPotential *localExcls)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   struct ExclPotential excl;
@@ -22,9 +22,9 @@ __global__ void global_to_local_excl_kernel(int exclCount,struct ExclPotential *
     if (i<exclCount) {
       excl=excls[i];
       if (domain[excl.idx[0]]==id) {
-        excl.idx[0]=globalToLocal[excl.idx[0]];
-        excl.idx[1]=globalToLocal[excl.idx[1]];
-      } else { // Outside of current domain, don' worry about it, less work during sorting.
+        excl.idx[0]=globalToBlock[excl.idx[0]];
+        excl.idx[1]=globalToBlock[excl.idx[1]];
+      } else { // Outside of current domain, don't worry about it, less work during sorting.
         excl.idx[0]=-1;
         excl.idx[1]=-1;
       }
@@ -37,23 +37,26 @@ __global__ void global_to_local_excl_kernel(int exclCount,struct ExclPotential *
 }
 
 // Modified from assign_blocks_grow_tree_kernel
-__global__ void assign_excl_grow_tree_kernel(int tokenCount,struct ExclPotential *tokens,DomdecBlockSort *sort)
+__global__ void assign_excl_grow_tree_kernel(int tokenCount,struct ExclPotential *tokens,DomdecBlockSort *sort,int *first)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int leafPos=tokenCount; // Root is at end of array // MODIFIED
+  int leafPos=tokenCount; // Root is at end of array
   int nextLeafPos, *nextLeafPosPointer;
-  struct ExclPotential token, leafPosToken; // MODIFIED: change data type of token
+  struct ExclPotential token, leafPosToken;
   bool placed=false;
 
-  if (i<tokenCount) { // MODIFIED: globalCount to more general token count
+  if (i<tokenCount) {
     token=tokens[i];
-    if (token.idx[0]>=0) { // MODIFIED: change how we decide if this data type is interesting
+    if (token.idx[0]>=0) {
       while (!placed) {
         leafPosToken=tokens[leafPos];
         if (leafPosToken<token) {
           nextLeafPosPointer=&sort[leafPos].upper;
-        } else {
+        } else if (token<leafPosToken) {
           nextLeafPosPointer=&sort[leafPos].lower;
+        } else {
+          first[i]=leafPos;
+          return;
         }
         nextLeafPos=*nextLeafPosPointer;
         if (nextLeafPos==-1) { // Try to plant leaf here
@@ -67,6 +70,9 @@ __global__ void assign_excl_grow_tree_kernel(int tokenCount,struct ExclPotential
           leafPos=nextLeafPos;
         }
       }
+      first[i]=i;
+    } else {
+      first[i]=-1;
     }
   }
 }
@@ -129,7 +135,7 @@ __global__ void assign_excl_count_tree_kernel(int tokenCount,struct ExclPotentia
 }
 
 // MODIFIED from assign_blocks_localToGlobal_kernel
-__global__ void assign_excl_sortedExcls_kernel(int exclCount,int rootPos,struct DomdecBlockSort *sort,struct ExclPotential *localExcls,struct ExclPotential *sortedExcls)
+__global__ void assign_excl_sortedExcls_kernel(int exclCount,int rootPos,struct DomdecBlockSort *sort,struct ExclPotential *localExcls,struct ExclPotential *sortedExcls,int *map)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int leafPos=rootPos;
@@ -152,44 +158,59 @@ __global__ void assign_excl_sortedExcls_kernel(int exclCount,int rootPos,struct 
       }
     }
     sortedExcls[i]=localExcls[leafPos];
+    map[leafPos]=i;
   }
 }
 
-__global__ void assign_excl_blockExcls_kernel(
+// assign_excl_set_blockExcls_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,system->potential->excls_d,globalToLane_d,firstExcl_d,mapExcl_d,blockExcls_d);
+__global__ void assign_excl_set_blockExcls_kernel(int exclCount,struct ExclPotential *excls,int *globalToLane,int *first,int *map,int *blockExcls)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  int ii,jj;
+  struct ExclPotential token;
+  int unsorted, target;
+  int mask;
+
+  if (i<exclCount) {
+    unsorted=first[i];
+    if (unsorted>=0) {
+      target=map[unsorted];
+      token=excls[i];
+      ii=globalToLane[token.idx[0]];
+      jj=globalToLane[token.idx[1]];
+      mask=0xFFFFFFFF-(1<<jj); // all ones except a zero in j's position
+      atomicAnd(&blockExcls[32*target+ii],mask);
+    }
+  }
+}
+
+__global__ void assign_excl_place_blockExcls_kernel(
   int beginBlock,int endBlock,int *blockBounds,
   int maxPartnersPerBlock,int *blockCandidateCount,
   struct DomdecBlockPartners *blockCandidates,
   int exclCount,
 #ifdef USE_TEXTURE
-  cudaTextureObject_t sortedExcls,
+  cudaTextureObject_t sortedExcls
 #else
-  struct ExclPotential *sortedExcls,
+  struct ExclPotential *sortedExcls
 #endif
-  int *blockExclCount,int *blockExcls,int maxBlockExclCount)
+  )
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int iBlock=(i/32)+beginBlock;
   int jBlock;
-  int iBeginAtom=blockBounds[iBlock];
-  int iEndAtom=blockBounds[iBlock+1];
-  int iAtom=(i&31)+iBeginAtom;
-  int jAtom;
-  int hwidth,probePos,probeAtom;
+  int hwidth,probePos,probeBlock;
   int iExclBounds[2];
   int jExclBounds[2];
-  int jBlockAtomBounds[2];
   int b,j,jmax;
-  int exclPos;
-  int mask;
-  int hit;
   int exclAddress;
 
   if (iBlock<endBlock) {
     iExclBounds[0]=0;
     iExclBounds[1]=0;
-    if (iAtom<iEndAtom) {
+    {
       for (b=0; b<2; b++) {
-        // Binary search for this atom
+        // Binary search for this block
 
         int lowerPos=-1;
         int upperPos=exclCount;
@@ -208,11 +229,11 @@ __global__ void assign_excl_blockExcls_kernel(
           probePos=lowerPos+hwidth;
           if (probePos<upperPos) {
 #ifdef USE_TEXTURE
-            probeAtom=tex1Dfetch<int>(sortedExcls,2*probePos);
+            probeBlock=tex1Dfetch<int>(sortedExcls,2*probePos);
 #else
-            probeAtom=sortedExcls[probePos].idx[0];
+            probeBlock=sortedExcls[probePos].idx[0];
 #endif
-            if (probeAtom<iAtom+b) {
+            if (probeBlock<iBlock+b) {
               lowerPos=probePos;
             } else {
               upperPos=probePos;
@@ -223,19 +244,19 @@ __global__ void assign_excl_blockExcls_kernel(
       }
     }
 
+    if (iExclBounds[0]==iExclBounds[1]) return; // no exclusions for this block
+
     jmax=blockCandidateCount[(i/32)];
 
-    for (j=0; j<jmax;j++) {
-      mask=0xFFFFFFFF;
+    for (j=(i&31); j<jmax; j+=32) {
 
       jBlock=blockCandidates[maxPartnersPerBlock*(i/32)+j].jBlock;
       jExclBounds[0]=0;
       jExclBounds[1]=0;
-      if (iAtom<iEndAtom) {
-        for (b=0; b<2; b++) {
-          jBlockAtomBounds[b]=blockBounds[jBlock+b];
+      {
+        for (b=0; b<1; b++) { // only need to get lower bound and see if it matches so b=0 is only pass
 
-          // Binary search for this atom
+          // Binary search for this block
 
           int lowerPos=iExclBounds[0]-1;
           int upperPos=iExclBounds[1];
@@ -254,11 +275,11 @@ __global__ void assign_excl_blockExcls_kernel(
             probePos=lowerPos+hwidth;
             if (probePos<upperPos) {
 #ifdef USE_TEXTURE
-              probeAtom=tex1Dfetch<int>(sortedExcls,2*probePos+1);
+              probeBlock=tex1Dfetch<int>(sortedExcls,2*probePos+1);
 #else
-              probeAtom=sortedExcls[probePos].idx[1];
+              probeBlock=sortedExcls[probePos].idx[1];
 #endif
-              if (probeAtom<jBlockAtomBounds[b]) {
+              if (probeBlock<jBlock+b) {
                 lowerPos=probePos;
               } else {
                 upperPos=probePos;
@@ -267,47 +288,23 @@ __global__ void assign_excl_blockExcls_kernel(
           }
           jExclBounds[b]=upperPos;
         }
-
-        for (exclPos=jExclBounds[0]; exclPos<jExclBounds[1]; exclPos++) {
-#ifdef USE_TEXTURE
-          jAtom=tex1Dfetch<int>(sortedExcls,2*exclPos+1);
-#else
-          jAtom=sortedExcls[exclPos].idx[1];
-#endif
-          mask^=(1<<(jAtom-jBlockAtomBounds[0]));
-        }
       }
 
-      // See if any atoms got hit after that mess of binary searches.
-      hit=(mask!=0xFFFFFFFF);
-      // Need to put shfl before ||, otherwise short circuit || prevents some shfls from calling which has undefined results.
-      // hit=(__shfl_xor_sync(0xFFFFFFFF,hit,1) || hit);
-      // hit=(__shfl_xor_sync(0xFFFFFFFF,hit,2) || hit);
-      // hit=(__shfl_xor_sync(0xFFFFFFFF,hit,4) || hit);
-      // hit=(__shfl_xor_sync(0xFFFFFFFF,hit,8) || hit);
-      // hit=(__shfl_xor_sync(0xFFFFFFFF,hit,16) || hit);
-      hit=__any_sync(0xFFFFFFFF,hit);
-
-      // If so, try to save exclusions
-      if (hit) {
-        if ((i&31)==0) {
-          // Get an address first
-          exclAddress=atomicInc((unsigned int*)blockExclCount,0xFFFFFFFF); // 0xFFFFFFFF increment regardless
+#ifdef USE_TEXTURE
+      probeBlock=tex1Dfetch<int>(sortedExcls,2*jExclBounds[0]+1);
+#else
+      probeBlock=sortedExcls[jExclBounds[0]].idx[1];
+#endif
+      // This requires iExclBounds[0]==iExclBounds[1] return earlier to prevent an error here, otherwise you might get a jBlock match without an iBlock match
+      if (probeBlock==jBlock) {
+#ifdef USE_TEXTURE
+        probeBlock=tex1Dfetch<int>(sortedExcls,2*jExclBounds[0]);
+#else
+        probeBlock=sortedExcls[jExclBounds[0]].idx[0];
+#endif
+        if (probeBlock==iBlock) { // double check - small errors in energy if we don't
+          exclAddress=jExclBounds[0];
           blockCandidates[maxPartnersPerBlock*(i/32)+j].exclAddress=exclAddress;
-        }
-        exclAddress=__shfl_sync(0xFFFFFFFF,exclAddress,0);
-        /* // Transpose the mask
-        int maskT=0xFFFFFFFF;
-        for (b=0; b<32; b++) {
-          int masktmp=__ballot_sync(0xFFFFFFFF,mask&(1<<b));
-          if ((i&31)==b) maskT=masktmp;
-        }
-        mask=maskT; */
-        if (exclAddress < maxBlockExclCount) {
-          blockExcls[32*exclAddress+(i&31)]=mask;
-        } else if (exclAddress==maxBlockExclCount && (i&31)==0) {
-// #warning "This printf adds registers to the kernel, but on 2080 TI does not affect occupancy or execution time."
-          printf("Error: Overflow of maxBlockExclCount. Use \"run setvariable domdecheuristic off\"\n");
         }
       }
     }
@@ -323,51 +320,45 @@ void Domdec::setup_exclusions(System *system)
   if (id>=0) {
     // Create localExcls_d (the sort tokens)
 
-    global_to_local_excl_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,system->potential->excls_d,globalToLocal_d,id,domain_d,localExcls_d);
+    global_to_local_excl_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,system->potential->excls_d,globalToBlock_d,id,domain_d,localExcls_d);
 
     // Create exclSort (the sort tree)
     cudaMemsetAsync(exclSort_d,-1,(system->potential->exclCount+1)*sizeof(struct DomdecBlockSort),r->updateStream);
 
-    assign_excl_grow_tree_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,localExcls_d,exclSort_d);
+    assign_excl_grow_tree_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,localExcls_d,exclSort_d,firstExcl_d);
     assign_excl_count_tree_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,localExcls_d,exclSort_d);
 
     // Copy back the sortedExclCount
-
     cudaMemcpyAsync(&sortedExclCount,&exclSort_d[system->potential->exclCount].upperCount,sizeof(int),cudaMemcpyDeviceToHost,r->updateStream);
+
+    // If there are too many, make more space
+    if (sortedExclCount>maxBlockExclCount) {
+      maxBlockExclCount=sortedExclCount+64; // add 64 for a little padding
+      if (blockExcls_d) cudaFree(blockExcls_d);
+      cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int));
+    }
 
     // Create sortedExcl_d (self explanatory, enables binary search for exclusions)
 
-    assign_excl_sortedExcls_kernel<<<(sortedExclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(sortedExclCount,system->potential->exclCount,exclSort_d,localExcls_d,sortedExcls_d);
+    assign_excl_sortedExcls_kernel<<<(sortedExclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(sortedExclCount,system->potential->exclCount,exclSort_d,localExcls_d,sortedExcls_d,mapExcl_d);
+
+    // Reset blockExcls_d
+    cudaMemsetAsync(blockExcls_d,-1,32*sortedExclCount*sizeof(int),r->updateStream);
+
+    // Set blockExcls
+    assign_excl_set_blockExcls_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,system->potential->excls_d,globalToLane_d,firstExcl_d,mapExcl_d,blockExcls_d);
 
     // Use binary search to identify exclusions and load them into the candidate structure
 
-    for (int twiceIfNeeded=0; twiceIfNeeded<2; twiceIfNeeded++) {
-
-      cudaMemsetAsync(blockExclCount_d,0,sizeof(int),r->updateStream);
-      int beginBlock=blockCount[id];
-      int endBlock=blockCount[id+1];
-      int localBlockCount=endBlock-beginBlock;
-      assign_excl_blockExcls_kernel<<<(32*localBlockCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(beginBlock,endBlock,blockBounds_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,sortedExclCount,
+    int beginBlock=blockCount[id];
+    int endBlock=blockCount[id+1];
+    int localBlockCount=endBlock-beginBlock;
+    assign_excl_place_blockExcls_kernel<<<(32*localBlockCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(beginBlock,endBlock,blockBounds_d,maxPartnersPerBlock,blockCandidateCount_d,blockCandidates_d,sortedExclCount,
 #ifdef USE_TEXTURE
-        sortedExcls_tex,
+      sortedExcls_tex
 #else
-        sortedExcls_d,
+      sortedExcls_d
 #endif
-        blockExclCount_d,blockExcls_d,maxBlockExclCount);
-
-      if (system->run->domdecHeuristic) {
-        break;
-      }
-      int blockExclCount;
-      cudaMemcpy(&blockExclCount,blockExclCount_d,sizeof(int),cudaMemcpyDeviceToHost);
-      if (blockExclCount > maxBlockExclCount) {
-        cudaFree(blockExcls_d);
-        printlog("Note: Updated maxBlockExclCount from %d to %d\n",maxBlockExclCount,blockExclCount+64);
-        maxBlockExclCount=blockExclCount+64;
-        cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int));
-      } else {
-        break;
-      }
-    }
+      );
   }
 }
