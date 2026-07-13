@@ -1,0 +1,49 @@
+variables set dir prep
+variables set box 93
+
+! Base CHARMM parameters
+parameters file prep/toppar/par_all36_prot.prm
+parameters file prep/toppar/par_all36_cgenff.prm
+parameters file prep/toppar/par_water_ions.prm
+! Ligand parameters
+parameters file prep/mol1.prm
+parameters file prep/mol2.prm
+
+structure file psf {dir}/minimized.psf
+coordinates file crd {dir}/minimized.crd
+coordinates velocity {temp}
+
+coordinates box cubi {box} {box} {box} 90 90 90
+
+! Alchemical Selections/setup
+variables set lams1s1  0.00
+variables set lams1s2  0.00
+
+variables set nnodes 1
+variables set nreps 1
+variables set ncentral 0
+variables set nblocks 2
+variables set nsites 1
+variables set nsubs1 2
+
+selection define site1sub1 resname MOL1
+selection define site1sub2 resname MOL2
+selection define site1suball segid HETA
+selection print
+
+variables set mass 7.5
+stream {dir}/blocksetup.inp
+
+! Boresch Restraints
+variables set boresch_site 1
+variables set curr_block 1 ! Update if not first site
+stream {dir}/boresch/restrain_loop.inp
+
+! Set new implicit constraint (needs to be after block setup)
+msld gamma 10.0
+msld piecewise true
+msld well_width .25
+msld well_k 59.2
+
+! non-bonded options
+stream {dir}/nbond.str

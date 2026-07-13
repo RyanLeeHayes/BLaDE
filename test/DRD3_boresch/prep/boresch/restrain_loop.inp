@@ -1,0 +1,80 @@
+
+variables set b 1
+variables calculate next_site int + {curr_block} {nsubs{boresch_site}}
+while < {curr_block} {next_site}
+  variables set lig {curr_block}
+  ! Atom assignments and constants
+  stream {dir}/boresch/boresch_variables{curr_block}.str
+
+  ! Overall U - U*lambda = U*(1-lambda)
+  ! Add terms for U
+  ! Bond 
+  selection define a1 atom {ligsegid} {lig} {l1name}
+  selection define a2 atom {protsegid} {p1resnum} {p1name}
+  structure boRest a1 a2 {distancek} {distance} 0 ! Place in environment block
+  ! Angle 
+  selection define a1 atom {ligsegid} {lig} {l1name}
+  selection define a2 atom {protsegid} {p1resnum} {p1name}
+  selection define a3 atom {protsegid} {p2resnum} {p2name}
+  structure anRest a1 a2 a3 {thetaak} {thetaa} 0
+  ! Angle
+  selection define a1 atom {ligsegid} {lig} {l2name}
+  selection define a2 atom {ligsegid} {lig} {l1name}
+  selection define a3 atom {protsegid} {p1resnum} {p1name}
+  structure anRest a1 a2 a3 {thetabk} {thetab} 0
+  ! Torsion
+  selection define a1 atom {ligsegid} {lig} {l1name}
+  selection define a2 atom {protsegid} {p1resnum} {p1name}
+  selection define a3 atom {protsegid} {p2resnum} {p2name}
+  selection define a4 atom {protsegid} {p3resnum} {p3name}
+  structure diRest a1 a2 a3 a4 {phiak} {phia} 0
+  ! Torsion
+  selection define a1 atom {ligsegid} {lig} {l2name}
+  selection define a2 atom {ligsegid} {lig} {l1name}
+  selection define a3 atom {protsegid} {p1resnum} {p1name}
+  selection define a4 atom {protsegid} {p2resnum} {p2name}
+  structure diRest a1 a2 a3 a4 {phibk} {phib} 0
+  ! Torsion
+  selection define a1 atom {ligsegid} {lig} {l3name}
+  selection define a2 atom {ligsegid} {lig} {l2name}
+  selection define a3 atom {ligsegid} {lig} {l1name}
+  selection define a4 atom {protsegid} {p1resnum} {p1name}
+  structure diRest a1 a2 a3 a4 {phick} {phic} 0
+  
+
+  ! Add terms for -U*lambda (note block and -'ve k constant)
+  ! Bond 
+  selection define a1 atom {ligsegid} {lig} {l1name}
+  selection define a2 atom {protsegid} {p1resnum} {p1name}
+  structure boRest a1 a2 -{distancek} {distance} {curr_block}
+  ! Angle 
+  selection define a1 atom {ligsegid} {lig} {l1name}
+  selection define a2 atom {protsegid} {p1resnum} {p1name}
+  selection define a3 atom {protsegid} {p2resnum} {p2name}
+  structure anRest a1 a2 a3 -{thetaak} {thetaa} {curr_block}
+  ! Angle
+  selection define a1 atom {ligsegid} {lig} {l2name}
+  selection define a2 atom {ligsegid} {lig} {l1name}
+  selection define a3 atom {protsegid} {p1resnum} {p1name}
+  structure anRest a1 a2 a3 -{thetabk} {thetab} {curr_block}
+  ! Torsion
+  selection define a1 atom {ligsegid} {lig} {l1name}
+  selection define a2 atom {protsegid} {p1resnum} {p1name}
+  selection define a3 atom {protsegid} {p2resnum} {p2name}
+  selection define a4 atom {protsegid} {p3resnum} {p3name}
+  structure diRest a1 a2 a3 a4 -{phiak} {phia} {curr_block}
+  ! Torsion
+  selection define a1 atom {ligsegid} {lig} {l2name}
+  selection define a2 atom {ligsegid} {lig} {l1name}
+  selection define a3 atom {protsegid} {p1resnum} {p1name}
+  selection define a4 atom {protsegid} {p2resnum} {p2name}
+  structure diRest a1 a2 a3 a4 -{phibk} {phib} {curr_block}
+  ! Torsion
+  selection define a1 atom {ligsegid} {lig} {l3name}
+  selection define a2 atom {ligsegid} {lig} {l2name}
+  selection define a3 atom {ligsegid} {lig} {l1name}
+  selection define a4 atom {protsegid} {p1resnum} {p1name}
+  structure diRest a1 a2 a3 a4 -{phick} {phic} {curr_block}
+   
+  variables calculate curr_block int + {curr_block} 1 
+endwhile
