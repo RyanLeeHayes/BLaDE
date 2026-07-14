@@ -232,9 +232,19 @@ System* init_system(int ngpus,int *gpus)
   int idCount=omp_get_max_threads(); // omp_get_num_threads();
   void **message; // OMP
 
-  int available;
-  int notAvailable=cudaGetDeviceCount(&available);
-  if (notAvailable==1) fatal(__FILE__,__LINE__,"No GPUs available\n");
+  // available must be initialized: cudaGetDeviceCount does NOT write it on
+  // the error path, so on failure it would otherwise report stack garbage.
+  int available=0;
+  cudaError_t notAvailable=cudaGetDeviceCount(&available);
+  // Any non-success code means we have no usable GPU. The old test
+  // (notAvailable==1) only caught cudaErrorInvalidValue and silently fell
+  // through on everything else (e.g. cudaErrorUnknown 999 when the node's
+  // nvidia_uvm module is not loaded), printing the garbage count above.
+  if (notAvailable!=cudaSuccess) {
+    fatal(__FILE__,__LINE__,
+      "cudaGetDeviceCount failed: %s (error %d); no usable GPU on this node\n",
+      cudaGetErrorString(notAvailable),(int)notAvailable);
+  }
   if (available<omp_get_max_threads()) {
     fatal(__FILE__, __LINE__,
       "Running with %d omp threads but only %d GPUs\n",

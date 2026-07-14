@@ -283,7 +283,7 @@ __global__ void getforce_angleRestraint_kernel(int anRestCount,struct AnRestPote
     dotp=real3_dot<real>(drij,drkj);
     crop=real3_cross(drij,drkj); // c = a x b
     mcrop=real3_mag<real>(crop);
-    t=atan2f(mcrop,dotp);
+    t=atan2(mcrop,dotp);
 
     // Scaling
     b=ar.block;
@@ -448,7 +448,7 @@ __global__ void getforce_dihedralRestraint_kernel(int diRestCount,DiRestPotentia
     normcross=real3_cross(mvecnorm,nvecnorm);
     sinp=real3_dot<real>(bhatnorm,normcross);
     cosp=real3_dot<real>(mvecnorm,nvecnorm);
-    phi=atan2f(sinp,cosp);
+    phi=atan2(sinp,cosp);
 
     // Interaction
     function_torsion(dr,phi,&fphir,&lEnergy, b || energy);

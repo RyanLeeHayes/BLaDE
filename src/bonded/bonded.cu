@@ -216,7 +216,7 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
     dotp=real3_dot<real>(drij,drkj);
     crop=real3_cross(drij,drkj); // c = a x b
     mcrop=real3_mag<real>(crop);
-    t=atan2f(mcrop,dotp);
+    t=atan2(mcrop,dotp);
 
     // Scaling
     b[0]=0xFFFF & ap.siteBlock[0];
@@ -383,7 +383,7 @@ __global__ void getforce_torsion_kernel(int torsionCount,TorsionPotential *torsi
     dsinp=real3_cross(mvec,nvec);
     sinp=real3_mag<real>(dsinp);
     cosp=real3_dot<real>(mvec,nvec);
-    phi=atan2f(sinp,cosp);
+    phi=atan2(sinp,cosp);
     ipr=real3_dot<real>(drij,nvec);
     sign=(ipr > 0.0) ? -1.0 : 1.0; // Opposite of gromacs because m and n are opposite
     phi=sign*phi;
@@ -570,7 +570,7 @@ __global__ void getforce_cmap_kernel(int cmapCount,struct CmapPotential *cmaps,r
     dsinp=real3_cross(mvec,nvec);
     sinp=real3_mag<real>(dsinp);
     cosp=real3_dot<real>(mvec,nvec);
-    phi=atan2f(sinp,cosp);
+    phi=atan2(sinp,cosp);
     ipr=real3_dot<real>(drij,nvec);
     sign=(ipr > 0.0) ? -1.0 : 1.0; // Opposite of gromacs because m and n are opposite
     phi=sign*phi;

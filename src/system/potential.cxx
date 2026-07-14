@@ -5,6 +5,7 @@
 #include "system/potential.h"
 #include "system/system.h"
 #include "io/io.h"
+#include "main/gpu_check.h"
 #include "system/parameters.h"
 #include "system/structure.h"
 #include "msld/msld.h"
@@ -95,6 +96,8 @@ Potential::Potential() {
   excls=NULL;
   excls_d=NULL;
 
+  bGridPME=NULL;
+  bGridPME_d=NULL;
   chargeGridPME_d=NULL;
   fourierGridPME_d=NULL;
   potentialGridPME_d=NULL;
@@ -215,6 +218,8 @@ Potential::~Potential()
   if (excls) free(excls);
   if (excls_d) cudaFree(excls_d);
 
+  if (bGridPME) free(bGridPME);
+  if (bGridPME_d) cudaFree(bGridPME_d);
   if (chargeGridPME_d) cudaFree(chargeGridPME_d);
   if (fourierGridPME_d) cudaFree(fourierGridPME_d);
   if (potentialGridPME_d) cudaFree(potentialGridPME_d);
@@ -1215,9 +1220,9 @@ void Potential::initialize(System *system)
     }
   }
 
-  cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal));
-  cudaMalloc(&fourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(myCufftComplex));
-  cudaMalloc(&potentialGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal));
+  gpuCheck(cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
+  gpuCheck(cudaMalloc(&fourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(myCufftComplex)));
+  gpuCheck(cudaMalloc(&potentialGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
 #ifdef USE_TEXTURE
   {
     cudaResourceDesc resDesc;
@@ -1234,7 +1239,7 @@ void Potential::initialize(System *system)
 #endif
 
   bGridPME=(real*)calloc(gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1),sizeof(real));
-  cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real));
+  gpuCheck(cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real)));
   int order=system->run->orderEwald;
   // Only have to support orders 4, 6, and 8
   real Meven[9]={0,1,0,0,0,0,0,0,0};
