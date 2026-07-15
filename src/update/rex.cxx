@@ -8,6 +8,7 @@
 
 #ifdef REPLICAEXCHANGE
 #include <mpi.h>
+#include "main/gpu_check.h"
 
 
 
@@ -50,8 +51,8 @@ void replica_exchange(System *system)
       // Swap systems
       // Both positions
       n=2*s->lambdaCount+3*s->atomCount;
-      cudaMemcpy(s->positionRExBuffer,s->positionBuffer_d,
-        n*sizeof(real_x),cudaMemcpyDeviceToHost);
+      gpuCheck(cudaMemcpy(s->positionRExBuffer,s->positionBuffer_d,
+        n*sizeof(real_x),cudaMemcpyDeviceToHost));
       MPI_Sendrecv(s->positionRExBuffer,n,MYMPI_REAL_X,rankPartner,10,
         s->positionBuffer,n,MYMPI_REAL_X,rankPartner,10,
         MPI_COMM_WORLD,MPI_STATUS_IGNORE);
@@ -59,8 +60,8 @@ void replica_exchange(System *system)
       MPI_Sendrecv((real_x*)&s->boxBackup,6,MYMPI_REAL_X,rankPartner,11,
         (real_x*)&s->box,6,MYMPI_REAL_X,rankPartner,11,
         MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-      cudaMemcpy(s->positionBuffer_d,s->positionBuffer,
-        n*sizeof(real_x),cudaMemcpyHostToDevice);
+      gpuCheck(cudaMemcpy(s->positionBuffer_d,s->positionBuffer,
+        n*sizeof(real_x),cudaMemcpyHostToDevice));
     }
     // update_domdec calls broadcast_position
     // Call broadcast_box to set orthBox_f, even if only one node
@@ -97,13 +98,13 @@ void replica_exchange(System *system)
         r->replica=newReplica;
         // Swap velocities
         n=s->lambdaCount+3*s->atomCount;
-        cudaMemcpy(s->positionRExBuffer,s->velocityBuffer_d,
-          n*sizeof(real_v),cudaMemcpyDeviceToHost);
+        gpuCheck(cudaMemcpy(s->positionRExBuffer,s->velocityBuffer_d,
+          n*sizeof(real_v),cudaMemcpyDeviceToHost));
         MPI_Sendrecv(s->positionRExBuffer,n,MYMPI_REAL_V,rankPartner,15,
           s->velocityBuffer,n,MYMPI_REAL_V,rankPartner,15,
           MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        cudaMemcpy(s->velocityBuffer_d,s->velocityBuffer,
-          n*sizeof(real_v),cudaMemcpyHostToDevice);
+        gpuCheck(cudaMemcpy(s->velocityBuffer_d,s->velocityBuffer,
+          n*sizeof(real_v),cudaMemcpyHostToDevice));
       } else {
         // maintain replica indices
         printlog("Step %d , Rank %d , Replica %d, dW %f, Reject\n",r->step,rank,r->replica,dW);

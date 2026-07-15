@@ -8,6 +8,7 @@
 #include "rng/rng_cpu.h"
 #include "holonomic/rectify.h"
 #include "io/io.h"
+#include "main/gpu_check.h"
 
 
 
@@ -94,6 +95,7 @@ void scale_box(System *system,real3_x scaleFactor)
 
   int N=system->state->atomCount;
   scale_box_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N,scaleFactor,(real3_x*)system->state->position_d);
+  gpuCheck(cudaGetLastError());
 
   // Nudge the system to remain centered on absolute harmonic restraints
   if (system->potential->harmCount) {
@@ -102,6 +104,7 @@ void scale_box(System *system,real3_x scaleFactor)
     shift.y=(1-scaleFactor.y)*system->potential->harmCenter.y;
     shift.z=(1-scaleFactor.z)*system->potential->harmCenter.z;
     shift_box_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N,shift,(real3_x*)system->state->position_d);
+    gpuCheck(cudaGetLastError());
   }
 
   // There might be better ways to rectify holonomic constraints after volume update, I just want to avoid having bonds change direction, which will mess with the velocities"

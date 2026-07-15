@@ -5,6 +5,7 @@
 #include "system/state.h"
 
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 
 
@@ -171,15 +172,19 @@ void holonomic_rectifyT(System *system,box_type box)
 
   N=p->triangleConsCount;
   if (N) holonomic_rectify_triangle_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->triangleCons_d,s->leapState[0],box);
+  gpuCheck(cudaGetLastError());
 
   N=p->branch1ConsCount;
   if (N) holonomic_rectify_branch1_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch1Cons_d,s->leapState[0],box);
+  gpuCheck(cudaGetLastError());
 
   N=p->branch2ConsCount;
   if (N) holonomic_rectify_branch2_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch2Cons_d,s->leapState[0],box);
+  gpuCheck(cudaGetLastError());
 
   N=p->branch3ConsCount;
   if (N) holonomic_rectify_branch3_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch3Cons_d,s->leapState[0],box);
+  gpuCheck(cudaGetLastError());
 }
 
 void holonomic_rectify(System *system)
@@ -289,15 +294,19 @@ void holonomic_rectifybackT(System *system,box_type box,box_type boxBackup)
 
   N=p->triangleConsCount;
   if (N) holonomic_rectifyback_triangle_kernel<flagBox,box_type><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->triangleCons_d,(real3_x*)s->position_d,box,(real3_x*)s->positionb_d,boxBackup);
+  gpuCheck(cudaGetLastError());
 
   N=p->branch1ConsCount;
   if (N) holonomic_rectifyback_branch1_kernel<flagBox,box_type><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch1Cons_d,(real3_x*)s->position_d,box,(real3_x*)s->positionb_d,boxBackup);
+  gpuCheck(cudaGetLastError());
 
   N=p->branch2ConsCount;
   if (N) holonomic_rectifyback_branch2_kernel<flagBox,box_type><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch2Cons_d,(real3_x*)s->position_d,box,(real3_x*)s->positionb_d,boxBackup);
+  gpuCheck(cudaGetLastError());
 
   N=p->branch3ConsCount;
   if (N) holonomic_rectifyback_branch3_kernel<flagBox,box_type><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch3Cons_d,(real3_x*)s->position_d,box,(real3_x*)s->positionb_d,boxBackup);
+  gpuCheck(cudaGetLastError());
 }
 
 void holonomic_rectifyback(System *system)

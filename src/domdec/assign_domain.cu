@@ -6,6 +6,7 @@
 #include "run/run.h"
 #include "main/defines.h"
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 
 
@@ -49,7 +50,7 @@ void Domdec::broadcast_domain(System *system)
 #pragma omp barrier
   if (system->id!=0) {
     // cudaMemcpyPeer(domain_d,system->id,domain_omp,0,N*sizeof(int));
-    cudaMemcpy(domain_d,domain_omp,N*sizeof(int),cudaMemcpyDefault);
+    gpuCheck(cudaMemcpy(domain_d,domain_omp,N*sizeof(int),cudaMemcpyDefault));
   }
 #pragma omp barrier
 }
@@ -61,6 +62,7 @@ void assign_domainT(System *system,box_type box)
   Domdec *d=system->domdec;
   if (system->id==0) {
     assign_domain_kernel<flagBox><<<(system->state->atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(system->state->atomCount,(real3_x*)system->state->position_d,box,d->gridDomdec,d->domain_d);
+    gpuCheck(cudaGetLastError());
   }
 
   if (system->idCount!=1) {

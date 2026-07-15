@@ -111,15 +111,16 @@ void RngGPU::rand_uniform(int n,real *p,cudaStream_t s)
 #include <curand_mtgp32dc_p_11213.h>
 
 #include "rng/rng_gpu.h"
+#include "main/gpu_check.h"
 
 void RngGPU::setup()
 {
   long long seed=time(NULL);
 
   // 200 is limit, each of the 200 states can have up to 256 threads
-  cudaMalloc((void**)&devStates, 200*sizeof(curandStateMtgp32_t));
+  gpuCheck(cudaMalloc((void**)&devStates, 200*sizeof(curandStateMtgp32_t)));
   /* Allocate space for MTGP kernel parameters */
-  cudaMalloc((void**)&devParams, sizeof(mtgp32_kernel_params_t));
+  gpuCheck(cudaMalloc((void**)&devParams, sizeof(mtgp32_kernel_params_t)));
   
   /* Reformat from predefined parameter sets to kernel format, */
   /* and copy kernel parameters to device memory               */
@@ -153,6 +154,7 @@ void RngGPU::rand_normal(int n,real *p,cudaStream_t s)
   int nblocks=(n+256-1)/256;
   nblocks=(nblocks>200)?200:nblocks;
   kernel_normal<<<nblocks,256,0,s>>>(devStates,n,p);
+  gpuCheck(cudaGetLastError());
 }
 
 // Generate n random numbers in the pointer p
@@ -161,6 +163,7 @@ void RngGPU::rand_uniform(int n,real *p,cudaStream_t s)
   int nblocks=(n+256-1)/256;
   nblocks=(nblocks>200)?200:nblocks;
   kernel_uniform<<<nblocks,256,0,s>>>(devStates,n,p);
+  gpuCheck(cudaGetLastError());
 }
 
 #endif

@@ -8,6 +8,7 @@
 #include "domdec/domdec.h"
 #include "main/defines.h"
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 
 
@@ -519,6 +520,7 @@ void getforce_nbdirectTTTTT(System *system,box_type box)
     p->vdwParameters_d,
 #endif
     system->domdec->blockExcls_d,system->run->cutoffs,d->localPosition_d,d->localForce_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  gpuCheck(cudaGetLastError());
 
   system->domdec->unpack_forces(system);
 }
@@ -600,9 +602,11 @@ void getforce_nbdirect_reduce(System *system,bool calcEnergy)
   int N=3*s->atomCount+2*s->lambdaCount;
 
   getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(N,system->idCount,s->forceBuffer_d);
+  gpuCheck(cudaGetLastError());
 
   if (calcEnergy) {
     N=eeend;
     getforce_nbdirect_reduce_kernel<<<(N+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(N,system->idCount,s->energy_d);
+    gpuCheck(cudaGetLastError());
   }
 }

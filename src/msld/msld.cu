@@ -12,6 +12,7 @@
 #include "run/run.h"
 
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 
 
@@ -110,33 +111,33 @@ Msld::~Msld() {
   if (nThetaCollBias) free(nThetaCollBias);
   if (kThetaIndeBias) free(kThetaIndeBias);
 
-  if (atomBlock_d) cudaFree(atomBlock_d);
-  if (lambdaSite_d) cudaFree(lambdaSite_d);
-  if (lambdaBias_d) cudaFree(lambdaBias_d);
-  if (lambdaCharge_d) cudaFree(lambdaCharge_d);
-  if (netCharge_d) cudaFree(netCharge_d);
-  if (variableBias_d) cudaFree(variableBias_d);
-  if (kThetaCollBias_d) cudaFree(kThetaCollBias_d);
-  if (nThetaCollBias_d) cudaFree(nThetaCollBias_d);
-  if (kThetaIndeBias_d) cudaFree(kThetaIndeBias_d);
+  if (atomBlock_d) gpuCheck(cudaFree(atomBlock_d));
+  if (lambdaSite_d) gpuCheck(cudaFree(lambdaSite_d));
+  if (lambdaBias_d) gpuCheck(cudaFree(lambdaBias_d));
+  if (lambdaCharge_d) gpuCheck(cudaFree(lambdaCharge_d));
+  if (netCharge_d) gpuCheck(cudaFree(netCharge_d));
+  if (variableBias_d) gpuCheck(cudaFree(variableBias_d));
+  if (kThetaCollBias_d) gpuCheck(cudaFree(kThetaCollBias_d));
+  if (nThetaCollBias_d) gpuCheck(cudaFree(nThetaCollBias_d));
+  if (kThetaIndeBias_d) gpuCheck(cudaFree(kThetaIndeBias_d));
 
-  if (theta0_d) cudaFree(theta0_d);
-  if (dcdt_d) cudaFree(dcdt_d);
-  if (blockFixed_d) cudaFree(blockFixed_d);
+  if (theta0_d) gpuCheck(cudaFree(theta0_d));
+  if (dcdt_d) gpuCheck(cudaFree(dcdt_d));
+  if (blockFixed_d) gpuCheck(cudaFree(blockFixed_d));
 
   if (blocksPerSite) free(blocksPerSite);
-  if (blocksPerSite_d) cudaFree(blocksPerSite_d);
+  if (blocksPerSite_d) gpuCheck(cudaFree(blocksPerSite_d));
   if (siteBound) free(siteBound);
-  if (siteBound_d) cudaFree(siteBound_d);
+  if (siteBound_d) gpuCheck(cudaFree(siteBound_d));
 
   if (atomsByBlock) delete [] atomsByBlock;
 
   if (rest) free(rest);
 
   if (atomRestraintBounds) free(atomRestraintBounds);
-  if (atomRestraintBounds_d) cudaFree(atomRestraintBounds_d);
+  if (atomRestraintBounds_d) gpuCheck(cudaFree(atomRestraintBounds_d));
   if (atomRestraintIdx) free(atomRestraintIdx);
-  if (atomRestraintIdx_d) cudaFree(atomRestraintIdx_d);
+  if (atomRestraintIdx_d) gpuCheck(cudaFree(atomRestraintIdx_d));
 }
 
 
@@ -181,11 +182,11 @@ void parse_msld(char *line,System *system)
       system->msld->blockFixed[i]=false;
     }
 
-    cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
-    cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
-    cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
-    cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real));
-    cudaMalloc(&(system->msld->netCharge_d),sizeof(real));
+    gpuCheck(cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int)));
+    gpuCheck(cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int)));
+    gpuCheck(cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real)));
+    gpuCheck(cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real)));
+    gpuCheck(cudaMalloc(&(system->msld->netCharge_d),sizeof(real)));
 
     // NYI - this would be a lot easier to read if these were split in to parsing functions.
     printlog("NYI - Initialize all blocks in first site %s:%d\n",__FILE__,__LINE__);
@@ -688,26 +689,26 @@ void Msld::initialize(System *system)
   }
 
   // Send the biases over
-  cudaMemcpy(atomBlock_d,atomBlock,system->structure->atomCount*sizeof(int),cudaMemcpyHostToDevice);
-  cudaMemcpy(lambdaBias_d,lambdaBias,blockCount*sizeof(real),cudaMemcpyHostToDevice);
-  cudaMemcpy(lambdaCharge_d,lambdaCharge,blockCount*sizeof(real),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(atomBlock_d,atomBlock,system->structure->atomCount*sizeof(int),cudaMemcpyHostToDevice));
+  gpuCheck(cudaMemcpy(lambdaBias_d,lambdaBias,blockCount*sizeof(real),cudaMemcpyHostToDevice));
+  gpuCheck(cudaMemcpy(lambdaCharge_d,lambdaCharge,blockCount*sizeof(real),cudaMemcpyHostToDevice));
   variableBiasCount=variableBias_tmp.size();
   variableBias=(struct VariableBias*)calloc(variableBiasCount,sizeof(struct VariableBias));
-  cudaMalloc(&variableBias_d,variableBiasCount*sizeof(struct VariableBias));
+  gpuCheck(cudaMalloc(&variableBias_d,variableBiasCount*sizeof(struct VariableBias)));
   for (i=0; i<variableBiasCount; i++) {
     variableBias[i]=variableBias_tmp[i];
   }
-  cudaMemcpy(variableBias_d,variableBias,variableBiasCount*sizeof(struct VariableBias),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(variableBias_d,variableBias,variableBiasCount*sizeof(struct VariableBias),cudaMemcpyHostToDevice));
 
   if (thetaCollBiasCount>0) {
-    cudaMalloc(&kThetaCollBias_d,thetaCollBiasCount*sizeof(real));
-    cudaMemcpy(kThetaCollBias_d,kThetaCollBias,thetaCollBiasCount*sizeof(real),cudaMemcpyHostToDevice);
-    cudaMalloc(&nThetaCollBias_d,thetaCollBiasCount*sizeof(real));
-    cudaMemcpy(nThetaCollBias_d,nThetaCollBias,thetaCollBiasCount*sizeof(real),cudaMemcpyHostToDevice);
+    gpuCheck(cudaMalloc(&kThetaCollBias_d,thetaCollBiasCount*sizeof(real)));
+    gpuCheck(cudaMemcpy(kThetaCollBias_d,kThetaCollBias,thetaCollBiasCount*sizeof(real),cudaMemcpyHostToDevice));
+    gpuCheck(cudaMalloc(&nThetaCollBias_d,thetaCollBiasCount*sizeof(real)));
+    gpuCheck(cudaMemcpy(nThetaCollBias_d,nThetaCollBias,thetaCollBiasCount*sizeof(real),cudaMemcpyHostToDevice));
   }
   if (thetaIndeBiasCount>0) {
-    cudaMalloc(&kThetaIndeBias_d,thetaIndeBiasCount*sizeof(real));
-    cudaMemcpy(kThetaIndeBias_d,kThetaIndeBias,thetaIndeBiasCount*sizeof(real),cudaMemcpyHostToDevice);
+    gpuCheck(cudaMalloc(&kThetaIndeBias_d,thetaIndeBiasCount*sizeof(real)));
+    gpuCheck(cudaMemcpy(kThetaIndeBias_d,kThetaIndeBias,thetaIndeBiasCount*sizeof(real),cudaMemcpyHostToDevice));
   }
 
   // Get blocksPerSite
@@ -720,8 +721,8 @@ void Msld::initialize(System *system)
   }
   blocksPerSite=(int*)calloc(siteCount,sizeof(int));
   siteBound=(int*)calloc(siteCount+1,sizeof(int));
-  cudaMalloc(&blocksPerSite_d,siteCount*sizeof(int));
-  cudaMalloc(&siteBound_d,(siteCount+1)*sizeof(int));
+  gpuCheck(cudaMalloc(&blocksPerSite_d,siteCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&siteBound_d,(siteCount+1)*sizeof(int)));
   for (i=0; i<blockCount; i++) {
     blocksPerSite[lambdaSite[i]]++;
   }
@@ -731,17 +732,17 @@ void Msld::initialize(System *system)
     if (i && blocksPerSite[i]<2 && !(blocksPerSite[i]==1 && blockFixed && blockFixed[siteBound[i]])) fatal(__FILE__,__LINE__,"At least two blocks are required in each site (unless single block is fixed). %d found at site %d\n",blocksPerSite[i],i);
     siteBound[i+1]=siteBound[i]+blocksPerSite[i];
   }
-  cudaMemcpy(blocksPerSite_d,blocksPerSite,siteCount*sizeof(int),cudaMemcpyHostToDevice);
-  cudaMemcpy(siteBound_d,siteBound,(siteCount+1)*sizeof(int),cudaMemcpyHostToDevice);
-  cudaMemcpy(lambdaSite_d,lambdaSite,blockCount*sizeof(int),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(blocksPerSite_d,blocksPerSite,siteCount*sizeof(int),cudaMemcpyHostToDevice));
+  gpuCheck(cudaMemcpy(siteBound_d,siteBound,(siteCount+1)*sizeof(int),cudaMemcpyHostToDevice));
+  gpuCheck(cudaMemcpy(lambdaSite_d,lambdaSite,blockCount*sizeof(int),cudaMemcpyHostToDevice));
 
   // New newton constraint
-  cudaMalloc(&theta0_d, siteCount*sizeof(real_x));
-  cudaMalloc(&dcdt_d, blockCount*sizeof(real_f));
+  gpuCheck(cudaMalloc(&theta0_d, siteCount*sizeof(real_x)));
+  gpuCheck(cudaMalloc(&dcdt_d, blockCount*sizeof(real_f)));
 
   // Per-block fixed flags
-  cudaMalloc(&blockFixed_d, blockCount*sizeof(bool));
-  cudaMemcpy(blockFixed_d, blockFixed, blockCount*sizeof(bool), cudaMemcpyHostToDevice);
+  gpuCheck(cudaMalloc(&blockFixed_d, blockCount*sizeof(bool)));
+  gpuCheck(cudaMemcpy(blockFixed_d, blockFixed, blockCount*sizeof(bool), cudaMemcpyHostToDevice));
 
   // Zero mass and velocity for fixed blocks so integrator skips them
   // (isfinite(1/sqrt(0)) == false, so update kernels won't touch these DOFs)
@@ -756,20 +757,20 @@ void Msld::initialize(System *system)
   atomRestraintCount=atomRestraints.size();
   if (atomRestraintCount>0) {
     atomRestraintBounds=(int*)calloc(atomRestraintCount+1,sizeof(int));
-    cudaMalloc(&atomRestraintBounds_d,(atomRestraintCount+1)*sizeof(int));
+    gpuCheck(cudaMalloc(&atomRestraintBounds_d,(atomRestraintCount+1)*sizeof(int)));
     atomRestraintBounds[0]=0;
     for (i=0; i<atomRestraintCount; i++) {
       atomRestraintBounds[i+1]=atomRestraintBounds[i]+atomRestraints[i].size();
     }
     atomRestraintIdx=(int*)calloc(atomRestraintBounds[atomRestraintCount],sizeof(int));
-    cudaMalloc(&atomRestraintIdx_d,atomRestraintBounds[atomRestraintCount]*sizeof(int));
+    gpuCheck(cudaMalloc(&atomRestraintIdx_d,atomRestraintBounds[atomRestraintCount]*sizeof(int)));
     for (i=0; i<atomRestraintCount; i++) {
       for (j=0; j<atomRestraints[i].size(); j++) {
         atomRestraintIdx[atomRestraintBounds[i]+j]=atomRestraints[i][j];
       }
     }
-    cudaMemcpy(atomRestraintBounds_d,atomRestraintBounds,(atomRestraintCount+1)*sizeof(int),cudaMemcpyHostToDevice);
-    cudaMemcpy(atomRestraintIdx_d,atomRestraintIdx,atomRestraintBounds[atomRestraintCount]*sizeof(int),cudaMemcpyHostToDevice);
+    gpuCheck(cudaMemcpy(atomRestraintBounds_d,atomRestraintBounds,(atomRestraintCount+1)*sizeof(int),cudaMemcpyHostToDevice));
+    gpuCheck(cudaMemcpy(atomRestraintIdx_d,atomRestraintIdx,atomRestraintBounds[atomRestraintCount]*sizeof(int),cudaMemcpyHostToDevice));
   }
 
   atomsByBlock=new std::set<int>[blockCount];
@@ -911,8 +912,9 @@ void Msld::calc_lambda_from_theta(cudaStream_t stream,System *system)
     calc_lambda_from_theta_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,0,stream>>>(
       s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex,
       new_implicit, theta0_d, dcdt_d, blockFixed_d);
+    gpuCheck(cudaGetLastError());
   } else {
-    cudaMemcpy(s->theta_d,s->lambda_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice);
+    gpuCheck(cudaMemcpy(s->theta_d,s->lambda_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice));
   }
 }
 
@@ -924,8 +926,9 @@ void Msld::init_lambda_from_theta(cudaStream_t stream,System *system)
       s->lambda_d,s->theta_d,siteCount,siteBound_d,fnex,
       new_implicit, theta0_d, dcdt_d, blockFixed_d
     );
+    gpuCheck(cudaGetLastError());
   } else {
-    cudaMemcpy(s->lambda_d,s->theta_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice);
+    gpuCheck(cudaMemcpy(s->lambda_d,s->theta_d,s->lambdaCount*sizeof(real_x),cudaMemcpyDeviceToDevice));
   }
 }
 
@@ -988,6 +991,7 @@ void Msld::calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system)
       s->lambdaForce_d,s->thetaForce_d,
       blockCount,lambdaSite_d,siteBound_d,fnex,
       new_implicit, theta0_d, dcdt_d, blockFixed_d);
+    gpuCheck(cudaGetLastError());
   }
 }
 
@@ -1030,6 +1034,7 @@ void Msld::getforce_fixedBias(System *system,bool calcEnergy)
   }
 
   getforce_fixedBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_fd,lambdaBias_d,s->lambdaForce_d,pEnergy,blockCount);
+  gpuCheck(cudaGetLastError());
 }
 
 __global__ void getforce_variableBias_kernel(real *lambda,real_f *lambdaForce,real_e *energy,int variableBiasCount,struct VariableBias *variableBias)
@@ -1141,6 +1146,7 @@ void Msld::getforce_variableBias(System *system,bool calcEnergy)
 
   if (variableBiasCount>0) {
     getforce_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
+    gpuCheck(cudaGetLastError());
   }
 }
 
@@ -1289,10 +1295,12 @@ void Msld::getforce_thetaBias(System *system,bool calcEnergy)
 
   if (thetaCollBiasCount!=0) {
     getforce_thetaCollBias_kernel<<<(siteCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->theta_fd,s->thetaForce_d,pEnergy,siteCount,siteBound_d,kThetaCollBias_d,nThetaCollBias_d);
+    gpuCheck(cudaGetLastError());
   }
 
   if (thetaIndeBiasCount!=0) {
     getforce_thetaIndeBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->theta_fd,s->thetaForce_d,pEnergy,blockCount,lambdaSite_d,kThetaIndeBias_d);
+    gpuCheck(cudaGetLastError());
   }
 
   if (new_implicit){
@@ -1301,12 +1309,14 @@ void Msld::getforce_thetaBias(System *system,bool calcEnergy)
       pEnergy,blockCount,
       lambdaSite_d, blocksPerSite_d, 
       well_width, well_k);
+    gpuCheck(cudaGetLastError());
 
     if (abs(system->msld->imp_m) > 1e-4){ // effectively turned off
       getforce_theta_targetBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(
         s->theta_fd,s->thetaForce_d,pEnergy,blockCount,lambdaSite_d,blocksPerSite_d,kB*r->T,
         imp_m, N_target,imp_alpha, imp_xi,
         theta0_d, dcdt_d);
+      gpuCheck(cudaGetLastError());
     }
 
   }
@@ -1372,6 +1382,7 @@ void getforce_atomRestraintsT(System *system,box_type box,bool calcEnergy)
 
   if (m->atomRestraintCount) {
     getforce_atomRestraints_kernel<flagBox><<<(m->atomRestraintCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>((real3*)s->position_fd,(real3_f*)s->force_d,box,pEnergy,m->atomRestraintCount,m->atomRestraintBounds_d,m->atomRestraintIdx_d,m->kRestraint);
+    gpuCheck(cudaGetLastError());
   }
 }
 
@@ -1510,17 +1521,21 @@ void getforce_chargeRestraintsT(System *system,box_type kbox,bool calcEnergy)
 
   real Vinv=boxxx(kbox)*boxyy(kbox)*boxzz(kbox);
   getforce_chargeRestraintsQ_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_fd,m->blockCount,m->lambdaCharge_d,m->netCharge_d);
+  gpuCheck(cudaGetLastError());
   if (m->kChargeRestraint1!=0 && r->elecMethod==epme) {
     real k=-(2*M_PI/3)*kELECTRIC*m->kChargeRestraint1*Vinv;
     getforce_chargeRestraints1_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,m->blockCount,k,m->lambdaCharge_d,m->netCharge_d);
+    gpuCheck(cudaGetLastError());
   }
   if (m->kChargeRestraint2!=0 && r->elecMethod==epme) {
     if (m->kChargeRestraint2!=1) fatal(__FILE__,__LINE__,"Only kChargeRestraint2 values of 0 or 1 are allowed\n");
     real k=-M_PI*kELECTRIC*m->kChargeRestraint2*Vinv/(r->betaEwald*r->betaEwald);
     getforce_chargeRestraints2_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,m->blockCount,k,m->lambdaCharge_d,m->netCharge_d);
+    gpuCheck(cudaGetLastError());
   }
   if (m->kChargeRestraint3!=0) {
     getforce_chargeRestraints3_kernel<<<1,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,m->blockCount,m->kChargeRestraint3,m->q0ChargeRestraint3,m->wChargeRestraint3,m->lambdaCharge_d,m->netCharge_d);
+    gpuCheck(cudaGetLastError());
   }
 }
 
@@ -1555,11 +1570,11 @@ void blade_init_msld(System *system,int nblocks)
   system->msld->lambdaCharge=(real*)calloc(system->msld->blockCount,sizeof(real));
   system->msld->blockFixed=(bool*)calloc(system->msld->blockCount,sizeof(bool));
 
-  cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int));
-  cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int));
-  cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real));
-  cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real));
-  cudaMalloc(&(system->msld->netCharge_d),sizeof(real));
+  gpuCheck(cudaMalloc(&(system->msld->atomBlock_d),system->structure->atomCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&(system->msld->lambdaSite_d),system->msld->blockCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&(system->msld->lambdaBias_d),system->msld->blockCount*sizeof(real)));
+  gpuCheck(cudaMalloc(&(system->msld->lambdaCharge_d),system->msld->blockCount*sizeof(real)));
+  gpuCheck(cudaMalloc(&(system->msld->netCharge_d),sizeof(real)));
 }
 
 void blade_dest_msld(System *system)

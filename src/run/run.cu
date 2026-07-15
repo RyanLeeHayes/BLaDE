@@ -495,6 +495,7 @@ void Run::test(char *line,char *token,System *system)
         for (s=0; s<2; s++) {
           // Shift ij by (s-0.5)*dx
           shift_kernel<<<1,1>>>(&system->state->positionBuffer_d[ij],(s-0.5)*dx);
+          gpuCheck(cudaGetLastError());
           if(theta_test){ // don't overwrite changes in lambda deltas
             system->msld->calc_lambda_from_theta(system->run->updateStream, system); 
           }
@@ -514,7 +515,7 @@ void Run::test(char *line,char *token,System *system)
           system->state->restore_position();
         }
         if (system->id==0) {
-          cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
+          gpuCheck(cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost));
           printlog("ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
         }
       }

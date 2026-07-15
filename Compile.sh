@@ -4,7 +4,7 @@ source modules
 
 mkdir build
 cd build
-# usefull flags:
+# useful flags:
 # -DPRECISION=DOUBLE # Compile double precision
 # -DRX=ON # Compile with replica exchange
 # -DUNITS=AKMA # Compile with AKMA units (GROMACS is the alternative)

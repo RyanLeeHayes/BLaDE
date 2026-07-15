@@ -10,6 +10,7 @@
 #include "update/lbfgs.h"
 #include "main/real3.h" // for real_sum_reduce
 #include "io/io.h"
+#include "main/gpu_check.h"
 
 /*
   Cuda Kernels
@@ -95,17 +96,17 @@ __global__ void dot_product(int N, real_x *A, real_x *B, real_x* dot) {
 LBFGS::LBFGS(int m, real_x eps, int DOF, bool verbose, std::function<real_x()> user_grad, real_x *position, real_x *gradient)
   : m(m), eps_tol(eps), DOF(DOF), verbose(verbose), system_grad(user_grad), X_d(position), G_d(gradient) {
   k = 0;
-  cudaMalloc(&tmp_d, sizeof(real_x));
-  cudaMalloc(&gamma_d, sizeof(real_x));
-  cudaMalloc(&rho_d, m*sizeof(real_x));
-  cudaMalloc(&alpha_d, m*sizeof(real_x));
-  cudaMalloc(&q_d, DOF*sizeof(real_x));
-  cudaMalloc(&prev_positions_d, DOF*sizeof(real_x));
-  cudaMalloc(&prev_gradient_d, DOF*sizeof(real_x));
-  cudaMalloc(&s_d, m*DOF*sizeof(real_x));
-  cudaMalloc(&y_d, m*DOF*sizeof(real_x));
-  cudaMalloc(&s_tmp_d, DOF*sizeof(real_x));
-  cudaMalloc(&y_tmp_d, DOF*sizeof(real_x));
+  gpuCheck(cudaMalloc(&tmp_d, sizeof(real_x)));
+  gpuCheck(cudaMalloc(&gamma_d, sizeof(real_x)));
+  gpuCheck(cudaMalloc(&rho_d, m*sizeof(real_x)));
+  gpuCheck(cudaMalloc(&alpha_d, m*sizeof(real_x)));
+  gpuCheck(cudaMalloc(&q_d, DOF*sizeof(real_x)));
+  gpuCheck(cudaMalloc(&prev_positions_d, DOF*sizeof(real_x)));
+  gpuCheck(cudaMalloc(&prev_gradient_d, DOF*sizeof(real_x)));
+  gpuCheck(cudaMalloc(&s_d, m*DOF*sizeof(real_x)));
+  gpuCheck(cudaMalloc(&y_d, m*DOF*sizeof(real_x)));
+  gpuCheck(cudaMalloc(&s_tmp_d, DOF*sizeof(real_x)));
+  gpuCheck(cudaMalloc(&y_tmp_d, DOF*sizeof(real_x)));
 
   U0 = user_grad(); // first energy call by lbfgs
   Uf = U0;
@@ -114,23 +115,25 @@ LBFGS::LBFGS(int m, real_x eps, int DOF, bool verbose, std::function<real_x()> u
   gamma_norm();
 
   // Set up s.d. step
-  cudaMemcpy(q_d, G_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaMemcpy(q_d, G_d, DOF*sizeof(real_x), cudaMemcpyDefault));
   vector_scale<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, gamma_d, q_d, q_d);
+  gpuCheck(cudaGetLastError());
   vector_scale<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, -1, q_d, q_d);
+  gpuCheck(cudaGetLastError());
 }
 
 LBFGS::~LBFGS() {
-  if (tmp_d) cudaFree(tmp_d);
-  if (gamma_d) cudaFree(gamma_d);
-  if (rho_d) cudaFree(rho_d);
-  if (alpha_d) cudaFree(alpha_d);
-  if (q_d) cudaFree(q_d);
-  if (prev_positions_d) cudaFree(prev_positions_d);
-  if (prev_gradient_d) cudaFree(prev_gradient_d);
-  if (s_d) cudaFree(s_d);
-  if (y_d) cudaFree(y_d);
-  if (s_tmp_d) cudaFree(s_tmp_d);
-  if (y_tmp_d) cudaFree(y_tmp_d);
+  if (tmp_d) gpuCheck(cudaFree(tmp_d));
+  if (gamma_d) gpuCheck(cudaFree(gamma_d));
+  if (rho_d) gpuCheck(cudaFree(rho_d));
+  if (alpha_d) gpuCheck(cudaFree(alpha_d));
+  if (q_d) gpuCheck(cudaFree(q_d));
+  if (prev_positions_d) gpuCheck(cudaFree(prev_positions_d));
+  if (prev_gradient_d) gpuCheck(cudaFree(prev_gradient_d));
+  if (s_d) gpuCheck(cudaFree(s_d));
+  if (y_d) gpuCheck(cudaFree(y_d));
+  if (s_tmp_d) gpuCheck(cudaFree(s_tmp_d));
+  if (y_tmp_d) gpuCheck(cudaFree(y_tmp_d));
 }
 
 /*
@@ -143,14 +146,16 @@ bool LBFGS::converged(){
   grad_mag = 0;
   grad_pos_mag = 0;
 
-  cudaMemset(tmp_d, 0, sizeof(real_x));
+  gpuCheck(cudaMemset(tmp_d, 0, sizeof(real_x)));
   dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, G_d, G_d, tmp_d);
-  cudaMemcpy(&rmsg, tmp_d, sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaGetLastError());
+  gpuCheck(cudaMemcpy(&rmsg, tmp_d, sizeof(real_x), cudaMemcpyDefault));
   grad_mag = sqrt(rmsg);
   rmsg = sqrt(rmsg/DOF);
-  cudaMemset(tmp_d, 0, sizeof(real_x));
+  gpuCheck(cudaMemset(tmp_d, 0, sizeof(real_x)));
   dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, X_d, X_d, tmp_d);
-  cudaMemcpy(&grad_pos_mag, tmp_d, sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaGetLastError());
+  gpuCheck(cudaMemcpy(&grad_pos_mag, tmp_d, sizeof(real_x), cudaMemcpyDefault));
   grad_pos_mag = grad_mag / std::max(1.0, sqrt(grad_pos_mag));
 
   if (verbose){
@@ -167,17 +172,19 @@ bool LBFGS::converged(){
 
 // set gamma = 1/|g_d|
 void LBFGS::gamma_norm(){
-  cudaMemset(tmp_d, 0, sizeof(real_x));
+  gpuCheck(cudaMemset(tmp_d, 0, sizeof(real_x)));
   dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, G_d, G_d, tmp_d);
+  gpuCheck(cudaGetLastError());
   inv_sqrt<<<1,1>>>(1, tmp_d);
-  cudaMemcpy(gamma_d, tmp_d, sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaGetLastError());
+  gpuCheck(cudaMemcpy(gamma_d, tmp_d, sizeof(real_x), cudaMemcpyDefault));
 }
 
 // Ch7.4, p178 of Nocedal & Wright (Algorithm 7.4)
 void LBFGS::minimize_step(real_x f0) { // f0 & G filled from class initializer
   // Copy kth positions & gradients
-  cudaMemcpy(prev_positions_d, X_d, DOF*sizeof(real_x), cudaMemcpyDefault);
-  cudaMemcpy(prev_gradient_d, G_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaMemcpy(prev_positions_d, X_d, DOF*sizeof(real_x), cudaMemcpyDefault));
+  gpuCheck(cudaMemcpy(prev_gradient_d, G_d, DOF*sizeof(real_x), cudaMemcpyDefault));
 
   // min_a f(X + a*q)
   step_size = linesearch(f0); // X & G left at & evaluated at f(X+a*q)
@@ -189,30 +196,38 @@ void LBFGS::minimize_step(real_x f0) { // f0 & G filled from class initializer
   k++;
 
   // Two-loop recursion
-  cudaMemcpy(q_d, G_d, DOF*sizeof(real_x), cudaMemcpyDefault); 
+  gpuCheck(cudaMemcpy(q_d, G_d, DOF*sizeof(real_x), cudaMemcpyDefault)); 
   for (int i = k-1; i >= std::max(0, k-m); i--) {
     int index = i % m;
     // alpha.i = rho.i*(s.i dot q)
-    cudaMemset(alpha_d+index, 0, sizeof(real_x));
+    gpuCheck(cudaMemset(alpha_d+index, 0, sizeof(real_x)));
     dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, s_d+index*DOF, q_d, alpha_d+index);
+    gpuCheck(cudaGetLastError());
     vector_scale<<<1,1>>>(1, rho_d+index, alpha_d+index, alpha_d+index);
+    gpuCheck(cudaGetLastError());
     // q = q - alpha.i*y.i
     vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, q_d, -1, alpha_d+index, y_d+index*DOF, q_d);
+    gpuCheck(cudaGetLastError());
   }
   // q = gamma.k*q = r
   vector_scale<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, gamma_d, q_d, q_d);
+  gpuCheck(cudaGetLastError());
   for (int i = std::max(0, k-m); i <= k-1; i++) {
     int index = i % m;
     // B = rho.i*(y.i dot q)
-    cudaMemset(tmp_d, 0, sizeof(real_x));
+    gpuCheck(cudaMemset(tmp_d, 0, sizeof(real_x)));
     dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, y_d+index*DOF, q_d, tmp_d);
+    gpuCheck(cudaGetLastError());
     vector_scale<<<1,1>>>(1, rho_d+index, tmp_d, tmp_d);
+    gpuCheck(cudaGetLastError());
     // q = q + (alpha.i - B)*s.i = q - B*s.i + alpha.i*s.i
     vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, q_d, alpha_d+index, tmp_d, s_d+index*DOF, q_d);
+    gpuCheck(cudaGetLastError());
   }
 
   // q = -q
   vector_scale<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, -1, q_d, q_d);
+  gpuCheck(cudaGetLastError());
 }
 
 // this method is overly cautious & slow, likely doesn't need the cpu grad checks or resets
@@ -224,23 +239,27 @@ void LBFGS::update_sk_yk() {
 
   // s & y tmp
   // alpha*q = displacement, X_d and prev_position might differ by pbc wrapping
-  vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 0, X_d, step_size, NULL, q_d, s_tmp_d); 
+  vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 0, X_d, step_size, NULL, q_d, s_tmp_d);
+  gpuCheck(cudaGetLastError()); 
   vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, G_d, -1, NULL, prev_gradient_d, y_tmp_d);
+  gpuCheck(cudaGetLastError());
 
   real_x yy = 0;
-  cudaMemset(tmp_d, 0, sizeof(real_x));
+  gpuCheck(cudaMemset(tmp_d, 0, sizeof(real_x)));
   dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, y_tmp_d, y_tmp_d, tmp_d);
-  cudaMemcpy(&yy, tmp_d, sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaGetLastError());
+  gpuCheck(cudaMemcpy(&yy, tmp_d, sizeof(real_x), cudaMemcpyDefault));
   real_x sy = 0;
-  cudaMemset(tmp_d, 0, sizeof(real_x));
+  gpuCheck(cudaMemset(tmp_d, 0, sizeof(real_x)));
   dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, s_tmp_d, y_tmp_d, tmp_d);
-  cudaMemcpy(&sy, tmp_d, sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaGetLastError());
+  gpuCheck(cudaMemcpy(&sy, tmp_d, sizeof(real_x), cudaMemcpyDefault));
 
   // Check curvature s.T H s = s.T y > 0 for positive def matrix satisfying secant eq Hs=y (required for L-BFGS)
   if(sy < 1e-10){ 
     printlog("Curvature condition (sy = %e) not satistied! Clearing L-BFGS memory!\n", sy);
-    cudaMemset(s_d, 0, m*DOF*sizeof(real_x));
-    cudaMemset(y_d, 0, m*DOF*sizeof(real_x));
+    gpuCheck(cudaMemset(s_d, 0, m*DOF*sizeof(real_x)));
+    gpuCheck(cudaMemset(y_d, 0, m*DOF*sizeof(real_x)));
     gamma_norm();
     k = -1;
     reset_count++;
@@ -251,11 +270,11 @@ void LBFGS::update_sk_yk() {
   real_x rho = 1.0/sy;
   // gamma_k = s.y/(y.y)
   real_x gamma = sy/yy;
-  cudaMemcpy(gamma_d, &gamma, sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaMemcpy(gamma_d, &gamma, sizeof(real_x), cudaMemcpyDefault));
   int index = k % m;
-  cudaMemcpy(rho_d+index, &rho, sizeof(real_x), cudaMemcpyDefault);
-  cudaMemcpy(s_d + index*DOF, s_tmp_d, DOF*sizeof(real_x), cudaMemcpyDefault);
-  cudaMemcpy(y_d + index*DOF, y_tmp_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaMemcpy(rho_d+index, &rho, sizeof(real_x), cudaMemcpyDefault));
+  gpuCheck(cudaMemcpy(s_d + index*DOF, s_tmp_d, DOF*sizeof(real_x), cudaMemcpyDefault));
+  gpuCheck(cudaMemcpy(y_d + index*DOF, y_tmp_d, DOF*sizeof(real_x), cudaMemcpyDefault));
   //printlog("iter: %d, k: %d, index: %d, rho: %f, gamma: %f\n", step_count, k, index, rho, gamma);
 }
 
@@ -265,12 +284,14 @@ void LBFGS::update_sk_yk() {
 
 // return [f(X + alpha*p), df(X+alpha*p)/da]
 void LBFGS::phi(real_x alpha, real_x* result){
-  cudaMemcpy(X_d, prev_positions_d, DOF*sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaMemcpy(X_d, prev_positions_d, DOF*sizeof(real_x), cudaMemcpyDefault));
   vector_add<<<(DOF+BLUP-1)/BLUP,BLUP>>>(DOF, 1, X_d, alpha, NULL, q_d, X_d);
+  gpuCheck(cudaGetLastError());
   result[0] = system_grad();
-  cudaMemset(tmp_d, 0, sizeof(real_x));
-  dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, G_d, q_d, tmp_d); // df(0)/da
-  cudaMemcpy(&result[1], tmp_d, sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaMemset(tmp_d, 0, sizeof(real_x)));
+  dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, G_d, q_d, tmp_d);
+  gpuCheck(cudaGetLastError()); // df(0)/da
+  gpuCheck(cudaMemcpy(&result[1], tmp_d, sizeof(real_x), cudaMemcpyDefault));
 }
 
 real_x sign(real_x value){
@@ -301,9 +322,10 @@ real_x LBFGS::linesearch(real_x f0){
   real_x amax = 10;
   // Data is already loaded, saves 1 energy & grad call
   real_x phi0[2] = {f0, 0};
-  cudaMemset(tmp_d, 0, sizeof(real_x));
-  dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, G_d, q_d, tmp_d); // df(0)/da
-  cudaMemcpy(&phi0[1], tmp_d, sizeof(real_x), cudaMemcpyDefault);
+  gpuCheck(cudaMemset(tmp_d, 0, sizeof(real_x)));
+  dot_product<<<(DOF+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real_x)/32, 0>>>(DOF, G_d, q_d, tmp_d);
+  gpuCheck(cudaGetLastError()); // df(0)/da
+  gpuCheck(cudaMemcpy(&phi0[1], tmp_d, sizeof(real_x), cudaMemcpyDefault));
   real_x phiim1[2];
   memcpy(phiim1, phi0, 2*sizeof(real_x));
   // Evaluate at 1 & iterate using cubic interpolation

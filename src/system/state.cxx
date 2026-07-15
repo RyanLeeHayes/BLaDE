@@ -12,6 +12,7 @@
 #include "system/potential.h"
 #include "rng/rng_cpu.h"
 #include "rng/rng_gpu.h"
+#include "main/gpu_check.h"
 
 
 
@@ -30,20 +31,20 @@ State::State(System *system) {
 
   // Lambda-Spatial-Theta buffers
   positionBuffer=(real_x*)calloc((2*nL+3*n),sizeof(real_x));
-  cudaMalloc(&(positionBuffer_d),(2*nL+3*n)*sizeof(real_x));
+  gpuCheck(cudaMalloc(&(positionBuffer_d),(2*nL+3*n)*sizeof(real_x)));
   if (sizeof(real)==sizeof(real_x)) {
     positionBuffer_fd=(real*)positionBuffer_d;
   } else {
-    cudaMalloc(&(positionBuffer_fd),(2*nL+3*n)*sizeof(real));
+    gpuCheck(cudaMalloc(&(positionBuffer_fd),(2*nL+3*n)*sizeof(real)));
   }
 #ifdef REPLICAEXCHANGE
   positionRExBuffer=(real_x*)calloc((2*nL+3*n),sizeof(real_x));
 #endif
-  cudaMalloc(&(positionBackup_d),(2*nL+3*n)*sizeof(real_x));
+  gpuCheck(cudaMalloc(&(positionBackup_d),(2*nL+3*n)*sizeof(real_x)));
   forceBuffer=(real_f*)calloc(rootFactor*(2*nL+3*n),sizeof(real_f));
-  cudaMalloc(&(forceBuffer_d),rootFactor*(2*nL+3*n)*sizeof(real_f));
-  cudaMalloc(&(forceBufferX_d),rootFactor*(2*nL+3*n)*sizeof(real_x));
-  cudaMalloc(&(forceBackup_d),(2*nL+3*n)*sizeof(real_f));
+  gpuCheck(cudaMalloc(&(forceBuffer_d),rootFactor*(2*nL+3*n)*sizeof(real_f)));
+  gpuCheck(cudaMalloc(&(forceBufferX_d),rootFactor*(2*nL+3*n)*sizeof(real_x)));
+  gpuCheck(cudaMalloc(&(forceBackup_d),(2*nL+3*n)*sizeof(real_f)));
 
   if (system->idCount>0) { // OMP
 #pragma omp barrier // OMP
@@ -63,13 +64,13 @@ State::State(System *system) {
 
   // Other buffers
   energy=(real_e*)calloc(rootFactor*eeend,sizeof(real_e));
-  cudaMalloc(&(energy_d),rootFactor*eeend*sizeof(real_e));
-  cudaMalloc(&(energyBackup_d),eeend*sizeof(real_e));
+  gpuCheck(cudaMalloc(&(energy_d),rootFactor*eeend*sizeof(real_e)));
+  gpuCheck(cudaMalloc(&(energyBackup_d),eeend*sizeof(real_e)));
 
   // NaN detection flag
   nanFlag=-1;
-  cudaMalloc(&(nanFlag_d),sizeof(int));
-  cudaMemset(nanFlag_d,-1,sizeof(int));
+  gpuCheck(cudaMalloc(&(nanFlag_d),sizeof(int)));
+  gpuCheck(cudaMemset(nanFlag_d,-1,sizeof(int)));
 
   if (system->idCount>0) { // OMP
 #pragma omp barrier // OMP
@@ -97,14 +98,14 @@ State::State(System *system) {
 
   // Spatial-Theta buffers
   velocityBuffer=(real_v*)calloc((nL+3*n),sizeof(real_v));
-  cudaMalloc(&(velocityBuffer_d),(nL+3*n)*sizeof(real_v));
+  gpuCheck(cudaMalloc(&(velocityBuffer_d),(nL+3*n)*sizeof(real_v)));
   invsqrtMassBuffer=(real*)calloc((nL+3*n),sizeof(real));
-  cudaMalloc(&(invsqrtMassBuffer_d),(nL+3*n)*sizeof(real));
+  gpuCheck(cudaMalloc(&(invsqrtMassBuffer_d),(nL+3*n)*sizeof(real)));
 
   // Constraint stuff
   positionCons_d=NULL;
   if (system->structure->shakeHbond) {
-    cudaMalloc(&(positionCons_d),(nL+3*n)*sizeof(real_x));
+    gpuCheck(cudaMalloc(&(positionCons_d),(nL+3*n)*sizeof(real_x)));
   }
 
   // The box
@@ -154,29 +155,29 @@ State::State(System *system) {
 State::~State() {
   // Lambda-Spatial-Theta buffers
   if (positionBuffer) free(positionBuffer);
-  if (positionBuffer_d) cudaFree(positionBuffer_d);
-  if ((void*)positionBuffer_fd!=(void*)positionBuffer_d) cudaFree(positionBuffer_fd);
+  if (positionBuffer_d) gpuCheck(cudaFree(positionBuffer_d));
+  if ((void*)positionBuffer_fd!=(void*)positionBuffer_d) gpuCheck(cudaFree(positionBuffer_fd));
 #ifdef REPLICAEXCHANGE
   if (positionRExBuffer) free(positionRExBuffer);
 #endif
-  if (positionBackup_d) cudaFree(positionBackup_d);
+  if (positionBackup_d) gpuCheck(cudaFree(positionBackup_d));
   if (forceBuffer) free(forceBuffer);
-  if (forceBuffer_d) cudaFree(forceBuffer_d);
-  if (forceBufferX_d) cudaFree(forceBufferX_d);
-  if (forceBackup_d) cudaFree(forceBackup_d);
+  if (forceBuffer_d) gpuCheck(cudaFree(forceBuffer_d));
+  if (forceBufferX_d) gpuCheck(cudaFree(forceBufferX_d));
+  if (forceBackup_d) gpuCheck(cudaFree(forceBackup_d));
   // Other buffers
   if (energy) free(energy);
-  if (energy_d) cudaFree(energy_d);
-  if (energyBackup_d) cudaFree(energyBackup_d);
+  if (energy_d) gpuCheck(cudaFree(energy_d));
+  if (energyBackup_d) gpuCheck(cudaFree(energyBackup_d));
   // NaN detection flag
-  if (nanFlag_d) cudaFree(nanFlag_d);
+  if (nanFlag_d) gpuCheck(cudaFree(nanFlag_d));
   // Spatial-Theta buffers
   if (velocityBuffer) free(velocityBuffer);
-  if (velocityBuffer_d) cudaFree(velocityBuffer_d);
+  if (velocityBuffer_d) gpuCheck(cudaFree(velocityBuffer_d));
   if (invsqrtMassBuffer) free(invsqrtMassBuffer);
-  if (invsqrtMassBuffer_d) cudaFree(invsqrtMassBuffer_d);
+  if (invsqrtMassBuffer_d) gpuCheck(cudaFree(invsqrtMassBuffer_d));
   // Constraint stuff
-  if (positionCons_d) cudaFree(positionCons_d);
+  if (positionCons_d) gpuCheck(cudaFree(positionCons_d));
   // Buffer for floating point output
   if (positionXTC) free(positionXTC);
 
@@ -206,13 +207,13 @@ void State::initialize(System *system)
     thetaInvsqrtMass[i]=1/sqrt(system->msld->thetaMass[i]);
   }
 
-  cudaMemcpy(positionBuffer_d,positionBuffer,(2*nL+3*n)*sizeof(real_x),cudaMemcpyHostToDevice);
-  cudaMemcpy(velocityBuffer_d,velocityBuffer,(nL+3*n)*sizeof(real_v),cudaMemcpyHostToDevice);
-  cudaMemset(forceBuffer_d,0,(nL+3*n)*sizeof(real_f));
-  cudaMemcpy(invsqrtMassBuffer_d,invsqrtMassBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(positionBuffer_d,positionBuffer,(2*nL+3*n)*sizeof(real_x),cudaMemcpyHostToDevice));
+  gpuCheck(cudaMemcpy(velocityBuffer_d,velocityBuffer,(nL+3*n)*sizeof(real_v),cudaMemcpyHostToDevice));
+  gpuCheck(cudaMemset(forceBuffer_d,0,(nL+3*n)*sizeof(real_f)));
+  gpuCheck(cudaMemcpy(invsqrtMassBuffer_d,invsqrtMassBuffer,(nL+3*n)*sizeof(real),cudaMemcpyHostToDevice));
 
   if (system->msld->fix) { // ffix
-    cudaMemcpy(lambda_d,theta,nL*sizeof(real_x),cudaMemcpyHostToDevice);
+    gpuCheck(cudaMemcpy(lambda_d,theta,nL*sizeof(real_x),cudaMemcpyHostToDevice));
   }
 
   // Compute per-block friction/noise arrays for MSLD theta DOFs
@@ -228,10 +229,10 @@ void State::initialize(System *system)
       h_friction[i]=a2;
       h_noise[i]=sqrt((1-a2*a2)*kT);
     }
-    cudaMalloc(&(leapState->lambda_friction_d),lambdaCount*sizeof(real));
-    cudaMalloc(&(leapState->lambda_noise_d),lambdaCount*sizeof(real));
-    cudaMemcpy(leapState->lambda_friction_d,h_friction,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
-    cudaMemcpy(leapState->lambda_noise_d,h_noise,lambdaCount*sizeof(real),cudaMemcpyHostToDevice);
+    gpuCheck(cudaMalloc(&(leapState->lambda_friction_d),lambdaCount*sizeof(real)));
+    gpuCheck(cudaMalloc(&(leapState->lambda_noise_d),lambdaCount*sizeof(real)));
+    gpuCheck(cudaMemcpy(leapState->lambda_friction_d,h_friction,lambdaCount*sizeof(real),cudaMemcpyHostToDevice));
+    gpuCheck(cudaMemcpy(leapState->lambda_noise_d,h_noise,lambdaCount*sizeof(real),cudaMemcpyHostToDevice));
     free(h_friction);
     free(h_noise);
   }
@@ -245,8 +246,8 @@ void State::save_state(System *system)
   int n=atomCount;
   int nL=lambdaCount;
 
-  cudaMemcpy(positionBuffer,positionBuffer_d,(2*nL+3*n)*sizeof(real_x),cudaMemcpyDeviceToHost);
-  cudaMemcpy(velocityBuffer,velocityBuffer_d,(nL+3*n)*sizeof(real_v),cudaMemcpyDeviceToHost);
+  gpuCheck(cudaMemcpy(positionBuffer,positionBuffer_d,(2*nL+3*n)*sizeof(real_x),cudaMemcpyDeviceToHost));
+  gpuCheck(cudaMemcpy(velocityBuffer,velocityBuffer_d,(nL+3*n)*sizeof(real_v),cudaMemcpyDeviceToHost));
 
   for (i=0; i<atomCount; i++) {
     for (j=0; j<3; j++) {
@@ -301,7 +302,7 @@ struct LeapState* State::alloc_leapstate(int N1,int N2,real_x *x,real_v *v,real_
 
   ls=(struct LeapState*) malloc(sizeof(struct LeapState));
   real *random;
-  cudaMalloc(&random,(N1+N2)*sizeof(real));
+  gpuCheck(cudaMalloc(&random,(N1+N2)*sizeof(real)));
 
   ls->N1=N1;
   ls->N=N1+N2;
@@ -317,42 +318,42 @@ struct LeapState* State::alloc_leapstate(int N1,int N2,real_x *x,real_v *v,real_
 
 void State::free_leapstate(struct LeapState* ls)
 {
-  cudaFree(ls->random);
-  if (ls->lambda_friction_d) cudaFree(ls->lambda_friction_d);
-  if (ls->lambda_noise_d) cudaFree(ls->lambda_noise_d);
+  gpuCheck(cudaFree(ls->random));
+  if (ls->lambda_friction_d) gpuCheck(cudaFree(ls->lambda_friction_d));
+  if (ls->lambda_noise_d) gpuCheck(cudaFree(ls->lambda_noise_d));
 }
 
 void State::recv_state()
 {
-  cudaMemcpy(theta,theta_d,lambdaCount*sizeof(real_x),cudaMemcpyDeviceToHost);
-  cudaMemcpy(position,position_d,3*atomCount*sizeof(real_x),cudaMemcpyDeviceToHost);
-  cudaMemcpy(thetaVelocity,thetaVelocity_d,lambdaCount*sizeof(real_v),cudaMemcpyDeviceToHost);
-  cudaMemcpy(velocity,velocity_d,3*atomCount*sizeof(real_v),cudaMemcpyDeviceToHost);
+  gpuCheck(cudaMemcpy(theta,theta_d,lambdaCount*sizeof(real_x),cudaMemcpyDeviceToHost));
+  gpuCheck(cudaMemcpy(position,position_d,3*atomCount*sizeof(real_x),cudaMemcpyDeviceToHost));
+  gpuCheck(cudaMemcpy(thetaVelocity,thetaVelocity_d,lambdaCount*sizeof(real_v),cudaMemcpyDeviceToHost));
+  gpuCheck(cudaMemcpy(velocity,velocity_d,3*atomCount*sizeof(real_v),cudaMemcpyDeviceToHost));
 }
 
 void State::send_state()
 {
-  cudaMemcpy(theta_d,theta,lambdaCount*sizeof(real_x),cudaMemcpyHostToDevice);
-  cudaMemcpy(position_d,position,3*atomCount*sizeof(real_x),cudaMemcpyHostToDevice);
-  cudaMemcpy(thetaVelocity_d,thetaVelocity,lambdaCount*sizeof(real_v),cudaMemcpyHostToDevice);
-  cudaMemcpy(velocity_d,velocity,3*atomCount*sizeof(real_v),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(theta_d,theta,lambdaCount*sizeof(real_x),cudaMemcpyHostToDevice));
+  gpuCheck(cudaMemcpy(position_d,position,3*atomCount*sizeof(real_x),cudaMemcpyHostToDevice));
+  gpuCheck(cudaMemcpy(thetaVelocity_d,thetaVelocity,lambdaCount*sizeof(real_v),cudaMemcpyHostToDevice));
+  gpuCheck(cudaMemcpy(velocity_d,velocity,3*atomCount*sizeof(real_v),cudaMemcpyHostToDevice));
 }
 
 void State::recv_position()
 {
-  cudaMemcpy(position,position_d,3*atomCount*sizeof(real_x),cudaMemcpyDeviceToHost);
+  gpuCheck(cudaMemcpy(position,position_d,3*atomCount*sizeof(real_x),cudaMemcpyDeviceToHost));
 }
 
 void State::recv_lambda()
 {
-  cudaMemcpy(lambda,lambda_d,lambdaCount*sizeof(real_x),cudaMemcpyDeviceToHost);
+  gpuCheck(cudaMemcpy(lambda,lambda_d,lambdaCount*sizeof(real_x),cudaMemcpyDeviceToHost));
 }
 
 void State::recv_energy()
 {
   int i;
 
-  cudaMemcpy(energy,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToHost);
+  gpuCheck(cudaMemcpy(energy,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToHost));
 
   // Check GPU-side NaN flag (set by update kernels)
   check_nan_flag();
@@ -365,12 +366,12 @@ void State::recv_energy()
 
 void State::reset_nan_flag()
 {
-  cudaMemset(nanFlag_d,-1,sizeof(int));
+  gpuCheck(cudaMemset(nanFlag_d,-1,sizeof(int)));
 }
 
 void State::check_nan_flag()
 {
-  cudaMemcpy(&nanFlag,nanFlag_d,sizeof(int),cudaMemcpyDeviceToHost);
+  gpuCheck(cudaMemcpy(&nanFlag,nanFlag_d,sizeof(int),cudaMemcpyDeviceToHost));
   if (nanFlag != -1) {
     fatal(__FILE__,__LINE__,"NaN/Inf detected at atom %d (0 indexed). Check structure or parameters.\n",nanFlag);
   }
@@ -379,9 +380,9 @@ void State::check_nan_flag()
 
 void State::backup_position()
 {
-  cudaMemcpy(positionBackup_d,positionBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real_x),cudaMemcpyDeviceToDevice);
-  cudaMemcpy(forceBackup_d,forceBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real_f),cudaMemcpyDeviceToDevice);
-  cudaMemcpy(energyBackup_d,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToDevice);
+  gpuCheck(cudaMemcpy(positionBackup_d,positionBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real_x),cudaMemcpyDeviceToDevice));
+  gpuCheck(cudaMemcpy(forceBackup_d,forceBuffer_d,(2*lambdaCount+3*atomCount)*sizeof(real_f),cudaMemcpyDeviceToDevice));
+  gpuCheck(cudaMemcpy(energyBackup_d,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToDevice));
   boxBackup=box;
   if (typeBox) {
     tricBoxBackup=tricBox;
@@ -392,9 +393,9 @@ void State::backup_position()
 
 void State::restore_position()
 {
-  cudaMemcpy(positionBuffer_d,positionBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real_x),cudaMemcpyDeviceToDevice);
-  cudaMemcpy(forceBuffer_d,forceBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real_f),cudaMemcpyDeviceToDevice);
-  cudaMemcpy(energy_d,energyBackup_d,eeend*sizeof(real_e),cudaMemcpyDeviceToDevice);
+  gpuCheck(cudaMemcpy(positionBuffer_d,positionBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real_x),cudaMemcpyDeviceToDevice));
+  gpuCheck(cudaMemcpy(forceBuffer_d,forceBackup_d,(2*lambdaCount+3*atomCount)*sizeof(real_f),cudaMemcpyDeviceToDevice));
+  gpuCheck(cudaMemcpy(energy_d,energyBackup_d,eeend*sizeof(real_e),cudaMemcpyDeviceToDevice));
   box=boxBackup;
   if (typeBox) {
     tricBox=tricBoxBackup;
@@ -428,7 +429,7 @@ void State::broadcast_position(System *system)
 #ifdef ORIGINAL_BROADCAST
     cudaEventSynchronize(system->run->communicate_omp[0]);
     // cudaMemcpyPeer(positionBuffer_d,system->id,positionBuffer_omp,0,N*sizeof(real)); // OMP
-    cudaMemcpyAsync(positionBuffer_fd,positionBuffer_omp,N*sizeof(real),cudaMemcpyDefault,system->run->updateStream); // OMP
+    gpuCheck(cudaMemcpyAsync(positionBuffer_fd,positionBuffer_omp,N*sizeof(real),cudaMemcpyDefault,system->run->updateStream)); // OMP
 #else
     cudaStreamWaitEvent(system->run->updateStream,system->run->communicate_omp[0],0); // UNSURE
     // cudaMemcpyPeer(positionBuffer_d,system->id,positionBuffer_omp,0,N*sizeof(real)); // OMP
@@ -536,9 +537,9 @@ void State::gather_force(System *system,bool calcEnergy)
 #pragma omp barrier // OMP
   if (system->id!=0) { // OMP
     // cudaMemcpyPeer(forceBuffer_omp,0,forceBuffer_d,system->id,N*sizeof(real)); // OMP
-    cudaMemcpy(forceBuffer_omp,forceBuffer_d,N*sizeof(real_f),cudaMemcpyDefault); // OMP
+    gpuCheck(cudaMemcpy(forceBuffer_omp,forceBuffer_d,N*sizeof(real_f),cudaMemcpyDefault)); // OMP
     if (calcEnergy) { // OMP
-      cudaMemcpy(energy_omp,energy_d,eeend*sizeof(real_e),cudaMemcpyDefault); // OMP
+      gpuCheck(cudaMemcpy(energy_omp,energy_d,eeend*sizeof(real_e),cudaMemcpyDefault)); // OMP
     } // OMP
   } // OMP
 #pragma omp barrier // OMP

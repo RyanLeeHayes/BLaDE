@@ -173,39 +173,39 @@ Potential::~Potential()
   if (dihes) free(dihes);
   if (imprs) free(imprs);
   if (cmaps) free(cmaps);
-  if (bonds_d) cudaFree(bonds_d);
-  if (angles_d) cudaFree(angles_d);
-  if (dihes_d) cudaFree(dihes_d);
-  if (imprs_d) cudaFree(imprs_d);
-  if (cmaps_d) cudaFree(cmaps_d);
+  if (bonds_d) gpuCheck(cudaFree(bonds_d));
+  if (angles_d) gpuCheck(cudaFree(angles_d));
+  if (dihes_d) gpuCheck(cudaFree(dihes_d));
+  if (imprs_d) gpuCheck(cudaFree(imprs_d));
+  if (cmaps_d) gpuCheck(cudaFree(cmaps_d));
 
   if (softBonds) free(softBonds);
   if (softAngles) free(softAngles);
   if (softDihes) free(softDihes);
   if (softImprs) free(softImprs);
   if (softCmaps) free(softCmaps);
-  if (softBonds_d) cudaFree(softBonds_d);
-  if (softAngles_d) cudaFree(softAngles_d);
-  if (softDihes_d) cudaFree(softDihes_d);
-  if (softImprs_d) cudaFree(softImprs_d);
-  if (softCmaps_d) cudaFree(softCmaps_d);
+  if (softBonds_d) gpuCheck(cudaFree(softBonds_d));
+  if (softAngles_d) gpuCheck(cudaFree(softAngles_d));
+  if (softDihes_d) gpuCheck(cudaFree(softDihes_d));
+  if (softImprs_d) gpuCheck(cudaFree(softImprs_d));
+  if (softCmaps_d) gpuCheck(cudaFree(softCmaps_d));
 
   for (std::map<TypeName8O,real(*)[4][4]>::iterator ii=cmapTypeToPtr.begin(); ii!=cmapTypeToPtr.end(); ii++) {
-    cudaFree(ii->second);
+    gpuCheck(cudaFree(ii->second));
   }
   cmapTypeToPtr.clear();
   for (std::map<TypeName8O,real(*)[4][4]>::iterator ii=cmapRestTypeToPtr.begin(); ii!=cmapRestTypeToPtr.end(); ii++) {
-    cudaFree(ii->second);
+    gpuCheck(cudaFree(ii->second));
   }
   cmapRestTypeToPtr.clear();
 
   if (charge) free(charge);
-  if (charge_d) cudaFree(charge_d);
+  if (charge_d) gpuCheck(cudaFree(charge_d));
 
   if (nb14s) free(nb14s);
-  if (nb14s_d) cudaFree(nb14s_d);
+  if (nb14s_d) gpuCheck(cudaFree(nb14s_d));
   if (nbexs) free(nbexs);
-  if (nbexs_d) cudaFree(nbexs_d);
+  if (nbexs_d) gpuCheck(cudaFree(nbexs_d));
 
   delete [] virtExcl;
   delete [] bondExcl;
@@ -216,60 +216,60 @@ Potential::~Potential()
   delete [] allExcl;
 
   if (excls) free(excls);
-  if (excls_d) cudaFree(excls_d);
+  if (excls_d) gpuCheck(cudaFree(excls_d));
 
   if (bGridPME) free(bGridPME);
-  if (bGridPME_d) cudaFree(bGridPME_d);
-  if (chargeGridPME_d) cudaFree(chargeGridPME_d);
-  if (fourierGridPME_d) cudaFree(fourierGridPME_d);
-  if (potentialGridPME_d) cudaFree(potentialGridPME_d);
+  if (bGridPME_d) gpuCheck(cudaFree(bGridPME_d));
+  if (chargeGridPME_d) gpuCheck(cudaFree(chargeGridPME_d));
+  if (fourierGridPME_d) gpuCheck(cudaFree(fourierGridPME_d));
+  if (potentialGridPME_d) gpuCheck(cudaFree(potentialGridPME_d));
 #ifdef USE_TEXTURE
   if (potentialGridPME_tex) cudaDestroyTextureObject(potentialGridPME_tex);
 #endif
 
   if (nbonds) free(nbonds);
-  if (nbonds_d) cudaFree(nbonds_d);
+  if (nbonds_d) gpuCheck(cudaFree(nbonds_d));
   if (vdwParameters) free(vdwParameters);
-  if (vdwParameters_d) cudaFree(vdwParameters_d);
+  if (vdwParameters_d) gpuCheck(cudaFree(vdwParameters_d));
 #ifdef USE_TEXTURE
   if (vdwParameters_tex) cudaDestroyTextureObject(vdwParameters_tex);
 #endif
 
   if (triangleCons) free(triangleCons);
-  if (triangleCons_d) cudaFree(triangleCons_d);
+  if (triangleCons_d) gpuCheck(cudaFree(triangleCons_d));
   if (branch1Cons) free(branch1Cons);
-  if (branch1Cons_d) cudaFree(branch1Cons_d);
+  if (branch1Cons_d) gpuCheck(cudaFree(branch1Cons_d));
   if (branch2Cons) free(branch2Cons);
-  if (branch2Cons_d) cudaFree(branch2Cons_d);
+  if (branch2Cons_d) gpuCheck(cudaFree(branch2Cons_d));
   if (branch3Cons) free(branch3Cons);
-  if (branch3Cons_d) cudaFree(branch3Cons_d);
+  if (branch3Cons_d) gpuCheck(cudaFree(branch3Cons_d));
 
   if (planFFTPME) cufftDestroy(planFFTPME);
   if (planIFFTPME) cufftDestroy(planIFFTPME);
 
   if (noes) free(noes);
-  if (noes_d) cudaFree(noes_d);
+  if (noes_d) gpuCheck(cudaFree(noes_d));
   if (harms) free(harms);
-  if (harms_d) cudaFree(harms_d);
+  if (harms_d) gpuCheck(cudaFree(harms_d));
   if (boRests) free(boRests);
-  if (boRests_d) cudaFree(boRests_d);
+  if (boRests_d) gpuCheck(cudaFree(boRests_d));
   if (anRests) free(anRests);
-  if (anRests_d) cudaFree(anRests_d);
+  if (anRests_d) gpuCheck(cudaFree(anRests_d));
   if (diRests) free(diRests);
-  if (diRests_d) cudaFree(diRests_d);
+  if (diRests_d) gpuCheck(cudaFree(diRests_d));
   if (resds) free(resds);           // eeresd
-  if (resds_d) cudaFree(resds_d);   // eeresd
+  if (resds_d) gpuCheck(cudaFree(resds_d));   // eeresd
 
   // eemlp-begin
   if (mlp_h) delete[] mlp_h;  // dont use free() for struct having stl members
-  if (mlp_d.mlatomidx) cudaFree(mlp_d.mlatomidx);
-  if (mlp_d.mlZidx) cudaFree(mlp_d.mlZidx);
-  if (mlp_d.mlSidx) cudaFree(mlp_d.mlSidx);
-  if (mlp_d.mlmaskid) cudaFree(mlp_d.mlmaskid);
+  if (mlp_d.mlatomidx) gpuCheck(cudaFree(mlp_d.mlatomidx));
+  if (mlp_d.mlZidx) gpuCheck(cudaFree(mlp_d.mlZidx));
+  if (mlp_d.mlSidx) gpuCheck(cudaFree(mlp_d.mlSidx));
+  if (mlp_d.mlmaskid) gpuCheck(cudaFree(mlp_d.mlmaskid));
   // buffer
-  if (mlp_d.ml_qm_coords_s_d) cudaFree(mlp_d.ml_qm_coords_s_d);
-  if (mlp_d.ml_energy_s_d)    cudaFree(mlp_d.ml_energy_s_d);
-  if (mlp_d.ml_qm_grad_s_d)   cudaFree(mlp_d.ml_qm_grad_s_d);
+  if (mlp_d.ml_qm_coords_s_d) gpuCheck(cudaFree(mlp_d.ml_qm_coords_s_d));
+  if (mlp_d.ml_energy_s_d)    gpuCheck(cudaFree(mlp_d.ml_energy_s_d));
+  if (mlp_d.ml_qm_grad_s_d)   gpuCheck(cudaFree(mlp_d.ml_qm_grad_s_d));
   // eemlp-end
 
   if (prettifyPlan) free(prettifyPlan);
@@ -469,7 +469,7 @@ real (*alloc_kcmapPtr(int ngrid,real scaling,real *kcmap))[4][4]
 
   cmapIntermediate=(real(*)[4])calloc(ngrid*ngrid,sizeof(real[4]));;
   cmapParameters=(real(*)[4][4])calloc(ngrid*ngrid,sizeof(real[4][4]));;
-  cudaMalloc(&kcmapPtr,ngrid*ngrid*sizeof(real[4][4]));
+  gpuCheck(cudaMalloc(&kcmapPtr,ngrid*ngrid*sizeof(real[4][4])));
 
   // 0 element of intermediate is the function values
   for (i=0; i<ngrid; i++) {
@@ -514,7 +514,7 @@ real (*alloc_kcmapPtr(int ngrid,real scaling,real *kcmap))[4][4]
   // Make 16 bicubic parameters at each point from the slopes determined with the splines.
   bicubic_setup(ngrid,cmapIntermediate,cmapParameters);
 
-  cudaMemcpy(kcmapPtr,cmapParameters,ngrid*ngrid*sizeof(real[4][4]),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(kcmapPtr,cmapParameters,ngrid*ngrid*sizeof(real[4][4]),cudaMemcpyHostToDevice));
 
   if (cmapIntermediate) free(cmapIntermediate);
   if (cmapParameters) free(cmapParameters);
@@ -832,90 +832,90 @@ void Potential::initialize(System *system)
   // ---------- Bonded setup complete, copy over data ----------
   bondCount=bonds_tmp.size();
   bonds=(struct BondPotential*)calloc(bondCount,sizeof(struct BondPotential));
-  cudaMalloc(&(bonds_d),bondCount*sizeof(struct BondPotential));
+  gpuCheck(cudaMalloc(&(bonds_d),bondCount*sizeof(struct BondPotential)));
   for (i=0; i<bondCount; i++) {
     bonds[i]=bonds_tmp[i];
   }
-  cudaMemcpy(bonds_d,bonds,bondCount*sizeof(struct BondPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(bonds_d,bonds,bondCount*sizeof(struct BondPotential),cudaMemcpyHostToDevice));
 
   angleCount=angles_tmp.size();
   angles=(struct AnglePotential*)calloc(angleCount,sizeof(struct AnglePotential));
-  cudaMalloc(&(angles_d),angleCount*sizeof(struct AnglePotential));
+  gpuCheck(cudaMalloc(&(angles_d),angleCount*sizeof(struct AnglePotential)));
   for (i=0; i<angleCount; i++) {
     angles[i]=angles_tmp[i];
   }
-  cudaMemcpy(angles_d,angles,angleCount*sizeof(struct AnglePotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(angles_d,angles,angleCount*sizeof(struct AnglePotential),cudaMemcpyHostToDevice));
 
   diheCount=dihes_tmp.size();
   dihes=(struct DihePotential*)calloc(diheCount,sizeof(struct DihePotential));
-  cudaMalloc(&(dihes_d),diheCount*sizeof(struct DihePotential));
+  gpuCheck(cudaMalloc(&(dihes_d),diheCount*sizeof(struct DihePotential)));
   for (i=0; i<diheCount; i++) {
     dihes[i]=dihes_tmp[i];
   }
-  cudaMemcpy(dihes_d,dihes,diheCount*sizeof(struct DihePotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(dihes_d,dihes,diheCount*sizeof(struct DihePotential),cudaMemcpyHostToDevice));
 
   imprCount=imprs_tmp.size();
   imprs=(struct ImprPotential*)calloc(imprCount,sizeof(struct ImprPotential));
-  cudaMalloc(&(imprs_d),imprCount*sizeof(struct ImprPotential));
+  gpuCheck(cudaMalloc(&(imprs_d),imprCount*sizeof(struct ImprPotential)));
   for (i=0; i<imprCount; i++) {
     imprs[i]=imprs_tmp[i];
   }
-  cudaMemcpy(imprs_d,imprs,imprCount*sizeof(struct ImprPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(imprs_d,imprs,imprCount*sizeof(struct ImprPotential),cudaMemcpyHostToDevice));
 
   cmapCount=cmaps_tmp.size();
   cmaps=(struct CmapPotential*)calloc(cmapCount,sizeof(struct CmapPotential));
-  cudaMalloc(&(cmaps_d),cmapCount*sizeof(struct CmapPotential));
+  gpuCheck(cudaMalloc(&(cmaps_d),cmapCount*sizeof(struct CmapPotential)));
   for (i=0; i<cmapCount; i++) {
     cmaps[i]=cmaps_tmp[i];
   }
-  cudaMemcpy(cmaps_d,cmaps,cmapCount*sizeof(struct CmapPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(cmaps_d,cmaps,cmapCount*sizeof(struct CmapPotential),cudaMemcpyHostToDevice));
   // soft bonds now
   softBondCount=softBonds_tmp.size();
   softBonds=(struct BondPotential*)calloc(softBondCount,sizeof(struct BondPotential));
-  cudaMalloc(&(softBonds_d),softBondCount*sizeof(struct BondPotential));
+  gpuCheck(cudaMalloc(&(softBonds_d),softBondCount*sizeof(struct BondPotential)));
   for (i=0; i<softBondCount; i++) {
     softBonds[i]=softBonds_tmp[i];
   }
-  cudaMemcpy(softBonds_d,softBonds,softBondCount*sizeof(struct BondPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(softBonds_d,softBonds,softBondCount*sizeof(struct BondPotential),cudaMemcpyHostToDevice));
 
   softAngleCount=softAngles_tmp.size();
   softAngles=(struct AnglePotential*)calloc(softAngleCount,sizeof(struct AnglePotential));
-  cudaMalloc(&(softAngles_d),softAngleCount*sizeof(struct AnglePotential));
+  gpuCheck(cudaMalloc(&(softAngles_d),softAngleCount*sizeof(struct AnglePotential)));
   for (i=0; i<softAngleCount; i++) {
     softAngles[i]=softAngles_tmp[i];
   }
-  cudaMemcpy(softAngles_d,softAngles,softAngleCount*sizeof(struct AnglePotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(softAngles_d,softAngles,softAngleCount*sizeof(struct AnglePotential),cudaMemcpyHostToDevice));
 
   softDiheCount=softDihes_tmp.size();
   softDihes=(struct DihePotential*)calloc(softDiheCount,sizeof(struct DihePotential));
-  cudaMalloc(&(softDihes_d),softDiheCount*sizeof(struct DihePotential));
+  gpuCheck(cudaMalloc(&(softDihes_d),softDiheCount*sizeof(struct DihePotential)));
   for (i=0; i<softDiheCount; i++) {
     softDihes[i]=softDihes_tmp[i];
   }
-  cudaMemcpy(softDihes_d,softDihes,softDiheCount*sizeof(struct DihePotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(softDihes_d,softDihes,softDiheCount*sizeof(struct DihePotential),cudaMemcpyHostToDevice));
 
   softImprCount=softImprs_tmp.size();
   softImprs=(struct ImprPotential*)calloc(softImprCount,sizeof(struct ImprPotential));
-  cudaMalloc(&(softImprs_d),softImprCount*sizeof(struct ImprPotential));
+  gpuCheck(cudaMalloc(&(softImprs_d),softImprCount*sizeof(struct ImprPotential)));
   for (i=0; i<softImprCount; i++) {
     softImprs[i]=softImprs_tmp[i];
   }
-  cudaMemcpy(softImprs_d,softImprs,softImprCount*sizeof(struct ImprPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(softImprs_d,softImprs,softImprCount*sizeof(struct ImprPotential),cudaMemcpyHostToDevice));
 
   softCmapCount=softCmaps_tmp.size();
   softCmaps=(struct CmapPotential*)calloc(softCmapCount,sizeof(struct CmapPotential));
-  cudaMalloc(&(softCmaps_d),softCmapCount*sizeof(struct CmapPotential));
+  gpuCheck(cudaMalloc(&(softCmaps_d),softCmapCount*sizeof(struct CmapPotential)));
   for (i=0; i<softCmapCount; i++) {
     softCmaps[i]=softCmaps_tmp[i];
   }
-  cudaMemcpy(softCmaps_d,softCmaps,softCmapCount*sizeof(struct CmapPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(softCmaps_d,softCmaps,softCmapCount*sizeof(struct CmapPotential),cudaMemcpyHostToDevice));
   // ---------- Data copy complete ----------
 
 
 
   atomCount=struc->atomList.size();
   charge=(real*)calloc(atomCount,sizeof(real));
-  cudaMalloc(&charge_d,atomCount*sizeof(real));
+  gpuCheck(cudaMalloc(&charge_d,atomCount*sizeof(real)));
   for (i=0; i<atomCount; i++) {
     charge[i]=struc->atomList[i].charge;
     if (system->msld->rest) {
@@ -924,7 +924,7 @@ void Potential::initialize(System *system)
       }
     }
   }
-  cudaMemcpy(charge_d,charge,atomCount*sizeof(real),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(charge_d,charge,atomCount*sizeof(real),cudaMemcpyHostToDevice));
 
   // Set up exclusions
   virtExcl=new std::set<int>[atomCount];
@@ -1173,31 +1173,31 @@ void Potential::initialize(System *system)
 
   nb14Count=nb14s_tmp.size();
   nb14s=(struct Nb14Potential*)calloc(nb14Count,sizeof(struct Nb14Potential));
-  cudaMalloc(&(nb14s_d),nb14Count*sizeof(struct Nb14Potential));
+  gpuCheck(cudaMalloc(&(nb14s_d),nb14Count*sizeof(struct Nb14Potential)));
   for (i=0; i<nb14Count; i++) {
     nb14s[i]=nb14s_tmp[i];
   }
-  cudaMemcpy(nb14s_d,nb14s,nb14Count*sizeof(struct Nb14Potential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(nb14s_d,nb14s,nb14Count*sizeof(struct Nb14Potential),cudaMemcpyHostToDevice));
 
   if (system->run->elecMethod==epme) {
 
   nbexCount=nbexs_tmp.size();
   nbexs=(struct NbExPotential*)calloc(nbexCount,sizeof(struct NbExPotential));
-  cudaMalloc(&(nbexs_d),nbexCount*sizeof(struct NbExPotential));
+  gpuCheck(cudaMalloc(&(nbexs_d),nbexCount*sizeof(struct NbExPotential)));
   for (i=0; i<nbexCount; i++) {
     nbexs[i]=nbexs_tmp[i];
   }
-  cudaMemcpy(nbexs_d,nbexs,nbexCount*sizeof(struct NbExPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(nbexs_d,nbexs,nbexCount*sizeof(struct NbExPotential),cudaMemcpyHostToDevice));
 
   }
 
   exclCount=excls_tmp.size();
   excls=(struct ExclPotential*)calloc(exclCount,sizeof(struct ExclPotential));
-  cudaMalloc(&(excls_d),exclCount*sizeof(struct ExclPotential));
+  gpuCheck(cudaMalloc(&(excls_d),exclCount*sizeof(struct ExclPotential)));
   for (i=0; i<exclCount; i++) {
     excls[i]=excls_tmp[i];
   }
-  cudaMemcpy(excls_d,excls,exclCount*sizeof(struct ExclPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(excls_d,excls,exclCount*sizeof(struct ExclPotential),cudaMemcpyHostToDevice));
 
   if (system->run->elecMethod==epme) {
 
@@ -1295,7 +1295,7 @@ void Potential::initialize(System *system)
   free(invbx2);
   free(invby2);
   free(invbz2);
-  cudaMemcpy(bGridPME_d,bGridPME,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(bGridPME_d,bGridPME,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real),cudaMemcpyHostToDevice));
 
   cufftCreate(&planFFTPME);
   cufftMakePlan3d(planFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],MYCUFFT_R2C,&bufferSizeFFTPME);
@@ -1340,7 +1340,7 @@ void Potential::initialize(System *system)
   }
   // Save nonbonded information
   nbonds=(NbondPotential*)calloc(atomCount,sizeof(NbondPotential));
-  cudaMalloc(&nbonds_d,atomCount*sizeof(NbondPotential));
+  gpuCheck(cudaMalloc(&nbonds_d,atomCount*sizeof(NbondPotential)));
   for (i=0; i<atomCount; i++) {
     struct NbondPotential nbond;
     std::string type;
@@ -1357,11 +1357,11 @@ void Potential::initialize(System *system)
     nbond.typeIdx=typeLookup[type];
     nbonds[i]=nbond;
   }
-  cudaMemcpy(nbonds_d,nbonds,atomCount*sizeof(NbondPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(nbonds_d,nbonds,atomCount*sizeof(NbondPotential),cudaMemcpyHostToDevice));
   // Save van der Waals interaction parameters
   vdwParameterCount=typeList.size();
   vdwParameters=(VdwPotential*)calloc(vdwParameterCount*vdwParameterCount,sizeof(VdwPotential));
-  cudaMalloc(&vdwParameters_d,vdwParameterCount*vdwParameterCount*sizeof(VdwPotential));
+  gpuCheck(cudaMalloc(&vdwParameters_d,vdwParameterCount*vdwParameterCount*sizeof(VdwPotential)));
   for (i=0; i<vdwParameterCount; i++) {
     TypeName2 type;
     struct NbondParameter np;
@@ -1403,7 +1403,7 @@ void Potential::initialize(System *system)
       vdwParameters[i*vdwParameterCount+j].c6=2*np.eps*sig6;
     }
   }
-  cudaMemcpy(vdwParameters_d,vdwParameters,vdwParameterCount*vdwParameterCount*sizeof(VdwPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(vdwParameters_d,vdwParameters,vdwParameterCount*vdwParameterCount*sizeof(VdwPotential),cudaMemcpyHostToDevice));
 #ifdef USE_TEXTURE
   {
     cudaResourceDesc resDesc;
@@ -1623,70 +1623,70 @@ void Potential::initialize(System *system)
   // Triange constraints (solvent, use SETTLE)
   triangleConsCount=triangleCons_tmp.size();
   triangleCons=(struct TriangleCons*)calloc(triangleConsCount,sizeof(struct TriangleCons));
-  cudaMalloc(&triangleCons_d,triangleConsCount*sizeof(struct TriangleCons));
+  gpuCheck(cudaMalloc(&triangleCons_d,triangleConsCount*sizeof(struct TriangleCons)));
   for (i=0; i<triangleConsCount; i++) {
     triangleCons[i]=triangleCons_tmp[i];
   }
-  cudaMemcpy(triangleCons_d,triangleCons,triangleConsCount*sizeof(struct TriangleCons),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(triangleCons_d,triangleCons,triangleConsCount*sizeof(struct TriangleCons),cudaMemcpyHostToDevice));
 
   // Branch1 constraints
   branch1ConsCount=branch1Cons_tmp.size();
   branch1Cons=(struct Branch1Cons*)calloc(branch1ConsCount,sizeof(struct Branch1Cons));
-  cudaMalloc(&branch1Cons_d,branch1ConsCount*sizeof(struct Branch1Cons));
+  gpuCheck(cudaMalloc(&branch1Cons_d,branch1ConsCount*sizeof(struct Branch1Cons)));
   for (i=0; i<branch1ConsCount; i++) {
     branch1Cons[i]=branch1Cons_tmp[i];
   }
-  cudaMemcpy(branch1Cons_d,branch1Cons,branch1ConsCount*sizeof(struct Branch1Cons),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(branch1Cons_d,branch1Cons,branch1ConsCount*sizeof(struct Branch1Cons),cudaMemcpyHostToDevice));
 
   // Branch2 constraints
   branch2ConsCount=branch2Cons_tmp.size();
   branch2Cons=(struct Branch2Cons*)calloc(branch2ConsCount,sizeof(struct Branch2Cons));
-  cudaMalloc(&branch2Cons_d,branch2ConsCount*sizeof(struct Branch2Cons));
+  gpuCheck(cudaMalloc(&branch2Cons_d,branch2ConsCount*sizeof(struct Branch2Cons)));
   for (i=0; i<branch2ConsCount; i++) {
     branch2Cons[i]=branch2Cons_tmp[i];
   }
-  cudaMemcpy(branch2Cons_d,branch2Cons,branch2ConsCount*sizeof(struct Branch2Cons),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(branch2Cons_d,branch2Cons,branch2ConsCount*sizeof(struct Branch2Cons),cudaMemcpyHostToDevice));
 
   // Branch3 constraints
   branch3ConsCount=branch3Cons_tmp.size();
   branch3Cons=(struct Branch3Cons*)calloc(branch3ConsCount,sizeof(struct Branch3Cons));
-  cudaMalloc(&branch3Cons_d,branch3ConsCount*sizeof(struct Branch3Cons));
+  gpuCheck(cudaMalloc(&branch3Cons_d,branch3ConsCount*sizeof(struct Branch3Cons)));
   for (i=0; i<branch3ConsCount; i++) {
     branch3Cons[i]=branch3Cons_tmp[i];
   }
-  cudaMemcpy(branch3Cons_d,branch3Cons,branch3ConsCount*sizeof(struct Branch3Cons),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(branch3Cons_d,branch3Cons,branch3ConsCount*sizeof(struct Branch3Cons),cudaMemcpyHostToDevice));
 
   // Virtual sites 2
   virtualSite2Count=system->structure->virt2List.size();
   virtualSite2=(struct VirtualSite2*)calloc(virtualSite2Count,sizeof(struct VirtualSite2));
-  cudaMalloc(&virtualSite2_d,virtualSite2Count*sizeof(struct VirtualSite2));
+  gpuCheck(cudaMalloc(&virtualSite2_d,virtualSite2Count*sizeof(struct VirtualSite2)));
   for (i=0; i<virtualSite2Count; i++) {
     virtualSite2[i]=system->structure->virt2List[i];
   }
-  cudaMemcpy(virtualSite2_d,virtualSite2,virtualSite2Count*sizeof(struct VirtualSite2),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(virtualSite2_d,virtualSite2,virtualSite2Count*sizeof(struct VirtualSite2),cudaMemcpyHostToDevice));
 
   // Virtual sites 3
   virtualSite3Count=system->structure->virt3List.size();
   virtualSite3=(struct VirtualSite3*)calloc(virtualSite3Count,sizeof(struct VirtualSite3));
-  cudaMalloc(&virtualSite3_d,virtualSite3Count*sizeof(struct VirtualSite3));
+  gpuCheck(cudaMalloc(&virtualSite3_d,virtualSite3Count*sizeof(struct VirtualSite3)));
   for (i=0; i<virtualSite3Count; i++) {
     virtualSite3[i]=system->structure->virt3List[i];
   }
-  cudaMemcpy(virtualSite3_d,virtualSite3,virtualSite3Count*sizeof(struct VirtualSite3),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(virtualSite3_d,virtualSite3,virtualSite3Count*sizeof(struct VirtualSite3),cudaMemcpyHostToDevice));
 
   // NOE restraints
   noeCount=system->structure->noeCount;
   noes=(struct NoePotential*)calloc(noeCount,sizeof(struct NoePotential));
-  cudaMalloc(&noes_d,noeCount*sizeof(struct NoePotential));
+  gpuCheck(cudaMalloc(&noes_d,noeCount*sizeof(struct NoePotential)));
   for (i=0; i<noeCount; i++) {
     noes[i]=system->structure->noeList[i];
   }
-  cudaMemcpy(noes_d,noes,noeCount*sizeof(struct NoePotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(noes_d,noes,noeCount*sizeof(struct NoePotential),cudaMemcpyHostToDevice));
 
   // Harmonic restraints
   harmCount=system->structure->harmCount;
   harms=(struct HarmonicPotential*)calloc(harmCount,sizeof(struct HarmonicPotential));
-  cudaMalloc(&harms_d,harmCount*sizeof(struct HarmonicPotential));
+  gpuCheck(cudaMalloc(&harms_d,harmCount*sizeof(struct HarmonicPotential)));
   real_x harmCenterNorm=0;
   harmCenter.x=0;
   harmCenter.y=0;
@@ -1703,12 +1703,12 @@ void Potential::initialize(System *system)
     harmCenter.y/=harmCenterNorm;
     harmCenter.z/=harmCenterNorm;
   }
-  cudaMemcpy(harms_d,harms,harmCount*sizeof(struct HarmonicPotential),cudaMemcpyHostToDevice);
+  gpuCheck(cudaMemcpy(harms_d,harms,harmCount*sizeof(struct HarmonicPotential),cudaMemcpyHostToDevice));
   // Distance/bond restraints
   boRestCount=system->structure->boRestCount;
   if (boRestCount>0) {
     boRests=(struct BoRestPotential*)calloc(boRestCount,sizeof(struct BoRestPotential));
-    cudaMalloc(&boRests_d,boRestCount*sizeof(struct BoRestPotential));
+    gpuCheck(cudaMalloc(&boRests_d,boRestCount*sizeof(struct BoRestPotential)));
     for (i=0; i<boRestCount; i++) {
       for (j=0; j<2; j++) {
         boRests[i].idx[j]=system->structure->boRestList[i].idx[j];
@@ -1717,13 +1717,13 @@ void Potential::initialize(System *system)
       boRests[i].r0=system->structure->boRestList[i].r0;
       boRests[i].block=system->structure->boRestList[i].block;
     }
-    cudaMemcpy(boRests_d,boRests,boRestCount*sizeof(struct BoRestPotential),cudaMemcpyHostToDevice);
+    gpuCheck(cudaMemcpy(boRests_d,boRests,boRestCount*sizeof(struct BoRestPotential),cudaMemcpyHostToDevice));
   }
   // Angle restraints
   anRestCount=system->structure->anRestCount;
   if (anRestCount>0) {
     anRests=(struct AnRestPotential*)calloc(anRestCount,sizeof(struct AnRestPotential));
-    cudaMalloc(&anRests_d,anRestCount*sizeof(struct AnRestPotential));
+    gpuCheck(cudaMalloc(&anRests_d,anRestCount*sizeof(struct AnRestPotential)));
     for (i=0; i<anRestCount; i++) {
       for (j=0; j<3; j++) {
         anRests[i].idx[j]=system->structure->anRestList[i].idx[j];
@@ -1732,13 +1732,13 @@ void Potential::initialize(System *system)
       anRests[i].t0=system->structure->anRestList[i].t0;
       anRests[i].block=system->structure->anRestList[i].block;
     }
-    cudaMemcpy(anRests_d,anRests,anRestCount*sizeof(struct AnRestPotential),cudaMemcpyHostToDevice);
+    gpuCheck(cudaMemcpy(anRests_d,anRests,anRestCount*sizeof(struct AnRestPotential),cudaMemcpyHostToDevice));
   }
   // Dihedral restraints
   diRestCount=system->structure->diRestCount;
   if (diRestCount>0) {
     diRests=(struct DiRestPotential*)calloc(diRestCount,sizeof(struct DiRestPotential));
-    cudaMalloc(&diRests_d,diRestCount*sizeof(struct DiRestPotential));
+    gpuCheck(cudaMalloc(&diRests_d,diRestCount*sizeof(struct DiRestPotential)));
     for (i=0; i<diRestCount; i++) {
       // Get participating atoms
       for (j=0; j<4; j++) {
@@ -1750,18 +1750,18 @@ void Potential::initialize(System *system)
       diRests[i].width=system->structure->diRestList[i].width;
       diRests[i].block=system->structure->diRestList[i].block;
     }
-    cudaMemcpy(diRests_d,diRests,diRestCount*sizeof(struct DiRestPotential),cudaMemcpyHostToDevice);
+    gpuCheck(cudaMemcpy(diRests_d,diRests,diRestCount*sizeof(struct DiRestPotential),cudaMemcpyHostToDevice));
   }
   
   // RESD Distance Restraint, 2 distances, eeresd-begin
   resdCount=system->structure->resdCount;
   if (resdCount > 0) { //eeresd-gaurd
     resds=(struct ResdPotential*)calloc(resdCount,sizeof(struct ResdPotential));
-    cudaMalloc(&resds_d,resdCount*sizeof(struct ResdPotential));
+    gpuCheck(cudaMalloc(&resds_d,resdCount*sizeof(struct ResdPotential)));
     for (i=0; i<resdCount; i++) {
       resds[i]=system->structure->resdList[i];
     }
-    cudaMemcpy(resds_d,resds,resdCount*sizeof(struct ResdPotential),cudaMemcpyHostToDevice);
+    gpuCheck(cudaMemcpy(resds_d,resds,resdCount*sizeof(struct ResdPotential),cudaMemcpyHostToDevice));
   }  //eeresd-gaurd
   // eeresd-end
 
@@ -1787,22 +1787,22 @@ void Potential::initialize(System *system)
     d.ptnml  = h.ptnml;
     d.mlnatoms = h.mlnatoms; //same as atomCount
     // allocate device arrays for the integer buffers
-    cudaMalloc(&d.mlatomidx,  sizeof(int) * h.ptnml);
-    if (!h.mlSidx.empty()) {cudaMalloc(&d.mlSidx, sizeof(int) * h.ptnml);}
-    cudaMalloc(&d.mlZidx, sizeof(int) * h.ptnml); 
-    cudaMalloc(&d.mlmaskid, sizeof(int) * atomCount);
+    gpuCheck(cudaMalloc(&d.mlatomidx,  sizeof(int) * h.ptnml));
+    if (!h.mlSidx.empty()) {gpuCheck(cudaMalloc(&d.mlSidx, sizeof(int) * h.ptnml));}
+    gpuCheck(cudaMalloc(&d.mlZidx, sizeof(int) * h.ptnml)); 
+    gpuCheck(cudaMalloc(&d.mlmaskid, sizeof(int) * atomCount));
     // upload the corresponding host vectors
-    cudaMemcpy(d.mlatomidx,h.mlatomidx.data(),sizeof(int) * h.ptnml,cudaMemcpyHostToDevice);
-    cudaMemcpy(d.mlZidx,h.mlZidx.data(),sizeof(int) * h.ptnml,cudaMemcpyHostToDevice);
-    if (!h.mlSidx.empty()) {cudaMemcpy(d.mlSidx, h.mlSidx.data(),sizeof(int) * h.ptnml, cudaMemcpyHostToDevice);}
-    cudaMemcpy(d.mlmaskid,h.mlmaskid.data(),sizeof(int) * atomCount,cudaMemcpyHostToDevice);
+    gpuCheck(cudaMemcpy(d.mlatomidx,h.mlatomidx.data(),sizeof(int) * h.ptnml,cudaMemcpyHostToDevice));
+    gpuCheck(cudaMemcpy(d.mlZidx,h.mlZidx.data(),sizeof(int) * h.ptnml,cudaMemcpyHostToDevice));
+    if (!h.mlSidx.empty()) {gpuCheck(cudaMemcpy(d.mlSidx, h.mlSidx.data(),sizeof(int) * h.ptnml, cudaMemcpyHostToDevice));}
+    gpuCheck(cudaMemcpy(d.mlmaskid,h.mlmaskid.data(),sizeof(int) * atomCount,cudaMemcpyHostToDevice));
     // Buffer Array allocation and initialization
-    cudaMalloc(&d.ml_qm_coords_s_d,  3 * h.ptnml * sizeof(float));
-    cudaMalloc(&d.ml_qm_grad_s_d,    3 * h.ptnml  * sizeof(float));
-    cudaMalloc(&d.ml_energy_s_d,     sizeof(float));
-    cudaMemset(d.ml_qm_coords_s_d,     0, 3*h.ptnml * sizeof(float));
-    cudaMemset(d.ml_qm_grad_s_d,       0, 3*h.ptnml * sizeof(float));
-    cudaMemset(d.ml_energy_s_d,        0, sizeof(float));
+    gpuCheck(cudaMalloc(&d.ml_qm_coords_s_d,  3 * h.ptnml * sizeof(float)));
+    gpuCheck(cudaMalloc(&d.ml_qm_grad_s_d,    3 * h.ptnml  * sizeof(float)));
+    gpuCheck(cudaMalloc(&d.ml_energy_s_d,     sizeof(float)));
+    gpuCheck(cudaMemset(d.ml_qm_coords_s_d,     0, 3*h.ptnml * sizeof(float)));
+    gpuCheck(cudaMemset(d.ml_qm_grad_s_d,       0, 3*h.ptnml * sizeof(float)));
+    gpuCheck(cudaMemset(d.ml_energy_s_d,        0, sizeof(float)));
   }  
 #endif  // eemlp-end 
 
@@ -1838,13 +1838,13 @@ void Potential::initialize(System *system)
 
 void Potential::reset_force(System *system,bool calcEnergy)
 {
-  cudaMemset(system->state->forceBuffer_d,0,(2*system->state->lambdaCount+3*system->state->atomCount)*sizeof(real_f));
+  gpuCheck(cudaMemset(system->state->forceBuffer_d,0,(2*system->state->lambdaCount+3*system->state->atomCount)*sizeof(real_f)));
   // #warning "Also need to do something intelligent about localForce_d size here"
   // cudaMemset(system->domdec->localForce_d,0,2*system->domdec->globalCount*sizeof(real3_f));
   // Fixed. See also localForce_d in src/domdec/domdec.cu
-  cudaMemset(system->domdec->localForce_d,0,32*system->domdec->maxBlocks*sizeof(real3_f));
+  gpuCheck(cudaMemset(system->domdec->localForce_d,0,32*system->domdec->maxBlocks*sizeof(real3_f)));
   if (calcEnergy) {
-    cudaMemset(system->state->energy_d,0,eeend*sizeof(real_e));
+    gpuCheck(cudaMemset(system->state->energy_d,0,eeend*sizeof(real_e)));
   }
 }
 

@@ -11,6 +11,7 @@
 
 #ifdef USE_TEXTURE
 #include <string.h> // for memset
+#include "main/gpu_check.h"
 #endif
 
 
@@ -50,33 +51,33 @@ Domdec::Domdec()
 Domdec::~Domdec()
 {
   if (domain) free(domain);
-  if (domain_d) cudaFree(domain_d);
-  if (localToGlobal_d) cudaFree(localToGlobal_d);
-  if (globalToLane_d) cudaFree(globalToLane_d);
-  if (globalToBlock_d) cudaFree(globalToBlock_d);
-  if (localPosition_d) cudaFree(localPosition_d);
-  if (localForce_d) cudaFree(localForce_d);
-  if (localNbonds_d) cudaFree(localNbonds_d);
-  if (blockSort_d) cudaFree(blockSort_d);
-  if (blockToken_d) cudaFree(blockToken_d);
-  if (blockBounds_d) cudaFree(blockBounds_d);
+  if (domain_d) gpuCheck(cudaFree(domain_d));
+  if (localToGlobal_d) gpuCheck(cudaFree(localToGlobal_d));
+  if (globalToLane_d) gpuCheck(cudaFree(globalToLane_d));
+  if (globalToBlock_d) gpuCheck(cudaFree(globalToBlock_d));
+  if (localPosition_d) gpuCheck(cudaFree(localPosition_d));
+  if (localForce_d) gpuCheck(cudaFree(localForce_d));
+  if (localNbonds_d) gpuCheck(cudaFree(localNbonds_d));
+  if (blockSort_d) gpuCheck(cudaFree(blockSort_d));
+  if (blockToken_d) gpuCheck(cudaFree(blockToken_d));
+  if (blockBounds_d) gpuCheck(cudaFree(blockBounds_d));
   if (blockCount) free(blockCount);
-  if (blockCount_d) cudaFree(blockCount_d);
-  if (blockVolume_d) cudaFree(blockVolume_d);
-  if (blockCandidateCount_d) cudaFree(blockCandidateCount_d);
-  if (blockCandidates_d) cudaFree(blockCandidates_d);
-  if (blockPartnerCount_d) cudaFree(blockPartnerCount_d);
-  if (blockPartners_d) cudaFree(blockPartners_d);
-  if (localExcls_d) cudaFree(localExcls_d);
-  if (firstExcl_d) cudaFree(firstExcl_d);
-  if (mapExcl_d) cudaFree(mapExcl_d);
-  if (exclSort_d) cudaFree(exclSort_d);
-  if (sortedExcls_d) cudaFree(sortedExcls_d);
+  if (blockCount_d) gpuCheck(cudaFree(blockCount_d));
+  if (blockVolume_d) gpuCheck(cudaFree(blockVolume_d));
+  if (blockCandidateCount_d) gpuCheck(cudaFree(blockCandidateCount_d));
+  if (blockCandidates_d) gpuCheck(cudaFree(blockCandidates_d));
+  if (blockPartnerCount_d) gpuCheck(cudaFree(blockPartnerCount_d));
+  if (blockPartners_d) gpuCheck(cudaFree(blockPartners_d));
+  if (localExcls_d) gpuCheck(cudaFree(localExcls_d));
+  if (firstExcl_d) gpuCheck(cudaFree(firstExcl_d));
+  if (mapExcl_d) gpuCheck(cudaFree(mapExcl_d));
+  if (exclSort_d) gpuCheck(cudaFree(exclSort_d));
+  if (sortedExcls_d) gpuCheck(cudaFree(sortedExcls_d));
 #ifdef USE_TEXTURE
   if (sortedExcls_tex) cudaDestroyTextureObject(sortedExcls_tex);
 #endif
-  if (blockExcls_d) cudaFree(blockExcls_d);
-  if (overflowFlag_d) cudaFree(overflowFlag_d);
+  if (blockExcls_d) gpuCheck(cudaFree(blockExcls_d));
+  if (overflowFlag_d) gpuCheck(cudaFree(overflowFlag_d));
 }
 
 void Domdec::initialize(System *system)
@@ -144,31 +145,31 @@ void Domdec::initialize(System *system)
 
   // global count used to be padded to be larger than atomCount so blocks always started at 0, modulus 32. That caused problems.
   domain=(int*)calloc(globalCount,sizeof(int));
-  cudaMalloc(&domain_d,globalCount*sizeof(int));
-  cudaMalloc(&localToGlobal_d,globalCount*sizeof(int));
-  cudaMalloc(&globalToLane_d,globalCount*sizeof(int));
-  cudaMalloc(&globalToBlock_d,globalCount*sizeof(int));
-  cudaMalloc(&localPosition_d,32*maxBlocks*sizeof(real3));
-  cudaMalloc(&localForce_d,32*maxBlocks*sizeof(real3_f));
-  cudaMalloc(&localNbonds_d,32*maxBlocks*sizeof(struct NbondPotential));
-  cudaMalloc(&blockSort_d,(globalCount+1)*sizeof(struct DomdecBlockSort));
-  cudaMalloc(&blockToken_d,(globalCount+1)*sizeof(struct DomdecBlockToken));
-  cudaMalloc(&blockBounds_d,maxBlocks*sizeof(int));
+  gpuCheck(cudaMalloc(&domain_d,globalCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&localToGlobal_d,globalCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&globalToLane_d,globalCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&globalToBlock_d,globalCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&localPosition_d,32*maxBlocks*sizeof(real3)));
+  gpuCheck(cudaMalloc(&localForce_d,32*maxBlocks*sizeof(real3_f)));
+  gpuCheck(cudaMalloc(&localNbonds_d,32*maxBlocks*sizeof(struct NbondPotential)));
+  gpuCheck(cudaMalloc(&blockSort_d,(globalCount+1)*sizeof(struct DomdecBlockSort)));
+  gpuCheck(cudaMalloc(&blockToken_d,(globalCount+1)*sizeof(struct DomdecBlockToken)));
+  gpuCheck(cudaMalloc(&blockBounds_d,maxBlocks*sizeof(int)));
   blockCount=(int*)calloc(idCount+1,sizeof(int));
-  cudaMalloc(&blockCount_d,(idCount+1)*sizeof(int));
-  cudaMalloc(&blockVolume_d,maxBlocks*sizeof(struct DomdecBlockVolume));
-  cudaMalloc(&blockCandidateCount_d,maxBlocks*sizeof(int));
-  cudaMalloc(&blockCandidates_d,maxBlocks*maxPartnersPerBlock*sizeof(struct DomdecBlockPartners));
-  cudaMalloc(&blockPartnerCount_d,maxBlocks*sizeof(int));
-  cudaMalloc(&blockPartners_d,maxBlocks*maxPartnersPerBlock*sizeof(struct DomdecBlockPartners));
+  gpuCheck(cudaMalloc(&blockCount_d,(idCount+1)*sizeof(int)));
+  gpuCheck(cudaMalloc(&blockVolume_d,maxBlocks*sizeof(struct DomdecBlockVolume)));
+  gpuCheck(cudaMalloc(&blockCandidateCount_d,maxBlocks*sizeof(int)));
+  gpuCheck(cudaMalloc(&blockCandidates_d,maxBlocks*maxPartnersPerBlock*sizeof(struct DomdecBlockPartners)));
+  gpuCheck(cudaMalloc(&blockPartnerCount_d,maxBlocks*sizeof(int)));
+  gpuCheck(cudaMalloc(&blockPartners_d,maxBlocks*maxPartnersPerBlock*sizeof(struct DomdecBlockPartners)));
 
-  cudaMalloc(&localExcls_d,(system->potential->exclCount+1)*sizeof(struct ExclPotential));
-  cudaMalloc(&firstExcl_d,(system->potential->exclCount+1)*sizeof(int));
-  cudaMalloc(&mapExcl_d,(system->potential->exclCount+1)*sizeof(int));
-  cudaMalloc(&exclSort_d,(system->potential->exclCount+1)*sizeof(struct DomdecBlockSort));
-  cudaMalloc(&sortedExcls_d,system->potential->exclCount*sizeof(struct ExclPotential));
-  cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int));
-  cudaMalloc(&overflowFlag_d,sizeof(int));
+  gpuCheck(cudaMalloc(&localExcls_d,(system->potential->exclCount+1)*sizeof(struct ExclPotential)));
+  gpuCheck(cudaMalloc(&firstExcl_d,(system->potential->exclCount+1)*sizeof(int)));
+  gpuCheck(cudaMalloc(&mapExcl_d,(system->potential->exclCount+1)*sizeof(int)));
+  gpuCheck(cudaMalloc(&exclSort_d,(system->potential->exclCount+1)*sizeof(struct DomdecBlockSort)));
+  gpuCheck(cudaMalloc(&sortedExcls_d,system->potential->exclCount*sizeof(struct ExclPotential)));
+  gpuCheck(cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&overflowFlag_d,sizeof(int)));
 
 #ifdef USE_TEXTURE
   if (system->potential->exclCount>0) {
