@@ -247,7 +247,10 @@ System* init_system(int ngpus,int *gpus)
   }
   if (available<omp_get_max_threads()) {
     fatal(__FILE__, __LINE__,
-      "Running with %d omp threads but only %d GPUs\n",
+      "BLaDE uses one GPU per OpenMP thread, but this run has %d OpenMP "
+      "thread(s) and only %d usable GPU(s).\n"
+      "Set OMP_NUM_THREADS to at most the number of GPUs (e.g. "
+      "OMP_NUM_THREADS=1 for a single GPU) or request more GPUs.\n",
        omp_get_max_threads(),available);
   }
 
