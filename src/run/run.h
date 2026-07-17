@@ -15,6 +15,7 @@ class System;
 
 struct Cutoffs {
   real betaEwald;
+  real betaEwaldLJ;
   real rCut;
   real rSwitch;
 };
@@ -35,6 +36,7 @@ typedef enum evdw {
   evfswitch, // 0: force switching (VFSWITCH)
   evswitch,  // 1: potential switching (VSWITCH)
   evshift,   // 2: potential shift (VSHIFT)
+  eljpme,    // 3: PME (LJPME)
   evdwend} EVdw;
 
 class Run {
@@ -77,9 +79,10 @@ class Run {
   real lbfgs_eps = 1.0*KCAL_MOL/ANGSTROM; // gradient rms convergence criteria
 
   real betaEwald;
+  real betaEwaldLJ;
   real rCut;
   real rSwitch;
-  EVdw vdwMethod;   // VDW method: evfswitch, evswitch, or evshift
+  EVdw vdwMethod;   // VDW method: evfswitch, evswitch, evshift or eljpme
   EElec elecMethod; // electrostatic method: efswitch, epme, or efshift
   real gridSpace; // grid spacing for PME calculation
   int grid[3];

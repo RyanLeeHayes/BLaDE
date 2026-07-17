@@ -47,6 +47,7 @@ Run::Run(System *system)
   prettyXTC=false;
 // Nonbonded options
   betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
+  betaEwaldLJ=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
   vdwMethod=evfswitch; // default to VFSWITCH (force switching)
@@ -58,6 +59,7 @@ Run::Run(System *system)
   orderEwald=6;
 
   cutoffs.betaEwald=betaEwald;
+  cutoffs.betaEwaldLJ=betaEwaldLJ;
   cutoffs.rCut=rCut;
   cutoffs.rSwitch=rSwitch;
 
@@ -330,7 +332,9 @@ void Run::set_variable(char *line,char *token,System *system)
     gamma=io_nextf(line)/PICOSECOND;
   } else if (strcmp(token,"invbetaewald")==0) {
     betaEwald=1/(io_nextf(line)*ANGSTROM);
+    betaEwaldLJ=betaEwald;
     cutoffs.betaEwald=betaEwald;
+    cutoffs.betaEwaldLJ=betaEwaldLJ;
   } else if (strcmp(token,"rcut")==0) {
     rCut=io_nextf(line)*ANGSTROM;
     cutoffs.rCut=rCut;
@@ -349,8 +353,10 @@ void Run::set_variable(char *line,char *token,System *system)
       vdwMethod=evswitch;
     } else if (strcmp(minString.c_str(),"vshift")==0) {
       vdwMethod=evshift;
+    } else if (strcmp(minString.c_str(),"ljpme")==0) {
+      vdwMethod=eljpme;
     } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token %s for vdw method vdwMethod. Options are: vfswitch, vswitch, or vshift\n",minString.c_str());
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for vdw method vdwMethod. Options are: vfswitch, vswitch, vshift, or ljpme\n",minString.c_str());
     }
   } else if (strcmp(token,"elecmethod")==0) {
     std::string minString=io_nexts(line);
@@ -452,7 +458,8 @@ void Run::test(char *line,char *token,System *system)
   real dx;
   int i,j,ij,s;
   int ij0,imax,jmax;
-  real_e F,E[2];
+  real_f F;
+  real_e E[2];
 
   // Initialize data structures
   dynamics_initialize(system);
@@ -514,8 +521,9 @@ void Run::test(char *line,char *token,System *system)
           system->state->restore_position();
         }
         if (system->id==0) {
-          cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
-          printlog("ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
+          cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real_f),cudaMemcpyDeviceToHost);
+          real num = (E[1]-E[0])/dx;
+          printlog("ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g, err(num-f)=%20.16g\n",ij,E[0],E[1],num,F,num-F);
         }
       }
     }

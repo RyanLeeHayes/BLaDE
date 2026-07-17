@@ -1108,17 +1108,19 @@ void Potential::initialize(System *system)
         msld->nb14_scaling(nb14.idx,nb14.siteBlock);
         // Get their parameters
         nb14.qxq=charge[nb14.idx[0]]*charge[nb14.idx[1]];
+        struct NbondParameter npij[2];
+        real sigPME=0; // TODO: Add rest scaling
+        for (k=0; k<2; k++) {
+          if (param->nbondParameter.count(type.t[k])==1) {
+            npij[k]=param->nbondParameter[type.t[k]];
+          } else {
+            fatal(__FILE__,__LINE__,"Nonbonded parameter for atom %d type %s not found\n",nb14.idx[k],type.t[k].c_str());
+          }
+        }
+        sigPME = sqrt(npij[0].eps*npij[1].eps)*pow(npij[0].sig*npij[1].sig, 3); // no matter what since this is what goes into recip
         if (param->nbfixParameter.count(type)==1) {
           np=param->nbfixParameter[type];
         } else {
-          struct NbondParameter npij[2];
-          for (k=0; k<2; k++) {
-            if (param->nbondParameter.count(type.t[k])==1) {
-              npij[k]=param->nbondParameter[type.t[k]];
-            } else {
-              fatal(__FILE__,__LINE__,"Nonbonded parameter for atom %d type %s not found\n",nb14.idx[k],type.t[k].c_str());
-            }
-          }
           np.eps14=sqrt(npij[0].eps14*npij[1].eps14);
           np.sig14=npij[0].sig14+npij[1].sig14;
           if (npij[0].combine==1 && npij[1].combine==1) {
@@ -1136,30 +1138,43 @@ void Potential::initialize(System *system)
         sig6*=(sig6*sig6);
         nb14.c12=np.eps14*sig6*sig6;
         nb14.c6=2*np.eps14*sig6;
+        nb14.c6_recip=2*sigPME;
         nb14s_tmp.push_back(nb14);
       }
     }
   }
 
   if (system->run->elecMethod==epme) {
-
-  for (i=0; i<atomCount; i++) {
-    for (std::set<int>::iterator jj=allExcl[i].begin(); jj!=allExcl[i].end(); jj++) {
-      if (i<*jj && diheExcl[i].count(*jj)==0) {
-        NbExPotential nbex;
-        // Get participating atoms
-        nbex.idx[0]=i;
-        nbex.idx[1]=*jj;
-        // Get their MSLD scaling
-        if (msld->nbex_scaling(nbex.idx,nbex.siteBlock)) {
-          // Get their parameters
-          nbex.qxq=charge[nbex.idx[0]]*charge[nbex.idx[1]];
-          nbexs_tmp.push_back(nbex);
+    for (i=0; i<atomCount; i++) {
+      for (std::set<int>::iterator jj=allExcl[i].begin(); jj!=allExcl[i].end(); jj++) {
+        if (i<*jj && diheExcl[i].count(*jj)==0) {
+          NbExPotential nbex;
+          // Get participating atoms
+          nbex.idx[0]=i;
+          nbex.idx[1]=*jj;
+          // LJPME
+          TypeName2 type;
+          struct NbondParameter npij[2];
+          real sigPME=0; // TODO: Add rest scaling
+          for (k=0; k<2; k++) {
+            type.t[k]=struc->atomList[nbex.idx[k]].atomTypeName;
+            if (param->nbondParameter.count(type.t[k])==1) {
+              npij[k]=param->nbondParameter[type.t[k]];
+            } else {
+              fatal(__FILE__,__LINE__,"Nonbonded parameter for atom %d type %s not found\n",nbex.idx[k],type.t[k].c_str());
+            }
+          }
+          sigPME = sqrt(npij[0].eps*npij[1].eps)*pow(npij[0].sig*npij[1].sig, 3); // no matter what since this is what goes into recip
+          // Get their MSLD scaling
+          if (msld->nbex_scaling(nbex.idx,nbex.siteBlock)) {
+            // Get their parameters
+            nbex.qxq=charge[nbex.idx[0]]*charge[nbex.idx[1]];
+            nbex.c6_recip=2*sigPME;
+            nbexs_tmp.push_back(nbex);
+          }
         }
       }
     }
-  }
-
   }
 
   for (i=0; i<atomCount; i++) {
@@ -1180,15 +1195,13 @@ void Potential::initialize(System *system)
   cudaMemcpy(nb14s_d,nb14s,nb14Count*sizeof(struct Nb14Potential),cudaMemcpyHostToDevice);
 
   if (system->run->elecMethod==epme) {
-
-  nbexCount=nbexs_tmp.size();
-  nbexs=(struct NbExPotential*)calloc(nbexCount,sizeof(struct NbExPotential));
-  cudaMalloc(&(nbexs_d),nbexCount*sizeof(struct NbExPotential));
-  for (i=0; i<nbexCount; i++) {
-    nbexs[i]=nbexs_tmp[i];
-  }
-  cudaMemcpy(nbexs_d,nbexs,nbexCount*sizeof(struct NbExPotential),cudaMemcpyHostToDevice);
-
+    nbexCount=nbexs_tmp.size();
+    nbexs=(struct NbExPotential*)calloc(nbexCount,sizeof(struct NbExPotential));
+    cudaMalloc(&(nbexs_d),nbexCount*sizeof(struct NbExPotential));
+    for (i=0; i<nbexCount; i++) {
+      nbexs[i]=nbexs_tmp[i];
+    }
+    cudaMemcpy(nbexs_d,nbexs,nbexCount*sizeof(struct NbExPotential),cudaMemcpyHostToDevice);
   }
 
   exclCount=excls_tmp.size();
@@ -1200,109 +1213,108 @@ void Potential::initialize(System *system)
   cudaMemcpy(excls_d,excls,exclCount*sizeof(struct ExclPotential),cudaMemcpyHostToDevice);
 
   if (system->run->elecMethod==epme) {
-
-  // Choose PME grid sizes
-  int goodSizes[]={32,27,24,20,18,16};
-  real boxtmp[3]={(real)(system->state->box.a.x),(real)(system->state->box.a.y),(real)(system->state->box.a.z)};
-  for (i=0; i<3; i++) {
-    if (system->run->gridSpace>0) {
-      real minDim=boxtmp[i]/system->run->gridSpace;
-      for (j=1; minDim>=32*j; j*=2) {
-        ;
+    // Choose PME grid sizes
+    int goodSizes[]={32,27,24,20,18,16};
+    real boxtmp[3]={(real)(system->state->box.a.x),(real)(system->state->box.a.y),(real)(system->state->box.a.z)};
+    for (i=0; i<3; i++) {
+      if (system->run->gridSpace>0) {
+        real minDim=boxtmp[i]/system->run->gridSpace;
+        for (j=1; minDim>=32*j; j*=2) {
+          ;
+        }
+        for (k=0; k<5 && minDim<j*goodSizes[k]; k++) { // guaranteed to pass k=0
+          ;
+        }
+        gridDimPME[i]=j*goodSizes[k-1];
+        printlog("PME grid(%d) size: %d\n",i,gridDimPME[i]);
+      } else {
+        gridDimPME[i]=system->run->grid[i];
       }
-      for (k=0; k<5 && minDim<j*goodSizes[k]; k++) { // guaranteed to pass k=0
-        ;
-      }
-      gridDimPME[i]=j*goodSizes[k-1];
-      printlog("PME grid(%d) size: %d\n",i,gridDimPME[i]);
-    } else {
-      gridDimPME[i]=system->run->grid[i];
     }
-  }
 
-  gpuCheck(cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
-  gpuCheck(cudaMalloc(&fourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(myCufftComplex)));
-  gpuCheck(cudaMalloc(&potentialGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
+    gpuCheck(cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
+    gpuCheck(cudaMalloc(&fourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(myCufftComplex)));
+    gpuCheck(cudaMalloc(&potentialGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
 #ifdef USE_TEXTURE
-  {
-    cudaResourceDesc resDesc;
-    memset(&resDesc,0,sizeof(resDesc));
-    resDesc.resType=cudaResourceTypeLinear;
-    resDesc.res.linear.devPtr=potentialGridPME_d;
-    resDesc.res.linear.desc=cudaCreateChannelDesc<real>();
-    resDesc.res.linear.sizeInBytes=gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(real);
-    cudaTextureDesc texDesc;
-    memset(&texDesc,0,sizeof(texDesc));
-    texDesc.readMode=cudaReadModeElementType;
-    cudaCreateTextureObject(&potentialGridPME_tex,&resDesc,&texDesc,NULL);
-  }
+    {
+      cudaResourceDesc resDesc;
+      memset(&resDesc,0,sizeof(resDesc));
+      resDesc.resType=cudaResourceTypeLinear;
+      resDesc.res.linear.devPtr=potentialGridPME_d;
+      resDesc.res.linear.desc=cudaCreateChannelDesc<real>();
+      resDesc.res.linear.sizeInBytes=gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(real);
+      cudaTextureDesc texDesc;
+      memset(&texDesc,0,sizeof(texDesc));
+      texDesc.readMode=cudaReadModeElementType;
+      cudaCreateTextureObject(&potentialGridPME_tex,&resDesc,&texDesc,NULL);
+    }
 #endif
 
-  bGridPME=(real*)calloc(gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1),sizeof(real));
-  gpuCheck(cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real)));
-  int order=system->run->orderEwald;
-  // Only have to support orders 4, 6, and 8
-  real Meven[9]={0,1,0,0,0,0,0,0,0};
-  real Modd[9]={0,0,0,0,0,0,0,0,0};
-  for (i=2; i<order; i+=2) {
-    for (l=0; l<i+1; l++) {
-      Modd[l]=l*Meven[l]/i+(i+1-l)*Meven[i+1-l]/i;
-    }
-    for (l=0; l<i+2; l++) {
-      Meven[l]=l*Modd[l]/(i+1)+(i+2-l)*Modd[i+2-l]/(i+1);
-    }
-  }
-  real *invbx2=(real*)calloc(gridDimPME[0],sizeof(real));
-  for (i=0; i<gridDimPME[0]; i++) {
-    myCufftComplex bx;
-    bx.x=0;
-    bx.y=0;
-    for (l=1; l<order; l++) {
-      bx.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[0]);
-      bx.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[0]);
-    }
-    invbx2[i]=1.0/(bx.x*bx.x+bx.y*bx.y);
-  }
-  real *invby2=(real*)calloc(gridDimPME[1],sizeof(real));
-  for (i=0; i<gridDimPME[1]; i++) {
-    myCufftComplex by;
-    by.x=0;
-    by.y=0;
-    for (l=1; l<order; l++) {
-      by.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[1]);
-      by.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[1]);
-    }
-    invby2[i]=1.0/(by.x*by.x+by.y*by.y);
-  }
-  real *invbz2=(real*)calloc(gridDimPME[2]/2+1,sizeof(real));
-  for (i=0; i<(gridDimPME[2]/2+1); i++) {
-    myCufftComplex bz;
-    bz.x=0;
-    bz.y=0;
-    for (l=1; l<order; l++) {
-      bz.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[2]);
-      bz.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[2]);
-    }
-    invbz2[i]=1.0/(bz.x*bz.x+bz.y*bz.y);
-  }
-  for (i=0; i<gridDimPME[0]; i++) {
-    for (j=0; j<gridDimPME[1]; j++) {
-      for (k=0; k<(gridDimPME[2]/2+1); k++) {
-        bGridPME[(i*gridDimPME[1]+j)*(gridDimPME[2]/2+1)+k]=invbx2[i]*invby2[j]*invbz2[k];
+    bGridPME=(real*)calloc(gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1),sizeof(real));
+    gpuCheck(cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real)));
+    int order=system->run->orderEwald;
+    // Only have to support orders 4, 6, and 8
+    real Meven[9]={0,1,0,0,0,0,0,0,0};
+    real Modd[9]={0,0,0,0,0,0,0,0,0};
+    for (i=2; i<order; i+=2) {
+      for (l=0; l<i+1; l++) {
+        Modd[l]=l*Meven[l]/i+(i+1-l)*Meven[i+1-l]/i;
+      }
+      for (l=0; l<i+2; l++) {
+        Meven[l]=l*Modd[l]/(i+1)+(i+2-l)*Modd[i+2-l]/(i+1);
       }
     }
-  }
-  free(invbx2);
-  free(invby2);
-  free(invbz2);
-  cudaMemcpy(bGridPME_d,bGridPME,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real),cudaMemcpyHostToDevice);
+    real *invbx2=(real*)calloc(gridDimPME[0],sizeof(real));
+    for (i=0; i<gridDimPME[0]; i++) {
+      myCufftComplex bx;
+      bx.x=0;
+      bx.y=0;
+      for (l=1; l<order; l++) {
+        bx.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[0]);
+        bx.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[0]);
+      }
+      invbx2[i]=1.0/(bx.x*bx.x+bx.y*bx.y);
+    }
+    real *invby2=(real*)calloc(gridDimPME[1],sizeof(real));
+    for (i=0; i<gridDimPME[1]; i++) {
+      myCufftComplex by;
+      by.x=0;
+      by.y=0;
+      for (l=1; l<order; l++) {
+        by.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[1]);
+        by.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[1]);
+      }
+      invby2[i]=1.0/(by.x*by.x+by.y*by.y);
+    }
+    real *invbz2=(real*)calloc(gridDimPME[2]/2+1,sizeof(real));
+    for (i=0; i<(gridDimPME[2]/2+1); i++) {
+      myCufftComplex bz;
+      bz.x=0;
+      bz.y=0;
+      for (l=1; l<order; l++) {
+        bz.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[2]);
+        bz.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[2]);
+      }
+      invbz2[i]=1.0/(bz.x*bz.x+bz.y*bz.y);
+    }
+    for (i=0; i<gridDimPME[0]; i++) {
+      for (j=0; j<gridDimPME[1]; j++) {
+        for (k=0; k<(gridDimPME[2]/2+1); k++) {
+          bGridPME[(i*gridDimPME[1]+j)*(gridDimPME[2]/2+1)+k]=invbx2[i]*invby2[j]*invbz2[k];
+        }
+      }
+    }
+    free(invbx2);
+    free(invby2);
+    free(invbz2);
+    cudaMemcpy(bGridPME_d,bGridPME,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real),cudaMemcpyHostToDevice);
 
-  cufftCreate(&planFFTPME);
-  cufftMakePlan3d(planFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],MYCUFFT_R2C,&bufferSizeFFTPME);
-  cufftSetStream(planFFTPME,system->run->nbrecipStream);
-  cufftCreate(&planIFFTPME);
-  cufftMakePlan3d(planIFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],MYCUFFT_C2R,&bufferSizeIFFTPME);
-  cufftSetStream(planIFFTPME,system->run->nbrecipStream);
+    cufftCreate(&planFFTPME);
+    cufftMakePlan3d(planFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],MYCUFFT_R2C,&bufferSizeFFTPME);
+    cufftSetStream(planFFTPME,system->run->nbrecipStream);
+    cufftCreate(&planIFFTPME);
+    cufftMakePlan3d(planIFFTPME,gridDimPME[0],gridDimPME[1],gridDimPME[2],MYCUFFT_C2R,&bufferSizeIFFTPME);
+    cufftSetStream(planIFFTPME,system->run->nbrecipStream);
 
   }
 
@@ -1381,6 +1393,9 @@ void Potential::initialize(System *system)
       }
       if (param->nbfixParameter.count(type)==1) {
         np=param->nbfixParameter[type];
+        if(system->run->vdwMethod==3 && type.t[0] == type.t[1]){ // LJ-PME
+            fatal(__FILE__,__LINE__,"Unexpected NBFIX for atom type %s and itself found. Cannot do LJ-PME correctly with current assumptions.\n",type.t[0].c_str());
+        }
       } else {
         struct NbondParameter npij[2];
         for (k=0; k<2; k++) {
@@ -1410,7 +1425,7 @@ void Potential::initialize(System *system)
     memset(&resDesc,0,sizeof(resDesc));
     resDesc.resType=cudaResourceTypeLinear;
     resDesc.res.linear.devPtr=vdwParameters_d;
-    resDesc.res.linear.desc=cudaCreateChannelDesc<real2>();
+    resDesc.res.linear.desc=cudaCreateChannelDesc<real4>();
     resDesc.res.linear.sizeInBytes=vdwParameterCount*vdwParameterCount*sizeof(VdwPotential);
     cudaTextureDesc texDesc;
     memset(&texDesc,0,sizeof(texDesc));

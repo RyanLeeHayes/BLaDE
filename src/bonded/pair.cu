@@ -130,6 +130,27 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
         lE[0] = pp.c12*(rinv12 + 2*r6*roffinv18 - 3*roffinv12) -
                 pp.c6*(rinv6 + r6*roffinv12 - 2*roffinv6);
       }
+    } else if (vdwMethod == 3) { // LJPME
+      // U_VdW = U_lorentz + U_geo + U_smooth
+      real br = rc.betaEwaldLJ*r;
+      real br2 = br*br;
+      real b2 = rc.betaEwaldLJ*rc.betaEwaldLJ;
+      real b6 = b2*b2*b2;
+      real fkr = exp(-br2)*(1+br2+br2*br2/2); 
+      real U_geo = pp.c6_recip*rinv6*(1-fkr); 
+      fpair[0] = rinv*(pp.c6_recip*b6*exp(-br2) - 6*U_geo); // cancel recip
+      fpair[0] += (6*pp.c6-12*pp.c12*rinv6)*rinv6*rinv; // regular 
+      // U_smooth makes the potential continuous
+      if (calcEnergy){
+        real U_lorentz = pp.c12*rinv6*rinv6 - pp.c6*rinv6; 
+        real rCut2 = rc.rCut*rc.rCut;
+        real rCut6 = rCut2*rCut2*rCut2;
+        real br = rc.betaEwaldLJ*rc.rCut;
+        real br2 = br*br;
+        real fkr = exp(-br2)*(1+br2+br2*br2/2); 
+        real U_smooth = -(pp.c12/rCut6 - pp.c6 + pp.c6_recip*(1-fkr))/rCut6;
+        lE[0] = U_lorentz + U_geo + U_smooth;
+      }
     }
 
     real kqq=kELECTRIC*pp.qxq;
@@ -188,6 +209,19 @@ __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,rea
   fpair[0]=kqq*(erf(br)*rinv-((real)1.128379167095513)*rc.betaEwald*exp(-br*br))*rinv;
   if (calcEnergy) {
     lE[0]=-kqq*erf(br)*rinv;
+  }
+  if (vdwMethod == 3){ // LJPME
+    // U_VdW = U_geo -- no regular vdw, only correction
+    real rinv2 = rinv*rinv;
+    real rinv6 = rinv2*rinv2*rinv2;
+    real br = rc.betaEwaldLJ*r;
+    real br2 = br*br;
+    real b2 = rc.betaEwaldLJ*rc.betaEwaldLJ;
+    real b6 = b2*b2*b2;
+    real fkr = exp(-br2)*(1+br2+br2*br2/2); 
+    real U_geo = pp.c6_recip*rinv6*(1-fkr); 
+    fpair[0] += rinv*(pp.c6_recip*b6*exp(-br2) - 6*U_geo); // cancel recip
+    if (calcEnergy){ lE[0] += U_geo; }
   }
 }
 
@@ -326,6 +360,8 @@ void getforce_nb14TT(System *system,box_type box,bool calcEnergy)
     getforce_nb14TTT<flagBox,useSoftCore,1>(system,box,calcEnergy);
   } else if (system->run->vdwMethod==2) { // VSHIFT
     getforce_nb14TTT<flagBox,useSoftCore,2>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==3) { // LJPME
+    getforce_nb14TTT<flagBox,useSoftCore,3>(system,box,calcEnergy);
   }
 }
 
@@ -350,8 +386,8 @@ void getforce_nb14(System *system,bool calcEnergy)
 
 
 
-template <bool flagBox,typename box_type>
-void getforce_nbexT(System *system,box_type box,bool calcEnergy)
+template <bool flagBox, int vdwMethod, typename box_type>
+void getforce_nbexTT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -370,8 +406,17 @@ void getforce_nbexT(System *system,box_type box,bool calcEnergy)
     pEnergy=s->energy_d+eenbrecipexcl;
   }
 
-  // useSoft=false (Never use soft cores for nbex, they're already soft). vdwMethod=0 (irrelevant). elecMethod=1 (PME)
-  getforce_pair_kernel <flagBox,NbExPotential,false,0,1> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  // useSoft=false (Never use soft cores for nbex, they're already soft). vdwMethod (if LJPME). elecMethod=1 (PME)
+  getforce_pair_kernel <flagBox,NbExPotential,false,vdwMethod,1> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+}
+
+template <bool flagBox, typename box_type>
+void getforce_nbexT(System *system,box_type box, bool calcEnergy){
+  if (system->run->vdwMethod == 3){ // LJPME
+    getforce_nbexTT<flagBox,3>(system,box,calcEnergy);
+  } else {
+    getforce_nbexTT<flagBox,0>(system,box,calcEnergy); // doesn't matter what goes here just not eljpme
+  }
 }
 
 void getforce_nbex(System *system,bool calcEnergy)

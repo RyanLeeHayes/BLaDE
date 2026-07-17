@@ -131,6 +131,7 @@ __global__ void getforce_nbdirect_kernel(
   real3 xi,xj,xjtmp;
   real3 fi,fj,fjtmp;
   real fli,flj,fljtmp;
+  real c6ii, c6jj, c6jjtmp;
   int bi,bj,bjtmp;
   real li,lj,ljtmp,lixljtmp;
   real rEff,dredr,dredll; // Soft core stuff
@@ -158,6 +159,15 @@ __global__ void getforce_nbdirect_kernel(
 
     fi=real3_reset<real3>();
     if (calcAlch) fli=0;
+    if (vdwMethod == 3){ // LJ-PME
+#ifdef USE_TEXTURE
+      struct VdwPotential vdwpii;
+      ((real2*)(&vdwpii))[0]=tex1Dfetch<real2>(vdwParameters,inp.typeIdx*vdwParameterCount+inp.typeIdx);
+#else
+      struct VdwPotential vdwpii=vdwParameters[inp.typeIdx*vdwParameterCount+inp.typeIdx];
+#endif
+      c6ii = vdwpii.c6;
+    }
 
     // used i/32 instead of iBlock to shift to beginning of array
     jmax=blockPartnerCount[iWarp>>WARPSPERBLOCK];
@@ -211,6 +221,15 @@ __global__ void getforce_nbdirect_kernel(
 
       fj=real3_reset<real3>();
       if (calcAlch) flj=0;
+      if (vdwMethod == 3){ // LJ-PME
+#ifdef USE_TEXTURE
+        struct VdwPotential vdwpjj;
+        ((real2*)(&vdwpjj))[0]=tex1Dfetch<real2>(vdwParameters,jnp.typeIdx*vdwParameterCount+jnp.typeIdx);
+#else
+        struct VdwPotential vdwpjj=vdwParameters[jnp.typeIdx*vdwParameterCount+jnp.typeIdx];
+#endif
+        c6jj = vdwpjj.c6;
+      }
 
       for (jtmp=0; jtmp<jCount; jtmp++) {
         if (__shfl_sync(0xFFFFFFFF,jFlag,jtmp)) {
@@ -220,9 +239,10 @@ __global__ void getforce_nbdirect_kernel(
           xjtmp.y=__shfl_sync(0xFFFFFFFF,xj.y,jtmp);
           xjtmp.z=__shfl_sync(0xFFFFFFFF,xj.z,jtmp);
           if (calcAlch) {
-          bjtmp=__shfl_sync(0xFFFFFFFF,bj,jtmp);
-          ljtmp=__shfl_sync(0xFFFFFFFF,lj,jtmp);
+            bjtmp=__shfl_sync(0xFFFFFFFF,bj,jtmp);
+            ljtmp=__shfl_sync(0xFFFFFFFF,lj,jtmp);
           }
+          c6jjtmp=__shfl_sync(0xFFFFFFFF,c6jj,jtmp);
 
           fjtmp=real3_reset<real3>();
           if (calcAlch) fljtmp=0;
@@ -241,15 +261,15 @@ __global__ void getforce_nbdirect_kernel(
             if (r<cutoffs.rCut) {
               // Scaling
               if (calcAlch) {
-              if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
-                if (bi==bjtmp) {
-                  lixljtmp=li;
+                if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
+                  if (bi==bjtmp) {
+                    lixljtmp=li;
+                  } else {
+                    lixljtmp=0;
+                  }
                 } else {
-                  lixljtmp=0;
+                  lixljtmp=li*ljtmp;
                 }
-              } else {
-                lixljtmp=li*ljtmp;
-              }
               }
 
               rEff=r;
@@ -391,6 +411,30 @@ __global__ void getforce_nbdirect_kernel(
                 if (calcEnergy || (calcAlch && (bi || bjtmp))) {
                   eij += vdwp.c12*(rinv12 + 2*r6*roffinv18 - 3*roffinv12) -
                          vdwp.c6*(rinv6 + r6*roffinv12 - 2*roffinv6);
+                }
+              } else if (vdwMethod == 3) { // LJPME
+                real c6ij_recip = sqrt(c6ii*c6jj);
+                // U_VdW = U_lorentz + U_geo + U_smooth
+                real br = cutoffs.betaEwaldLJ*rEff;
+                real br2 = br*br;
+                real b2 = cutoffs.betaEwaldLJ*cutoffs.betaEwaldLJ;
+                real b6 = b2*b2*b2;
+                real fkr = exp(-br2)*(1+br2+br2*br2/2); 
+                real U_geo = c6ij_recip*rinv6*(1-fkr); 
+                fij += rinv*(c6ij_recip*b6*exp(-br2) - 6*U_geo); // cancel recip
+                fij += (6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv; // regular 
+                // U_smooth makes the potential continuous
+                if (calcEnergy || (calcAlch && (bi || bjtmp))){
+                  real U_lorentz = vdwp.c12*rinv6*rinv6 - vdwp.c6*rinv6; 
+                  real rCut2 = cutoffs.rCut*cutoffs.rCut;
+                  real rCut6 = rCut2*rCut2*rCut2;
+                  real br = cutoffs.betaEwaldLJ*cutoffs.rCut;
+                  real br2 = br*br;
+                  real fkr = exp(-br2)*(1+br2+br2*br2/2); 
+                  real U_smooth = -(vdwp.c12/rCut6 - vdwp.c6 + c6ij_recip*(1-fkr))/rCut6;
+                  eij += U_lorentz + U_geo + U_smooth;
+                  //real u = U_lorentz + U_geo + U_smooth;
+                  //if (rEff > cutoffs.rCut-.1 && abs(u)>1e-5){ printf("eij_LJPME: %e\n", u); }
                 }
               }
               if (calcAlch) fij*=lixljtmp;
@@ -554,6 +598,8 @@ void getforce_nbdirectTT(System *system,box_type box,bool calcEnergy)
     getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,1>(system,box,calcEnergy);
   } else if (system->run->vdwMethod==2) { // VSHIFT
     getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,2>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==3) { // LJPME
+    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,3>(system,box,calcEnergy);
   }
 }
 

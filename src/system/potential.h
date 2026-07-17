@@ -94,6 +94,7 @@ struct Nb14Potential {
   real qxq;
   real c12;
   real c6;
+  real c6_recip;
   real e14fac;
 };
 
@@ -101,6 +102,7 @@ struct NbExPotential {
   int idx[2];
   int siteBlock[2];
   real qxq;
+  real c6_recip;
 };
 
 struct NbondPotential {
