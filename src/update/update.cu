@@ -13,6 +13,7 @@
 #include "update/rex.h"
 
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 // NaN detection: atomically set flag with atom index (only first NaN is recorded)
 __device__ inline void check_nan_set_flag(real_v v, int atomIdx, int *nanFlag)
@@ -256,21 +257,25 @@ void State::update(int step,System *system)
   if ((system->run->step%system->run->freqNRG)==0) {
     // Update V from previous step
     update_V<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
+    gpuCheck(cudaGetLastError());
     // Velocity Constraint
     holonomic_velocity(system);
     // Kinetic Energy
     kinetic_energy_kernel<<<(leapState->N+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32,r->updateStream>>>(*leapState,energy_d+eekinetic);
+    gpuCheck(cudaGetLastError());
     // Update V for current step
     // update_V<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
     // holonomic_velocity(system);
     // update_hbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
     update_VhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d,nanFlag_d);
+    gpuCheck(cudaGetLastError());
   } else {
     // Update V from previous step and for current step
     // update_VV<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2);
     // holonomic_velocity(system);
     // update_hbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
     update_VVhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d,nanFlag_d);
+    gpuCheck(cudaGetLastError());
   }
   // Velocity Constraint
   // holonomic_velocity(system); // superfluous, I think
@@ -286,6 +291,7 @@ void State::update(int step,System *system)
   // holonomic_velocity(system); // superfluous, I think
   // update_hbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d);
   update_OOhbpR<<<(leapState->N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(*leapState,*leapParms2,*lambdaLeapParms2,positionCons_d,nanFlag_d);
+  gpuCheck(cudaGetLastError());
   // Velocity Constraint
   // holonomic_velocity(system); // superfluous, I think
   // Update spatial coordinates
@@ -319,6 +325,7 @@ void State::set_fd(System *system)
 
   if ((void*)positionBuffer_fd != (void*)positionBuffer_d) {
     set_fd_kernel<<<(N+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(N,positionBuffer_fd,positionBuffer_d);
+    gpuCheck(cudaGetLastError());
   }
 }
 
@@ -327,5 +334,6 @@ void State::kinetic_energy(System *system)
 {
   if (system->id==0) {
     kinetic_energy_kernel<<<(leapState->N+BLUP-1)/BLUP,BLUP,BLUP*sizeof(real)/32,0>>>(*leapState,energy_d+eekinetic);
+    gpuCheck(cudaGetLastError());
   }
 }

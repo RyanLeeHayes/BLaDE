@@ -4,6 +4,7 @@
 #include "system/potential.h"
 #include "system/state.h"
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 
 
@@ -91,16 +92,20 @@ void calc_virtual_positionT(System *system,box_type box,bool rectify)
   if (p->virtualSite2Count!=0) {
     if (rectify) {
       calc_virtualSite2_position_kernel<flagBox,true><<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],box);
+      gpuCheck(cudaGetLastError());
     } else {
       calc_virtualSite2_position_kernel<flagBox,false><<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],box);
+      gpuCheck(cudaGetLastError());
     }
   }
 
   if (p->virtualSite3Count!=0) {
     if (rectify) {
       calc_virtualSite3_position_kernel<flagBox,true><<<(p->virtualSite3Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite3Count,p->virtualSite3_d,s->leapState[0],box);
+      gpuCheck(cudaGetLastError());
     } else {
       calc_virtualSite3_position_kernel<flagBox,false><<<(p->virtualSite3Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite3Count,p->virtualSite3_d,s->leapState[0],box);
+      gpuCheck(cudaGetLastError());
     }
   }
 }
@@ -230,10 +235,12 @@ void calc_virtual_forceT(System *system,box_type box)
 
   if (p->virtualSite2Count!=0) {
     calc_virtualSite2_force_kernel<flagBox><<<(p->virtualSite2Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite2Count,p->virtualSite2_d,s->leapState[0],box);
+    gpuCheck(cudaGetLastError());
   }
 
   if (p->virtualSite3Count!=0) {
     calc_virtualSite3_force_kernel<flagBox><<<(p->virtualSite3Count+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(p->virtualSite3Count,p->virtualSite3_d,s->leapState[0],box);
+    gpuCheck(cudaGetLastError());
   }
 }
 

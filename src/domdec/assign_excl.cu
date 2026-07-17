@@ -3,6 +3,7 @@
 #include "system/potential.h"
 #include "run/run.h"
 #include "system/system.h"
+#include "main/gpu_check.h"
 
 
 
@@ -321,32 +322,37 @@ void Domdec::setup_exclusions(System *system)
     // Create localExcls_d (the sort tokens)
 
     global_to_local_excl_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,system->potential->excls_d,globalToBlock_d,id,domain_d,localExcls_d);
+    gpuCheck(cudaGetLastError());
 
     // Create exclSort (the sort tree)
-    cudaMemsetAsync(exclSort_d,-1,(system->potential->exclCount+1)*sizeof(struct DomdecBlockSort),r->updateStream);
+    gpuCheck(cudaMemsetAsync(exclSort_d,-1,(system->potential->exclCount+1)*sizeof(struct DomdecBlockSort),r->updateStream));
 
     assign_excl_grow_tree_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,localExcls_d,exclSort_d,firstExcl_d);
+    gpuCheck(cudaGetLastError());
     assign_excl_count_tree_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,localExcls_d,exclSort_d);
+    gpuCheck(cudaGetLastError());
 
     // Copy back the sortedExclCount
-    cudaMemcpyAsync(&sortedExclCount,&exclSort_d[system->potential->exclCount].upperCount,sizeof(int),cudaMemcpyDeviceToHost,r->updateStream);
+    gpuCheck(cudaMemcpyAsync(&sortedExclCount,&exclSort_d[system->potential->exclCount].upperCount,sizeof(int),cudaMemcpyDeviceToHost,r->updateStream));
 
     // If there are too many, make more space
     if (sortedExclCount>maxBlockExclCount) {
       maxBlockExclCount=sortedExclCount+64; // add 64 for a little padding
-      if (blockExcls_d) cudaFree(blockExcls_d);
-      cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int));
+      if (blockExcls_d) gpuCheck(cudaFree(blockExcls_d));
+      gpuCheck(cudaMalloc(&blockExcls_d,32*maxBlockExclCount*sizeof(int)));
     }
 
     // Create sortedExcl_d (self explanatory, enables binary search for exclusions)
 
     assign_excl_sortedExcls_kernel<<<(sortedExclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(sortedExclCount,system->potential->exclCount,exclSort_d,localExcls_d,sortedExcls_d,mapExcl_d);
+    gpuCheck(cudaGetLastError());
 
     // Reset blockExcls_d
-    cudaMemsetAsync(blockExcls_d,-1,32*sortedExclCount*sizeof(int),r->updateStream);
+    gpuCheck(cudaMemsetAsync(blockExcls_d,-1,32*sortedExclCount*sizeof(int),r->updateStream));
 
     // Set blockExcls
     assign_excl_set_blockExcls_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,system->potential->excls_d,globalToLane_d,firstExcl_d,mapExcl_d,blockExcls_d);
+    gpuCheck(cudaGetLastError());
 
     // Use binary search to identify exclusions and load them into the candidate structure
 
@@ -360,5 +366,6 @@ void Domdec::setup_exclusions(System *system)
       sortedExcls_d
 #endif
       );
+    gpuCheck(cudaGetLastError());
   }
 }

@@ -8,6 +8,7 @@
 #include "main/defines.h"
 #include "main/real3.h"
 #include "io/io.h"
+#include "main/gpu_check.h"
 
 
 
@@ -308,18 +309,19 @@ void cull_blocksT(System *system,box_type box,int *overflowFlag_d)
     rc2*=rc2;
 
     cull_blocks_kernel<flagBox><<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(d->idDomdec,d->gridDomdec,d->blockCount_d,d->maxPartnersPerBlock,d->blockCandidateCount_d,d->blockCandidates_d,d->blockVolume_d,box,rc2,overflowFlag_d);
+    gpuCheck(cudaGetLastError());
   }
 }
 
 void Domdec::reallocate_partner_arrays(System *system, int newMaxPartners)
 {
   // Free old arrays
-  if (blockCandidates_d) cudaFree(blockCandidates_d);
-  if (blockPartners_d) cudaFree(blockPartners_d);
+  if (blockCandidates_d) gpuCheck(cudaFree(blockCandidates_d));
+  if (blockPartners_d) gpuCheck(cudaFree(blockPartners_d));
 
   // Allocate new arrays with larger size
-  cudaMalloc(&blockCandidates_d, maxBlocks * newMaxPartners * sizeof(struct DomdecBlockPartners));
-  cudaMalloc(&blockPartners_d, maxBlocks * newMaxPartners * sizeof(struct DomdecBlockPartners));
+  gpuCheck(cudaMalloc(&blockCandidates_d, maxBlocks * newMaxPartners * sizeof(struct DomdecBlockPartners)));
+  gpuCheck(cudaMalloc(&blockPartners_d, maxBlocks * newMaxPartners * sizeof(struct DomdecBlockPartners)));
 
   if (blockCandidates_d==NULL || blockPartners_d==NULL) {
     fatal(__FILE__,__LINE__,"Error, reallocation from %d to %d maxPertnersPerBlock failed\n",
@@ -340,7 +342,7 @@ void Domdec::cull_blocks(System *system)
 
   while (maxPartnersPerBlock<maxPartnersPerBlockLimit) {
     // Reset overflow flag
-    cudaMemsetAsync(overflowFlag_d, 0, sizeof(int), r->updateStream);
+    gpuCheck(cudaMemsetAsync(overflowFlag_d, 0, sizeof(int), r->updateStream));
 
     // Launch culling kernel
     if (system->state->typeBox) {
@@ -350,8 +352,8 @@ void Domdec::cull_blocks(System *system)
     }
 
     // Check for overflow
-    cudaMemcpyAsync(&overflowFlag, overflowFlag_d, sizeof(int),
-                    cudaMemcpyDeviceToHost, r->updateStream);
+    gpuCheck(cudaMemcpyAsync(&overflowFlag, overflowFlag_d, sizeof(int),
+                    cudaMemcpyDeviceToHost, r->updateStream));
     cudaStreamSynchronize(r->updateStream);
 
     if (overflowFlag == 0) {

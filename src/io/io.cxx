@@ -23,6 +23,7 @@
 #include "run/run.h"
 #include "xdr/xdrfile.h"
 #include "xdr/xdrfile_xtc.h"
+#include "main/gpu_check.h"
 
 #ifndef BLADE_IN_CHARMM
 void blade_log(const char* buffer)
@@ -528,7 +529,7 @@ void read_checkpoint_file(const char *fnm,System *system)
 
     system->state->send_state();
     if (system->msld->fix) { // ffix
-      cudaMemcpy(system->state->lambda_d,system->state->theta,system->state->lambdaCount*sizeof(real_x),cudaMemcpyHostToDevice);
+      gpuCheck(cudaMemcpy(system->state->lambda_d,system->state->theta,system->state->lambdaCount*sizeof(real_x),cudaMemcpyHostToDevice));
     }
     system->msld->calc_lambda_from_theta(0,system);
   }

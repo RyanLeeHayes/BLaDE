@@ -5,6 +5,7 @@
 #include "system/state.h"
 
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 #define MAXITERATION 10
 
@@ -219,15 +220,19 @@ void holonomic_velocityT(System *system,box_type box)
 
   N=p->triangleConsCount;
   if (N) holonomic_velocity_triangle_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->triangleCons_d,s->leapState[0],box);
+  gpuCheck(cudaGetLastError());
 
   N=p->branch1ConsCount;
   if (N) holonomic_velocity_branch1_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch1Cons_d,s->leapState[0],box);
+  gpuCheck(cudaGetLastError());
 
   N=p->branch2ConsCount;
   if (N) holonomic_velocity_branch2_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch2Cons_d,s->leapState[0],box);
+  gpuCheck(cudaGetLastError());
 
   N=p->branch3ConsCount;
   if (N) holonomic_velocity_branch3_kernel<flagBox><<<(N+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(N,p->branch3Cons_d,s->leapState[0],box);
+  gpuCheck(cudaGetLastError());
 }
 
 void holonomic_velocity(System *system)
@@ -740,6 +745,7 @@ void holonomic_positionT(System *system,box_type box)
   B3=B2+(N3+BLUP-1)/BLUP;
 
   if (N0+N1+N2+N3) holonomic_position_kernel<flagBox><<<B3,BLUP,0,r->updateStream>>>(N0,N1,N2,N3,B0,B1,B2,B3,p->triangleCons_d,p->branch1Cons_d,p->branch2Cons_d,p->branch3Cons_d,s->leapState[0],s->leapParms2[0],s->positionCons_d,box,r->shakeTolerance);
+  gpuCheck(cudaGetLastError());
 }
 
 void holonomic_position(System *system)
@@ -754,6 +760,6 @@ void holonomic_position(System *system)
 void holonomic_backup_position(LeapState *leapState,real_x *positionCons,cudaStream_t stream)
 {
   if (positionCons) {
-    cudaMemcpyAsync(positionCons,leapState->x,leapState->N*sizeof(real_x),cudaMemcpyDeviceToDevice,stream);
+    gpuCheck(cudaMemcpyAsync(positionCons,leapState->x,leapState->N*sizeof(real_x),cudaMemcpyDeviceToDevice,stream));
   }
 }

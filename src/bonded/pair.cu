@@ -10,6 +10,7 @@
 #include "system/potential.h"
 
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 
 
@@ -337,6 +338,7 @@ void getforce_nb14TTTT(System *system,box_type box,bool calcEnergy)
   }
 
   getforce_pair_kernel <flagBox,Nb14Potential,useSoftCore,vdwMethod,elecMethod> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nb14s_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  gpuCheck(cudaGetLastError());
 }
 
 template <bool flagBox,bool useSoftCore,int vdwMethod,typename box_type>
@@ -408,6 +410,7 @@ void getforce_nbexTT(System *system,box_type box,bool calcEnergy)
 
   // useSoft=false (Never use soft cores for nbex, they're already soft). vdwMethod (if LJPME). elecMethod=1 (PME)
   getforce_pair_kernel <flagBox,NbExPotential,false,vdwMethod,1> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  gpuCheck(cudaGetLastError());
 }
 
 template <bool flagBox, typename box_type>

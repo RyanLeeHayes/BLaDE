@@ -9,6 +9,7 @@
 #include "system/potential.h"
 
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 template <bool flagBox,typename box_type>
 __global__ void getforce_noe_kernel(int noeCount,struct NoePotential *noes,real3 *position,real3_f *force,box_type box,real_e *energy)
@@ -83,6 +84,7 @@ void getforce_noeT(System *system,box_type box,bool calcEnergy)
 
   N=p->noeCount;
   if (N>0) getforce_noe_kernel<flagBox><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->noes_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,pEnergy);
+  gpuCheck(cudaGetLastError());
 }
 
 void getforce_noe(System *system,bool calcEnergy)
@@ -149,6 +151,7 @@ void getforce_harmT(System *system,box_type box,bool calcEnergy)
 
   N=p->harmCount;
   if (N>0) getforce_harm_kernel<flagBox><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->harms_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,pEnergy);
+  gpuCheck(cudaGetLastError());
 }
 
 void getforce_harm(System *system,bool calcEnergy)
@@ -238,6 +241,7 @@ void getforce_boRestT(System *system,box_type box,bool calcEnergy)
 
   N=p->boRestCount;
   if (N>0) getforce_bondRestraint_kernel <flagBox> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->boRests_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  gpuCheck(cudaGetLastError());
 }
 
 void getforce_boRest(System *system,bool calcEnergy)
@@ -342,6 +346,7 @@ void getforce_anRestT(System *system,box_type box,bool calcEnergy)
 
   N=p->anRestCount;
   if (N>0) getforce_angleRestraint_kernel <flagBox> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->anRests_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  gpuCheck(cudaGetLastError());
 }
 
 void getforce_anRest(System *system,bool calcEnergy)
@@ -509,6 +514,7 @@ void getforce_diRestT(System *system,box_type box,bool calcEnergy)
 
   N=p->diRestCount;
   if (N>0) getforce_dihedralRestraint_kernel <flagBox> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->diRests_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  gpuCheck(cudaGetLastError());
 }
 
 void getforce_diRest(System *system,bool calcEnergy)
@@ -579,6 +585,7 @@ void getforce_resdT(System *system,box_type box,bool calcEnergy)
   }
   N=p->resdCount;
   if (N>0) getforce_resd_kernel<flagBox><<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->resds_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,pEnergy);
+  gpuCheck(cudaGetLastError());
 }
 
 void getforce_resd(System *system,bool calcEnergy)

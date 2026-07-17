@@ -7,6 +7,7 @@
 #include "system/potential.h"
 #include "run/run.h"
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 
 
@@ -398,28 +399,35 @@ void Domdec::assign_blocks(System *system)
     }
 
     assign_blocks_get_tokens_kernel<<<(globalCount+1+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,gridDomdec,domainDiv,domain_d,(real3*)system->state->position_fd,box,blockToken_d);
+    gpuCheck(cudaGetLastError());
 
     // Make the tree structure
 
-    cudaMemsetAsync(blockSort_d,-1,(globalCount+1)*sizeof(struct DomdecBlockSort),r->updateStream);
+    gpuCheck(cudaMemsetAsync(blockSort_d,-1,(globalCount+1)*sizeof(struct DomdecBlockSort),r->updateStream));
 
     assign_blocks_grow_tree_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,blockToken_d,blockSort_d);
+    gpuCheck(cudaGetLastError());
     assign_blocks_count_tree_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,blockToken_d,blockSort_d);
+    gpuCheck(cudaGetLastError());
 
     // Create sorted structures
 
     assign_blocks_localToGlobal_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,blockSort_d,localToGlobal_d);
+    gpuCheck(cudaGetLastError());
 
     int ndiv=domainDiv.x*domainDiv.y;
     ndiv=((ndiv>1024)?1024:ndiv);
     assign_blocks_blockBounds_kernel<<<1,ndiv,2*(ndiv+1)*sizeof(int),r->updateStream>>>(idCount,domainDiv,globalCount,localToGlobal_d,blockToken_d,blockCount_d,blockBounds_d,maxBlocks);
+    gpuCheck(cudaGetLastError());
 
-    cudaMemcpy(blockCount,blockCount_d,(idCount+1)*sizeof(int),cudaMemcpyDeviceToHost);
+    gpuCheck(cudaMemcpy(blockCount,blockCount_d,(idCount+1)*sizeof(int),cudaMemcpyDeviceToHost));
 
     assign_blocks_localNbonds_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,globalToLane_d,globalToBlock_d,system->potential->nbonds_d,localNbonds_d);
+    gpuCheck(cudaGetLastError());
 
     // Redundant with pack_positions, needed for call to cull
     assign_blocks_localPosition_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,(real3*)system->state->position_fd,localPosition_d,blockVolume_d);
+    gpuCheck(cudaGetLastError());
   }
 }
 
@@ -429,6 +437,7 @@ void Domdec::pack_positions(System *system)
   int N=blockCount[idCount];
   if (id>=0) {
     assign_blocks_localPosition_kernel<<<(32*N+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(N,blockBounds_d,localToGlobal_d,(real3*)system->state->position_fd,localPosition_d,blockVolume_d);
+    gpuCheck(cudaGetLastError());
   }
 }
 
@@ -454,5 +463,6 @@ void Domdec::unpack_forces(System *system)
   int N=blockCount[idCount];
   if (id>=0) {
     unpack_forces_kernel<<<(32*N+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(N,blockBounds_d,localToGlobal_d,(real3_f*)system->state->force_d,localForce_d);
+    gpuCheck(cudaGetLastError());
   }
 }

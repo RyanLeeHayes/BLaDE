@@ -15,6 +15,7 @@
 
 #include <functional>
 #include "msld/msld.h"
+#include "main/gpu_check.h"
 
 
 
@@ -98,16 +99,17 @@ __global__ void type_conversion_copy(int N, real_type_src* buffer1, real_type_ds
 void State::min_init(System *system)
 {
   // Set masses to 1 for shake during minimization, except virtual sites
-  cudaMalloc(&(leapState->ism),(3*atomCount+lambdaCount)*sizeof(real));
+  gpuCheck(cudaMalloc(&(leapState->ism),(3*atomCount+lambdaCount)*sizeof(real)));
   no_mass_weight_kernel<<<(3*atomCount+lambdaCount+BLUP-1)/BLUP,BLUP,
     0,system->run->updateStream>>>
     (3*atomCount+lambdaCount,invsqrtMassBuffer_d,leapState->ism);
+  gpuCheck(cudaGetLastError());
   if (system->run->minType==esd || system->run->minType==esdfd) {
-    cudaMalloc(&grads2_d,2*sizeof(real_e));
-    cudaMemset(grads2_d,0,2*sizeof(real_e));
+    gpuCheck(cudaMalloc(&grads2_d,2*sizeof(real_e)));
+    gpuCheck(cudaMemset(grads2_d,0,2*sizeof(real_e)));
   }
   if (system->run->minType==esdfd) {
-    cudaMalloc(&minDirection_d,3*atomCount*sizeof(real_v));
+    gpuCheck(cudaMalloc(&minDirection_d,3*atomCount*sizeof(real_v)));
   }
   if (system->run->minType==elbfgs){
     Potential* p = system->potential;
@@ -129,6 +131,7 @@ void State::min_init(System *system)
       int shift = system->state->lambdaCount;
       type_conversion_copy<real, real_x><<<(DOF+BLUP-1)/BLUP,BLUP,0,system->run->updateStream>>>(
             DOF, system->state->forceBuffer_d+shift, system->state->forceBufferX_d+shift);
+      gpuCheck(cudaGetLastError());
       system->run->lbfgs_energy_evals++;
       return system->state->energy[eepotential];
     };
@@ -143,13 +146,13 @@ void State::min_init(System *system)
 void State::min_dest(System *system)
 {
   // Set masses back
-  cudaFree(leapState->ism);
+  gpuCheck(cudaFree(leapState->ism));
   leapState->ism=invsqrtMassBuffer_d;
   if (system->run->minType==esd || system->run->minType==esdfd) {
-    cudaFree(grads2_d);
+    gpuCheck(cudaFree(grads2_d));
   }
   if (system->run->minType==esdfd) {
-    cudaFree(minDirection_d);
+    gpuCheck(cudaFree(minDirection_d));
   }
   if (system->run->minType==elbfgs){
     system->run->lbfgs->~LBFGS();
@@ -216,12 +219,14 @@ void State::min_move(int step,int nsteps,System *system)
       prevEnergy=currEnergy;
       sd_acceleration_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,
         0,r->updateStream>>>(3*atomCount,*leapState);
+      gpuCheck(cudaGetLastError());
       holonomic_velocity(system);
       sd_scaling_kernel<<<(atomCount+BLUP-1)/BLUP,BLUP,
         BLUP*sizeof(real)/32,r->updateStream>>>
         (atomCount,*leapState,grads2_d);
-      cudaMemcpy(grads2,grads2_d,2*sizeof(real_e),cudaMemcpyDeviceToHost);
-      cudaMemset(grads2_d,0,2*sizeof(real_e));
+      gpuCheck(cudaGetLastError());
+      gpuCheck(cudaMemcpy(grads2,grads2_d,2*sizeof(real_e),cudaMemcpyDeviceToHost));
+      gpuCheck(cudaMemset(grads2_d,0,2*sizeof(real_e)));
       gradRMS=sqrt(grads2[0]);
       gradMax=sqrt(grads2[1]);
 
@@ -234,6 +239,7 @@ void State::min_move(int step,int nsteps,System *system)
       }
       sd_position_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>
         (3*atomCount,*leapState,leapState->v,scaling,positionCons_d);
+      gpuCheck(cudaGetLastError());
       holonomic_position(system);
     }
   } else if (r->minType==esdfd) {
@@ -244,13 +250,15 @@ void State::min_move(int step,int nsteps,System *system)
 
       sd_acceleration_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,
         0,r->updateStream>>>(3*atomCount,*leapState);
+      gpuCheck(cudaGetLastError());
       holonomic_velocity(system);
-      cudaMemcpy(minDirection_d,leapState->v,3*atomCount*sizeof(real_v),cudaMemcpyDeviceToDevice);
+      gpuCheck(cudaMemcpy(minDirection_d,leapState->v,3*atomCount*sizeof(real_v),cudaMemcpyDeviceToDevice));
       sd_scaling_kernel<<<(atomCount+BLUP-1)/BLUP,BLUP,
         BLUP*sizeof(real)/32,r->updateStream>>>
         (atomCount,*leapState,grads2_d);
-      cudaMemcpy(grads2,grads2_d,2*sizeof(real_e),cudaMemcpyDeviceToHost);
-      cudaMemset(grads2_d,0,2*sizeof(real_e));
+      gpuCheck(cudaGetLastError());
+      gpuCheck(cudaMemcpy(grads2,grads2_d,2*sizeof(real_e),cudaMemcpyDeviceToHost));
+      gpuCheck(cudaMemset(grads2_d,0,2*sizeof(real_e)));
       gradRMS=sqrt(grads2[0]);
       gradMax=sqrt(grads2[1]);
 
@@ -273,6 +281,7 @@ void State::min_move(int step,int nsteps,System *system)
       backup_position();
       sd_position_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>
         (3*atomCount,*leapState,leapState->v,scaling,positionCons_d);
+      gpuCheck(cudaGetLastError());
       holonomic_position(system);
     }
     system->domdec->update_domdec(system,false); // false, no need to update neighbor list
@@ -280,12 +289,14 @@ void State::min_move(int step,int nsteps,System *system)
     if (system->id==0) {
       sd_acceleration_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,
         0,r->updateStream>>>(3*atomCount,*leapState);
+      gpuCheck(cudaGetLastError());
       holonomic_velocity(system);
       sdfd_dotproduct_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,
         BLUP*sizeof(real)/32,r->updateStream>>>
         (3*atomCount,*leapState,minDirection_d,grads2_d);
-      cudaMemcpy(gradDot,grads2_d,sizeof(real_e),cudaMemcpyDeviceToHost);
-      cudaMemset(grads2_d,0,2*sizeof(real_e));
+      gpuCheck(cudaGetLastError());
+      gpuCheck(cudaMemcpy(gradDot,grads2_d,sizeof(real_e),cudaMemcpyDeviceToHost));
+      gpuCheck(cudaMemset(grads2_d,0,2*sizeof(real_e)));
       // grads2[0] is F*F, gradDot is F*Fnew
       frac=grads2[0]/(grads2[0]-gradDot[0]);
       if (system->verbose > 0) {
@@ -303,6 +314,7 @@ void State::min_move(int step,int nsteps,System *system)
       restore_position();
       sd_position_kernel<<<(3*atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>
         (3*atomCount,*leapState,minDirection_d,frac*scaling,positionCons_d);
+      gpuCheck(cudaGetLastError());
       holonomic_position(system);
     }
   } else {

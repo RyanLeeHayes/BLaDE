@@ -7,6 +7,7 @@
 #include "system/potential.h"
 #include "main/defines.h"
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 
 
@@ -132,6 +133,7 @@ void recull_blocksT(System *system,box_type box)
   rc2*=rc2;
 
   recull_blocks_kernel<flagBox><<<(32*localBlockCount+BLUP-1)/BLUP,BLUP,0,r->nbdirectStream>>>(beginBlock,endBlock,d->maxPartnersPerBlock,d->blockCandidateCount_d,d->blockCandidates_d,d->blockPartnerCount_d,d->blockPartners_d,d->blockVolume_d,box,rc2);
+  gpuCheck(cudaGetLastError());
 }
 
 void Domdec::recull_blocks(System *system)
