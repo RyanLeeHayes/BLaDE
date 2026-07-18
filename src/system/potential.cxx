@@ -76,6 +76,8 @@ Potential::Potential() {
 
   charge=NULL;
   charge_d=NULL;
+  vdwDensity=NULL;
+  vdwDensity_d=NULL;
 
   nb14Count=0;
   nb14s=NULL;
@@ -106,6 +108,17 @@ Potential::Potential() {
 #endif
   planFFTPME=0;
   planIFFTPME=0;
+
+  LJBGridPME=NULL;
+  LJBGridPME_d=NULL;
+  LJDensGridPME_d=NULL;
+  LJFourierGridPME_d=NULL;
+  LJPotGridPME_d=NULL;
+#ifdef USE_TEXTURE
+  LJPotGridPME_tex=0;
+#endif
+  LJPlanFFTPME=0;
+  LJPlanIFFTPME=0;
 
   nbonds=NULL;
   nbonds_d=NULL;
@@ -201,6 +214,8 @@ Potential::~Potential()
 
   if (charge) free(charge);
   if (charge_d) gpuCheck(cudaFree(charge_d));
+  if (vdwDensity) free(vdwDensity);
+  if (vdwDensity_d) gpuCheck(cudaFree(vdwDensity_d));
 
   if (nb14s) free(nb14s);
   if (nb14s_d) gpuCheck(cudaFree(nb14s_d));
@@ -226,6 +241,15 @@ Potential::~Potential()
 #ifdef USE_TEXTURE
   if (potentialGridPME_tex) cudaDestroyTextureObject(potentialGridPME_tex);
 #endif
+
+  if (LJBGridPME) free(LJBGridPME);
+  if (LJBGridPME_d) gpuCheck(cudaFree(LJBGridPME_d));
+  if (LJDensGridPME_d) gpuCheck(cudaFree(LJDensGridPME_d));
+  if (LJFourierGridPME_d) gpuCheck(cudaFree(LJFourierGridPME_d));
+  if (LJPotGridPME_d) gpuCheck(cudaFree(LJPotGridPME_d));
+#ifdef USE_TEXTURE
+  if (LJPotGridPME_tex) cudaDestroyTextureObject(LJPotGridPME_tex);
+#endif 
 
   if (nbonds) free(nbonds);
   if (nbonds_d) gpuCheck(cudaFree(nbonds_d));
@@ -1250,6 +1274,24 @@ void Potential::initialize(System *system)
     }
 #endif
 
+    gpuCheck(cudaMalloc(&LJDensGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
+    gpuCheck(cudaMalloc(&LJFourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(myCufftComplex)));
+    gpuCheck(cudaMalloc(&LJPotGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
+#ifdef USE_TEXTURE
+    {
+      cudaResourceDesc resDesc;
+      memset(&resDesc,0,sizeof(resDesc));
+      resDesc.resType=cudaResourceTypeLinear;
+      resDesc.res.linear.devPtr=LJPotGridPME_d;
+      resDesc.res.linear.desc=cudaCreateChannelDesc<real>();
+      resDesc.res.linear.sizeInBytes=gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(real);
+      cudaTextureDesc texDesc;
+      memset(&texDesc,0,sizeof(texDesc));
+      texDesc.readMode=cudaReadModeElementType;
+      cudaCreateTextureObject(&LJPotGridPME_tex,&resDesc,&texDesc,NULL);
+    }
+#endif
+
     bGridPME=(real*)calloc(gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1),sizeof(real));
     gpuCheck(cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real)));
     int order=system->run->orderEwald;
@@ -1392,7 +1434,7 @@ void Potential::initialize(System *system)
       }
       if (param->nbfixParameter.count(type)==1) {
         np=param->nbfixParameter[type];
-        if(system->run->vdwMethod==3 && type.t[0] == type.t[1]){ // LJ-PME
+        if(system->run->vdwMethod==eljpme && type.t[0] == type.t[1]){ // LJ-PME
             fatal(__FILE__,__LINE__,"Unexpected NBFIX for atom type %s and itself found. Cannot do LJ-PME correctly with current assumptions.\n",type.t[0].c_str());
         }
       } else {
@@ -1403,7 +1445,7 @@ void Potential::initialize(System *system)
           } else {
             fatal(__FILE__,__LINE__,"Nonbonded parameter for atom type %s not found\n",type.t[k].c_str());
           }
-        }
+        };
         np.eps=sqrt(npij[0].eps*npij[1].eps);
         np.sig=npij[0].sig+npij[1].sig;
         if (npij[0].combine==1 && npij[1].combine==1) {
@@ -1424,7 +1466,7 @@ void Potential::initialize(System *system)
     memset(&resDesc,0,sizeof(resDesc));
     resDesc.resType=cudaResourceTypeLinear;
     resDesc.res.linear.devPtr=vdwParameters_d;
-    resDesc.res.linear.desc=cudaCreateChannelDesc<real4>();
+    resDesc.res.linear.desc=cudaCreateChannelDesc<real2>();
     resDesc.res.linear.sizeInBytes=vdwParameterCount*vdwParameterCount*sizeof(VdwPotential);
     cudaTextureDesc texDesc;
     memset(&texDesc,0,sizeof(texDesc));
@@ -1432,6 +1474,17 @@ void Potential::initialize(System *system)
     cudaCreateTextureObject(&vdwParameters_tex,&resDesc,&texDesc,NULL);
   }
 #endif
+
+  if (system->run->vdwMethod==eljpme){
+    vdwDensity=(real*)calloc(atomCount,sizeof(real));
+    gpuCheck(cudaMalloc(&vdwDensity_d,atomCount*sizeof(real)));
+    for (i=0; i<atomCount; i++){
+      std::string s = struc->atomList[i].atomTypeName;
+      struct NbondParameter np = param->nbondParameter[s];
+      vdwDensity[i] = sqrt(np.eps)*pow(np.sig, 3);
+    }
+    gpuCheck(cudaMemcpy(vdwDensity_d, vdwDensity, atomCount*sizeof(real), cudaMemcpyDefault));
+  }
 
   // Sort out these constraints
   triangleCons_tmp.clear();

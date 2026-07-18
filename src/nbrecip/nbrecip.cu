@@ -16,18 +16,18 @@
 
 
 // getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,p->bondedStream>>>(N,p->charge_d,prefactor,m->atomBlock_d,m->lambda_d,m->lambdaForce_d,pEnergy);
-__global__ void getforce_ewaldself_kernel(int atomCount,real *charge,real prefactor,int *atomBlock,real *lambda,real_f *lambdaForce,real_e *energy)
+__global__ void getforce_ewaldself_kernel(int atomCount,real *density,real prefactor,int *atomBlock,real *lambda,real_f *lambdaForce,real_e *energy)
 {
 // NYI - maybe energy should be a double
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  real q;
+  real d;
   real lEnergy=0;
   extern __shared__ real sEnergy[];
   int b;
   real l=1;
   
   if (i<atomCount) {
-    q=charge[i];
+    d=density[i];
     
     // Scaling
     b=atomBlock[i];
@@ -37,7 +37,7 @@ __global__ void getforce_ewaldself_kernel(int atomCount,real *charge,real prefac
 
     // interaction
     if (b || energy) {
-      lEnergy=prefactor*q*q;
+      lEnergy=prefactor*d*d;
     }
 
     // Lambda force
@@ -62,9 +62,7 @@ void getforce_ewaldself(System *system,bool calcEnergy)
   int N=p->atomCount;
   int shMem=0;
   real_e *pEnergy=NULL;
-  real prefactor=-system->run->betaEwald*(kELECTRIC/sqrt(M_PI));
 
-  if (r->elecMethod!=epme) return;
   if (r->calcTermFlag[eenbrecipself]==false) return;
 
   if (calcEnergy) {
@@ -72,7 +70,16 @@ void getforce_ewaldself(System *system,bool calcEnergy)
     pEnergy=s->energy_d+eenbrecipself;
   }
 
-  getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,prefactor,m->atomBlock_d,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  if (r->elecMethod==epme) {
+    real prefactor=-system->run->betaEwald*(kELECTRIC/sqrt(M_PI));
+    getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,prefactor,m->atomBlock_d,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  }
+  gpuCheck(cudaGetLastError());
+
+  if (r->vdwMethod==eljpme){
+    real prefactor = -pow(system->run->betaEwaldLJ, 6)/12;
+    getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,r->nbrecipStream>>>(N,p->vdwDensity_d,prefactor,m->atomBlock_d,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  }
   gpuCheck(cudaGetLastError());
 }
 
@@ -80,7 +87,7 @@ void getforce_ewaldself(System *system,bool calcEnergy)
 
 // getforce_ewald_spread_kernel<<<>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,m->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
 template <bool flagBox,int order,typename box_type>
-__global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *atomBlock,real3* position,box_type kbox,real *lambda,int3 gridDimPME,real *chargeGridPME)
+__global__ void getforce_ewald_spread_kernel(int atomCount,real *conc,int *atomBlock,real3* position,box_type kbox,real *lambda,int3 gridDimPME,real *densityGridPME)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   real q;
@@ -102,7 +109,7 @@ __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *ato
   u0=make_int3(0,0,0);
 
   if (iAtom<atomCount) {
-    q=charge[iAtom];
+    q=conc[iAtom];
 
     // Scaling
     b=atomBlock[iAtom];
@@ -209,7 +216,7 @@ __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *ato
         dIndex.z=__shfl_sync(0xFFFFFFFF,density.z,2*jz+jzs,8);
         index.z=index.y*gridDimPME.z+over_modulus(u0.z+2*jz+jzs,gridDimPME.z);
         if (iAtom<atomCount) {
-          atomicAdd(&chargeGridPME[index.z],q*dIndex.x*dIndex.y*dIndex.z);
+          atomicAdd(&densityGridPME[index.z],q*dIndex.x*dIndex.y*dIndex.z);
         }
       }
     }
@@ -218,7 +225,7 @@ __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *ato
 
 // getforce_ewald_convolution_kernel<<<blockCount,blockSize,0,p->nbrecipStream>>>(((int3*)gridDimPME)[0],p->fourierGridPME_d,p->bGridPME_d,system->run->betaEwald,s->orthoBox)
 template <bool flagBox,typename box_type>
-__global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,myCufftComplex *fourierGridPME,real *bGridPME,real betaEwald,box_type kbox)
+__global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,myCufftComplex *fourierGridPME,real *bGridPME,real betaEwald,box_type kbox, bool LJ_PME)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int j=blockIdx.y*blockDim.y+threadIdx.y;
@@ -249,10 +256,16 @@ __global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,myCufftComplex
       k2+=kcomp*kcomp;
     }
     factor=bGridPME[ijk];
-    factor*=(((real)0.5)*kELECTRIC/((real)M_PI));
-    factor*=Vinv*exp(-((real)M_PI)*((real)M_PI)*k2/(betaEwald*betaEwald));
-    factor/=k2;
-    factor=(ijk==0?0:factor);
+    if (LJ_PME){
+      factor*=Vinv*M_PI*sqrt(M_PI)*betaEwald*betaEwald*betaEwald/2;
+      real tmp = M_PI*sqrt(k2)/betaEwald;
+      factor*=((real)1.0/3)*((1 - 2*tmp*tmp)*exp(-tmp*tmp) + 2*tmp*tmp*tmp*sqrt(M_PI)*erfc(tmp));
+    } else {
+      factor*=(((real)0.5)*kELECTRIC/((real)M_PI));
+      factor*=Vinv*exp(-((real)M_PI)*((real)M_PI)*k2/(betaEwald*betaEwald));
+      factor/=k2;
+      factor=(ijk==0?0:factor);
+    }
     fourierGridPME[ijk].x*=factor;
     fourierGridPME[ijk].y*=factor;
   }
@@ -485,52 +498,87 @@ __global__ void getforce_ewald_gather_kernel(
 }
 
 template <bool flagBox,int order,typename box_type>
+void ewald_sum(System* system, int* gridDim, real beta, bool LJ_PME,
+  real* density_d, myCufftReal* densityGrid_d, myCufftComplex* fftGrid_d, real* bGrid_d, 
+#ifdef USE_TEXTURE
+  cudaTextureObject_t potGrid_tex,
+#else
+  myCufftReal* potGrid_d, 
+#endif
+  cufftHandle fftPlan, cufftHandle ifftPlan, box_type kbox,
+  bool calcEnergy
+){
+    Potential *p=system->potential;
+    State *s=system->state;
+    Msld *m=system->msld;
+    Run *r=system->run;
+    int N=p->atomCount;
+    real_e *pEnergy=NULL;
+    int shMem=0;
+    if (calcEnergy) {
+      shMem=BLNB*sizeof(real)/32;
+      pEnergy=s->energy_d+eenbrecip;
+    }
+
+    gpuCheck(cudaMemsetAsync(densityGrid_d,0,gridDim[0]*gridDim[1]*gridDim[2]*sizeof(myCufftReal),r->nbrecipStream));
+  
+    // Setup for spread and gather
+    int spreadGatherBlocks=(N + BLNB/8 - 1)/(BLNB/8);
+  
+    // Spread kernel
+    getforce_ewald_spread_kernel<flagBox,order><<<spreadGatherBlocks,BLNB,0,r->nbrecipStream>>>(N,density_d,m->atomBlock_d,(real3*)s->position_fd,kbox,s->lambda_fd,((int3*)gridDim)[0],densityGrid_d);
+    gpuCheck(cudaGetLastError());
+  
+    myCufftExecR2C(fftPlan,densityGrid_d,fftGrid_d);
+  
+    // Convolution kernel
+    dim3 blockCount((gridDim[0]+8-1)/8,(gridDim[1]+8-1)/8,(gridDim[2]/2+1+8-1)/8);
+    dim3 blockSize(8,8,8);
+    getforce_ewald_convolution_kernel<flagBox><<<blockCount,blockSize,0,r->nbrecipStream>>>(((int3*)gridDim)[0],fftGrid_d,bGrid_d,beta,kbox, LJ_PME);
+    gpuCheck(cudaGetLastError());
+  
+    myCufftExecC2R(ifftPlan,fftGrid_d,potGrid_d);
+  
+    // Gather kernel
+    getforce_ewald_gather_kernel<flagBox,order><<<spreadGatherBlocks,BLNB,shMem,r->nbrecipStream>>>(N,density_d,m->atomBlock_d,((int3*)gridDim)[0],
+#ifdef USE_TEXTURE
+      potGrid_tex,
+#else
+      potGrid_d,
+#endif
+      (real3*)s->position_fd,(real3_f*)s->force_d,kbox,s->lambda_fd,s->lambdaForce_d,pEnergy);
+    gpuCheck(cudaGetLastError());
+}
+
+template <bool flagBox,int order,typename box_type>
 void getforce_ewaldTT(System *system,box_type kbox,bool calcEnergy)
 {
-  Potential *p=system->potential;
-  State *s=system->state;
-  Msld *m=system->msld;
-  Run *r=system->run;
-  int N=p->atomCount;
-  int shMem=0;
-  real_e *pEnergy=NULL;
+  Run* r=system->run;
+  Potential* p=system->potential;
 
-  if (r->elecMethod!=epme) return;
   if (r->calcTermFlag[eenbrecip]==false) return;
 
-  if (calcEnergy) {
-    shMem=BLNB*sizeof(real)/32;
-    pEnergy=s->energy_d+eenbrecip;
+  if (false && r->elecMethod==epme) {
+    ewald_sum<flagBox,order,box_type>(system, p->gridDimPME, r->cutoffs.betaEwald, false,
+      p->charge_d, p->chargeGridPME_d, p->fourierGridPME_d, p->bGridPME_d, 
+#ifdef USE_TEXTURE
+      p->potentialGridPME_tex,
+#else
+      p->potentialGridPME_d, 
+#endif
+      p->planFFTPME, p->planIFFTPME, kbox, calcEnergy);  
   }
 
-  gpuCheck(cudaMemsetAsync(p->chargeGridPME_d,0,p->gridDimPME[0]*p->gridDimPME[1]*p->gridDimPME[2]*sizeof(myCufftReal),r->nbrecipStream));
-
-  // Setup for spread and gather
-  int spreadGatherBlocks=(N + BLNB/8 - 1)/(BLNB/8);
-
-  // Spread kernel
-  getforce_ewald_spread_kernel<flagBox,order><<<spreadGatherBlocks,BLNB,0,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_fd,kbox,s->lambda_fd,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
-  gpuCheck(cudaGetLastError());
-
-  myCufftExecR2C(p->planFFTPME,p->chargeGridPME_d,p->fourierGridPME_d);
-
-  // Convolution kernel
-  dim3 blockCount((p->gridDimPME[0]+8-1)/8,(p->gridDimPME[1]+8-1)/8,(p->gridDimPME[2]/2+1+8-1)/8);
-  dim3 blockSize(8,8,8);
-  getforce_ewald_convolution_kernel<flagBox><<<blockCount,blockSize,0,r->nbrecipStream>>>(((int3*)p->gridDimPME)[0],p->fourierGridPME_d,p->bGridPME_d,system->run->betaEwald,kbox);
-  gpuCheck(cudaGetLastError());
-
-  myCufftExecC2R(p->planIFFTPME,p->fourierGridPME_d,p->potentialGridPME_d);
-
-  // Gather kernel
-  getforce_ewald_gather_kernel<flagBox,order><<<spreadGatherBlocks,BLNB,shMem,r->nbrecipStream>>>(N,p->charge_d,m->atomBlock_d,((int3*)p->gridDimPME)[0],
+  if (r->vdwMethod==eljpme){
+    ewald_sum<flagBox,order,box_type>(system, p->gridDimPME, r->cutoffs.betaEwaldLJ, true,
+      p->vdwDensity_d, p->LJDensGridPME_d, p->LJFourierGridPME_d, p->bGridPME_d, 
 #ifdef USE_TEXTURE
-    p->potentialGridPME_tex,
+      p->LJPotGridPME_tex,
 #else
-    p->potentialGridPME_d,
+      p->LJPotGridPME_d, 
 #endif
-    (real3*)s->position_fd,(real3_f*)s->force_d,kbox,s->lambda_fd,s->lambdaForce_d,pEnergy);
-  gpuCheck(cudaGetLastError());
+      p->planFFTPME, p->planIFFTPME, kbox, calcEnergy);  
+  }
 }
 
 template <bool flagBox,typename box_type>

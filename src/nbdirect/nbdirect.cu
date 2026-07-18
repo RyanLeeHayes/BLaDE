@@ -132,7 +132,9 @@ __global__ void getforce_nbdirect_kernel(
   real3 xi,xj,xjtmp;
   real3 fi,fj,fjtmp;
   real fli,flj,fljtmp;
-  real c6ii, c6jj, c6jjtmp;
+  real c6ii=0;
+  real c6jj=0;
+  real c6jjtmp=0;
   int bi,bj,bjtmp;
   real li,lj,ljtmp,lixljtmp;
   real rEff,dredr,dredll; // Soft core stuff
@@ -149,26 +151,26 @@ __global__ void getforce_nbdirect_kernel(
       // inp=nbonds[ii];
       // xi=position[ii];
       inp=nbonds[32*iBlock+iThread];
+      if (vdwMethod == 3){ // LJ-PME
+#ifdef USE_TEXTURE
+        struct VdwPotential vdwpii;
+        ((real2*)(&vdwpii))[0]=tex1Dfetch<real2>(vdwParameters,inp.typeIdx*vdwParameterCount+inp.typeIdx);
+#else
+        struct VdwPotential vdwpii=vdwParameters[inp.typeIdx*vdwParameterCount+inp.typeIdx];
+#endif
+        c6ii = vdwpii.c6;
+      }
       xi=position[32*iBlock+iThread];
       if (calcAlch) {
-      bi=inp.siteBlock;
-      li=1;
-      if (bi) li=lambda[0xFFFF & bi];
+        bi=inp.siteBlock;
+        li=1;
+        if (bi) li=lambda[0xFFFF & bi];
       }
     }
     // iBlockVolume=blockVolume[iBlock];
 
     fi=real3_reset<real3>();
     if (calcAlch) fli=0;
-    if (vdwMethod == 3){ // LJ-PME
-#ifdef USE_TEXTURE
-      struct VdwPotential vdwpii;
-      ((real2*)(&vdwpii))[0]=tex1Dfetch<real2>(vdwParameters,inp.typeIdx*vdwParameterCount+inp.typeIdx);
-#else
-      struct VdwPotential vdwpii=vdwParameters[inp.typeIdx*vdwParameterCount+inp.typeIdx];
-#endif
-      c6ii = vdwpii.c6;
-    }
 
     // used i/32 instead of iBlock to shift to beginning of array
     jmax=blockPartnerCount[iWarp>>WARPSPERBLOCK];
@@ -198,6 +200,15 @@ __global__ void getforce_nbdirect_kernel(
         // jnp=nbonds[jj];
         // xj=position[jj];
         jnp=nbonds[32*jBlock+iThread];
+        if (vdwMethod == 3){ // LJ-PME
+#ifdef USE_TEXTURE
+          struct VdwPotential vdwpjj;
+          ((real2*)(&vdwpjj))[0]=tex1Dfetch<real2>(vdwParameters,jnp.typeIdx*vdwParameterCount+jnp.typeIdx);
+#else
+          struct VdwPotential vdwpjj=vdwParameters[jnp.typeIdx*vdwParameterCount+jnp.typeIdx];
+#endif
+          c6jj = vdwpjj.c6;
+        }
         xj=position[32*jBlock+iThread];
         // // real3_inc(&xj,boxShift);
         // xj.x+=boxShift.x;
@@ -213,24 +224,15 @@ __global__ void getforce_nbdirect_kernel(
           xj.z+=shift.z*boxzz(box);
         }
         if (calcAlch) {
-        bj=jnp.siteBlock;
-        lj=1;
-        if (bj) lj=lambda[0xFFFF & bj];
+          bj=jnp.siteBlock;
+          lj=1;
+          if (bj) lj=lambda[0xFFFF & bj];
         }
       }
       bool jFlag=check_proximity(iBlockVolume,xj,cutoffs.rCut*cutoffs.rCut);
 
       fj=real3_reset<real3>();
       if (calcAlch) flj=0;
-      if (vdwMethod == 3){ // LJ-PME
-#ifdef USE_TEXTURE
-        struct VdwPotential vdwpjj;
-        ((real2*)(&vdwpjj))[0]=tex1Dfetch<real2>(vdwParameters,jnp.typeIdx*vdwParameterCount+jnp.typeIdx);
-#else
-        struct VdwPotential vdwpjj=vdwParameters[jnp.typeIdx*vdwParameterCount+jnp.typeIdx];
-#endif
-        c6jj = vdwpjj.c6;
-      }
 
       for (jtmp=0; jtmp<jCount; jtmp++) {
         if (__shfl_sync(0xFFFFFFFF,jFlag,jtmp)) {
@@ -243,7 +245,7 @@ __global__ void getforce_nbdirect_kernel(
             bjtmp=__shfl_sync(0xFFFFFFFF,bj,jtmp);
             ljtmp=__shfl_sync(0xFFFFFFFF,lj,jtmp);
           }
-          c6jjtmp=__shfl_sync(0xFFFFFFFF,c6jj,jtmp);
+          if (vdwMethod == 3) { c6jjtmp=__shfl_sync(0xFFFFFFFF,c6jj,jtmp); } // LJ-PME
 
           fjtmp=real3_reset<real3>();
           if (calcAlch) fljtmp=0;
@@ -414,7 +416,7 @@ __global__ void getforce_nbdirect_kernel(
                          vdwp.c6*(rinv6 + r6*roffinv12 - 2*roffinv6);
                 }
               } else if (vdwMethod == 3) { // LJPME
-                real c6ij_recip = sqrt(c6ii*c6jj);
+                real c6ij_recip = sqrt(c6ii*c6jjtmp);
                 // U_VdW = U_lorentz + U_geo + U_smooth
                 real br = cutoffs.betaEwaldLJ*rEff;
                 real br2 = br*br;
