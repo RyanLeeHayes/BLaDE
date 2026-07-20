@@ -364,6 +364,24 @@ void State::recv_energy()
   energy[eetotal]=energy[eepotential]+energy[eekinetic];
 }
 
+bool State::recv_energy_safe()
+{
+  int i;
+
+  gpuCheck(cudaMemcpy(energy,energy_d,eeend*sizeof(real_e),cudaMemcpyDeviceToHost));
+  gpuCheck(cudaMemcpy(&nanFlag,nanFlag_d,sizeof(int),cudaMemcpyDeviceToHost));
+  reset_nan_flag();
+
+  if (nanFlag != -1) return false;
+
+  for (i=0; i<eepotential; i++) {
+    energy[eepotential]+=energy[i];
+  }
+  energy[eetotal]=energy[eepotential]+energy[eekinetic];
+
+  return isfinite(energy[eepotential]);
+}
+
 void State::reset_nan_flag()
 {
   gpuCheck(cudaMemset(nanFlag_d,-1,sizeof(int)));

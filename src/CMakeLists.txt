@@ -54,6 +54,7 @@ if (PRECISION STREQUAL "DOUBLE")
 endif()
 
 add_executable(blade ${sources})
+target_compile_options(blade PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-fopenmp>)
 
 # ADDED: enforce standard at target level too
 if (WITH_TORCH)
