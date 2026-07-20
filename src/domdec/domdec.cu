@@ -8,10 +8,10 @@
 #include "system/potential.h"
 #include "holonomic/virtual.h"
 #include "main/real3.h"
+#include "main/gpu_check.h"
 
 #ifdef USE_TEXTURE
 #include <string.h> // for memset
-#include "main/gpu_check.h"
 #endif
 
 
