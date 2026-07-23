@@ -415,29 +415,28 @@ __global__ void getforce_nbdirect_kernel(
                   eij += vdwp.c12*(rinv12 + 2*r6*roffinv18 - 3*roffinv12) -
                          vdwp.c6*(rinv6 + r6*roffinv12 - 2*roffinv6);
                 }
-              } else if (vdwMethod == 3) { // LJPME
-                real c6ij_recip = sqrt(c6ii*c6jjtmp);
+              } else if (vdwMethod == 3) { // LJPME - vshift
+                real c6ij_recip = sqrt(c6ii*c6jjtmp); // no factor of 64 since (si/2+si/2 = si)
                 // U_VdW = U_lorentz + U_geo + U_smooth
                 real br = cutoffs.betaEwaldLJ*rEff;
                 real br2 = br*br;
+                real embr2 = exp(-br2);
                 real b2 = cutoffs.betaEwaldLJ*cutoffs.betaEwaldLJ;
                 real b6 = b2*b2*b2;
-                real fkr = exp(-br2)*(1+br2+br2*br2/2); 
+                real fkr = embr2*(1+br2+br2*br2/2); 
                 real U_geo = c6ij_recip*rinv6*(1-fkr); 
-                fij += rinv*(c6ij_recip*b6*exp(-br2) - 6*U_geo); // cancel recip
+                fij += rinv*(c6ij_recip*b6*embr2 - 6*U_geo); // cancel recip
                 fij += (6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv; // regular 
                 // U_smooth makes the potential continuous
                 if (calcEnergy || (calcAlch && (bi || bjtmp))){
                   real U_lorentz = vdwp.c12*rinv6*rinv6 - vdwp.c6*rinv6; 
                   real rCut2 = cutoffs.rCut*cutoffs.rCut;
                   real rCut6 = rCut2*rCut2*rCut2;
-                  real br = cutoffs.betaEwaldLJ*cutoffs.rCut;
-                  real br2 = br*br;
-                  real fkr = exp(-br2)*(1+br2+br2*br2/2); 
+                  br = cutoffs.betaEwaldLJ*cutoffs.rCut;
+                  br2 = br*br;
+                  fkr = exp(-br2)*(1+br2+br2*br2/2); 
                   real U_smooth = -(vdwp.c12/rCut6 - vdwp.c6 + c6ij_recip*(1-fkr))/rCut6;
                   eij += U_lorentz + U_geo + U_smooth;
-                  //real u = U_lorentz + U_geo + U_smooth;
-                  //if (rEff > cutoffs.rCut-.1 && abs(u)>1e-5){ printf("eij_LJPME: %e\n", u); }
                 }
               }
               if (calcAlch) fij*=lixljtmp;

@@ -131,26 +131,28 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
         lE[0] = pp.c12*(rinv12 + 2*r6*roffinv18 - 3*roffinv12) -
                 pp.c6*(rinv6 + r6*roffinv12 - 2*roffinv6);
       }
-    } else if (vdwMethod == 3) { // LJPME
+    } else if (vdwMethod == 3) { // LJPME - vshift
       // U_VdW = U_lorentz + U_geo + U_smooth
       real br = rc.betaEwaldLJ*r;
       real br2 = br*br;
+      real embr2 = exp(-br2);
       real b2 = rc.betaEwaldLJ*rc.betaEwaldLJ;
       real b6 = b2*b2*b2;
-      real fkr = exp(-br2)*(1+br2+br2*br2/2); 
+      real fkr = embr2*(1+br2+br2*br2/2); 
       real U_geo = pp.c6_recip*rinv6*(1-fkr); 
-      fpair[0] = rinv*(pp.c6_recip*b6*exp(-br2) - 6*U_geo); // cancel recip
+      fpair[0] = rinv*(pp.c6_recip*b6*embr2 - 6*U_geo); // cancel recip
       fpair[0] += (6*pp.c6-12*pp.c12*rinv6)*rinv6*rinv; // regular 
       // U_smooth makes the potential continuous
       if (calcEnergy){
         real U_lorentz = pp.c12*rinv6*rinv6 - pp.c6*rinv6; 
         real rCut2 = rc.rCut*rc.rCut;
         real rCut6 = rCut2*rCut2*rCut2;
-        real br = rc.betaEwaldLJ*rc.rCut;
-        real br2 = br*br;
-        real fkr = exp(-br2)*(1+br2+br2*br2/2); 
+        br = rc.betaEwaldLJ*rc.rCut;
+        br2 = br*br;
+        fkr = exp(-br2)*(1+br2+br2*br2/2); 
         real U_smooth = -(pp.c12/rCut6 - pp.c6 + pp.c6_recip*(1-fkr))/rCut6;
         lE[0] = U_lorentz + U_geo + U_smooth;
+        //printf("c6r: %f, c6: %f, c12: %f, rij: %f, U_lorentz: %f, U_geo: %f, U_smooth: %f, U_tot: %f, betaEwaldLJ: %f\n", pp.c6_recip, pp.c6, pp.c12, r, U_lorentz, U_geo, U_smooth, lE[0], rc.betaEwaldLJ);
       }
     }
 
@@ -215,7 +217,7 @@ __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,rea
     // U_VdW = U_geo -- no regular vdw, only correction
     real rinv2 = rinv*rinv;
     real rinv6 = rinv2*rinv2*rinv2;
-    real br = rc.betaEwaldLJ*r;
+    br = rc.betaEwaldLJ*r;
     real br2 = br*br;
     real b2 = rc.betaEwaldLJ*rc.betaEwaldLJ;
     real b6 = b2*b2*b2;

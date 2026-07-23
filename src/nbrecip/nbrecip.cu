@@ -77,7 +77,7 @@ void getforce_ewaldself(System *system,bool calcEnergy)
   gpuCheck(cudaGetLastError());
 
   if (r->vdwMethod==eljpme){
-    real prefactor = -pow(system->run->betaEwaldLJ, 6)/12;
+    real prefactor = pow(system->run->betaEwaldLJ, 6.0)/12.0; // vdw density is complex
     getforce_ewaldself_kernel<<<(N+BLNB-1)/BLNB,BLNB,shMem,r->nbrecipStream>>>(N,p->vdwDensity_d,prefactor,m->atomBlock_d,s->lambda_fd,s->lambdaForce_d,pEnergy);
   }
   gpuCheck(cudaGetLastError());
@@ -257,7 +257,7 @@ __global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,myCufftComplex
     }
     factor=bGridPME[ijk];
     if (LJ_PME){
-      factor*=Vinv*M_PI*sqrt(M_PI)*betaEwald*betaEwald*betaEwald/2;
+      factor*=-Vinv*M_PI*sqrt(M_PI)*betaEwald*betaEwald*betaEwald/2; // negative since vdw density is complex
       real tmp = M_PI*sqrt(k2)/betaEwald;
       factor*=((real)1.0/3)*((1 - 2*tmp*tmp)*exp(-tmp*tmp) + 2*tmp*tmp*tmp*sqrt(M_PI)*erfc(tmp));
     } else {
@@ -558,7 +558,7 @@ void getforce_ewaldTT(System *system,box_type kbox,bool calcEnergy)
 
   if (r->calcTermFlag[eenbrecip]==false) return;
 
-  if (false && r->elecMethod==epme) {
+  if (r->elecMethod==epme) {
     ewald_sum<flagBox,order,box_type>(system, p->gridDimPME, r->cutoffs.betaEwald, false,
       p->charge_d, p->chargeGridPME_d, p->fourierGridPME_d, p->bGridPME_d, 
 #ifdef USE_TEXTURE
@@ -569,7 +569,7 @@ void getforce_ewaldTT(System *system,box_type kbox,bool calcEnergy)
       p->planFFTPME, p->planIFFTPME, kbox, calcEnergy);  
   }
 
-  if (r->vdwMethod==eljpme){
+  if (r->vdwMethod==eljpme){ // TODO: CHECK SIGN ON THIS
     ewald_sum<flagBox,order,box_type>(system, p->gridDimPME, r->cutoffs.betaEwaldLJ, true,
       p->vdwDensity_d, p->LJDensGridPME_d, p->LJFourierGridPME_d, p->bGridPME_d, 
 #ifdef USE_TEXTURE

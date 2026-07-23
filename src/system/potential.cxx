@@ -1124,24 +1124,21 @@ void Potential::initialize(System *system)
         nb14.idx[0]=i;
         nb14.idx[1]=*jj;
         nb14.e14fac=1;
+        struct NbondParameter npij[2];
         for (k=0; k<2; k++) {
           type.t[k]=struc->atomList[nb14.idx[k]].atomTypeName;
           nb14.e14fac*=sqrt(param->nbondParameter[type.t[k]].e14fac);
-        }
-        // Get their MSLD scaling
-        msld->nb14_scaling(nb14.idx,nb14.siteBlock);
-        // Get their parameters
-        nb14.qxq=charge[nb14.idx[0]]*charge[nb14.idx[1]];
-        struct NbondParameter npij[2];
-        real sigPME=0; // TODO: Add rest scaling
-        for (k=0; k<2; k++) {
           if (param->nbondParameter.count(type.t[k])==1) {
             npij[k]=param->nbondParameter[type.t[k]];
           } else {
             fatal(__FILE__,__LINE__,"Nonbonded parameter for atom %d type %s not found\n",nb14.idx[k],type.t[k].c_str());
           }
         }
-        sigPME = sqrt(npij[0].eps*npij[1].eps)*pow(npij[0].sig*npij[1].sig, 3); // no matter what since this is what goes into recip
+        // Get their MSLD scaling
+        msld->nb14_scaling(nb14.idx,nb14.siteBlock);
+        // Get their parameters
+        nb14.qxq=charge[nb14.idx[0]]*charge[nb14.idx[1]];
+        real sigPME = sqrt(npij[0].eps*npij[1].eps)*pow(4*npij[0].sig*npij[1].sig, 3); // no matter what since this is what goes into recip
         if (param->nbfixParameter.count(type)==1) {
           np=param->nbfixParameter[type];
         } else {
@@ -1168,7 +1165,7 @@ void Potential::initialize(System *system)
     }
   }
 
-  if (system->run->elecMethod==epme) {
+  if (system->run->elecMethod==epme || system->run->vdwMethod==eljpme) {
     for (i=0; i<atomCount; i++) {
       for (std::set<int>::iterator jj=allExcl[i].begin(); jj!=allExcl[i].end(); jj++) {
         if (i<*jj && diheExcl[i].count(*jj)==0) {
@@ -1188,7 +1185,7 @@ void Potential::initialize(System *system)
               fatal(__FILE__,__LINE__,"Nonbonded parameter for atom %d type %s not found\n",nbex.idx[k],type.t[k].c_str());
             }
           }
-          sigPME = sqrt(npij[0].eps*npij[1].eps)*pow(npij[0].sig*npij[1].sig, 3); // no matter what since this is what goes into recip
+          sigPME = sqrt(npij[0].eps*npij[1].eps)*pow(4*npij[0].sig*npij[1].sig, 3); // no matter what since this is what goes into recip
           // Get their MSLD scaling
           if (msld->nbex_scaling(nbex.idx,nbex.siteBlock)) {
             // Get their parameters
@@ -1218,7 +1215,7 @@ void Potential::initialize(System *system)
   }
   gpuCheck(cudaMemcpy(nb14s_d,nb14s,nb14Count*sizeof(struct Nb14Potential),cudaMemcpyHostToDevice));
 
-  if (system->run->elecMethod==epme) {
+  if (system->run->elecMethod==epme || system->run->vdwMethod == eljpme) {
     nbexCount=nbexs_tmp.size();
     nbexs=(struct NbExPotential*)calloc(nbexCount,sizeof(struct NbExPotential));
     gpuCheck(cudaMalloc(&(nbexs_d),nbexCount*sizeof(struct NbExPotential)));
@@ -1236,7 +1233,7 @@ void Potential::initialize(System *system)
   }
   gpuCheck(cudaMemcpy(excls_d,excls,exclCount*sizeof(struct ExclPotential),cudaMemcpyHostToDevice));
 
-  if (system->run->elecMethod==epme) {
+  if (system->run->elecMethod==epme || system->run->vdwMethod==eljpme) {
     // Choose PME grid sizes
     int goodSizes[]={32,27,24,20,18,16};
     real boxtmp[3]={(real)(system->state->box.a.x),(real)(system->state->box.a.y),(real)(system->state->box.a.z)};
@@ -1481,7 +1478,7 @@ void Potential::initialize(System *system)
     for (i=0; i<atomCount; i++){
       std::string s = struc->atomList[i].atomTypeName;
       struct NbondParameter np = param->nbondParameter[s];
-      vdwDensity[i] = sqrt(np.eps)*pow(np.sig, 3);
+      vdwDensity[i] = sqrt(2*np.eps)*pow(2*np.sig, 3);
     }
     gpuCheck(cudaMemcpy(vdwDensity_d, vdwDensity, atomCount*sizeof(real), cudaMemcpyDefault));
   }

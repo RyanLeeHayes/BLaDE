@@ -263,6 +263,7 @@ void Run::dump(char *line,char *token,System *system)
   printlog("RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n",fnmCPI.c_str());
   printlog("RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n",fnmCPO.c_str());
   printlog("RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n",betaEwald*ANGSTROM);
+  printlog("RUN PRINT> betaEwaldLJ=%f (input 1/invbetaewaldLJ in A^-1)\n",betaEwaldLJ*ANGSTROM);
   printlog("RUN PRINT> rcut=%f (input in A)\n",rCut/ANGSTROM);
   printlog("RUN PRINT> rswitch=%f (input in A)\n",rSwitch/ANGSTROM);
   const char *vdwMethodNames[] = {"VFSWITCH", "VSWITCH", "VSHIFT"};
@@ -332,8 +333,9 @@ void Run::set_variable(char *line,char *token,System *system)
     gamma=io_nextf(line)/PICOSECOND;
   } else if (strcmp(token,"invbetaewald")==0) {
     betaEwald=1/(io_nextf(line)*ANGSTROM);
-    betaEwaldLJ=betaEwald;
     cutoffs.betaEwald=betaEwald;
+  } else if (strcmp(token,"invbetaewaldLJ")==0) {
+    betaEwaldLJ=1/(io_nextf(line)*ANGSTROM);
     cutoffs.betaEwaldLJ=betaEwaldLJ;
   } else if (strcmp(token,"rcut")==0) {
     rCut=io_nextf(line)*ANGSTROM;
