@@ -109,16 +109,16 @@ Potential::Potential() {
   planFFTPME=0;
   planIFFTPME=0;
 
-  LJBGridPME=NULL;
-  LJBGridPME_d=NULL;
-  LJDensGridPME_d=NULL;
-  LJFourierGridPME_d=NULL;
-  LJPotGridPME_d=NULL;
+  bGridLJPME=NULL;
+  bGridLJPME_d=NULL;
+  densGridLJPME_d=NULL;
+  fourierGridLJPME_d=NULL;
+  potGridLJPME_d=NULL;
 #ifdef USE_TEXTURE
-  LJPotGridPME_tex=0;
+  potGridLJPME_tex=0;
 #endif
-  LJPlanFFTPME=0;
-  LJPlanIFFTPME=0;
+  planFFTLJPME=0;
+  planIFFTLJPME=0;
 
   nbonds=NULL;
   nbonds_d=NULL;
@@ -242,13 +242,13 @@ Potential::~Potential()
   if (potentialGridPME_tex) cudaDestroyTextureObject(potentialGridPME_tex);
 #endif
 
-  if (LJBGridPME) free(LJBGridPME);
-  if (LJBGridPME_d) gpuCheck(cudaFree(LJBGridPME_d));
-  if (LJDensGridPME_d) gpuCheck(cudaFree(LJDensGridPME_d));
-  if (LJFourierGridPME_d) gpuCheck(cudaFree(LJFourierGridPME_d));
-  if (LJPotGridPME_d) gpuCheck(cudaFree(LJPotGridPME_d));
+  if (bGridLJPME) free(bGridLJPME);
+  if (bGridLJPME_d) gpuCheck(cudaFree(bGridLJPME_d));
+  if (densGridLJPME_d) gpuCheck(cudaFree(densGridLJPME_d));
+  if (fourierGridLJPME_d) gpuCheck(cudaFree(fourierGridLJPME_d));
+  if (potGridLJPME_d) gpuCheck(cudaFree(potGridLJPME_d));
 #ifdef USE_TEXTURE
-  if (LJPotGridPME_tex) cudaDestroyTextureObject(LJPotGridPME_tex);
+  if (potGridLJPME_tex) cudaDestroyTextureObject(potGridLJPME_tex);
 #endif 
 
   if (nbonds) free(nbonds);
@@ -270,6 +270,8 @@ Potential::~Potential()
 
   if (planFFTPME) cufftDestroy(planFFTPME);
   if (planIFFTPME) cufftDestroy(planIFFTPME);
+  if (planFFTLJPME) cufftDestroy(planFFTLJPME);
+  if (planIFFTLJPME) cufftDestroy(planIFFTLJPME);
 
   if (noes) free(noes);
   if (noes_d) gpuCheck(cudaFree(noes_d));
@@ -480,6 +482,88 @@ void bicubic_setup_alternative(int ngrid,real (*cmapIntermediate)[4],real (*cmap
       }
     }
   }
+}
+
+void choose_PME_grid(real* boxtmp, int* sysRunGrid, real gridSpace, int* gridDimPME, bool LJ){
+  int i,j,k;
+  int goodSizes[]={32,27,24,20,18,16};
+  if (LJ){
+    printlog("LJ-");
+  }
+  printlog("PME gridDim: [ ");
+  for (i=0; i<3; i++) {
+    if (gridSpace>0) {
+      real minDim=boxtmp[i]/gridSpace;
+      for (j=1; minDim>=32*j; j*=2) { ; }
+      // guaranteed to pass k=0
+      for (k=0; k<5 && minDim<j*goodSizes[k]; k++) { ; }
+      gridDimPME[i]=j*goodSizes[k-1];
+      
+    } else {
+      gridDimPME[i]=sysRunGrid[i];
+    }
+    std::string fmt = i == 2 ? "%d " : "%d, ";
+    printlog(fmt.c_str(), gridDimPME[i]);
+  }
+  printlog("]\n");
+}
+
+void setup_PME_bGrid(int order, int* gridDim, real* bGrid){
+  int i,j,k,l;
+  // Only have to support orders 4, 6, and 8
+  real Meven[9]={0,1,0,0,0,0,0,0,0};
+  real Modd[9]={0,0,0,0,0,0,0,0,0};
+  for (i=2; i<order; i+=2) {
+    for (l=0; l<i+1; l++) {
+      Modd[l]=l*Meven[l]/i+(i+1-l)*Meven[i+1-l]/i;
+    }
+    for (l=0; l<i+2; l++) {
+      Meven[l]=l*Modd[l]/(i+1)+(i+2-l)*Modd[i+2-l]/(i+1);
+    }
+  }
+  real *invbx2=(real*)calloc(gridDim[0],sizeof(real));
+  for (i=0; i<gridDim[0]; i++) {
+    myCufftComplex bx;
+    bx.x=0;
+    bx.y=0;
+    for (l=1; l<order; l++) {
+      bx.x+=Meven[l]*cos((2*M_PI*i*l)/gridDim[0]);
+      bx.y+=Meven[l]*sin((2*M_PI*i*l)/gridDim[0]);
+    }
+    invbx2[i]=1.0/(bx.x*bx.x+bx.y*bx.y);
+  }
+  real *invby2=(real*)calloc(gridDim[1],sizeof(real));
+  for (i=0; i<gridDim[1]; i++) {
+    myCufftComplex by;
+    by.x=0;
+    by.y=0;
+    for (l=1; l<order; l++) {
+      by.x+=Meven[l]*cos((2*M_PI*i*l)/gridDim[1]);
+      by.y+=Meven[l]*sin((2*M_PI*i*l)/gridDim[1]);
+    }
+    invby2[i]=1.0/(by.x*by.x+by.y*by.y);
+  }
+  real *invbz2=(real*)calloc(gridDim[2]/2+1,sizeof(real));
+  for (i=0; i<(gridDim[2]/2+1); i++) {
+    myCufftComplex bz;
+    bz.x=0;
+    bz.y=0;
+    for (l=1; l<order; l++) {
+      bz.x+=Meven[l]*cos((2*M_PI*i*l)/gridDim[2]);
+      bz.y+=Meven[l]*sin((2*M_PI*i*l)/gridDim[2]);
+    }
+    invbz2[i]=1.0/(bz.x*bz.x+bz.y*bz.y);
+  }
+  for (i=0; i<gridDim[0]; i++) {
+    for (j=0; j<gridDim[1]; j++) {
+      for (k=0; k<(gridDim[2]/2+1); k++) {
+        bGrid[(i*gridDim[1]+j)*(gridDim[2]/2+1)+k]=invbx2[i]*invby2[j]*invbz2[k];
+      }
+    }
+  }
+  free(invbx2);
+  free(invby2);
+  free(invbz2);
 }
 
 real (*alloc_kcmapPtr(int ngrid,real scaling,real *kcmap))[4][4]
@@ -1233,26 +1317,45 @@ void Potential::initialize(System *system)
   }
   gpuCheck(cudaMemcpy(excls_d,excls,exclCount*sizeof(struct ExclPotential),cudaMemcpyHostToDevice));
 
-  if (system->run->elecMethod==epme || system->run->vdwMethod==eljpme) {
-    // Choose PME grid sizes
-    int goodSizes[]={32,27,24,20,18,16};
+  // LJPME Grid
+  if (system->run->vdwMethod==eljpme){
     real boxtmp[3]={(real)(system->state->box.a.x),(real)(system->state->box.a.y),(real)(system->state->box.a.z)};
-    for (i=0; i<3; i++) {
-      if (system->run->gridSpace>0) {
-        real minDim=boxtmp[i]/system->run->gridSpace;
-        for (j=1; minDim>=32*j; j*=2) {
-          ;
-        }
-        for (k=0; k<5 && minDim<j*goodSizes[k]; k++) { // guaranteed to pass k=0
-          ;
-        }
-        gridDimPME[i]=j*goodSizes[k-1];
-        printlog("PME grid(%d) size: %d\n",i,gridDimPME[i]);
-      } else {
-        gridDimPME[i]=system->run->grid[i];
-      }
+    choose_PME_grid(boxtmp, system->run->gridLJ, system->run->gridSpaceLJ, gridDimLJPME, true);
+    gpuCheck(cudaMalloc(&densGridLJPME_d,gridDimLJPME[0]*gridDimLJPME[1]*gridDimLJPME[2]*sizeof(myCufftReal)));
+    gpuCheck(cudaMalloc(&fourierGridLJPME_d,gridDimLJPME[0]*gridDimLJPME[1]*(gridDimLJPME[2]/2+1)*sizeof(myCufftComplex)));
+    gpuCheck(cudaMalloc(&potGridLJPME_d,gridDimLJPME[0]*gridDimLJPME[1]*gridDimLJPME[2]*sizeof(myCufftReal)));
+#ifdef USE_TEXTURE
+    {
+      cudaResourceDesc resDesc;
+      memset(&resDesc,0,sizeof(resDesc));
+      resDesc.resType=cudaResourceTypeLinear;
+      resDesc.res.linear.devPtr=potGridLJPME_d;
+      resDesc.res.linear.desc=cudaCreateChannelDesc<real>();
+      resDesc.res.linear.sizeInBytes=gridDimLJPME[0]*gridDimLJPME[1]*gridDimLJPME[2]*sizeof(real);
+      cudaTextureDesc texDesc;
+      memset(&texDesc,0,sizeof(texDesc));
+      texDesc.readMode=cudaReadModeElementType;
+      cudaCreateTextureObject(&potGridLJPME_tex,&resDesc,&texDesc,NULL);
     }
+#endif
 
+    bGridLJPME=(real*)calloc(gridDimLJPME[0]*gridDimLJPME[1]*(gridDimLJPME[2]/2+1),sizeof(real));
+    gpuCheck(cudaMalloc(&bGridLJPME_d,gridDimLJPME[0]*gridDimLJPME[1]*(gridDimLJPME[2]/2+1)*sizeof(real)));
+    setup_PME_bGrid(system->run->orderEwaldLJ, gridDimLJPME, bGridLJPME);
+    gpuCheck(cudaMemcpy(bGridLJPME_d,bGridLJPME,gridDimLJPME[0]*gridDimLJPME[1]*(gridDimLJPME[2]/2+1)*sizeof(real),cudaMemcpyHostToDevice));
+
+    cufftCreate(&planFFTLJPME);
+    cufftMakePlan3d(planFFTLJPME,gridDimLJPME[0],gridDimLJPME[1],gridDimLJPME[2],MYCUFFT_R2C,&bufferSizeFFTLJPME);
+    cufftSetStream(planFFTLJPME,system->run->nbrecipStream);
+    cufftCreate(&planIFFTLJPME);
+    cufftMakePlan3d(planIFFTLJPME,gridDimLJPME[0],gridDimLJPME[1],gridDimLJPME[2],MYCUFFT_C2R,&bufferSizeIFFTLJPME);
+    cufftSetStream(planIFFTLJPME,system->run->nbrecipStream);
+  }
+
+  // ELEC PME GRID
+  if (system->run->elecMethod==epme) {
+    real boxtmp[3]={(real)(system->state->box.a.x),(real)(system->state->box.a.y),(real)(system->state->box.a.z)};
+    choose_PME_grid(boxtmp, system->run->grid, system->run->gridSpace, gridDimPME, false);
     gpuCheck(cudaMalloc(&chargeGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
     gpuCheck(cudaMalloc(&fourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(myCufftComplex)));
     gpuCheck(cudaMalloc(&potentialGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
@@ -1271,81 +1374,9 @@ void Potential::initialize(System *system)
     }
 #endif
 
-    gpuCheck(cudaMalloc(&LJDensGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
-    gpuCheck(cudaMalloc(&LJFourierGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(myCufftComplex)));
-    gpuCheck(cudaMalloc(&LJPotGridPME_d,gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(myCufftReal)));
-#ifdef USE_TEXTURE
-    {
-      cudaResourceDesc resDesc;
-      memset(&resDesc,0,sizeof(resDesc));
-      resDesc.resType=cudaResourceTypeLinear;
-      resDesc.res.linear.devPtr=LJPotGridPME_d;
-      resDesc.res.linear.desc=cudaCreateChannelDesc<real>();
-      resDesc.res.linear.sizeInBytes=gridDimPME[0]*gridDimPME[1]*gridDimPME[2]*sizeof(real);
-      cudaTextureDesc texDesc;
-      memset(&texDesc,0,sizeof(texDesc));
-      texDesc.readMode=cudaReadModeElementType;
-      cudaCreateTextureObject(&LJPotGridPME_tex,&resDesc,&texDesc,NULL);
-    }
-#endif
-
     bGridPME=(real*)calloc(gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1),sizeof(real));
     gpuCheck(cudaMalloc(&bGridPME_d,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real)));
-    int order=system->run->orderEwald;
-    // Only have to support orders 4, 6, and 8
-    real Meven[9]={0,1,0,0,0,0,0,0,0};
-    real Modd[9]={0,0,0,0,0,0,0,0,0};
-    for (i=2; i<order; i+=2) {
-      for (l=0; l<i+1; l++) {
-        Modd[l]=l*Meven[l]/i+(i+1-l)*Meven[i+1-l]/i;
-      }
-      for (l=0; l<i+2; l++) {
-        Meven[l]=l*Modd[l]/(i+1)+(i+2-l)*Modd[i+2-l]/(i+1);
-      }
-    }
-    real *invbx2=(real*)calloc(gridDimPME[0],sizeof(real));
-    for (i=0; i<gridDimPME[0]; i++) {
-      myCufftComplex bx;
-      bx.x=0;
-      bx.y=0;
-      for (l=1; l<order; l++) {
-        bx.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[0]);
-        bx.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[0]);
-      }
-      invbx2[i]=1.0/(bx.x*bx.x+bx.y*bx.y);
-    }
-    real *invby2=(real*)calloc(gridDimPME[1],sizeof(real));
-    for (i=0; i<gridDimPME[1]; i++) {
-      myCufftComplex by;
-      by.x=0;
-      by.y=0;
-      for (l=1; l<order; l++) {
-        by.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[1]);
-        by.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[1]);
-      }
-      invby2[i]=1.0/(by.x*by.x+by.y*by.y);
-    }
-    real *invbz2=(real*)calloc(gridDimPME[2]/2+1,sizeof(real));
-    for (i=0; i<(gridDimPME[2]/2+1); i++) {
-      myCufftComplex bz;
-      bz.x=0;
-      bz.y=0;
-      for (l=1; l<order; l++) {
-        bz.x+=Meven[l]*cos((2*M_PI*i*l)/gridDimPME[2]);
-        bz.y+=Meven[l]*sin((2*M_PI*i*l)/gridDimPME[2]);
-      }
-      invbz2[i]=1.0/(bz.x*bz.x+bz.y*bz.y);
-    }
-    for (i=0; i<gridDimPME[0]; i++) {
-      for (j=0; j<gridDimPME[1]; j++) {
-        for (k=0; k<(gridDimPME[2]/2+1); k++) {
-          bGridPME[(i*gridDimPME[1]+j)*(gridDimPME[2]/2+1)+k]=invbx2[i]*invby2[j]*invbz2[k];
-        }
-      }
-    }
-    free(invbx2);
-    free(invby2);
-    free(invbz2);
+    setup_PME_bGrid(system->run->orderEwald, gridDimPME, bGridPME);
     gpuCheck(cudaMemcpy(bGridPME_d,bGridPME,gridDimPME[0]*gridDimPME[1]*(gridDimPME[2]/2+1)*sizeof(real),cudaMemcpyHostToDevice));
 
     cufftCreate(&planFFTPME);

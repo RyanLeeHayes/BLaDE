@@ -152,7 +152,6 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
         fkr = exp(-br2)*(1+br2+br2*br2/2); 
         real U_smooth = -(pp.c12/rCut6 - pp.c6 + pp.c6_recip*(1-fkr))/rCut6;
         lE[0] = U_lorentz + U_geo + U_smooth;
-        //printf("c6r: %f, c6: %f, c12: %f, rij: %f, U_lorentz: %f, U_geo: %f, U_smooth: %f, U_tot: %f, betaEwaldLJ: %f\n", pp.c6_recip, pp.c6, pp.c12, r, U_lorentz, U_geo, U_smooth, lE[0], rc.betaEwaldLJ);
       }
     }
 
@@ -204,20 +203,25 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
 __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy,int vdwMethod,int elecMethod)
 {
   real rinv=1/r;
-  real br=rc.betaEwald*r;
-  real kqq=kELECTRIC*pp.qxq;
-
+  if (elecMethod == epme){
+    real br=rc.betaEwald*r;
+    real kqq=kELECTRIC*pp.qxq;
 #warning "No nan guard"
-  // fpair[0]=kqq*(erf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*exp(-br*br))*rinv;
-  fpair[0]=kqq*(erf(br)*rinv-((real)1.128379167095513)*rc.betaEwald*exp(-br*br))*rinv;
-  if (calcEnergy) {
-    lE[0]=-kqq*erf(br)*rinv;
+    // fpair[0]=kqq*(erf(br)*rinv-(2/sqrt(M_PI))*rc.betaEwald*exp(-br*br))*rinv;
+    fpair[0]=kqq*(erf(br)*rinv-((real)1.128379167095513)*rc.betaEwald*exp(-br*br))*rinv;
+    if (calcEnergy) {
+      lE[0]=-kqq*erf(br)*rinv;
+    }
+  } else {
+    fpair[0] = 0;
+    if (calcEnergy) lE[0] = 0;
   }
-  if (vdwMethod == 3){ // LJPME
+
+  if (vdwMethod == eljpme){ // LJPME
     // U_VdW = U_geo -- no regular vdw, only correction
     real rinv2 = rinv*rinv;
     real rinv6 = rinv2*rinv2*rinv2;
-    br = rc.betaEwaldLJ*r;
+    real br = rc.betaEwaldLJ*r;
     real br2 = br*br;
     real b2 = rc.betaEwaldLJ*rc.betaEwaldLJ;
     real b6 = b2*b2*b2;
@@ -390,8 +394,8 @@ void getforce_nb14(System *system,bool calcEnergy)
 
 
 
-template <bool flagBox, int vdwMethod, typename box_type>
-void getforce_nbexTT(System *system,box_type box,bool calcEnergy)
+template <bool flagBox, int vdwMethod, int elecMethod, typename box_type>
+void getforce_nbexTTT(System *system,box_type box,bool calcEnergy)
 {
   Potential *p=system->potential;
   State *s=system->state;
@@ -402,7 +406,7 @@ void getforce_nbexTT(System *system,box_type box,bool calcEnergy)
 
   if (N==0) return;
 
-  if (r->elecMethod!=epme) return;
+  if (r->elecMethod!=epme && r->vdwMethod!=eljpme) return;
   if (r->calcTermFlag[eenbrecipexcl]==false) return;
 
   if (calcEnergy) {
@@ -411,16 +415,25 @@ void getforce_nbexTT(System *system,box_type box,bool calcEnergy)
   }
 
   // useSoft=false (Never use soft cores for nbex, they're already soft). vdwMethod (if LJPME). elecMethod=1 (PME)
-  getforce_pair_kernel <flagBox,NbExPotential,false,vdwMethod,1> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  getforce_pair_kernel <flagBox,NbExPotential,false,vdwMethod,elecMethod> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
   gpuCheck(cudaGetLastError());
+}
+
+template <bool flagBox, int vdwMethod, typename box_type>
+void getforce_nbexTT(System* system, box_type box, bool calcEnergy){
+  if (system->run->elecMethod == epme){ 
+    getforce_nbexTTT<flagBox,vdwMethod,epme>(system,box,calcEnergy);
+  } else {
+    getforce_nbexTTT<flagBox,vdwMethod,efswitch>(system,box,calcEnergy); // doesn't matter what goes here just not epme
+  }
 }
 
 template <bool flagBox, typename box_type>
 void getforce_nbexT(System *system,box_type box, bool calcEnergy){
-  if (system->run->vdwMethod == 3){ // LJPME
-    getforce_nbexTT<flagBox,3>(system,box,calcEnergy);
+  if (system->run->vdwMethod == eljpme){ // LJPME
+    getforce_nbexTT<flagBox,eljpme>(system,box,calcEnergy);
   } else {
-    getforce_nbexTT<flagBox,0>(system,box,calcEnergy); // doesn't matter what goes here just not eljpme
+    getforce_nbexTT<flagBox,evfswitch>(system,box,calcEnergy); // doesn't matter what goes here just not eljpme
   }
 }
 

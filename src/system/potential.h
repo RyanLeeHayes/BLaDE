@@ -333,16 +333,16 @@ class Potential {
   cufftHandle planFFTPME, planIFFTPME;
   size_t bufferSizeFFTPME,bufferSizeIFFTPME;
 
-  int LJGridDimPME[3];
-  myCufftReal *LJDensGridPME_d;
-  myCufftComplex *LJFourierGridPME_d;
-  myCufftReal *LJPotGridPME_d;
+  int gridDimLJPME[3];
+  myCufftReal *densGridLJPME_d;
+  myCufftComplex *fourierGridLJPME_d;
+  myCufftReal *potGridLJPME_d;
 #ifdef USE_TEXTURE
-  cudaTextureObject_t LJPotGridPME_tex;
+  cudaTextureObject_t potGridLJPME_tex;
 #endif
-  real *LJBGridPME, *LJBGridPME_d;
-  cufftHandle LJPlanFFTPME, LJPlanIFFTPME;
-  size_t LJBufferSizeFFTPME,LJBufferSizeIFFTPME;
+  real *bGridLJPME, *bGridLJPME_d;
+  cufftHandle planFFTLJPME, planIFFTLJPME;
+  size_t bufferSizeFFTLJPME,bufferSizeIFFTLJPME;
 
   std::map<std::string,int> typeCount;
   std::set<struct CountType> typeSort;

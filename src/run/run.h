@@ -58,6 +58,8 @@ class Run {
   int freqNRG;
   bool hrLMD;
   bool prettyXTC;
+  bool writeGrad; // option only for energy calls, prints to "gradient.txt"
+  std::string fnmGRAD;
 
   long int step; // current step
   long int step0; // starting step
@@ -85,8 +87,11 @@ class Run {
   EVdw vdwMethod;   // VDW method: evfswitch, evswitch, evshift or eljpme
   EElec elecMethod; // electrostatic method: efswitch, epme, or efshift
   real gridSpace; // grid spacing for PME calculation
+  real gridSpaceLJ;
   int grid[3];
+  int gridLJ[3];
   int orderEwald; // interpolation order (4, 6, or 8 typically)
+  int orderEwaldLJ; // interpolation order (4, 6, or 8 typically)
   struct Cutoffs cutoffs;
   real shakeTolerance;
 

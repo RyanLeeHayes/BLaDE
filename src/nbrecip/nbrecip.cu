@@ -84,7 +84,6 @@ void getforce_ewaldself(System *system,bool calcEnergy)
 }
 
 
-
 // getforce_ewald_spread_kernel<<<>>>(N,p->charge_d,m->atomBlock_d,(real3*)s->position_d,s->orthBox,m->lambda_d,((int3*)p->gridDimPME)[0],p->chargeGridPME_d);
 template <bool flagBox,int order,typename box_type>
 __global__ void getforce_ewald_spread_kernel(int atomCount,real *conc,int *atomBlock,real3* position,box_type kbox,real *lambda,int3 gridDimPME,real *densityGridPME)
@@ -257,15 +256,16 @@ __global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,myCufftComplex
     }
     factor=bGridPME[ijk];
     if (LJ_PME){
-      factor*=-Vinv*M_PI*sqrt(M_PI)*betaEwald*betaEwald*betaEwald/2; // negative since vdw density is complex
+      factor*=-Vinv*((real)M_PI*sqrt((real)M_PI))*betaEwald*betaEwald*betaEwald/2; // negative since vdw density is complex
       real tmp = M_PI*sqrt(k2)/betaEwald;
-      factor*=((real)1.0/3)*((1 - 2*tmp*tmp)*exp(-tmp*tmp) + 2*tmp*tmp*tmp*sqrt(M_PI)*erfc(tmp));
+      factor*=(((real)1.0)/3)*((1 - 2*tmp*tmp)*exp(-tmp*tmp) + 2*tmp*tmp*tmp*sqrt(M_PI)*erfc(tmp));
     } else {
       factor*=(((real)0.5)*kELECTRIC/((real)M_PI));
       factor*=Vinv*exp(-((real)M_PI)*((real)M_PI)*k2/(betaEwald*betaEwald));
       factor/=k2;
       factor=(ijk==0?0:factor);
     }
+    //factor *= ((2*i==gridDimPME.x) ? (real)2.0 : (real)1.0); //--> CHARMM does this for energy but not force
     fourierGridPME[ijk].x*=factor;
     fourierGridPME[ijk].y*=factor;
   }
@@ -275,7 +275,7 @@ __global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,myCufftComplex
 template <bool flagBox,int order,typename box_type>
 __global__ void getforce_ewald_gather_kernel(
   int atomCount,
-  real *charge,
+  real *conc,
   int *atomBlock,
   int3 gridDimPME,
 #ifdef USE_TEXTURE
@@ -313,7 +313,7 @@ __global__ void getforce_ewald_gather_kernel(
   u0=make_int3(0,0,0);
 
   if (iAtom<atomCount) {
-    q=charge[iAtom];
+    q=conc[iAtom];
 
     // Scaling
     b=atomBlock[iAtom];
@@ -498,15 +498,11 @@ __global__ void getforce_ewald_gather_kernel(
 }
 
 template <bool flagBox,int order,typename box_type>
-void ewald_sum(System* system, int* gridDim, real beta, bool LJ_PME,
-  real* density_d, myCufftReal* densityGrid_d, myCufftComplex* fftGrid_d, real* bGrid_d, 
+void ewald_sum(System* system, int* gridDim, real beta, bool LJ_PME, real* density_d, myCufftReal* densityGrid_d, myCufftComplex* fftGrid_d, real* bGrid_d, 
 #ifdef USE_TEXTURE
   cudaTextureObject_t potGrid_tex,
-#else
-  myCufftReal* potGrid_d, 
 #endif
-  cufftHandle fftPlan, cufftHandle ifftPlan, box_type kbox,
-  bool calcEnergy
+  myCufftReal* potGrid_d, cufftHandle fftPlan, cufftHandle ifftPlan, box_type kbox, bool calcEnergy
 ){
     Potential *p=system->potential;
     State *s=system->state;
@@ -551,45 +547,48 @@ void ewald_sum(System* system, int* gridDim, real beta, bool LJ_PME,
 }
 
 template <bool flagBox,int order,typename box_type>
-void getforce_ewaldTT(System *system,box_type kbox,bool calcEnergy)
+void getforce_ewaldTT(System *system,box_type kbox,bool LJ,bool calcEnergy)
 {
   Run* r=system->run;
   Potential* p=system->potential;
 
   if (r->calcTermFlag[eenbrecip]==false) return;
 
-  if (r->elecMethod==epme) {
-    ewald_sum<flagBox,order,box_type>(system, p->gridDimPME, r->cutoffs.betaEwald, false,
-      p->charge_d, p->chargeGridPME_d, p->fourierGridPME_d, p->bGridPME_d, 
+  if (!LJ) { // ELEC PME
+    ewald_sum<flagBox,order,box_type>(system, p->gridDimPME, r->cutoffs.betaEwald, false, p->charge_d, p->chargeGridPME_d, p->fourierGridPME_d, p->bGridPME_d, 
 #ifdef USE_TEXTURE
       p->potentialGridPME_tex,
-#else
-      p->potentialGridPME_d, 
 #endif
-      p->planFFTPME, p->planIFFTPME, kbox, calcEnergy);  
-  }
-
-  if (r->vdwMethod==eljpme){ // TODO: CHECK SIGN ON THIS
-    ewald_sum<flagBox,order,box_type>(system, p->gridDimPME, r->cutoffs.betaEwaldLJ, true,
-      p->vdwDensity_d, p->LJDensGridPME_d, p->LJFourierGridPME_d, p->bGridPME_d, 
+      p->potentialGridPME_d, p->planFFTPME, p->planIFFTPME, kbox, calcEnergy);  
+  } else { // VDW PME
+    ewald_sum<flagBox,order,box_type>(system, p->gridDimLJPME, r->cutoffs.betaEwaldLJ, true, p->vdwDensity_d, p->densGridLJPME_d, p->fourierGridLJPME_d, p->bGridLJPME_d, 
 #ifdef USE_TEXTURE
-      p->LJPotGridPME_tex,
-#else
-      p->LJPotGridPME_d, 
+      p->potGridLJPME_tex,
 #endif
-      p->planFFTPME, p->planIFFTPME, kbox, calcEnergy);  
+      p->potGridLJPME_d, p->planFFTLJPME, p->planIFFTLJPME, kbox, calcEnergy);  
   }
 }
 
 template <bool flagBox,typename box_type>
 void getforce_ewaldT(System *system,box_type kbox,bool calcEnergy)
 {
-  if (system->run->orderEwald==4) {
-    getforce_ewaldTT<flagBox,4>(system,kbox,calcEnergy);
-  } else if (system->run->orderEwald==6) {
-    getforce_ewaldTT<flagBox,6>(system,kbox,calcEnergy);
-  } else if (system->run->orderEwald==8) {
-    getforce_ewaldTT<flagBox,8>(system,kbox,calcEnergy);
+  if (system->run->elecMethod==epme){
+    if (system->run->orderEwald==4) {
+      getforce_ewaldTT<flagBox,4>(system,kbox,false,calcEnergy);
+    } else if (system->run->orderEwald==6) {
+      getforce_ewaldTT<flagBox,6>(system,kbox,false,calcEnergy);
+    } else if (system->run->orderEwald==8) {
+      getforce_ewaldTT<flagBox,8>(system,kbox,false,calcEnergy);
+    }
+  }
+  if (system->run->vdwMethod==eljpme){
+    if (system->run->orderEwaldLJ==4) {
+      getforce_ewaldTT<flagBox,4>(system,kbox,true,calcEnergy);
+    } else if (system->run->orderEwaldLJ==6) {
+      getforce_ewaldTT<flagBox,6>(system,kbox,true,calcEnergy);
+    } else if (system->run->orderEwaldLJ==8) {
+      getforce_ewaldTT<flagBox,8>(system,kbox,true,calcEnergy);
+    }
   }
 }
 
