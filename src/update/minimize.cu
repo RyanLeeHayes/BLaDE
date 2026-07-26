@@ -239,8 +239,7 @@ static bool min_move_sdmd(State *state,int step,int nsteps,System *system)
   for (int attempt=0; attempt<maxAttempts; attempt++) {
     if (system->id==0) {
       real scaling;
-      real maxDisplacement;
-      real rescaling;
+      real atomScaling;
 
       state->restore_position();
       sd_acceleration_kernel<<<(3*state->atomCount+BLUP-1)/BLUP,BLUP,
@@ -249,21 +248,17 @@ static bool min_move_sdmd(State *state,int step,int nsteps,System *system)
       holonomic_velocity(system);
       status=trial;
       scaling=trialDxRMS/gradRMS;
-      maxDisplacement=scaling*gradMax;
-      rescaling=r->dxAtomMax/maxDisplacement;
+      atomScaling=r->dxAtomMax/gradMax;
       if (!isfinite(trialDxRMS) || trialDxRMS<=0 ||
           !isfinite(r->dxAtomMax) || r->dxAtomMax<=0 ||
           !isfinite(scaling) || scaling<=0 ||
-          !isfinite(maxDisplacement) || maxDisplacement<=0 ||
-          !isfinite(rescaling) || rescaling<=0) {
+          !isfinite(atomScaling) || atomScaling<=0) {
         printlog("SDMD> Rejected invalid scaling at step %d attempt %d (dxRMS=%g A)\n",
           step,attempt+1,(double)(trialDxRMS/ANGSTROM));
         trialDxRMS*=invalidShrink;
         status=rejected;
       } else {
-        if (rescaling<1) {
-          scaling*=rescaling;
-        }
+        scaling=fmin(scaling,atomScaling);
         sd_position_kernel<<<(3*state->atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>
           (3*state->atomCount,*state->leapState,state->leapState->v,scaling,state->positionCons_d);
         gpuCheck(cudaGetLastError());
