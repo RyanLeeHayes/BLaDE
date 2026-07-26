@@ -401,7 +401,7 @@ void Run::set_variable(char *line,char *token,System *system)
     } else if (strcmp(minString.c_str(),"sdmd")==0) {
       minType=esdmd;
     } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: lbfgs, sd, sdfd, or sdmd\n",minString.c_str());
+      fatal(__FILE__,__LINE__,"Unrecognized mintype %s. Options are: lbfgs, sd, sdfd, or sdmd\n",minString.c_str());
     }
   } else if (strcmp(token,"domdecheuristic")==0) {
     printlog("domdecheuristic is no longer used, it is always on\n");
