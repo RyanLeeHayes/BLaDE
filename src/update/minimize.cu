@@ -165,6 +165,7 @@ static bool min_move_sdmd(State *state,int step,int nsteps,System *system)
   const real firstDxRMS=0.001*ANGSTROM;
   const real uphillShrink=0.5;
   const real invalidShrink=0.25;
+  const real maxDxRMSFactor=10;
   enum {trial, rejected, accepted, converged, failed};
   static int status;
   int decision;
@@ -189,6 +190,9 @@ static bool min_move_sdmd(State *state,int step,int nsteps,System *system)
         r->dxRMS*=1.2;
       } else {
         r->dxRMS*=0.5;
+      }
+      if (r->dxRMS > maxDxRMSFactor*r->dxRMSInit) {
+        r->dxRMS=maxDxRMSFactor*r->dxRMSInit;
       }
       state->prevEnergy=currEnergy;
 
@@ -259,7 +263,6 @@ static bool min_move_sdmd(State *state,int step,int nsteps,System *system)
       } else {
         if (rescaling<1) {
           scaling*=rescaling;
-          trialDxRMS*=rescaling;
         }
         sd_position_kernel<<<(3*state->atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>
           (3*state->atomCount,*state->leapState,state->leapState->v,scaling,state->positionCons_d);

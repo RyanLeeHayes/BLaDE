@@ -204,8 +204,8 @@ mintype (minimization method: lbfgs, sd, sdfd, or sdmd)
 The minimization methods are L-BFGS (lbfgs), adaptive steepest descent (sd),
 finite-difference steepest descent (sdfd), and guarded steepest descent (sdmd).
 SDMD keeps the last accepted state, retries smaller steps when a trial is
-invalid or raises the potential energy, and accepts only finite,
-non-increasing potential energies.
+invalid or raises the potential energy, and accepts a trial only when its
+potential energy is finite and no higher than the accepted-state comparison.
 
 When you're ready to run dynamics, call
 
