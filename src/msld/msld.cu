@@ -450,10 +450,12 @@ void parse_msld(char *line,System *system)
 #warning "No units on width or k"
   } else if (strcmp(token, "well_k")==0){
     system->msld->well_k=io_nextf(line);
+    // system->msld->well_k*=(kB*io_nextf(line)); // T for kT units MATTUNITS
   } else if (strcmp(token, "N_target")==0){
     system->msld->N_target=io_nextf(line);
   } else if (strcmp(token, "imp_m")==0){
-    system->msld->imp_m=io_nextf(line);
+    system->msld->imp_m=io_nextf(line); // k
+    // system->msld->imp_m*=(kB*io_nextf(line)); // T for kT units MATTUNITS
   } else if (strcmp(token, "imp_alpha")==0){
     system->msld->imp_alpha=io_nextf(line);
   } else if (strcmp(token, "imp_xi")==0){
@@ -738,7 +740,7 @@ void Msld::initialize(System *system)
 
   // New newton constraint
   gpuCheck(cudaMalloc(&theta0_d, siteCount*sizeof(real_x)));
-  gpuCheck(cudaMalloc(&dcdt_d, blockCount*sizeof(real_f)));
+  gpuCheck(cudaMalloc(&dcdt_d, blockCount*sizeof(real)));
 
   // Per-block fixed flags
   gpuCheck(cudaMalloc(&blockFixed_d, blockCount*sizeof(bool)));
@@ -1235,10 +1237,10 @@ __global__ void getforce_thetaFlatHarmonic_kernel(
 __global__ void getforce_theta_targetBias_kernel(
   real* theta, real_f* thetaForce, 
   real_e* energy, int blockCount, 
-  int* lambdaSite, int* blocksPerSite,real kbT,
+  int* lambdaSite, int* blocksPerSite,
   real k, real N_target,
   real alpha, real phi, 
-  real_x* theta0, real_f* dcdt)
+  real_x* theta0, real* dcdt)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   extern __shared__ real sEnergy[];
@@ -1254,14 +1256,14 @@ __global__ void getforce_theta_targetBias_kernel(
       real dNdTi = 0;
       for(int j = blockStart; j < blockStart+subs; j++){
         real expA = exp(-alpha*(theta[j] - theta0[site] + phi));
-        real expA_1 = 1.0 + expA;
-        N_approx += 1.0 / expA_1;
-        real dij = j == i ? 1.0 : 0.0;
+        real expA_1 = 1 + expA;
+        N_approx += 1 / expA_1;
+        real dij = j == i ? 1 : 0;
         dNdTi += alpha*(dij-dcdt[i])*expA/(expA_1*expA_1);
       }
-      real over = N_approx > N_target ? N_approx - N_target : 0.0;
-      lEnergy = i==blockStart ? (k*kbT)*over*over : 0; // first block calculates potential
-      real dUdTi = 2.0*(k*kbT)*over*dNdTi; // all blocks calculate force on its lambda
+      real over = N_approx > N_target ? N_approx - N_target : 0;
+      lEnergy = i==blockStart ? ((real)0.5)*k*over*over : 0; // first block calculates potential
+      real dUdTi = k*over*dNdTi; // all blocks calculate force on its lambda
       atomicAdd(&thetaForce[i], dUdTi);
   }
   // Energy, if requested
@@ -1313,7 +1315,7 @@ void Msld::getforce_thetaBias(System *system,bool calcEnergy)
 
     if (abs(system->msld->imp_m) > 1e-4){ // effectively turned off
       getforce_theta_targetBias_kernel<<<(blockCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(
-        s->theta_fd,s->thetaForce_d,pEnergy,blockCount,lambdaSite_d,blocksPerSite_d,kB*r->T,
+        s->theta_fd,s->thetaForce_d,pEnergy,blockCount,lambdaSite_d,blocksPerSite_d,
         imp_m, N_target,imp_alpha, imp_xi,
         theta0_d, dcdt_d);
       gpuCheck(cudaGetLastError());
@@ -1690,6 +1692,15 @@ void blade_add_msld_thetaindebias(System *system,int sites,int i,double k)
     system->msld->kThetaIndeBias=(real*)calloc(system->msld->thetaIndeBiasCount,sizeof(real));
   } 
   system->msld->kThetaIndeBias[i-1]=k;
+}
+
+void blade_set_msld_thetaedgebias(System *system,double k,double N,double alpha,double phi)
+{
+  system+=omp_get_thread_num();
+  system->msld->imp_m=k;
+  system->msld->N_target=N;
+  system->msld->imp_alpha=alpha;
+  system->msld->imp_xi=phi;
 }
 
 void blade_set_msld_piecewise_constraint(System *system, int do_imp, double width, double k)

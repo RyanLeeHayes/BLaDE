@@ -303,7 +303,7 @@ __global__ void assign_excl_place_blockExcls_kernel(
 #else
         probeBlock=sortedExcls[jExclBounds[0]].idx[0];
 #endif
-        if (probeBlock==iBlock) { // double check - small errors in energy if we don't
+        if (probeBlock==iBlock && jExclBounds[0]<exclCount) { // double check - small errors in energy if we don't
           exclAddress=jExclBounds[0];
           blockCandidates[maxPartnersPerBlock*(i/32)+j].exclAddress=exclAddress;
         }
