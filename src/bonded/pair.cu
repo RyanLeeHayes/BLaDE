@@ -68,7 +68,7 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
     real rinv3=rinv*rinv*rinv;
     real rinv6=rinv3*rinv3;
 
-    if (vdwMethod == 0) {  // VFSWITCH
+    if (vdwMethod == evfswitch) {  // VFSWITCH
       // Force switching
       real rCut3=rc.rCut*rc.rCut*rc.rCut;
       real rCut6=rCut3*rCut3;
@@ -95,7 +95,7 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
 
         lE[0]=pp.c12*(A12*rinv6_B12_sq+CC12)-pp.c6*(A6*rinv3_B6_sq+CC6);
       }
-    } else if (vdwMethod == 1) {  // VSWITCH
+    } else if (vdwMethod == evswitch) {  // VSWITCH
       // Potential switching
       real c2ofnb=rc.rCut*rc.rCut;
       real c2onnb=rc.rSwitch*rc.rSwitch;
@@ -108,7 +108,7 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
       fpair[0]=fsw*(6*pp.c6-12*pp.c12*rinv6)*rinv6*rinv	\
         +dfsw*(pp.c12*rinv6-pp.c6)*rinv6;
       if (calcEnergy){lE[0]=fsw*(pp.c12*rinv6-pp.c6)*rinv6;}
-    } else if (vdwMethod == 2) {  // VSHIFT
+    } else if (vdwMethod == evshift) {  // VSHIFT
       // Potential shift - energy zero at cutoff, forces discontinuous
       real r2 = r*r;
       real r5 = r2*r2*r;
@@ -131,7 +131,7 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
         lE[0] = pp.c12*(rinv12 + 2*r6*roffinv18 - 3*roffinv12) -
                 pp.c6*(rinv6 + r6*roffinv12 - 2*roffinv6);
       }
-    } else if (vdwMethod == 3) { // LJPME - vshift
+    } else if (vdwMethod == eljpme) { // LJPME - vshift
       // U_VdW = U_lorentz + U_geo + U_smooth
       real br = rc.betaEwaldLJ*r;
       real br2 = br*br;
@@ -156,7 +156,7 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
     }
 
     real kqq=kELECTRIC*pp.qxq;
-    if (elecMethod==0) { // FSWITCH
+    if (elecMethod==efswitch) { // FSWITCH
       real kqqe14=kqq*pp.e14fac;
       real roff2=rc.rCut*rc.rCut;
       real ron2=rc.rSwitch*rc.rSwitch;
@@ -177,7 +177,7 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
           kqqe14*(rinv+dvc):
           kqqe14*(Aconst*(rinv-1/rc.rCut)+Bconst*(rc.rCut-r)+Cconst*(roff2*rc.rCut-r3)+Dconst*(roff2*roff2*rc.rCut-r5));
       }
-    } else if (elecMethod==1) { // PME
+    } else if (elecMethod==epme) { // PME
       real br=rc.betaEwald*r;
 
       real erfcrinv=(fasterfc(br)+pp.e14fac-1)*rinv;
@@ -186,7 +186,7 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
       if (calcEnergy) {
         lE[0]+=kqq*erfcrinv;
       }
-    } else if (elecMethod==2) { // FSHIFT
+    } else if (elecMethod==efshift) { // FSHIFT
       real roff=rc.rCut;
       real roffinv=1/roff;
       real roffinv2=roffinv*roffinv;
@@ -203,7 +203,7 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
 __device__ void function_pair(NbExPotential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy,int vdwMethod,int elecMethod)
 {
   real rinv=1/r;
-  if (elecMethod == epme){
+  if (elecMethod == epme){ // PME
     real br=rc.betaEwald*r;
     real kqq=kELECTRIC*pp.qxq;
 #warning "No nan guard"
@@ -350,26 +350,26 @@ void getforce_nb14TTTT(System *system,box_type box,bool calcEnergy)
 template <bool flagBox,bool useSoftCore,int vdwMethod,typename box_type>
 void getforce_nb14TTT(System *system,box_type box,bool calcEnergy)
 {
-  if (system->run->elecMethod==0) {  // FSWITCH
-    getforce_nb14TTTT<flagBox,useSoftCore,vdwMethod,0>(system,box,calcEnergy);
-  } else if (system->run->elecMethod==1) { // PME
-    getforce_nb14TTTT<flagBox,useSoftCore,vdwMethod,1>(system,box,calcEnergy);
-  } else if (system->run->elecMethod==2) { // FSHIFT
-    getforce_nb14TTTT<flagBox,useSoftCore,vdwMethod,2>(system,box,calcEnergy);
+  if (system->run->elecMethod==efswitch) {  // FSWITCH
+    getforce_nb14TTTT<flagBox,useSoftCore,vdwMethod,efswitch>(system,box,calcEnergy);
+  } else if (system->run->elecMethod==epme) { // PME
+    getforce_nb14TTTT<flagBox,useSoftCore,vdwMethod,epme>(system,box,calcEnergy);
+  } else if (system->run->elecMethod==efshift) { // FSHIFT
+    getforce_nb14TTTT<flagBox,useSoftCore,vdwMethod,efshift>(system,box,calcEnergy);
   }
 }
 
 template <bool flagBox,bool useSoftCore,typename box_type>
 void getforce_nb14TT(System *system,box_type box,bool calcEnergy)
 {
-  if (system->run->vdwMethod==0) { // VFSWITCH
-    getforce_nb14TTT<flagBox,useSoftCore,0>(system,box,calcEnergy);
-  } else if (system->run->vdwMethod==1) { // VSWITCH
-    getforce_nb14TTT<flagBox,useSoftCore,1>(system,box,calcEnergy);
-  } else if (system->run->vdwMethod==2) { // VSHIFT
-    getforce_nb14TTT<flagBox,useSoftCore,2>(system,box,calcEnergy);
-  } else if (system->run->vdwMethod==3) { // LJPME
-    getforce_nb14TTT<flagBox,useSoftCore,3>(system,box,calcEnergy);
+  if (system->run->vdwMethod==evfswitch) { // VFSWITCH
+    getforce_nb14TTT<flagBox,useSoftCore,evfswitch>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==evswitch) { // VSWITCH
+    getforce_nb14TTT<flagBox,useSoftCore,evswitch>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==evshift) { // VSHIFT
+    getforce_nb14TTT<flagBox,useSoftCore,evshift>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==eljpme) { // LJPME
+    getforce_nb14TTT<flagBox,useSoftCore,eljpme>(system,box,calcEnergy);
   }
 }
 
@@ -414,7 +414,7 @@ void getforce_nbexTTT(System *system,box_type box,bool calcEnergy)
     pEnergy=s->energy_d+eenbrecipexcl;
   }
 
-  // useSoft=false (Never use soft cores for nbex, they're already soft). vdwMethod (if LJPME). elecMethod=1 (PME)
+  // useSoft=false (Never use soft cores for nbex, they're already soft). vdwMethod=3 (if LJPME). elecMethod=1 (if PME)
   getforce_pair_kernel <flagBox,NbExPotential,false,vdwMethod,elecMethod> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->bondedStream>>>(N,p->nbexs_d,system->run->cutoffs,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
   gpuCheck(cudaGetLastError());
 }

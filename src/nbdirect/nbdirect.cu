@@ -300,7 +300,7 @@ __global__ void getforce_nbdirect_kernel(
               // interaction
               // Electrostatics
               // unsmoothed electrostatic interaction eij=kELECTRIC*inp.q*jtmpnp_q*rinv;
-              if (elecMethod==0) { // FSWITCH
+              if (elecMethod==efswitch) { // FSWITCH
                 real roff2=cutoffs.rCut*cutoffs.rCut;
                 real ron2=cutoffs.rSwitch*cutoffs.rSwitch;
                 real ginv=1/((roff2-ron2)*(roff2-ron2)*(roff2-ron2));
@@ -320,7 +320,7 @@ __global__ void getforce_nbdirect_kernel(
                     kELECTRIC*inp.q*jtmpnp_q*(rinv+dvc):
                     kELECTRIC*inp.q*jtmpnp_q*(Aconst*(rinv-1/cutoffs.rCut)+Bconst*(cutoffs.rCut-rEff)+Cconst*(roff2*cutoffs.rCut-r3)+Dconst*(roff2*roff2*cutoffs.rCut-r5));
                 }
-              } else if (elecMethod==1) { // PME
+              } else if (elecMethod==epme) { // PME
                 real br=cutoffs.betaEwald*rEff;
                 // real erfcrinv=erfc(br)*rinv;
                 real erfcrinv=fasterfc(br)*rinv;
@@ -331,7 +331,7 @@ __global__ void getforce_nbdirect_kernel(
                 if (calcEnergy || (calcAlch && (bi || bjtmp))) {
                   eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
                 }
-              } else if (elecMethod==2) { // FSHIFT
+              } else if (elecMethod==efshift) { // FSHIFT
                 // E = (k*qi*qj) * (1/r - 2/roff + r/roff^2)
                 // F = -(k*qi*qj) * (1/r^2 - 1/roff^2)
                 real roff=cutoffs.rCut;
@@ -350,7 +350,7 @@ __global__ void getforce_nbdirect_kernel(
               // unsmoothed vdw potential: eij+=(vdwp.c12*rinv6-vdwp.c6)*rinv6;
               // See charmm/source/domdec/enbxfast.F90, functions calc_vdw_constants, vdw_attraction, vdw_repulsion
 
-              if (vdwMethod == 0) { // VFSWITCH
+              if (vdwMethod == evfswitch) { // VFSWITCH
                 // Force switching - smoothest forces, best for free energy
                 real rCut3=cutoffs.rCut*cutoffs.rCut*cutoffs.rCut;
                 real rSwitch3=cutoffs.rSwitch*cutoffs.rSwitch*cutoffs.rSwitch;
@@ -370,7 +370,7 @@ __global__ void getforce_nbdirect_kernel(
                     eij+=vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*(rinv6-rCutinv3*rCutinv3)-vdwp.c6*k6*(rinv3-rCutinv3)*(rinv3-rCutinv3);
                   }
                 }
-              } else if (vdwMethod == 1) {  // VSWITCH
+              } else if (vdwMethod == evswitch) {  // VSWITCH
                 // Potential switching - polynomial smoothing (uses squared distances, not cubed)
                 if (rEff<cutoffs.rSwitch) {
                   fij+=(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv;
@@ -392,7 +392,7 @@ __global__ void getforce_nbdirect_kernel(
                     eij+=fsw*(vdwp.c12*rinv6-vdwp.c6)*rinv6;
                   }
                 }
-              } else if (vdwMethod == 2) {  // VSHIFT
+              } else if (vdwMethod == evshift) {  // VSHIFT
                 // Potential shift - energy zero at cutoff, forces discontinuous
                 real r2 = rEff*rEff;
                 real r5 = r2*r2*rEff;
@@ -415,7 +415,7 @@ __global__ void getforce_nbdirect_kernel(
                   eij += vdwp.c12*(rinv12 + 2*r6*roffinv18 - 3*roffinv12) -
                          vdwp.c6*(rinv6 + r6*roffinv12 - 2*roffinv6);
                 }
-              } else if (vdwMethod == 3) { // LJPME - vshift
+              } else if (vdwMethod == eljpme) { // LJPME - vshift
                 real c6ij_recip = sqrt(c6ii*c6jjtmp); // no factor of 64 since (si/2+si/2 = si)
                 // U_VdW = U_lorentz + U_geo + U_smooth
                 real br = cutoffs.betaEwaldLJ*rEff;
@@ -583,26 +583,26 @@ void getforce_nbdirectTTTT(System *system,box_type box,bool calcEnergy)
 template <bool flagBox,bool calcAlch,bool useSoftCore,int vdwMethod,typename box_type>
 void getforce_nbdirectTTT(System *system,box_type box,bool calcEnergy)
 {
-  if (system->run->elecMethod==0) { // FSWITCH
-    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,0>(system,box,calcEnergy);
-  } else if (system->run->elecMethod==1) { // PME
-    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,1>(system,box,calcEnergy);
-  } else if (system->run->elecMethod==2) { // FSHIFT
-    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,2>(system,box,calcEnergy);
+  if (system->run->elecMethod==efswitch) { // FSWITCH
+    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,efswitch>(system,box,calcEnergy);
+  } else if (system->run->elecMethod==epme) { // PME
+    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,epme>(system,box,calcEnergy);
+  } else if (system->run->elecMethod==efshift) { // FSHIFT
+    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,efshift>(system,box,calcEnergy);
   }
 }
 
 template <bool flagBox,bool calcAlch,bool useSoftCore,typename box_type>
 void getforce_nbdirectTT(System *system,box_type box,bool calcEnergy)
 {
-  if (system->run->vdwMethod==0) { // VFSWITCH
-    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,0>(system,box,calcEnergy);
-  } else if (system->run->vdwMethod==1) { // VSWITCH
-    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,1>(system,box,calcEnergy);
-  } else if (system->run->vdwMethod==2) { // VSHIFT
-    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,2>(system,box,calcEnergy);
-  } else if (system->run->vdwMethod==3) { // LJPME
-    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,3>(system,box,calcEnergy);
+  if (system->run->vdwMethod==evfswitch) { // VFSWITCH
+    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,evfswitch>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==evswitch) { // VSWITCH
+    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,evswitch>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==evshift) { // VSHIFT
+    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,evshift>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==eljpme) { // LJPME
+    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,eljpme>(system,box,calcEnergy);
   }
 }
 
