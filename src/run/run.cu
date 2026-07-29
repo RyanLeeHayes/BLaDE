@@ -47,17 +47,24 @@ Run::Run(System *system)
   prettyXTC=false;
 // Nonbonded options
   betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
+  betaEwaldLJ=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
   vdwMethod=evfswitch; // default to VFSWITCH (force switching)
   elecMethod=epme;    // default to PME
   gridSpace=1.0*ANGSTROM;
+  gridSpaceLJ=1.0*ANGSTROM;
   grid[0]=-1;
   grid[1]=-1;
   grid[2]=-1;
+  gridLJ[0] = -1;
+  gridLJ[1] = -1;
+  gridLJ[2] = -1;
   orderEwald=6;
+  orderEwaldLJ=6;
 
   cutoffs.betaEwald=betaEwald;
+  cutoffs.betaEwaldLJ=betaEwaldLJ;
   cutoffs.rCut=rCut;
   cutoffs.rSwitch=rSwitch;
 
@@ -261,15 +268,19 @@ void Run::dump(char *line,char *token,System *system)
   printlog("RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n",fnmCPI.c_str());
   printlog("RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n",fnmCPO.c_str());
   printlog("RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n",betaEwald*ANGSTROM);
+  printlog("RUN PRINT> betaEwaldLJ=%f (input 1/invbetaewaldLJ in A^-1)\n",betaEwaldLJ*ANGSTROM);
   printlog("RUN PRINT> rcut=%f (input in A)\n",rCut/ANGSTROM);
   printlog("RUN PRINT> rswitch=%f (input in A)\n",rSwitch/ANGSTROM);
-  const char *vdwMethodNames[] = {"VFSWITCH", "VSWITCH", "VSHIFT"};
+  const char *vdwMethodNames[] = {"VFSWITCH", "VSWITCH", "VSHIFT", "LJPME"};
   const char *elecMethodNames[] = {"FSWITCH", "PME", "FSHIFT"};
-  printlog("RUN PRINT> vdwmethod=%s (vfswitch, vswitch, or vshift)\n",vdwMethodNames[vdwMethod]);
+  printlog("RUN PRINT> vdwmethod=%s (vfswitch, vswitch, vshift, or ljpme)\n",vdwMethodNames[vdwMethod]);
   printlog("RUN PRINT> elecmethod=%s (fswitch, pme, or fshift)\n",elecMethodNames[elecMethod]);
   printlog("RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace/ANGSTROM);
+  printlog("RUN PRINT> gridspaceLJ=%f (For PME - input in A)\n",gridSpaceLJ/ANGSTROM);
   printlog("RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n",grid[0],grid[1],grid[2]);
+  printlog("RUN PRINT> gridLJ=[%d %d %d] (For PME if gridspace<0)\n",gridLJ[0],gridLJ[1],gridLJ[2]);
   printlog("RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwald);
+  printlog("RUN PRINT> orderewaldLJ=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwaldLJ);
   printlog("RUN PRINT> shaketolerance=%f (For use with shake - dimensionless - do not go below 1e-7 with single precision)\n",shakeTolerance);
   printlog("RUN PRINT> freqnpt=%d (frequency of pressure coupling moves. 10 or less reproduces bulk dynamics, OpenMM often uses 100)\n",freqNPT);
   printlog("RUN PRINT> volumefluctuation=%f (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))\n",volumeFluctuation/(ANGSTROM*ANGSTROM*ANGSTROM));
@@ -324,6 +335,9 @@ void Run::set_variable(char *line,char *token,System *system)
     hrLMD=io_nextb(line);
   } else if (strcmp(token,"prettyxtc")==0) {
     prettyXTC=io_nextb(line);
+  } else if (strcmp(token, "writeGrad")==0){
+    writeGrad=io_nextb(line);
+    fnmGRAD=io_nexts(line);
   } else if (strcmp(token,"T")==0) {
     T=io_nextf(line);
   } else if (strcmp(token,"gamma")==0) {
@@ -331,6 +345,9 @@ void Run::set_variable(char *line,char *token,System *system)
   } else if (strcmp(token,"invbetaewald")==0) {
     betaEwald=1/(io_nextf(line)*ANGSTROM);
     cutoffs.betaEwald=betaEwald;
+  } else if (strcmp(token,"invbetaewaldLJ")==0) {
+    betaEwaldLJ=1/(io_nextf(line)*ANGSTROM);
+    cutoffs.betaEwaldLJ=betaEwaldLJ;
   } else if (strcmp(token,"rcut")==0) {
     rCut=io_nextf(line)*ANGSTROM;
     cutoffs.rCut=rCut;
@@ -349,8 +366,10 @@ void Run::set_variable(char *line,char *token,System *system)
       vdwMethod=evswitch;
     } else if (strcmp(minString.c_str(),"vshift")==0) {
       vdwMethod=evshift;
+    } else if (strcmp(minString.c_str(),"ljpme")==0) {
+      vdwMethod=eljpme;
     } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token %s for vdw method vdwMethod. Options are: vfswitch, vswitch, or vshift\n",minString.c_str());
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for vdw method vdwMethod. Options are: vfswitch, vswitch, vshift, or ljpme\n",minString.c_str());
     }
   } else if (strcmp(token,"elecmethod")==0) {
     std::string minString=io_nexts(line);
@@ -365,15 +384,26 @@ void Run::set_variable(char *line,char *token,System *system)
     }
   } else if (strcmp(token,"gridspace")==0) {
     gridSpace=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"gridspaceLJ")==0){
+    gridSpaceLJ=io_nextf(line)*ANGSTROM;
   } else if (strcmp(token,"grid")==0) {
     grid[0]=io_nexti(line);
     grid[1]=io_nexti(line);
     grid[2]=io_nexti(line);
     gridSpace=-1;
+  } else if (strcmp(token,"gridLJ")==0) {
+    gridLJ[0]=io_nexti(line);
+    gridLJ[1]=io_nexti(line);
+    gridLJ[2]=io_nexti(line);
+    gridSpaceLJ=-1;
   } else if (strcmp(token,"orderewald")==0) {
     orderEwald=io_nexti(line);
     if ((orderEwald/2)*2!=orderEwald) fatal(__FILE__,__LINE__,"orderEwald (%d) must be even\n",orderEwald);
     if (orderEwald<4 || orderEwald>8) fatal(__FILE__,__LINE__,"orderEwald (%d) must be 4, 6, or 8\n",orderEwald);
+  } else if (strcmp(token, "orderewaldLJ")==0){
+    orderEwaldLJ=io_nexti(line);
+    if ((orderEwaldLJ/2)*2!=orderEwaldLJ) fatal(__FILE__,__LINE__,"orderEwaldLJ (%d) must be even\n",orderEwaldLJ);
+    if (orderEwaldLJ<4 || orderEwaldLJ>8) fatal(__FILE__,__LINE__,"orderEwaldLJ (%d) must be 4, 6, or 8\n",orderEwaldLJ);
   } else if (strcmp(token,"shaketolerance")==0) {
     shakeTolerance=io_nextf(line);
   } else if (strcmp(token,"freqnpt")==0) {
@@ -442,6 +472,7 @@ void Run::energy(char *line,char *token,System *system)
   system->state->recv_energy();
   print_nrg(0,system);
   display_nrg(system);
+  if (writeGrad){ write_xyz_grad(system, fnmGRAD); }
   dynamics_finalize(system);
 }
 
@@ -452,7 +483,8 @@ void Run::test(char *line,char *token,System *system)
   real dx;
   int i,j,ij,s;
   int ij0,imax,jmax;
-  real_e F,E[2];
+  real_f F;
+  real_e E[2];
 
   // Initialize data structures
   dynamics_initialize(system);
@@ -515,8 +547,9 @@ void Run::test(char *line,char *token,System *system)
           system->state->restore_position();
         }
         if (system->id==0) {
-          gpuCheck(cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost));
-          printlog("ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
+          gpuCheck(cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real_f),cudaMemcpyDeviceToHost));
+          real num = (E[1]-E[0])/dx;
+          printlog("ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g, err(num-f)=%20.16g\n",ij,E[0],E[1],num,F,num-F);
         }
       }
     }
