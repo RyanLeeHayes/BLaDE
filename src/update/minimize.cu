@@ -104,7 +104,7 @@ void State::min_init(System *system)
     0,system->run->updateStream>>>
     (3*atomCount+lambdaCount,invsqrtMassBuffer_d,leapState->ism);
   gpuCheck(cudaGetLastError());
-  if (system->run->minType==esd || system->run->minType==esdfd) {
+  if (system->run->minType==esd || system->run->minType==esdfd || system->run->minType==esdmd) {
     gpuCheck(cudaMalloc(&grads2_d,2*sizeof(real_e)));
     gpuCheck(cudaMemset(grads2_d,0,2*sizeof(real_e)));
   }
@@ -148,7 +148,7 @@ void State::min_dest(System *system)
   // Set masses back
   gpuCheck(cudaFree(leapState->ism));
   leapState->ism=invsqrtMassBuffer_d;
-  if (system->run->minType==esd || system->run->minType==esdfd) {
+  if (system->run->minType==esd || system->run->minType==esdfd || system->run->minType==esdmd) {
     gpuCheck(cudaFree(grads2_d));
   }
   if (system->run->minType==esdfd) {
@@ -159,7 +159,173 @@ void State::min_dest(System *system)
   }
 }
 
-void State::min_move(int step,int nsteps,System *system)
+static bool min_move_sdmd(State *state,int step,int nsteps,System *system)
+{
+  const int maxAttempts=10;
+  const real firstDxRMS=0.001*ANGSTROM;
+  const real uphillShrink=0.5;
+  const real invalidShrink=0.25;
+  const real maxDxRMSFactor=10;
+  enum {trial, rejected, accepted, converged, failed};
+  static int status;
+  int decision;
+  Run *r=system->run;
+  real_e currEnergy=0;
+  real_e trialEnergy=0;
+  real_e grads2[2];
+  real gradRMS=0;
+  real gradMax=0;
+  real trialDxRMS=0;
+
+  if (system->id==0) {
+    status=trial;
+    if (!state->recv_energy_safe()) {
+      printlog("SDMD> Initial state has invalid potential energy at step %d\n",step);
+      status=failed;
+    } else {
+      currEnergy=state->energy[eepotential];
+      if (step==0) {
+        r->dxRMS=fmin(r->dxRMSInit,firstDxRMS);
+      } else if (currEnergy<state->prevEnergy) {
+        r->dxRMS*=1.2;
+      } else {
+        r->dxRMS*=0.5;
+      }
+      if (r->dxRMS > maxDxRMSFactor*r->dxRMSInit) {
+        r->dxRMS=maxDxRMSFactor*r->dxRMSInit;
+      }
+      state->prevEnergy=currEnergy;
+
+      sd_acceleration_kernel<<<(3*state->atomCount+BLUP-1)/BLUP,BLUP,
+        0,r->updateStream>>>(3*state->atomCount,*state->leapState);
+      gpuCheck(cudaGetLastError());
+      holonomic_velocity(system);
+      sd_scaling_kernel<<<(state->atomCount+BLUP-1)/BLUP,BLUP,
+        BLUP*sizeof(real)/32,r->updateStream>>>
+        (state->atomCount,*state->leapState,state->grads2_d);
+      gpuCheck(cudaGetLastError());
+      gpuCheck(cudaMemcpy(grads2,state->grads2_d,2*sizeof(real_e),cudaMemcpyDeviceToHost));
+      gpuCheck(cudaMemset(state->grads2_d,0,2*sizeof(real_e)));
+      gradRMS=sqrt(grads2[0]);
+      gradMax=sqrt(grads2[1]);
+
+      if (gradRMS==0 && gradMax==0) {
+        status=converged;
+      } else if (!isfinite(gradRMS) || gradRMS<=0 ||
+                 !isfinite(gradMax) || gradMax<=0) {
+        printlog("SDMD> Invalid gradient at step %d; no displacement applied\n",step);
+        status=failed;
+      } else {
+        state->backup_position();
+        trialDxRMS=r->dxRMS;
+      }
+    }
+  }
+#pragma omp barrier
+
+  decision=status;
+#pragma omp barrier
+  if (decision==failed) return false;
+  if (decision==converged) {
+    if (system->id==0 && step % r->freqNRG == 0) {
+      printlog("MINI> Step   Energy         deltaE         grms          \n");
+      printlog("MINI> %6d %14.6f %14.6f %14.6f\n",step,currEnergy,0.0,gradRMS);
+    }
+    r->step=nsteps;
+#pragma omp barrier
+    return true;
+  }
+
+  for (int attempt=0; attempt<maxAttempts; attempt++) {
+    if (system->id==0) {
+      real scaling;
+      real atomScaling;
+
+      state->restore_position();
+      sd_acceleration_kernel<<<(3*state->atomCount+BLUP-1)/BLUP,BLUP,
+        0,r->updateStream>>>(3*state->atomCount,*state->leapState);
+      gpuCheck(cudaGetLastError());
+      holonomic_velocity(system);
+      status=trial;
+      scaling=trialDxRMS/gradRMS;
+      atomScaling=r->dxAtomMax/gradMax;
+      if (!isfinite(trialDxRMS) || trialDxRMS<=0 ||
+          !isfinite(r->dxAtomMax) || r->dxAtomMax<=0 ||
+          !isfinite(scaling) || scaling<=0 ||
+          !isfinite(atomScaling) || atomScaling<=0) {
+        printlog("SDMD> Rejected invalid scaling at step %d attempt %d (dxRMS=%g A)\n",
+          step,attempt+1,(double)(trialDxRMS/ANGSTROM));
+        trialDxRMS*=invalidShrink;
+        status=rejected;
+      } else {
+        scaling=fmin(scaling,atomScaling);
+        sd_position_kernel<<<(3*state->atomCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>
+          (3*state->atomCount,*state->leapState,state->leapState->v,scaling,state->positionCons_d);
+        gpuCheck(cudaGetLastError());
+        holonomic_position(system);
+      }
+    }
+#pragma omp barrier
+
+    decision=status;
+#pragma omp barrier
+    if (decision==rejected) continue;
+
+    system->domdec->update_domdec(system,true);
+    system->potential->calc_force(0,system);
+
+    if (system->id==0) {
+      if (!state->recv_energy_safe()) {
+        printlog("SDMD> Rejected invalid energy at step %d attempt %d (dxRMS=%g A)\n",
+          step,attempt+1,(double)(trialDxRMS/ANGSTROM));
+        trialDxRMS*=invalidShrink;
+        status=rejected;
+      } else {
+        trialEnergy=state->energy[eepotential];
+        if (trialEnergy<=currEnergy) {
+          r->dxRMS=trialDxRMS;
+          status=accepted;
+        } else {
+          printlog("SDMD> Rejected uphill trial at step %d attempt %d (Eold=%g Enew=%g dxRMS=%g A)\n",
+            step,attempt+1,(double)currEnergy,(double)trialEnergy,
+            (double)(trialDxRMS/ANGSTROM));
+          trialDxRMS*=uphillShrink;
+          status=rejected;
+        }
+      }
+    }
+#pragma omp barrier
+
+    decision=status;
+#pragma omp barrier
+    if (decision==accepted) {
+      if (system->id==0) {
+        if (system->verbose!=0) display_nrg(system);
+        if (step % r->freqNRG == 0) {
+          printlog("MINI> Step   Energy         deltaE         grms          \n");
+          printlog("MINI> %6d %14.6f %14.6f %14.6f\n",
+            step,trialEnergy,trialEnergy-currEnergy,gradRMS);
+        }
+      }
+#pragma omp barrier
+      return true;
+    }
+  }
+
+  if (system->id==0) {
+    state->restore_position();
+    printlog("SDMD> Failed to find a finite non-increasing step after %d attempts; restored step %d\n",
+      maxAttempts,step);
+  }
+#pragma omp barrier
+  system->domdec->update_domdec(system,true);
+  system->potential->calc_force(0,system);
+  if (system->id==0) state->recv_energy_safe();
+#pragma omp barrier
+  return false;
+}
+
+bool State::min_move(int step,int nsteps,System *system)
 {
   Run *r=system->run;
   real_e grads2[2], gradRMS, gradMax;
@@ -167,6 +333,8 @@ void State::min_move(int step,int nsteps,System *system)
   real_e gradDot[1];
   real scaling, rescaling;
   real frac;
+
+  if (r->minType==esdmd) return min_move_sdmd(this,step,nsteps,system);
 
   if (system->id==0) {
     recv_energy();
@@ -328,4 +496,6 @@ void State::min_move(int step,int nsteps,System *system)
       printlog("MINI> %6d %14.6f %14.6f %14.6f\n", step, currEnergy, deltaE, gradRMS);
     }
   }
+
+  return true;
 }
