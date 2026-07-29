@@ -20,7 +20,7 @@ if (WITH_TORCH)
   set(CMAKE_CXX_EXTENSIONS OFF)
   find_package(Torch REQUIRED)
   # ADDED: explicit NVCC standard for old FindCUDA path
-  list(APPEND CMAKE_CUDA_FLAGS -std=c++17)
+  # list(APPEND CMAKE_CUDA_FLAGS -std=c++17)
 endif()
 
 if (RX)
