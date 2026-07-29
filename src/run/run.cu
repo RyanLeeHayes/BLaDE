@@ -535,13 +535,16 @@ void Run::minimize(char *line,char *token,System *system)
   system->state->min_init(system);
 
   for (step=0; step<nsteps; step++) {
-    system->domdec->update_domdec(system,true); // true to always update neighbor list
-    system->potential->calc_force(0,system); // step 0 to always calculate energy
+    const auto outputStep=step;
+    if (minType!=esdmd || step==0) {
+      system->domdec->update_domdec(system,true); // true to always update neighbor list
+      system->potential->calc_force(0,system); // step 0 to always calculate energy
+    }
     if (!system->state->min_move(step,nsteps,system)) {
       success=false;
       break;
     }
-    print_dynamics_output(step,system);
+    print_dynamics_output(outputStep,system);
     gpuCheck(cudaPeekAtLastError());
   }
 
