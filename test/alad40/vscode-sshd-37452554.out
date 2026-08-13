@@ -1,0 +1,13 @@
+-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i .ssh/id_rsa -p 6000 hpc3-gpu-18-01
+## VSCODE ssh host configuration ##
+## Cut and paste into your local vscode ssh configuration ##
+Host hpc3-*
+   HostName hpc3-gpu-18-01
+   Port 6000
+   ProxyJump cyeh5@hpc3.rcic.uci.edu
+   User cyeh5
+   UserKnownHostsFile /dev/null
+   StrictHostKeyChecking no
+ ################################## 
+user mode sshd started on port 6000
+slurmstepd: error: *** JOB 37452554 ON hpc3-gpu-18-01 CANCELLED AT 2025-04-10T14:20:59 ***

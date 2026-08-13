@@ -1,0 +1,13 @@
+Warning, DOS allocation is not sparse, requesting 400 doubles
+1D Profile 0
+1D Profile 1
+1D Profile 0,1
+
+real	0m0.679s
+user	0m0.216s
+sys	0m0.184s
+rm: cannot remove 'Lambda/Lambda.dat': No such file or directory
+
+real	0m0.627s
+user	0m0.284s
+sys	0m0.197s

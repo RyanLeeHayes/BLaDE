@@ -196,6 +196,7 @@ struct DiRestPotential {
   real phi0;
   real width;  // flat-bottom half-width in radians (default 0 = pure harmonic)
   int block;
+  bool printAng=false;
 };
 
 // eeresd-begin
@@ -384,6 +385,9 @@ class Potential {
   int diRestCount;
   struct DiRestPotential *diRests;
   struct DiRestPotential *diRests_d;
+  real *savedPhi;
+  real *savedPhi_d;
+  bool anyDiRestPrint;
   int resdCount;                 // eeresd 
   struct ResdPotential *resds;   // eeresd     
   struct ResdPotential *resds_d; // eeresd  

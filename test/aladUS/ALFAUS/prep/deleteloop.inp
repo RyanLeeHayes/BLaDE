@@ -1,0 +1,25 @@
+set ii = 1
+label deletesiteloop
+if @ii .le. @nsites then
+
+   set jj = 1
+   label delete1loop
+   if @jj .le. @nsubs@@ii then
+
+      calc kk = @jj + 1
+      label delete2loop
+      if @kk .le. @nsubs@@ii then
+
+         dele conn sele ( site@{ii}sub@{jj} ) show end sele ( site@{ii}sub@{kk} ) show end
+
+         calc kk = @kk + 1
+         goto delete2loop
+      endif
+
+      calc jj = @jj + 1
+      goto delete1loop
+   endif
+
+   calc ii = @ii + 1
+   goto deletesiteloop
+endif

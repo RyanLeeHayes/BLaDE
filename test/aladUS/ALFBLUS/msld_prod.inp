@@ -1,0 +1,58 @@
+! BLaDE input file for lambda dynamics
+!
+
+! This script expects nsteps (production steps) and itt (chunk of
+! production) to be set by the calling process in arguments.inp
+!
+! Other important variables such as temp (the system temperature) and
+! sysname (the system name in the prep directory) are set by
+! variablesflat.inp
+
+verbose 0
+
+stream arguments.inp
+
+variables set fnex 5.5
+
+stream variablesprod.inp
+
+stream prep/{sysname}.inp
+
+msld gamma 1.0
+
+! Set nonbonded options
+stream prep/nbond.str
+
+coordinates file crd prep/minimized.crd
+coordinates velocity {temp}
+
+!---------------------------------------------------------------------------
+! Setup of dynamics run
+!---------------------------------------------------------------------------
+
+structure shake hbond
+run setvariable gamma 0.1
+
+variables calculate ittm1 int - {itt} 1
+
+run setvariable fnmxtc dcd/{sysname}_prod{itt}.xtc
+run setvariable fnmnrg dcd/{sysname}_prod{itt}.nrg
+run setvariable fnmlmd res/{sysname}_prod{itt}.lmd
+if > {itt} 1
+  run setvariable fnmcpi res/{sysname}_prod{ittm1}.res
+endif
+run setvariable fnmcpo res/{sysname}_prod{itt}.res
+
+run setvariable nsteps {nsteps}
+run setvariable dt 0.002
+run setvariable T {temp}
+run setvariable freqxtc 50000
+run setvariable freqnrg 5000
+run setvariable freqnpt 100
+run setvariable freqlmd 10
+run setvariable hrlmd no
+run setvariable shaketolerance 0.000000001
+run setvariable endpointcorr on
+run setvariable endpointcorrcutoff 0.8
+run setvariable fnmepc res/{sysname}_prod{itt}.epc
+run dynamics

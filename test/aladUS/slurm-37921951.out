@@ -1,0 +1,25 @@
+Creating a copy of system
+Opening file aladUS.inp for r
+IN1> ! * Benchmark dynamics for alanine dipeptide in cubic box 40 angstroms^3 of solvent 
+IN1> ! * using PBC w/ PME.
+IN1> ! * fill in rest of parameters later
+IN1> 
+IN1> variables set box 40 
+IN1> verbose 0
+IN1> 
+IN1> variables set resid1 1
+IN1> variables set s1seq1 0 ! a
+IN1> variables set s1seq2 v
+IN1> variables set segid HETA
+IN1> variables set nterdel 0
+IN1> variables set nterres 1
+IN1> variables set cterres 1
+IN1> variables set ntercap nter
+IN1> variables set nterc 4
+IN1> variables set cterc 5
+IN1> variables set ctercap cter
+IN1> variables set cterdel 0
+IN1> varaibles set nsites 1
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/system/system.cxx:225
+Unrecognized token: varaibles

@@ -1,0 +1,26 @@
+--------------------------------------------------------------------------
+The following command line options and corresponding MCA parameter have
+been deprecated and replaced as follows:
+
+  Command line options:
+    Deprecated:  --bynode, -bynode
+    Replacement: --map-by node
+
+  Equivalent MCA parameter:
+    Deprecated:  rmaps_base_bynode
+    Replacement: rmaps_base_mapping_policy=node
+
+The deprecated forms *will* disappear in a future version of Open MPI.
+Please update to the new syntax.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[30658,1],0]
+  Exit code:    1
+--------------------------------------------------------------------------

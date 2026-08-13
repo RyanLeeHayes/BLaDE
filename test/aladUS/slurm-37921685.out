@@ -1,0 +1,13 @@
+/export/spool/slurm/slurmd.spool/job37921685/slurm_script: line 7: SBATCH: command not found
+/export/spool/slurm/slurmd.spool/job37921685/slurm_script: line 8: SBATCH: command not found
+/export/spool/slurm/slurmd.spool/job37921685/slurm_script: line 12: SBATCH: command not found
+/export/spool/slurm/slurmd.spool/job37921685/slurm_script: line 18: SBATCH: command not found
+/export/spool/slurm/slurmd.spool/job37921685/slurm_script: line 19: SBATCH: command not found
+/export/spool/slurm/slurmd.spool/job37921685/slurm_script: line 20: SBATCH: command not found
+/export/spool/slurm/slurmd.spool/job37921685/slurm_script: line 21: SBATCH: command not found
+/export/spool/slurm/slurmd.spool/job37921685/slurm_script: line 22: SBATCH: command not found
+/export/spool/slurm/slurmd.spool/job37921685/slurm_script: line 35: SBATCH: command not found
+/export/spool/slurm/slurmd.spool/job37921685/slurm_script: line 36: SBATCH: command not found
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/system/system.cxx:239
+Running with 1 omp threads but only -591477432 GPUs

@@ -302,6 +302,7 @@ void Structure::parse_diRest(char *line,char *token,System *system)
     dr.kphi=io_nextf(line)*KCAL_MOL;
     dr.phi0=io_nextf(line)*DEGREES;
     dr.nphi=io_nexti(line);
+    dr.printAng=bool(io_nexti(line,0));
 #warning "Need to set width"
     dr.width=0;
     dr.block=0; // Assume dihedral restraint is not scaled by lambda
@@ -992,7 +993,7 @@ void blade_add_anrest(System *system,int i,int j,int k,double kt,double t0,int l
   system->structure->anRestCount=system->structure->anRestList.size();
 }
 
-void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,double width,int lambdaBlock)
+void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,double width,int lambdaBlock,bool printAng)
 {
   system+=omp_get_thread_num();
   struct DiRestPotential dr;
@@ -1005,6 +1006,7 @@ void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nph
   dr.width=width*DEGREES;  // flat-bottom half-width in radians (default 0)
   dr.nphi = nphi;
   dr.block=lambdaBlock-1;
+  dr.printAng=printAng;
   system->structure->diRestList.push_back(dr);
   system->structure->diRestCount=system->structure->diRestList.size();
 }

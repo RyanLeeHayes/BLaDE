@@ -1,0 +1,36 @@
+run1 started
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 113, in runflat
+    subprocess.call(['mpirun','-np',str(alf_info['nreps']),'-x','OMP_NUM_THREADS=1','--bind-to','none','--bynode',alf_info['enginepath'],'esteps=%d' % esteps,'nsteps=%d' % nsteps,'seed=%d' % random.getrandbits(16),'-i','../msld_flat.inp'],stdout=fpout,stderr=fperr)
+  File "/opt/apps/anaconda/2022.05/lib/python3.9/subprocess.py", line 349, in call
+    with Popen(*popenargs, **kwargs) as p:
+  File "/opt/apps/anaconda/2022.05/lib/python3.9/subprocess.py", line 951, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/opt/apps/anaconda/2022.05/lib/python3.9/subprocess.py", line 1821, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'mpirun'
+run1 failed
+run1 started
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 113, in runflat
+    subprocess.call(['mpirun','-np',str(alf_info['nreps']),'-x','OMP_NUM_THREADS=1','--bind-to','none','--bynode',alf_info['enginepath'],'esteps=%d' % esteps,'nsteps=%d' % nsteps,'seed=%d' % random.getrandbits(16),'-i','../msld_flat.inp'],stdout=fpout,stderr=fperr)
+  File "/opt/apps/anaconda/2022.05/lib/python3.9/subprocess.py", line 349, in call
+    with Popen(*popenargs, **kwargs) as p:
+  File "/opt/apps/anaconda/2022.05/lib/python3.9/subprocess.py", line 951, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/opt/apps/anaconda/2022.05/lib/python3.9/subprocess.py", line 1821, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'mpirun'
+run1 failed
+run1 started
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 113, in runflat
+    subprocess.call(['mpirun','-np',str(alf_info['nreps']),'-x','OMP_NUM_THREADS=1','--bind-to','none','--bynode',alf_info['enginepath'],'esteps=%d' % esteps,'nsteps=%d' % nsteps,'seed=%d' % random.getrandbits(16),'-i','../msld_flat.inp'],stdout=fpout,stderr=fperr)
+  File "/opt/apps/anaconda/2022.05/lib/python3.9/subprocess.py", line 349, in call
+    with Popen(*popenargs, **kwargs) as p:
+  File "/opt/apps/anaconda/2022.05/lib/python3.9/subprocess.py", line 951, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/opt/apps/anaconda/2022.05/lib/python3.9/subprocess.py", line 1821, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'mpirun'
+slurmstepd: error: *** JOB 38012330 ON hpc3-gpu-18-02 CANCELLED AT 2025-04-24T15:41:20 ***

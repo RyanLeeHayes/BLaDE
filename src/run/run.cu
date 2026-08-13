@@ -33,12 +33,14 @@ Run::Run(System *system)
   fnmXTC="default.xtc";
   fnmLMD="default.lmd";
   fnmNRG="default.nrg";
+  fnmREST="default.rest";
   fnmCPI="";
   fnmCPO="default.cpt";
   fpXTC=NULL;
   fpXLMD=NULL;
   fpLMD=NULL;
   fpNRG=NULL;
+  fpREST=NULL;
   freqXTC=1000;
   freqLMD=10;
   freqNRG=10;
@@ -161,6 +163,7 @@ Run::~Run()
   if (fpXLMD) xdrfile_close(fpXLMD);
   if (fpLMD) fclose(fpLMD);
   if (fpNRG) fclose(fpNRG);
+  if (fpREST) fclose(fpREST);
 #ifndef PROFILESERIAL
   cudaStreamDestroy(updateStream);
 #endif
@@ -259,6 +262,7 @@ void Run::dump(char *line,char *token,System *system)
   printlog("RUN PRINT> fnmxtc=%s (file name for coordinate trajectory)\n",fnmXTC.c_str());
   printlog("RUN PRINT> fnmlmd=%s (file name for lambda trajectory)\n",fnmLMD.c_str());
   printlog("RUN PRINT> fnmnrg=%s (file name for energy output)\n",fnmNRG.c_str());
+  printlog("RUN PRINT> fnmrest=%s (file name for restraint value output)\n",fnmREST.c_str());
   printlog("RUN PRINT> fnmcpi=%s (file name for reading checkpoint in, null means start without checkpoint)\n",fnmCPI.c_str());
   printlog("RUN PRINT> fnmcpo=%s (file name for writing out checkpoint file for later continuation)\n",fnmCPO.c_str());
   printlog("RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n",betaEwald*ANGSTROM);
@@ -312,6 +316,10 @@ void Run::set_variable(char *line,char *token,System *system)
     if (fpNRG) fclose(fpNRG);
     fpNRG=NULL;
     fnmNRG=io_nexts(line);
+  } else if(strcmp(token,"fnmrest")==0) {
+    if (fpREST) fclose(fpREST);
+    fpREST=NULL;
+    fnmREST=io_nexts(line);  
   } else if (strcmp(token,"fnmcpi")==0) {
     fnmCPI=io_nexts(line);
   } else if (strcmp(token,"fnmcpo")==0) {
@@ -602,7 +610,10 @@ void Run::dynamics_initialize(System *system)
   if (system->potential) delete system->potential;
   system->potential=new Potential();
   system->potential->initialize(system);
-
+  
+  if (system->potential->anyDiRestPrint && !fpREST) {
+    fpREST=fpopen(fnmREST.c_str(),"w");
+  }
   // Rectify bond constraints
   holonomic_rectify(system);
 

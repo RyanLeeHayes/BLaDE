@@ -1,0 +1,29 @@
+! doing it with BLADE 
+! change from charmm
+
+variables set box 40
+
+stream prep/alchemical_definitions.inp
+
+parameters file prep/toppar/par_all36m_prot.prm
+parameters file prep/toppar/par_all36_cgenff.prm
+parameters file prep/toppar/par_water_ions.prm
+
+! stream mslddipep.str
+
+structure file psf prep/minimized.psf
+structure shake hbond
+
+coordinates file crd prep/minimized.crd
+coordinates box cubi {box} {box} {box} 90 90 90
+coordinates velocity 298.15
+
+selection limit 200
+
+stream prep/restraints.inp
+
+! stream prep/patchloop.inp
+stream prep/selectloop.inp
+! stream prep/aa_stream_blade/deleteloop.inp
+
+stream prep/blocksetup.inp

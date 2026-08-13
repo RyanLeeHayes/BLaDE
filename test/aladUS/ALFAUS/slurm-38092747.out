@@ -1,0 +1,272 @@
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+run1 failed
+run1 started
+analysis1 started
+Error, ../run1/res/aladsetup_flat.lmd does not exist, molecular dynamics probably failed, check run output and run error for clues
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 148, in runflat
+    alf.GetLambdas(alf_info,i)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambdas.py", line 90, in GetLambdas
+    GetLambda(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 154, in GetLambda
+    GetLambdaCharmm(alf_info,fnmout,fnmsin)
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/GetLambda.py", line 30, in GetLambdaCharmm
+    fp=FortranFile(fnmin,'r')
+  File "/dfs8/rhayes1_lab/cyeh5/ALF_NBias/env-alf/lib/python3.9/site-packages/scipy/io/_fortran.py", line 123, in __init__
+    self._fp = open(filename, '%sb' % mode)
+FileNotFoundError: [Errno 2] No such file or directory: '../run1/res/aladsetup_flat.lmd'
+slurmstepd: error: *** JOB 38092747 ON hpc3-gpu-16-04 CANCELLED AT 2025-04-28T15:03:34 ***

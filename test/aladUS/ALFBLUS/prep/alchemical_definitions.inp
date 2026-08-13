@@ -1,0 +1,14 @@
+! List all mutation sites and mutants at each site
+! j is hsp
+variables set resid1 1
+variables set s1seq1 0 ! alad 
+variables set s1seq2 v
+variables set segid1 HETA
+variables set resid 1
+variables set segid HETA
+
+! Set the terminal properties of any segid mutated above no terminal properties
+
+! Only modify aainitl and aafinal if you're mutating things besides proteins
+variables set aainitl 0
+variables set aafinal {nsites}

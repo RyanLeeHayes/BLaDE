@@ -1,0 +1,1 @@
+selection define site{site}sub{sub} and and segid {segid} resid {resid} atomnames NB_A HB_A CB_A HB_B CB_C HB_C HB_D NB_B CB_D CB_E HB_E NB_C HB_F CB_F HB_G CB_B OB_A

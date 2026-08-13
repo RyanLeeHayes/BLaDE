@@ -61,7 +61,7 @@ void interpretter(const char *fnm,System *system);
 void print_nrg(long int step,System *system);
 void display_nrg(System *system);
 void print_dynamics_output(long int step,System *system);
-
+void print_restraint(long int step,System *system);
 void write_checkpoint_file(const char *fnm,System *system);
 void read_checkpoint_file(const char *fnm,System *system);
 

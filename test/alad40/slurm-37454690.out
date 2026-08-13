@@ -1,0 +1,117 @@
+Creating a copy of system
+Opening file alad.inp for r
+IN1> ! * Benchmark dynamics for alanine dipeptide in cubic box 40 angstroms^3 of solvent 
+IN1> ! * using PBC w/ PME.
+IN1> ! * fill in rest of parameters later
+IN1> 
+IN1> verbose 0
+IN1> 
+IN1> parameters file par_all36m_prot.prm
+Opening file par_all36m_prot.prm for r
+TITLE> *>>>> CHARMM36 All-Hydrogen Parameter File for Proteins <<<<<<<<<<
+TITLE> *>>>>> Includes phi, psi cross term map (CMAP) correction <<<<<<<<
+TITLE> *>>>>>>>>>>>>>>>>>>>>>>>>>> Jan. 2016 <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+TITLE> * All comments to the CHARMM web site: www.charmm.org
+TITLE> *             parameter set discussion forum
+TITLE> *
+allocating kcmap=0x2b19ff0
+allocating kcmap=0x2b1b210
+allocating kcmap=0x2b1c570
+allocating kcmap=0x2b1d8d0
+allocating kcmap=0x2b1ec30
+allocating kcmap=0x2b1ff90
+Unparsed line> HBOND  CUTHB 0.5  ! If you want to do hbond analysis (only), then use
+IN1> parameters file par_water_ions.prm 
+Opening file par_water_ions.prm for r
+TITLE> * Parameters for water and ions
+TITLE> *
+Warning: atom type ON3 found in NBFIX but not declared in ATOMS
+Warning: atom type OCL found in NBFIX but not declared in ATOMS
+Warning: atom type OBL found in NBFIX but not declared in ATOMS
+Warning: atom type O2L found in NBFIX but not declared in ATOMS
+Warning: atom type OC2D2 found in NBFIX but not declared in ATOMS
+Warning: atom type OC2DP found in NBFIX but not declared in ATOMS
+Warning: atom type OG2D2 found in NBFIX but not declared in ATOMS
+Warning: atom type OG2P1 found in NBFIX but not declared in ATOMS
+IN1> 
+IN1> structure file psf step3_pbcsetup.psf
+Opening file step3_pbcsetup.psf for r
+Reading PSF, found header string: 'EXT'
+Reading PSF, found header string: 'CMAP'
+Reading PSF, found header string: 'XPLOR'
+Reading PSF, found header string: 'AUTOG'
+Reading PSF, expect !NTITLE: got  !NTITLE
+Reading PSF, expect !NATOM: got  !NATOM
+Reading PSF, expect !NBOND: bonds: got  !NBOND: bonds
+Reading PSF, expect !NTHETA: angles: got  !NTHETA: angles
+Reading PSF, expect !NPHI: dihedrals: got  !NPHI: dihedrals
+Reading PSF, expect !NIMPHI: impropers: got  !NIMPHI: impropers
+Reading PSF, expect !NDON: donors: got  !NDON: donors
+Reading PSF, expect !NACC: acceptors: got  !NACC: acceptors
+Reading PSF, expect !NNB: got  !NNB
+Reading PSF, expect !NGRP NST2: got          0 !NGRP NST2
+Reading PSF, expect !NUMLP NUMLPH: got  !NUMLP NUMLPH
+Reading PSF, expect !NCRTERM: got  !NCRTERM: cross-terms
+IN1> structure shake hbond
+IN1> 
+IN1> coordinates file crd step4_equilibration.crd
+Opening file step4_equilibration.crd for r
+IN1> coordinates box cubi 40 40 40 90 90 90
+IN1> coordinates velocity 298.15
+IN1> selection define clp atom HETA 1 CLP
+SELECTION> add clp to selections after parsing  atom HETA 1 CLP
+
+IN1> selection define nl atom HETA 1 NL
+SELECTION> add nl to selections after parsing  atom HETA 1 NL
+
+IN1> selection define ca atom HETA 1 CA
+SELECTION> add ca to selections after parsing  atom HETA 1 CA
+
+IN1> selection define crp atom HETA 1 CRP
+SELECTION> add crp to selections after parsing  atom HETA 1 CRP
+
+IN1> structure dihedral clp nl ca crp 400 40 1
+IN1> msld nblocks 0
+NYI - Initialize all blocks in first site /dfs8/rhayes1_lab/cyeh5/BLaDE/src/msld/msld.cu:166
+IN1> 
+IN1> structure shake hbond
+IN1> run setvariable gamma 5
+IN1> 
+IN1> run setvariable fnmxtc prod.xtc
+IN1> run setvariable fnmnrg prod.nrg
+IN1> run setvariable fnmlmd prod.lmd_0
+IN1> 
+IN1> run setvariable nsteps 50000
+IN1> run setvariable T 298.15
+IN1> run setvariable freqxtc 500
+IN1> run setvariable freqnrg 500 
+IN1> run setvariable freqnpt 0
+IN1> run setvariable freqlmd 500000
+IN1> run setvariable hrlmd no
+IN1> 
+IN1> !set nonbonded options
+IN1> run setvariable rswitch 7.5
+IN1> run setvariable rcut 9.0
+IN1> run setvariable invbetaewald 3.125
+IN1> run setvariable orderewald 4
+IN1> run setvariable gridspace 1.1
+IN1> 
+IN1> run setvariable shaketolerance 0.00000001
+IN1> 
+IN1> run setvariable dt 0.002
+IN1> 
+IN1> run dynamics
+Opening file prod.nrg for w
+PME grid(0) size: 40
+PME grid(1) size: 40
+PME grid(2) size: 40
+maxBlocks=224
+The following parameters are set heuristically at /dfs8/rhayes1_lab/cyeh5/BLaDE/src/domdec/domdec.cu:120, and can cause errors if set too low
+maxPartnersPerBlock=519
+freqDomdec=10 (how many steps before domain reset)
+cullPad=3.44948 (spatial padding for considering which blocks could interact
+maxBlockExclCount=1551 (can reallocate dynamically with "run setvariable domdecheuristic off")
+Elapsed dynamics time: 18.682087
+Opening file default.cpt for w
+IN1>   
+Destroying a copy of system

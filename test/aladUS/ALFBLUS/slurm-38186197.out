@@ -1,0 +1,30 @@
+Warning: Implicitly or explicitly requested minimization with blade. Blade does not minimize. Set optional argument minimize=False in alf.initialize()
+
+run1 started
+analysis1 started
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 144, in runflat
+    os.symlink(G_imp_dir,'analysis%d/G_imp' % i)
+FileExistsError: [Errno 17] File exists: '/dfs8/rhayes1_lab/cyeh5/BLaDE/test/aladUS/ALFBLUS/G_imp' -> 'analysis1/G_imp'
+run1 failed
+run1 started
+analysis1 started
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 144, in runflat
+    os.symlink(G_imp_dir,'analysis%d/G_imp' % i)
+FileExistsError: [Errno 17] File exists: '/dfs8/rhayes1_lab/cyeh5/BLaDE/test/aladUS/ALFBLUS/G_imp' -> 'analysis1/G_imp'
+run1 failed
+run1 started
+analysis1 started
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 144, in runflat
+    os.symlink(G_imp_dir,'analysis%d/G_imp' % i)
+FileExistsError: [Errno 17] File exists: '/dfs8/rhayes1_lab/cyeh5/BLaDE/test/aladUS/ALFBLUS/G_imp' -> 'analysis1/G_imp'
+run1 failed
+run1 started
+analysis1 started
+Traceback (most recent call last):
+  File "/dfs8/rhayes1_lab/rhayes1/77_ManySubstituents/3_screening/6_newbias1/alf-20230911/alf/runflat.py", line 144, in runflat
+    os.symlink(G_imp_dir,'analysis%d/G_imp' % i)
+FileExistsError: [Errno 17] File exists: '/dfs8/rhayes1_lab/cyeh5/BLaDE/test/aladUS/ALFBLUS/G_imp' -> 'analysis1/G_imp'
+slurmstepd: error: *** JOB 38186197 ON hpc3-gpu-16-05 CANCELLED AT 2025-05-01T14:20:24 ***

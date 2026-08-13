@@ -404,14 +404,34 @@ void print_dynamics_output(long int step,System *system)
     if (step % system->run->freqLMD == 0) {
       system->state->recv_lambda();
       print_lmd(step,system);
+      if (system->potential->anyDiRestPrint) {
+         cudaMemcpy(system->potential->savedPhi,system->potential->savedPhi_d,
+	 system->potential->diRestCount*sizeof(real),cudaMemcpyDeviceToHost);
+      }
+      print_restraint(step,system);
     }
     if (step % system->run->freqNRG == 0) {
       system->state->recv_energy();
       print_nrg(step,system);
     }
+
   }
 }
+void print_restraint(long int step, System *system)
+{
+  real *savedPhi=system->potential->savedPhi;
+  int i;
+  FILE *fp=system->run->fpREST;
+  int N=system->potential->diRestCount;
 
+  fprintf(fp,"%101d",step);
+  for (i=0;i<N;i++) {
+    if (system->potential->diRests[i].printAng) {
+      fprintf(fp, "%8.6f",savedPhi[i]);
+    }
+  }
+  fprintf(fp,"\n");
+}
 void write_checkpoint_file(const char *fnm,System *system)
 {
   FILE *fp;

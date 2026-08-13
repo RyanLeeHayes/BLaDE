@@ -123,7 +123,7 @@ extern "C" {
   void blade_add_harmonic(System *system,int i,double k,double x0,double y0,double z0,double n);
   void blade_add_borest(System *system,int i,int j,double kr,double r0,int lambdaBlock);
   void blade_add_anrest(System *system,int i,int j,int k,double kt,double t0,int lambdaBlock);
-  void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,double width,int lambdaBlock);
+  void blade_add_direst(System *system,int i,int j,int k,int l,double kphi,int nphi,double phi0,double width,int lambdaBlock, bool printAng);
   void blade_add_resd(System *system, int i1, int i2, int j1, int j2, double ci, double cj, double rdist, double kdist); // eeresd
   void blade_tani_internal_setup(System *system, const int is_tani, const char *ptname, const int ptnml,  // eemlp
                       const int *mlatomidx, const int *mlZidx,const int *mlmaskid, const int mlnatoms);   // eemlp

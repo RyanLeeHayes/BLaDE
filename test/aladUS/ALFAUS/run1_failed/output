@@ -1,0 +1,2410 @@
+ Parameter: ESTEPS <- "13000"
+ Parameter: NSTEPS <- "39000"
+ Parameter: SEED <- "36185"
+1
+                 Chemistry at HARvard Macromolecular Mechanics
+           (CHARMM) - Developmental Version 50a2   February 15, 2025            
+                            Git commit ID 4a690e562                             
+       Copyright(c) 1984-2023  President and Fellows of Harvard College
+                              All Rights Reserved
+  Current operating system: Linux-4.18.0-553.22.1.el8_10.x86_64(x86_64)@hpc3-   
+                 Created on  4/28/25 at 15:43:15 by user: cyeh5       
+
+            Maximum number of ATOMS:    360720, and RESidues:      120240
+ RDTITL> * CHARMM WITH BLADE INPUT FILE FOR LAMBDA DYNAMICS
+ RDTITL> *
+  
+ CHARMM>     
+  
+ CHARMM>    ! This script expects esteps (equilibration steps), nsteps (production
+ CHARMM>    ! steps), and seed (random number seed) to be set by the calling process
+ CHARMM>    !
+ CHARMM>    ! Other important variables such as minimizeflag (whether or not to
+ CHARMM>    ! minimize), temp (the system temperature), and sysname (the system name
+ CHARMM>    ! in the prep directory) are set by variablesflat.inp
+ CHARMM>     
+  
+ CHARMM>    set fnex = 5.5
+ Parameter: FNEX <- "5.5"
+  
+ CHARMM>     
+  
+ CHARMM>    stream "variablesflat.inp"
+ VOPEN> Attempting to open::variablesflat.inp::
+ OPNLGU> Unit 99 opened for READONLY access to variablesflat.inp
+
+                    INPUT STREAM SWITCHING TO UNIT    99
+ RDTITL> * VARIABLES FROM STEP 1 OF ALF
+ RDTITL> *
+ Parameter: IN1 <- "" <empty>
+  
+ CHARMM>     
+  
+ CHARMM>    set lams1s1 =     0.00
+ Parameter: LAMS1S1 <- "0.00"
+  
+ CHARMM>    set lams1s2 =     0.00
+ Parameter: LAMS1S2 <- "0.00"
+  
+ CHARMM>    set cs1s1s1s2 =    -0.00
+ Parameter: CS1S1S1S2 <- "-0.00"
+  
+ CHARMM>    set xs1s1s1s2 =    -0.00
+ Parameter: XS1S1S1S2 <- "-0.00"
+  
+ CHARMM>    set xs1s2s1s1 =    -0.00
+ Parameter: XS1S2S1S1 <- "-0.00"
+  
+ CHARMM>    set ss1s1s1s2 =    -0.00
+ Parameter: SS1S1S1S2 <- "-0.00"
+  
+ CHARMM>    set ss1s2s1s1 =    -0.00
+ Parameter: SS1S2S1S1 <- "-0.00"
+  
+ CHARMM>    set sysname = "aladsetup
+ Parameter: SYSNAME <- ""aladsetup"
+  
+ CHARMM>    trim sysname from 2
+ Parameter: SYSNAME <- "aladsetup"
+  
+ CHARMM>    set nnodes = 1
+ Parameter: NNODES <- "1"
+  
+ CHARMM>    set nreps = 1
+ Parameter: NREPS <- "1"
+  
+ CHARMM>    set ncentral = 0
+ Parameter: NCENTRAL <- "0"
+  
+ CHARMM>    set nblocks = 2
+ Parameter: NBLOCKS <- "2"
+  
+ CHARMM>    set nsites = 1
+ Parameter: NSITES <- "1"
+  
+ CHARMM>    set nsubs1 = 2
+ Parameter: NSUBS1 <- "2"
+  
+ CHARMM>    set temp = 298.15
+ Parameter: TEMP <- "298.15"
+  
+ CHARMM>    set minimizeflag = 1
+ Parameter: MINIMIZEFLAG <- "1"
+  
+ CHARMM>     
+  
+ VCLOSE: Closing unit   99 with status "KEEP"
+
+                    RETURNING TO INPUT STREAM     5
+  
+ CHARMM>     
+  
+ CHARMM>    bomblev -1
+  
+ CHARMM>     
+  
+ CHARMM>    stream "prep/@{SYSNAME}.inp"
+ Parameter: SYSNAME -> "aladsetup"
+ VOPEN> Attempting to open::prep/aladsetup.inp::
+ OPNLGU> Unit 99 opened for READONLY access to prep/aladsetup.inp
+
+                    INPUT STREAM SWITCHING TO UNIT    99
+ RDTITL> * SETTING UP WITH CHARMM IG - RUN WITH BLADE
+ RDTITL> *
+ Parameter: IN1 <- "" <empty>
+  
+ CHARMM>     
+  
+ CHARMM>    set box = 40
+ Parameter: BOX <- "40"
+  
+ CHARMM>     
+  
+ CHARMM>    set resid1 = 1
+ Parameter: RESID1 <- "1"
+  
+ CHARMM>    set s1seq1 = 0 !alad
+ Parameter: S1SEQ1 <- "0"
+  
+ CHARMM>    set s1seq2 = v
+ Parameter: S1SEQ2 <- "V"
+  
+ CHARMM>    set segid1 = HETA
+ Parameter: SEGID1 <- "HETA"
+  
+ CHARMM>    set segid = HETA
+ Parameter: SEGID <- "HETA"
+  
+ CHARMM>    set resid = 1
+ Parameter: RESID <- "1"
+  
+ CHARMM>    !no terminal residue variables - dipeptide capped
+ CHARMM>     
+  
+ CHARMM>    set bomlev = ?bomlev
+ RDCMND substituted energy or value "?BOMLEV" to "-1"
+ Parameter: BOMLEV <- "-1"
+  
+ CHARMM>    bomlev -1
+  
+ CHARMM>    read rtf card name prep/toppar/top_all36_prot.rtf
+ VOPEN> Attempting to open::prep/toppar/top_all36_prot.rtf::
+ MAINIO> Residue topology file being read from unit  90.
+ TITLE> *>>>>>>>>CHARMM36 ALL-HYDROGEN TOPOLOGY FILE FOR PROTEINS <<<<<<
+ TITLE> *>>>>> INCLUDES PHI, PSI CROSS TERM MAP (CMAP) CORRECTION <<<<<<<
+ TITLE> *>>>>>>>>>>>>>>>>>>>>>>>>>> MAY 2011 <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+ TITLE> * ALL COMMENTS TO THE CHARMM WEB SITE: WWW.CHARMM.ORG
+ TITLE> *             PARAMETER SET DISCUSSION FORUM
+ TITLE> *
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    read param card flex name prep/toppar/par_all36m_prot.prm
+ VOPEN> Attempting to open::prep/toppar/par_all36m_prot.prm::
+
+          PARAMETER FILE BEING READ FROM UNIT 90
+ TITLE> *>>>> CHARMM36 ALL-HYDROGEN PARAMETER FILE FOR PROTEINS <<<<<<<<<<
+ TITLE> *>>>>> INCLUDES PHI, PSI CROSS TERM MAP (CMAP) CORRECTION <<<<<<<<
+ TITLE> *>>>>>>>>>>>>>>>>>>>>>>>>>> JAN. 2016 <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+ TITLE> * ALL COMMENTS TO THE CHARMM WEB SITE: WWW.CHARMM.ORG
+ TITLE> *             PARAMETER SET DISCUSSION FORUM
+ TITLE> *
+ PARMIO> NONBOND, HBOND lists and IMAGE atoms cleared.
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    read rtf card append name "prep/toppar/top_all36_cgenff.rtf"
+ VOPEN> Attempting to open::prep/toppar/top_all36_cgenff.rtf::
+ MAINIO> Residue topology file being read from unit  90.
+ TITLE> *  --------------------------------------------------------------------------  *
+ TITLE> *          CGENFF: TOPOLOGY FOR THE CHARMM GENERAL FORCE FIELD V. 4.6          *
+ TITLE> *                    FOR SMALL MOLECULE DRUG DESIGN                            *
+ TITLE> *  --------------------------------------------------------------------------  *
+ TITLE> *
+
+ DRUDES PARTICLES WILL BE GENERATED AUTOMATICALLY FOR ALL ATOMS WITH NON-ZERO ALPHA
+ Thole-type dipole screening, Slater-Delta shape {S(u) = 1 - (1+u/2)*exp(-u)}, default radius =  1.300000
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    read param card flex append name "prep/toppar/par_all36_cgenff.prm"
+ VOPEN> Attempting to open::prep/toppar/par_all36_cgenff.prm::
+
+          PARAMETER FILE BEING READ FROM UNIT 90
+ TITLE> *  --------------------------------------------------------------------------  *
+ TITLE> *         CGENFF: PARAMETERS FOR THE CHARMM GENERAL FORCE FIELD V. 4.6         *
+ TITLE> *                    FOR SMALL MOLECULE DRUG DESIGN                            *
+ TITLE> *  --------------------------------------------------------------------------  *
+ TITLE> *  2017/8: IF PROTEIN, NUCLEIC ACID AND CARBOHYDRATE TOPOLOGY AND PARAMETER FILES
+ TITLE> *  ARE NOT READ PRIOR TO THE CGENFF FILES "WARNING: ATOMS IN NBFIX ' errors will
+ TITLE> *  BE ENCOUNTERED.  THESE CAN BE PASSED BY SETTING BOMLEV ( -2) PRIOR TO READING
+ TITLE> *  THIS FILE. IN ADDITION, WHEN GENERATING AROMATIC HALOGENS (CL, BR, I) WITH
+ TITLE> *  PRE C41B/C42A VERSIONS OF CHARMM "MISSING PARAMETER" ERRORS WILL BE
+ TITLE> *  ENCOUNTERED THAT ALSO REQUIRE SETTING BOMLEV ( -2).
+ TITLE> *
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D CLGR   -2.50000   2.80000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D BRGR   -1.25000   2.98000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D BRGR   -0.27000   3.52000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D BRGR   -0.27000   3.52000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OBL  CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NH3L CLGR   -3.60000   3.18000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OCL  CLGR   -2.50000   2.80000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OBL  BRGR   -0.27000   3.52000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NH3L BRGR   -3.65000   3.33000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OCL  BRGR   -1.25000   2.98000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN1  CLGR   -0.40000   3.88000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2  CLGR   -0.48000   3.75000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2U CLGR   -0.48000   3.75000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2G CLGR   -0.48000   3.75000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3  CLGR   -0.46000   3.42000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3A CLGR   -0.46000   3.42000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3G CLGR   -0.46000   3.42000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN4  CLGR   -0.46000   3.42000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX ON1  CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX ON1C CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN1  BRGR   -0.30000   4.05000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2  BRGR   -0.72000   3.80000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2U BRGR   -0.72000   3.80000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2G BRGR   -0.72000   3.80000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3  BRGR   -0.22000   3.61000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3A BRGR   -0.22000   3.61000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3G BRGR   -0.22000   3.61000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN4  BRGR   -0.22000   3.61000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX ON1  BRGR   -0.27000   3.52000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX ON1C BRGR   -0.27000   3.52000 DONT EXIST
+ PARMIO> NONBOND, HBOND lists and IMAGE atoms cleared.
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    stream "prep/toppar/toppar_water_ions.str"
+ VOPEN> Attempting to open::prep/toppar/toppar_water_ions.str::
+ OPNLGU> Unit 98 opened for READONLY access to prep/toppar/toppar_water_ions.str
+
+                    INPUT STREAM SWITCHING TO UNIT    98
+ RDTITL> * TOPLOGY AND PARAMETER INFORMATION FOR WATER AND IONS.
+ RDTITL> *
+ Parameter: IN1 <- "" <empty>
+  
+ CHARMM>     
+  
+ CHARMM>    !Testcase
+ CHARMM>    !test_water_ions.inp
+ CHARMM>     
+  
+ CHARMM>    ! IMPORTANT NOTE: this file contains NBFixes between carboxylates and sodium,
+ CHARMM>    ! which will only apply if the main files containing carboxylate atom types
+ CHARMM>    ! have been read in first!
+ CHARMM>     
+  
+ CHARMM>    !references
+ CHARMM>    !
+ CHARMM>    !TIP3P water model
+ CHARMM>    !
+ CHARMM>    !W.L. Jorgensen; J.Chandrasekhar; J.D. Madura; R.W. Impey;
+ CHARMM>    !M.L. Klein; "Comparison of simple potential functions for
+ CHARMM>    !simulating liquid water", J. Chem. Phys. 79 926-935 (1983).
+ CHARMM>    !
+ CHARMM>    !IONS
+ CHARMM>    !
+ CHARMM>    !Ions from Roux and coworkers
+ CHARMM>    !
+ CHARMM>    !Beglov, D. and Roux, B., Finite Representation of an Infinite
+ CHARMM>    !Bulk System: Solvent Boundary Potential for Computer Simulations,
+ CHARMM>    !Journal of Chemical Physics, 1994, 100: 9050-9063
+ CHARMM>    !
+ CHARMM>    !ZINC
+ CHARMM>    !
+ CHARMM>    !Stote, R.H. and Karplus, M. Zinc Binding in Proteins and
+ CHARMM>    !Solution: A Simple but Accurate Nonbonded Representation, PROTEINS:
+ CHARMM>    !Structure, Function, and Genetics 23:12-31 (1995)
+ CHARMM>     
+  
+ CHARMM>    !test "append" to determine if previous toppar files have been read and
+ CHARMM>    !add append to "read rtf card" if true
+ CHARMM>    set nat ?NATC
+ RDCMND substituted energy or value "?NATC" to "215"
+ Parameter: NAT <- "215"
+  
+ CHARMM>    set app
+ Parameter: APP <- "" <empty>
+  
+ CHARMM>    !We're exploiting what is arguably a bug in the parser. On the left hand side,
+ CHARMM>    !the quotes have priority, so NAT is correctly substituted. On the right hand
+ CHARMM>    !side, the ? has priority and NATC" (sic) is not a valid substitution...
+ CHARMM>    if "@NAT" ne "?NATC" if @nat ne 0 set app append
+ Parameter: NAT -> "215"
+ Parameter: NAT -> "215"
+ RDCMND: can not substitute energy "?NATC""
+ Comparing ""215"" and ""?NATC"".
+ IF test evaluated as true.  Performing command
+ Comparing "215" and "0".
+ IF test evaluated as true.  Performing command
+ Parameter: APP <- "APPEND"
+  
+ CHARMM>     
+  
+ CHARMM>    read rtf card @app
+ Parameter: APP -> "APPEND"
+ MAINIO> Residue topology file being read from unit  98.
+ RDTITL> * TOPOLOGY FOR WATER AND IONS
+ RDTITL> *
+  
+ CHARMM>     
+  
+ CHARMM>    read para card flex @app
+ Parameter: APP -> "APPEND"
+
+          PARAMETER FILE BEING READ FROM UNIT 98
+ RDTITL> * PARAMETERS FOR WATER AND IONS
+ RDTITL> *
+ PARMIO> NONBOND, HBOND lists and IMAGE atoms cleared.
+  
+ CHARMM>     
+  
+ CHARMM>    ! The following section contains NBFixes for sodium interacting with
+ CHARMM>    ! carboxylate oxygens of various CHARMM force fields. It will generate
+ CHARMM>    ! level -1 warnings whenever any of these force fields have not been
+ CHARMM>    ! read prior to the current stream file. Since we don't want to force
+ CHARMM>    ! the user to always read all the force fields, we're suppressing the
+ CHARMM>    ! warnings. The only side effect is that you will have "most severe
+ CHARMM>    ! warning was at level 0" at the end of your output. Also note that
+ CHARMM>    ! the user is responsible for reading the current file last if they
+ CHARMM>    ! want the NBFixes to apply. A more elegant solution would require new
+ CHARMM>    ! features to be added to CHARMM.
+ CHARMM>    ! parallel fix, to avoid duplicated messages in the log
+ CHARMM>    set para
+ Parameter: PARA <- "" <empty>
+  
+ CHARMM>    if ?NUMNODE gt 1 set para node 0
+ RDCMND substituted energy or value "?NUMNODE" to "1"
+ Comparing "1" and "1".
+ IF test evaluated as false.  Skipping command
+  
+ CHARMM>     
+  
+ CHARMM>    set wrn ?WRNLEV
+ RDCMND substituted energy or value "?WRNLEV" to "5"
+ Parameter: WRN <- "5"
+  
+ CHARMM>    ! Some versions of CHARMM don't seem to initialize wrnlev...
+ CHARMM>    if "@WRN" eq "?WRNLEV" set wrn 5
+ Parameter: WRN -> "5"
+ RDCMND: can not substitute energy "?WRNLEV""
+ Comparing ""5"" and ""?WRNLEV"".
+ IF test evaluated as false.  Skipping command
+  
+ CHARMM>    set bom ?bomlev
+ RDCMND substituted energy or value "?BOMLEV" to "-1"
+ Parameter: BOM <- "-1"
+  
+ CHARMM>    WRNLEV -1 @PARA
+ Parameter: PARA -> "" <empty>
+  
+ CHARMM>    BOMLEV -1 @PARA
+ Parameter: PARA -> "" <empty>
+  
+ CHARMM>    read para card flex append
+
+          PARAMETER FILE BEING READ FROM UNIT 98
+ RDTITL> * NBFIX BETWEEN CARBOXYLATE AND SODIUM
+ RDTITL> *
+ PARMIO> NONBOND, HBOND lists and IMAGE atoms cleared.
+  
+ CHARMM>    BOMLEV @bom @PARA
+ Parameter: BOM -> "-1"
+ Parameter: PARA -> "" <empty>
+  
+ CHARMM>    WRNLEV @wrn @PARA
+ Parameter: WRN -> "5"
+ Parameter: PARA -> "" <empty>
+  
+ CHARMM>     
+  
+ CHARMM>    return
+ VCLOSE: Closing unit   98 with status "KEEP"
+
+                    RETURNING TO INPUT STREAM    99
+  
+ CHARMM>    bomlev @bomlev
+ Parameter: BOMLEV -> "-1"
+  
+ CHARMM>     
+  
+ CHARMM>    stream prep/mslddipep.str
+ VOPEN> Attempting to open::prep/mslddipep.str::
+ OPNLGU> Unit 98 opened for READONLY access to prep/mslddipep.str
+
+                    INPUT STREAM SWITCHING TO UNIT    98
+ RDTITL> READ RTF APPEND CARD
+ RDTITL> No title read.
+ Parameter: IN1 <- "" <empty>
+  
+ CHARMM>    read rtf append card
+ MAINIO> Residue topology file being read from unit  98.
+ RDTITL> * ALL THE PATCHES
+ RDTITL> *
+  
+ VCLOSE: Closing unit   98 with status "KEEP"
+
+                    RETURNING TO INPUT STREAM    99
+  
+ CHARMM>     
+  
+ CHARMM>    read sequ coor resid segid HETA name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+ MAINIO> Sequence information being read from unit  90.
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+          RESIDUE SEQUENCE --     1 RESIDUES
+          ALAD
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    generate HETA setup
+ NO PATCHING WILL BE DONE ON THE FIRST RESIDUE
+ NO PATCHING WILL BE DONE ON THE LAST  RESIDUE
+ AUTGEN: Autogenerating specified angles and dihedrals.
+ GENPSF> Segment   1 has been generated. Its identifier is HETA.
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        1   Number of residues   =        1
+         Number of atoms         =       22   Number of groups     =        6
+         Number of bonds         =       21   Number of angles     =       36
+         Number of dihedrals     =       41   Number of impropers  =        4
+         Number of cross-terms   =        1   Number of autogens   =        0
+         Number of HB acceptors  =        0   Number of HB donors  =        0
+         Number of NB exclusions =        0   Total charge =    0.00000
+ QXFORM> Expanded format used.
+         More than 4 character atom type used.
+  
+ CHARMM>     
+  
+ CHARMM>    read coor card resid name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+          SPATIAL COORDINATES BEING READ FROM UNIT 90
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= OH2     
+ *** LEVEL  1 WARNING *** BOMLEV IS   -1
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= H1      
+ *** LEVEL  1 WARNING *** BOMLEV IS   -1
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= H2      
+ *** LEVEL  1 WARNING *** BOMLEV IS   -1
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=2        RESNAME= TIP3     TYPE= OH2     
+ *** LEVEL  1 WARNING *** BOMLEV IS   -1
+
+ ** MESSAGE **  5985 atoms in coordinate file were outside the specified sequence range.
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>     
+  
+ CHARMM>    bomlev -2
+  
+ CHARMM>     
+  
+ CHARMM>    set procount=0
+ Parameter: PROCOUNT=0 <- "" <empty>
+  
+ CHARMM>    set ii = 1
+ Parameter: II <- "1"
+  
+ CHARMM>     
+  
+ CHARMM>    define testpro select segid @segid .and. resid @resid .and. resname PRO end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      0 atoms have been selected out of     22
+  
+ CHARMM>    if ?nsel .gt. 0 then
+ RDCMND substituted energy or value "?NSEL" to "0"
+ Comparing "0" and "0".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>    set jj = 2
+ Parameter: JJ <- "2"
+  
+ CHARMM>    label patchloop
+  
+ CHARMM>    if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>     
+  
+ CHARMM>         set seqjj = @{s@@{ii}seq@@jj}
+ Parameter: JJ -> "2"
+ Parameter: II -> "1"
+ Parameter: S1SEQ2 -> "V"
+ Parameter: SEQJJ <- "V"
+  
+ CHARMM>         patch aa_@{seqjj} @segid @resid setup warn
+ Parameter: SEQJJ -> "V"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ ATOM  HETA     ALAD     1        N__V     ADDED.
+ ATOM  HETA     ALAD     1        HN_V     ADDED.
+ ATOM  HETA     ALAD     1        CA_V     ADDED.
+ ATOM  HETA     ALAD     1        HA_V     ADDED.
+ ATOM  HETA     ALAD     1        CB_V     ADDED.
+ ATOM  HETA     ALAD     1        HB_V     ADDED.
+ ATOM  HETA     ALAD     1        CG1V     ADDED.
+ ATOM  HETA     ALAD     1        HG1V     ADDED.
+ ATOM  HETA     ALAD     1        HG2V     ADDED.
+ ATOM  HETA     ALAD     1        HG3V     ADDED.
+ ATOM  HETA     ALAD     1        CG2V     ADDED.
+ ATOM  HETA     ALAD     1        HG4V     ADDED.
+ ATOM  HETA     ALAD     1        HG5V     ADDED.
+ ATOM  HETA     ALAD     1        HG6V     ADDED.
+ ATOM  HETA     ALAD     1        C__V     ADDED.
+ ATOM  HETA     ALAD     1        O__V     ADDED.
+
+ Message from MAPIC: Atom numbers are changed.
+ AUTGEN: Autogenerating specified angles and dihedrals.
+ AUTOGEN:    36 angles are removed before regeneration for selected atoms.
+ AUTOGEN:    41 dihedrals are removed before regeneration for selected atoms.
+ CHECKDH> dihedral missing angle parameters:    9    7    5   23 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    8    7    5   23 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    9   15   17   37 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   16   15   17   37 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    7    5   23   24 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    7    5   23   25 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   15   17   37   25 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   15   17   37   38 will NOT be generated
+ PATCH: Check angles and dihedrals autogenerated.
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        1   Number of residues   =        1
+         Number of atoms         =       38   Number of groups     =       11
+         Number of bonds         =       38   Number of angles     =       72
+         Number of dihedrals     =       94   Number of impropers  =        8
+         Number of cross-terms   =        2   Number of autogens   =        0
+         Number of HB acceptors  =        1   Number of HB donors  =        1
+         Number of NB exclusions =        0   Total charge =    0.00000
+  
+ CHARMM>     
+  
+ CHARMM>         if @{seqjj} .eq. p then
+ Parameter: SEQJJ -> "V"
+ Comparing "V" and "P".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>      ! no patching end residue logic needed for dipeptide
+  
+ CHARMM>      ! no links either
+  
+ CHARMM>     
+  
+ CHARMM>         calc moveit = ( @jj - 1 ) * 0.01
+ Parameter: JJ -> "2"
+Evaluating: (2-1)*0.01
+ Parameter: MOVEIT <- "1E-02"
+  
+ CHARMM>         coor dupl sele atom @segid @resid NL end sele atom @segid @resid N__@{seqjj} end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>         scalar Z add @moveit sele atom @segid @resid N__@{seqjj} end
+ Parameter: MOVEIT -> "1E-02"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>         coor dupl sele atom @segid @resid CA end sele atom @segid @resid CA_@{seqjj} end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>         scalar Z add @moveit sele atom @segid @resid CA_@{seqjj} end
+ Parameter: MOVEIT -> "1E-02"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>         coor dupl sele atom @segid @resid CRP end sele atom @segid @resid C__@{seqjj} end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>         scalar Z add @moveit sele atom @segid @resid C__@{seqjj} end
+ Parameter: MOVEIT -> "1E-02"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>     
+  
+ CHARMM>         calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+ CHARMM>         goto patchloop
+  
+ CHARMM>    if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>    read coor card resid name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+          SPATIAL COORDINATES BEING READ FROM UNIT 90
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= OH2     
+ *** LEVEL  1 WARNING *** BOMLEV IS   -2
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= H1      
+ *** LEVEL  1 WARNING *** BOMLEV IS   -2
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= H2      
+ *** LEVEL  1 WARNING *** BOMLEV IS   -2
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=2        RESNAME= TIP3     TYPE= OH2     
+ *** LEVEL  1 WARNING *** BOMLEV IS   -2
+ ** WARNING ** After reading, there are no coordinates for selected atom:    24     1 ALAD     HN_V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    26     1 ALAD     HA_V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    27     1 ALAD     CB_V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    28     1 ALAD     HB_V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    29     1 ALAD     CG1V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    30     1 ALAD     HG1V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    31     1 ALAD     HG2V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    32     1 ALAD     HG3V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    33     1 ALAD     CG2V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    34     1 ALAD     HG4V    
+
+ ** A total of    13 selected atoms have no coordinates
+
+ ** WARNING ** Coordinates were overwritten for    22 atoms.
+
+ ** MESSAGE **  5985 atoms in coordinate file were outside the specified sequence range.
+ *** LEVEL  2 WARNING *** BOMLEV IS   -2
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    ic param
+  
+ CHARMM>    ic build
+  
+ CHARMM>     
+  
+ CHARMM>    set site = 1
+ Parameter: SITE <- "1"
+  
+ CHARMM>    define site@{site}suball -
+ CHARMM>      select ( segid @segid .and. resid @resid ) show end
+ Parameter: SITE -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD CL HL1 HL2 HL3 CLP OL NL HL CA HA CB HB1 HB2 HB3 CRP OR NR HR CR HR1 HR2 HR3 N__V HN_V CA_V HA_V CB_V    
+  HB_V CG1V HG1V HG2V HG3V CG2V HG4V HG5V HG6V C__V O__V    
+ SELRPN>     38 atoms have been selected out of     38
+  
+ CHARMM>    set site@{site}cats = 1
+ Parameter: SITE -> "1"
+ Parameter: SITE1CATS <- "1"
+  
+ CHARMM>    define dipepends -
+ CHARMM>      select (segid @segid .and. resid @resid .and. ( type CL .or. type CLP .or. type HL% .or. type OL .or. type CR .or. type NR .or. type HR .or. type HR% ) ) show end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD CL HL1 HL2 HL3 CLP OL NR HR CR HR1 HR2 HR3     
+ SELRPN>     12 atoms have been selected out of     38
+  
+ CHARMM>    define site@{site}sub1 -
+ CHARMM>      select (site@{site}suball .and. .not. dipepends) show end
+ Parameter: SITE -> "1"
+ Parameter: SITE -> "1"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD NL HL CA HA CB HB1 HB2 HB3 CRP OR N__V HN_V CA_V HA_V CB_V HB_V CG1V HG1V HG2V HG3V CG2V HG4V HG5V    
+  HG6V C__V O__V    
+ SELRPN>     26 atoms have been selected out of     38
+  
+ CHARMM>    set jj = 2
+ Parameter: JJ <- "2"
+  
+ CHARMM>    label seleloop
+  
+ CHARMM>    if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>     
+  
+ CHARMM>      set sub = @jj
+ Parameter: JJ -> "2"
+ Parameter: SUB <- "2"
+  
+ CHARMM>      set seqjj = @{s@@{site}seq@@jj}
+ Parameter: JJ -> "2"
+ Parameter: SITE -> "1"
+ Parameter: S1SEQ2 -> "V"
+ Parameter: SEQJJ <- "V"
+  
+ CHARMM>      define site@{site}sub@@jj sele atom @segid @resid %%%@@seqjj show end
+ Parameter: SEQJJ -> "V"
+ Parameter: JJ -> "2"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SITE -> "1"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD N__V HN_V CA_V HA_V CB_V HB_V CG1V HG1V HG2V HG3V CG2V HG4V HG5V HG6V C__V O__V    
+ SELRPN>     16 atoms have been selected out of     38
+  
+ CHARMM>      !no cap needed
+  
+ CHARMM>      !no replacement needed
+  
+ CHARMM>      define site@{site}sub1 -
+ CHARMM>             select ( -
+ CHARMM>             site@{site}sub1 .and. .not. site@{site}sub@{sub} ) show end
+ Parameter: SITE -> "1"
+ Parameter: SITE -> "1"
+ Parameter: SITE -> "1"
+ Parameter: SUB -> "2"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD NL HL CA HA CB HB1 HB2 HB3 CRP OR      
+ SELRPN>     10 atoms have been selected out of     38
+  
+ CHARMM>      calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+ CHARMM>      goto seleloop
+  
+ CHARMM>    if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>    auto angle dihe
+ AUTGEN: Autogenerating specified angles and dihedrals.
+ AUTOGEN:    72 angles are removed before regeneration for selected atoms.
+ AUTOGEN:    94 dihedrals are removed before regeneration for selected atoms.
+ CHECKDH> dihedral missing angle parameters:    9    7    5   23 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    8    7    5   23 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    9   15   17   37 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   16   15   17   37 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    7    5   23   24 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    7    5   23   25 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   15   17   37   25 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   15   17   37   38 will NOT be generated
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        1   Number of residues   =        1
+         Number of atoms         =       38   Number of groups     =       11
+         Number of bonds         =       38   Number of angles     =       72
+         Number of dihedrals     =       94   Number of impropers  =        8
+         Number of cross-terms   =        2   Number of autogens   =        0
+         Number of HB acceptors  =        1   Number of HB donors  =        1
+         Number of NB exclusions =        0   Total charge =    0.00000
+  
+ CHARMM>    bomlev -1
+  
+ CHARMM>     
+  
+ CHARMM>    set ii = 1
+ Parameter: II <- "1"
+  
+ CHARMM>       set jj = 1
+ Parameter: JJ <- "1"
+  
+ CHARMM>       label delete1loop
+  
+ CHARMM>       if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "1"
+ Parameter: NSUBS1 -> "2"
+ Comparing "1" and "2".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>     
+  
+ CHARMM>          calc kk = @jj + 1
+ Parameter: JJ -> "1"
+Evaluating: 1+1
+ Parameter: KK <- "2"
+  
+ CHARMM>          label delete2loop
+  
+ CHARMM>          if @kk .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: KK -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>     
+  
+ CHARMM>             dele conn sele ( site@{ii}sub@{jj} ) show end sele ( site@{ii}sub@{kk} ) show end
+ Parameter: II -> "1"
+ Parameter: JJ -> "1"
+ Parameter: II -> "1"
+ Parameter: KK -> "2"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD NL HL CA HA CB HB1 HB2 HB3 CRP OR      
+ SELRPN>     10 atoms have been selected out of     38
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD N__V HN_V CA_V HA_V CB_V HB_V CG1V HG1V HG2V HG3V CG2V HG4V HG5V HG6V C__V O__V    
+ SELRPN>     16 atoms have been selected out of     38
+ DELTIC:         2 angles deleted
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        1   Number of residues   =        1
+         Number of atoms         =       38   Number of groups     =       11
+         Number of bonds         =       38   Number of angles     =       70
+         Number of dihedrals     =       94   Number of impropers  =        8
+         Number of cross-terms   =        2   Number of autogens   =        0
+         Number of HB acceptors  =        1   Number of HB donors  =        1
+         Number of NB exclusions =        0   Total charge =    0.00000
+  
+ CHARMM>     
+  
+ CHARMM>             calc kk = @kk + 1
+ Parameter: KK -> "2"
+Evaluating: 2+1
+ Parameter: KK <- "3"
+  
+ CHARMM>             goto delete2loop
+  
+ CHARMM>          if @kk .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: KK -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>          calc jj = @jj + 1
+ Parameter: JJ -> "1"
+Evaluating: 1+1
+ Parameter: JJ <- "2"
+  
+ CHARMM>          goto delete1loop
+  
+ CHARMM>       if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>     
+  
+ CHARMM>          calc kk = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: KK <- "3"
+  
+ CHARMM>          label delete2loop
+  
+ CHARMM>          if @kk .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: KK -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>          calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+ CHARMM>          goto delete1loop
+  
+ CHARMM>       if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>     
+  
+ CHARMM>    ! read sequ coor resid segid WT00 name "prep/step3_pbcsetup.crd"
+ CHARMM>    ! generate WT00 first none last none setup noangl nodihe
+ CHARMM>    read sequ coor resid segid SOLV name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+ MAINIO> Sequence information being read from unit  90.
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+          RESIDUE SEQUENCE --  1993 RESIDUES
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    generate SOLV first none last none setup noangl nodihe
+ NO PATCHING WILL BE DONE ON THE FIRST RESIDUE
+ NO PATCHING WILL BE DONE ON THE LAST  RESIDUE
+ GENPSF> Segment   2 has been generated. Its identifier is SOLV.
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        2   Number of residues   =     1994
+         Number of atoms         =     6017   Number of groups     =     2004
+         Number of bonds         =     6017   Number of angles     =     2063
+         Number of dihedrals     =       94   Number of impropers  =        8
+         Number of cross-terms   =        2   Number of autogens   =        0
+         Number of HB acceptors  =     1994   Number of HB donors  =     3987
+         Number of NB exclusions =        0   Total charge =    0.00000
+  
+ CHARMM>    read sequ coor resid segid IONS name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+ MAINIO> Sequence information being read from unit  90.
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+          RESIDUE SEQUENCE --     6 RESIDUES
+          SOD     SOD     SOD     CLA     CLA     CLA     
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    generate IONS setup
+ NO PATCHING WILL BE DONE ON THE FIRST RESIDUE
+ NO PATCHING WILL BE DONE ON THE LAST  RESIDUE
+ AUTGEN: Autogenerating specified angles and dihedrals.
+ GENPSF> Segment   3 has been generated. Its identifier is IONS.
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        3   Number of residues   =     2000
+         Number of atoms         =     6023   Number of groups     =     2010
+         Number of bonds         =     6017   Number of angles     =     2063
+         Number of dihedrals     =       94   Number of impropers  =        8
+         Number of cross-terms   =        2   Number of autogens   =        0
+         Number of HB acceptors  =     1994   Number of HB donors  =     3987
+         Number of NB exclusions =        0   Total charge =    0.00000
+  
+ CHARMM>     
+  
+ CHARMM>    read coor card resid name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+          SPATIAL COORDINATES BEING READ FROM UNIT 90
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+ ** WARNING ** Coordinates were overwritten for    22 atoms.
+ *** LEVEL  2 WARNING *** BOMLEV IS   -1
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>     
+  
+ CHARMM>    write psf card name patch.psf
+ VOPEN> Attempting to open::patch.psf::
+ RDTITL> WRITE COOR CARD NAME PATCH.CRD
+ RDTITL> No title read.
+ VCLOSE: Closing unit   90 with status "KEEP"
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    write coor card name patch.crd
+ VOPEN> Attempting to open::patch.crd::
+ RDTITL>  
+ RDTITL> No title read.
+ VCLOSE: Closing unit   90 with status "KEEP"
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>     
+  
+ CHARMM>    PRINt COORdinate SELEct .NOT. INITialized END
+ SELRPN>      0 atoms have been selected out of   6023
+
+      ***** LEVEL  2 WARNING FROM <COORIO> *****
+      ***** ZERO ATOMS SPECIFIED TO WRITE. NO FILE CREATED
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+  
+ CHARMM>    coor stat
+ STATISTICS FOR      6023 SELECTED ATOMS:
+    XMIN =  -20.125313 XMAX =   20.349711 XAVE =    0.032617
+    YMIN =  -20.142165 YMAX =   20.202143 YAVE =   -0.026927
+    ZMIN =  -20.442929 ZMAX =   20.133634 ZAVE =    0.003162
+    WMIN =   -1.000000 WMAX =    1.000000 WAVE =    0.000000
+  
+ CHARMM>    crystal define CUBI @box @box @box 90 90 90
+ Parameter: BOX -> "40"
+ Parameter: BOX -> "40"
+ Parameter: BOX -> "40"
+ Crystal Parameters : Crystal Type = CUBI
+           A     =   40.00000 B    =   40.00000 C     =   40.00000
+           Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+  
+ CHARMM>    crystal build cutoff 15 nope 0
+ XBUILD> Building all transformations with a minimum atom-atom
+         contact distance of less than   15.00 Angstroms.
+
+ Range of Grid Search for Transformation     1 :
+ Lattice Vector A    -2 TO     2
+ Lattice Vector B    -2 TO     2
+ Lattice Vector C    -2 TO     2
+
+
+ The number of transformations generated =    26
+
+
+ Number  Symop   A   B   C   Distance
+
+      1      1  -1  -1  -1     7.0991
+      2      1  -1   0  -1     6.3324
+      3      1  -1   1  -1     6.9419
+      4      1   0  -1  -1     4.8598
+      5      1   0   0  -1     4.0308
+      6      1   0   1  -1     4.7246
+      7      1  -1  -1   0     3.5102
+      8      1  -1   0   0     1.8109
+      9      1  -1   1   0     2.9622
+     10      1   0  -1   0     2.2194
+     11      1   0   1   0     2.2194
+     12      1  -1  -1   1     6.5310
+     13      1  -1   0   1     5.0924
+     14      1  -1   1   1     6.6937
+     15      1   0  -1   1     4.7246
+     16      1   0   0   1     4.0308
+     17      1   0   1   1     4.8598
+     18      1   1   1   1     7.0991
+     19      1   1   0   1     6.3324
+     20      1   1  -1   1     6.9419
+     21      1   1   1   0     3.5102
+     22      1   1   0   0     1.8109
+     23      1   1  -1   0     2.9622
+     24      1   1   1  -1     6.5310
+     25      1   1   0  -1     5.0924
+     26      1   1  -1  -1     6.6937
+                     THERE ARE NO ROTATIONS FOR THIS TRANSFORMATION SET
+    26 Transformations have been processed.
+
+  
+ CHARMM>    image byseg xcen 0 ycen 0 zcen 0 sele .not. ( resn TIP3 .or. segid IONS ) end
+ SELRPN>     38 atoms have been selected out of   6023
+ IMAGE CENTERING ON FOR SOME ATOMS
+  
+ CHARMM>    image byres xcen 0 ycen 0 zcen 0 sele resn TIP3 .or. segid IONS end
+ SELRPN>   5985 atoms have been selected out of   6023
+ IMAGE CENTERING ON FOR SOME ATOMS
+  
+ CHARMM>     
+  
+ CHARMM>    calc blockplusone = @nblocks + 1
+ Parameter: NBLOCKS -> "2"
+Evaluating: 2+1
+ Parameter: BLOCKPLUSONE <- "3"
+  
+ CHARMM>    BLOCK @blockplusone
+ Parameter: BLOCKPLUSONE -> "3"
+ Block structure initialized with   3 blocks.
+ All atoms have been assigned to block 1.
+ All interaction coefficients have been set to unity.
+  Setting number of block exclusions nblock_excldPairs=0
+  
+  BLOCK>      clear
+ Block Structure has been turned off.
+  
+  BLOCK>    END
+  
+ CHARMM>     
+  
+ CHARMM>    if @nreps .eq. 1 then !for alad only one rep
+ Parameter: NREPS -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>      BLOCK @blockplusone
+ Parameter: BLOCKPLUSONE -> "3"
+ Block structure initialized with   3 blocks.
+ All atoms have been assigned to block 1.
+ All interaction coefficients have been set to unity.
+  Setting number of block exclusions nblock_excldPairs=0
+  
+  BLOCK>    else
+ Skip commands until next ENDIF
+  
+  BLOCK>    scat on
+Turning on MSLD scaling of constrained atoms
+Constraints must be set up with "scat k [value]"
+Warning, only works with domdec
+
+  
+  BLOCK>    scat k 118.4
+Setting k constant for MSLD scaling of
+constrained atoms
+
+  
+  BLOCK>     
+  
+  BLOCK>    set prevblock = 0
+ Parameter: PREVBLOCK <- "0"
+  
+  BLOCK>    set ii = 1
+ Parameter: II <- "1"
+  
+  BLOCK>    set jj = 1
+ Parameter: JJ <- "1"
+  
+  BLOCK>    label callloop
+  
+  BLOCK>      if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "1"
+ Parameter: NSUBS1 -> "2"
+ Comparing "1" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       calc jp1 = @ii + 1 + @prevblock
+ Parameter: II -> "1"
+ Parameter: PREVBLOCK -> "0"
+Evaluating: 1+1+0
+ Parameter: JP1 <- "2"
+  
+  BLOCK>     
+  
+  BLOCK>       Call @jp1 sele site@{ii}sub@{jj} end
+ Parameter: JP1 -> "2"
+ Parameter: II -> "1"
+ Parameter: JJ -> "1"
+ SELRPN>     10 atoms have been selected out of   6023
+ The selected atoms have been reassigned to block   2
+  
+  BLOCK>     
+  
+  BLOCK>       calc jj = @jj + 1
+ Parameter: JJ -> "1"
+Evaluating: 1+1
+ Parameter: JJ <- "2"
+  
+  BLOCK>       goto callloop
+  
+  BLOCK>      if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       calc jp1 = @ii + 1 + @prevblock
+ Parameter: II -> "1"
+ Parameter: PREVBLOCK -> "0"
+Evaluating: 1+1+0
+ Parameter: JP1 <- "2"
+  
+  BLOCK>     
+  
+  BLOCK>       Call @jp1 sele site@{ii}sub@{jj} end
+ Parameter: JP1 -> "2"
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ SELRPN>     16 atoms have been selected out of   6023
+ The selected atoms have been reassigned to block   2
+  
+  BLOCK>     
+  
+  BLOCK>       calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+  BLOCK>       goto callloop
+  
+  BLOCK>      if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>     
+  
+  BLOCK>      qldm theta
+  
+  BLOCK>      lang temp @temp
+ Parameter: TEMP -> "298.15"
+  
+  BLOCK>    if @nreps .eq. 1 then
+ Parameter: NREPS -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>      ldin 1 1.0 0.0 5.0 0.0 5.0
+  
+  BLOCK>    else
+ Skip commands until next ENDIF
+  
+  BLOCK>     
+  
+  BLOCK>    set blockassign = 0
+ Parameter: BLOCKASSIGN <- "0"
+  
+  BLOCK>    set nbiaspot = 0
+ Parameter: NBIASPOT <- "0"
+  
+  BLOCK>    set prevblock = 0
+ Parameter: PREVBLOCK <- "0"
+  
+  BLOCK>    set ii = 1
+ Parameter: II <- "1"
+  
+  BLOCK>    calc lambda0 = 1.001 - 0.001 * @nsubs@@{ii}
+ Parameter: II -> "1"
+ Parameter: NSUBS1 -> "2"
+Evaluating: 1.001-0.001*2
+ Parameter: LAMBDA0 <- "0.999"
+  
+  BLOCK>    calc nbiaspot = @nbiaspot + 5 * ( @nsubs@@{ii} * ( @nsubs@@{ii} - 1 ) ) / 2
+ Parameter: II -> "1"
+ Parameter: II -> "1"
+ Parameter: NSUBS1 -> "2"
+ Parameter: NBIASPOT -> "0"
+ Parameter: NSUBS1 -> "2"
+Evaluating: 0+5*(2*(2-1))/2
+ Parameter: NBIASPOT <- "5"
+  
+  BLOCK>    set jj = 1
+ Parameter: JJ <- "1"
+  
+  BLOCK>    label ldinloop
+  
+  BLOCK>     if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "1"
+ Parameter: NSUBS1 -> "2"
+ Comparing "1" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       calc jp1 = @jj + 1 + @prevblock
+ Parameter: JJ -> "1"
+ Parameter: PREVBLOCK -> "0"
+Evaluating: 1+1+0
+ Parameter: JP1 <- "2"
+  
+  BLOCK>     if @nreps .eq. 1 then
+ Parameter: NREPS -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>          ldin @jp1 @lambda0 0.0  5.0  @lams@@{ii}s@@{jj} 5.0
+ Parameter: JJ -> "1"
+ Parameter: II -> "1"
+ Parameter: JP1 -> "2"
+ Parameter: LAMBDA0 -> "0.999"
+ Parameter: LAMS1S1 -> "0.00"
+  
+  BLOCK>     else
+ Skip commands until next ENDIF
+  
+  BLOCK>     set lambda0 = 0.001
+ Parameter: LAMBDA0 <- "0.001"
+  
+  BLOCK>     set blockassign = @blockassign @ii
+ Parameter: BLOCKASSIGN -> "0"
+ Parameter: II -> "1"
+ Parameter: BLOCKASSIGN <- "0 1"
+  
+  BLOCK>     calc jj = @jj + 1
+ Parameter: JJ -> "1"
+Evaluating: 1+1
+ Parameter: JJ <- "2"
+  
+  BLOCK>    goto ldinloop
+  
+  BLOCK>     if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       calc jp1 = @jj + 1 + @prevblock
+ Parameter: JJ -> "2"
+ Parameter: PREVBLOCK -> "0"
+Evaluating: 2+1+0
+ Parameter: JP1 <- "3"
+  
+  BLOCK>     if @nreps .eq. 1 then
+ Parameter: NREPS -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>          ldin @jp1 @lambda0 0.0  5.0  @lams@@{ii}s@@{jj} 5.0
+ Parameter: JJ -> "2"
+ Parameter: II -> "1"
+ Parameter: JP1 -> "3"
+ Parameter: LAMBDA0 -> "0.001"
+ Parameter: LAMS1S2 -> "0.00"
+  
+  BLOCK>     else
+ Skip commands until next ENDIF
+  
+  BLOCK>     set lambda0 = 0.001
+ Parameter: LAMBDA0 <- "0.001"
+  
+  BLOCK>     set blockassign = @blockassign @ii
+ Parameter: BLOCKASSIGN -> "0 1"
+ Parameter: II -> "1"
+ Parameter: BLOCKASSIGN <- "0 1 1"
+  
+  BLOCK>     calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+  BLOCK>    goto ldinloop
+  
+  BLOCK>     if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>    rmla bonda thet impr
+ RMLAMBDA list
+  BOND T THETA T PHI F IMPHI T CMAPF UREY-BT
+  
+  BLOCK>    msld @blockassign fnex @fnex
+ Parameter: BLOCKASSIGN -> "0 1 1"
+ Parameter: FNEX -> "5.5"
+ BLOCK    1 has been assigned to SITE    0
+ BLOCK    2 has been assigned to SITE    1
+ BLOCK    3 has been assigned to SITE    1
+   2 SITES have been assigned for Multi-site Lambda-dynamics
+ EXP function selected for MSLD simulations
+ FNEXP_FACTOR:    5.50000
+  
+  BLOCK>    msma
+ WARNING: Incompatible initial lambda value for Block:            3
+ WARNING: Renormalizing initial lambda values.
+>>> BLOCK MATRIX WAS REBUILT 
+  
+  BLOCK>    thbv inde all auto
+  
+  BLOCK>     
+  
+  BLOCK>    set ii=1
+ Parameter: II=1 <- "" <empty>
+  
+  BLOCK>    set resid = @resid@@ii
+ Parameter: II -> "1"
+ Parameter: RESID1 -> "1"
+ Parameter: RESID <- "1"
+  
+  BLOCK>    set segid = @segid@@ii
+ Parameter: II -> "1"
+ Parameter: SEGID1 -> "HETA"
+ Parameter: SEGID <- "HETA"
+  
+  BLOCK>     
+  
+  BLOCK>    define testgly select atom @segid @resid HA2 end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      0 atoms have been selected out of   6023
+  
+  BLOCK>    set HA = HA
+ Parameter: HA <- "HA"
+  
+  BLOCK>    if ?nsel .eq. 1 then
+ RDCMND substituted energy or value "?NSEL" to "0"
+ Comparing "0" and "1".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>    cats sele atom @segid @resid NL .or. atom @segid @resid N__% end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      2 atoms have been selected out of   6023
+  
+  BLOCK>    cats sele atom @segid @resid CA .or. atom @segid @resid CA_% end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      2 atoms have been selected out of   6023
+  
+  BLOCK>    cats sele atom @segid @resid @HA .or. atom @segid @resid HA_% end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: HA -> "HA"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      2 atoms have been selected out of   6023
+  
+  BLOCK>    cats sele atom @segid @resid CRP .or. atom @segid @resid C__% end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      2 atoms have been selected out of   6023
+  
+  BLOCK>    cats sele atom @segid @resid OR .or. atom @segid @resid O__% end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      2 atoms have been selected out of   6023
+  
+  BLOCK>     
+  
+  BLOCK>    soft w14
+Turning on MSLD soft cores
+Applying MSLD soft cores to nonbonded and 1-4 interactions
+Warning, soft cores only work with domdec
+See Hayes et al JPC B (2017) for functional form
+
+  
+  BLOCK>    pmel ex
+Enabling PME with MSLD
+Warning, only works with domdec
+See Huang, Chen, Wallace, and Shen, JCTC (2016) for a description
+
+Using second PME exclusions strategy.
+
+  
+  BLOCK>     
+  
+  BLOCK>    calc nbiaspot = 5 * ( @nblocks * ( @nblocks - 1 ) ) / 2
+ Parameter: NBLOCKS -> "2"
+ Parameter: NBLOCKS -> "2"
+Evaluating: 5*(2*(2-1))/2
+ Parameter: NBIASPOT <- "5"
+  
+  BLOCK>    ldbi @nbiaspot
+ Parameter: NBIASPOT -> "5"
+ Total No. of biasing potentials is    5
+  
+  BLOCK>     
+  
+  BLOCK>    set ibias = 1
+ Parameter: IBIAS <- "1"
+  
+  BLOCK>    set iblock = 0
+ Parameter: IBLOCK <- "0"
+  
+  BLOCK>    set si = 1
+ Parameter: SI <- "1"
+  
+  BLOCK>    label loop5
+  
+  BLOCK>    if @si .le. @nsites then
+ Parameter: SI -> "1"
+ Parameter: NSITES -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       set jblock = @iblock
+ Parameter: IBLOCK -> "0"
+ Parameter: JBLOCK <- "0"
+  
+  BLOCK>       set sj = @si
+ Parameter: SI -> "1"
+ Parameter: SJ <- "1"
+  
+  BLOCK>       label loop5b
+  
+  BLOCK>       if @sj .le. @nsites then
+ Parameter: SJ -> "1"
+ Parameter: NSITES -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>          set ii = 1
+ Parameter: II <- "1"
+  
+  BLOCK>          label loop6
+  
+  BLOCK>          if @ii .le. @nsubs@@{si} then
+ Parameter: SI -> "1"
+ Parameter: II -> "1"
+ Parameter: NSUBS1 -> "2"
+ Comparing "1" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>             calc ip1 = @ii + 1 + @iblock
+ Parameter: II -> "1"
+ Parameter: IBLOCK -> "0"
+Evaluating: 1+1+0
+ Parameter: IP1 <- "2"
+  
+  BLOCK>             set jj = 1
+ Parameter: JJ <- "1"
+  
+  BLOCK>             if @si .eq. @sj then
+ Parameter: SI -> "1"
+ Parameter: SJ -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>                calc jj = @ii + 1
+ Parameter: II -> "1"
+Evaluating: 1+1
+ Parameter: JJ <- "2"
+  
+  BLOCK>             endif
+  
+  BLOCK>             label loop7
+  
+  BLOCK>             if @jj .le. @nsubs@@{sj} then
+ Parameter: SJ -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>                calc jp1 = @jj + 1 + @jblock
+ Parameter: JJ -> "2"
+ Parameter: JBLOCK -> "0"
+Evaluating: 2+1+0
+ Parameter: JP1 <- "3"
+  
+  BLOCK>                if @si .eq. @sj then
+ Parameter: SI -> "1"
+ Parameter: SJ -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>                   adex @ip1 @jp1
+ Parameter: IP1 -> "2"
+ Parameter: JP1 -> "3"
+ Number of block exclusions nblock_excldPairs=           0
+  
+  BLOCK>                endif
+  
+  BLOCK>     
+  
+  BLOCK>                ldbv @ibias @ip1 @jp1 6 0.0 @cs@@{si}s@@{ii}s@@{sj}s@@{jj} 0
+ Parameter: JJ -> "2"
+ Parameter: SJ -> "1"
+ Parameter: II -> "1"
+ Parameter: SI -> "1"
+ Parameter: IBIAS -> "1"
+ Parameter: IP1 -> "2"
+ Parameter: JP1 -> "3"
+ Parameter: CS1S1S1S2 -> "-0.00"
+  
+  BLOCK>                calc ibias = @ibias + 1
+ Parameter: IBIAS -> "1"
+Evaluating: 1+1
+ Parameter: IBIAS <- "2"
+  
+  BLOCK>                ldbv @ibias @ip1 @jp1 10 -5.56 @xs@@{si}s@@{ii}s@@{sj}s@@{jj} 0
+ Parameter: JJ -> "2"
+ Parameter: SJ -> "1"
+ Parameter: II -> "1"
+ Parameter: SI -> "1"
+ Parameter: IBIAS -> "2"
+ Parameter: IP1 -> "2"
+ Parameter: JP1 -> "3"
+ Parameter: XS1S1S1S2 -> "-0.00"
+  
+  BLOCK>                calc ibias = @ibias + 1
+ Parameter: IBIAS -> "2"
+Evaluating: 2+1
+ Parameter: IBIAS <- "3"
+  
+  BLOCK>                ldbv @ibias @ip1 @jp1 8 0.017 @ss@@{si}s@@{ii}s@@{sj}s@@{jj} 0
+ Parameter: JJ -> "2"
+ Parameter: SJ -> "1"
+ Parameter: II -> "1"
+ Parameter: SI -> "1"
+ Parameter: IBIAS -> "3"
+ Parameter: IP1 -> "2"
+ Parameter: JP1 -> "3"
+ Parameter: SS1S1S1S2 -> "-0.00"
+  
+  BLOCK>                calc ibias = @ibias + 1
+ Parameter: IBIAS -> "3"
+Evaluating: 3+1
+ Parameter: IBIAS <- "4"
+  
+  BLOCK>                ldbv @ibias @jp1 @ip1 10 -5.56 @xs@@{sj}s@@{jj}s@@{si}s@@{ii} 0
+ Parameter: II -> "1"
+ Parameter: SI -> "1"
+ Parameter: JJ -> "2"
+ Parameter: SJ -> "1"
+ Parameter: IBIAS -> "4"
+ Parameter: JP1 -> "3"
+ Parameter: IP1 -> "2"
+ Parameter: XS1S2S1S1 -> "-0.00"
+  
+  BLOCK>                calc ibias = @ibias + 1
+ Parameter: IBIAS -> "4"
+Evaluating: 4+1
+ Parameter: IBIAS <- "5"
+  
+  BLOCK>                ldbv @ibias @jp1 @ip1 8 0.017 @ss@@{sj}s@@{jj}s@@{si}s@@{ii} 0
+ Parameter: II -> "1"
+ Parameter: SI -> "1"
+ Parameter: JJ -> "2"
+ Parameter: SJ -> "1"
+ Parameter: IBIAS -> "5"
+ Parameter: JP1 -> "3"
+ Parameter: IP1 -> "2"
+ Parameter: SS1S2S1S1 -> "-0.00"
+  
+  BLOCK>                calc ibias = @ibias + 1
+ Parameter: IBIAS -> "5"
+Evaluating: 5+1
+ Parameter: IBIAS <- "6"
+  
+  BLOCK>                calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+  BLOCK>                goto loop7
+  
+  BLOCK>             if @jj .le. @nsubs@@{sj} then
+ Parameter: SJ -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>             calc ii = @ii + 1
+ Parameter: II -> "1"
+Evaluating: 1+1
+ Parameter: II <- "2"
+  
+  BLOCK>             goto loop6
+  
+  BLOCK>          if @ii .le. @nsubs@@{si} then
+ Parameter: SI -> "1"
+ Parameter: II -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>             calc ip1 = @ii + 1 + @iblock
+ Parameter: II -> "2"
+ Parameter: IBLOCK -> "0"
+Evaluating: 2+1+0
+ Parameter: IP1 <- "3"
+  
+  BLOCK>             set jj = 1
+ Parameter: JJ <- "1"
+  
+  BLOCK>             if @si .eq. @sj then
+ Parameter: SI -> "1"
+ Parameter: SJ -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>                calc jj = @ii + 1
+ Parameter: II -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+  BLOCK>             endif
+  
+  BLOCK>             label loop7
+  
+  BLOCK>             if @jj .le. @nsubs@@{sj} then
+ Parameter: SJ -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>             calc ii = @ii + 1
+ Parameter: II -> "2"
+Evaluating: 2+1
+ Parameter: II <- "3"
+  
+  BLOCK>             goto loop6
+  
+  BLOCK>          if @ii .le. @nsubs@@{si} then
+ Parameter: SI -> "1"
+ Parameter: II -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>          calc jblock = @jblock + @nsubs@@{sj}
+ Parameter: SJ -> "1"
+ Parameter: JBLOCK -> "0"
+ Parameter: NSUBS1 -> "2"
+Evaluating: 0+2
+ Parameter: JBLOCK <- "2"
+  
+  BLOCK>          calc sj = @sj + 1
+ Parameter: SJ -> "1"
+Evaluating: 1+1
+ Parameter: SJ <- "2"
+  
+  BLOCK>          goto loop5b
+  
+  BLOCK>       if @sj .le. @nsites then
+ Parameter: SJ -> "2"
+ Parameter: NSITES -> "1"
+ Comparing "2" and "1".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>       calc iblock = @iblock + @nsubs@@{si}
+ Parameter: SI -> "1"
+ Parameter: IBLOCK -> "0"
+ Parameter: NSUBS1 -> "2"
+Evaluating: 0+2
+ Parameter: IBLOCK <- "2"
+  
+  BLOCK>       calc si = @si + 1
+ Parameter: SI -> "1"
+Evaluating: 1+1
+ Parameter: SI <- "2"
+  
+  BLOCK>       goto loop5
+  
+  BLOCK>    if @si .le. @nsites then
+ Parameter: SI -> "2"
+ Parameter: NSITES -> "1"
+ Comparing "2" and "1".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>     
+  
+  BLOCK>    nsob @procount LEXP 2.0 RALF -1.0
+  * WARNING * <PARSUB> Command ignored. Token not found: >PROCOUNT<
+
+      ***** LEVEL  0 WARNING FROM <PARSE1> *****
+      ***** Error in parameter substitution.
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+  
+  BLOCK>    set isobo = 1
+ Parameter: ISOBO <- "1"
+  
+  BLOCK>    set ii = 1
+ Parameter: II <- "1"
+  
+  BLOCK>    label softsiteloop
+  
+  BLOCK>    if @ii .le. @nsites then
+ Parameter: II -> "1"
+ Parameter: NSITES -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       define testpro select segid @segid .and. resid @resid@@ii .and. resname PRO end
+ Parameter: II -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID1 -> "1"
+ SELRPN>      0 atoms have been selected out of   6023
+  
+  BLOCK>       if ?nsel .gt. 0 then
+ RDCMND substituted energy or value "?NSEL" to "0"
+ Comparing "0" and "0".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>       set jj = 2
+ Parameter: JJ <- "2"
+  
+  BLOCK>       label softloop
+  
+  BLOCK>       if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>          if @{s@@{ii}seq@@jj} .eq. p then
+ Parameter: JJ -> "2"
+ Parameter: II -> "1"
+ Parameter: S1SEQ2 -> "V"
+ Comparing "V" and "P".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>          calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+  BLOCK>          goto softloop
+  
+  BLOCK>       if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>       calc ii = @ii + 1
+ Parameter: II -> "1"
+Evaluating: 1+1
+ Parameter: II <- "2"
+  
+  BLOCK>       goto softsiteloop
+  
+  BLOCK>    if @ii .le. @nsites then
+ Parameter: II -> "2"
+ Parameter: NSITES -> "1"
+ Comparing "2" and "1".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>     
+  
+  BLOCK>    END
+ Matrix of Interaction Coefficients
+ 
+    1.00000
+    0.99188   0.99188
+    0.00812   0.00000   0.00812
+ Matrix of BOND Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+ Matrix of ANGLE Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+ Matrix of DIHE Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+ Matrix of CROSS Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+ Matrix of ELEC Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+ Matrix of VDW Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+  
+ CHARMM>     
+  
+ VCLOSE: Closing unit   99 with status "KEEP"
+
+                    RETURNING TO INPUT STREAM     5
+  
+ CHARMM>     
+  
+ CHARMM>    ! Set nonbonded options
+ CHARMM>    open unit 101 read unform name prep/nbond.str
+ VOPEN> Attempting to open::prep/nbond.str::
+ OPNLGU> Unit101 opened for READONLY access to prep/nbond.str
+  
+ CHARMM>    if ?IOSTAT .eq. 1 then ! 1 if does exist, -1 if does not exist
+ RDCMND substituted energy or value "?IOSTAT" to "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>       stream prep/nbond.str
+ VOPEN> Attempting to open::prep/nbond.str::
+ VCLOSE: Closing unit  101 with status "KEEP"
+ OPNLGU> Unit 99 opened for READONLY access to prep/nbond.str
+
+                    INPUT STREAM SWITCHING TO UNIT    99
+ RDTITL> * NONBONDED OPTION SETUP
+ RDTITL> *
+ Parameter: IN1 <- "" <empty>
+  
+ CHARMM>     
+  
+ CHARMM>    ! ! Set nonbonded options
+ CHARMM>    ! nbonds atom -
+ CHARMM>    ! fswitch -                !! (use "switch" for openMM) Use force switch for elec-nb interactions
+ CHARMM>    ! cdie eps 1 -             !! Set constant dielectric value of 1
+ CHARMM>    ! vdw vfswitch -            !! Set nb VDW using switching function
+ CHARMM>    ! cutnb 15.0 -             !! Set nb list cut off to 15A
+ CHARMM>    ! cutim 15.0 -             !! Set image nb list cut off to 15A
+ CHARMM>    ! ctonnb 10.0 ctofnb 12.0   !! Switching function used from 10A to 12A for VDW interaction
+ CHARMM>     
+  
+ CHARMM>    ! Set nonbonded options
+ CHARMM>    nbonds atom -
+ CHARMM>     - ! fswitch -                !! Use force switch for elec-nb interactions
+ CHARMM>    cdie eps 1 -             !! Set constant dielectric value of 1
+ CHARMM>    vdw vfswitch -            !! Set nb VDW using switching function
+ CHARMM>    cutnb 12.0 -             !! Was 15.0 Set nb list cut off to 15A
+ CHARMM>    cutim 12.0 -             !! Was 15.0 Set image nb list cut off to 15A
+ CHARMM>    ctonnb 9.0 ctofnb 10.0 - !! Were 10.0 and 12.0 Switching function used from 10A to 12A for VDW interaction
+ CHARMM>    Ewald -                  !! Use Ewald electrostatics
+ CHARMM>    kappa 0.320 -            !! 0.320 makes direct space decay to 10^-5 at 10 A
+ CHARMM>    pmEwald -                !! Keyword
+ CHARMM>    order 6 -                !! Interpolation order
+ CHARMM>    fftx 40 ffty 40 fftz 40  !! Choose approximate box length
+
+ SELECTED IMAGES ATOMS BEING CENTERED ABOUT  0.000000  0.000000  0.000000
+
+ <MKIMAT2>: updating the image atom lists and remapping
+ Transformation   Atoms  Groups  Residues  Min-Distance
+    1  N1N1N1R1 has      51      17      17        3.22
+    2  N1Z0N1R1 has     375     125     125        0.51
+    3  N1P1N1R1 has      54      18      18        2.77
+    4  Z0N1N1R1 has     351     117     117        1.63
+    5  Z0Z0N1R1 has    1863     623     623        0.00
+    6  Z0P1N1R1 has     300     100     100        1.67
+    7  N1N1Z0R1 has     342     114     114        1.09
+    8  N1Z0Z0R1 has    1796     600     600        0.00
+    9  N1P1Z0R1 has     330     110     110        0.66
+   10  Z0N1Z0R1 has    1771     591     591        0.00
+   12  N1N1P1R1 has      45      15      15        1.80
+   13  N1Z0P1R1 has     339     113     113        0.53
+   14  N1P1P1R1 has      33      11      11        2.54
+ Total of13673 atoms and 4564 groups and 4554 residues were included
+
+ <PME> Total heap storage needed =      313807
+ Fill Ewald table: Number of points=     10000 EWXmax=    3.360000
+ fill erfc table: linear inter has rms error = 0.688344D-08 maximum error = 0.136719D-07
+ fill erfc table: cubic spline has rms error = 0.199973D-11 maximum error = 0.535849D-11
+
+ NONBOND OPTION FLAGS: 
+     ELEC     VDW      ATOMs    CDIElec  FSHIft   VATOm    VFSWIt  
+     BYGRoup  NOEXtnd  EWALd   
+ CUTNB  = 12.000 CTEXNB =999.000 CTONNB =  9.000 CTOFNB = 10.000
+ CGONNB =  0.000 CGOFNB = 10.000
+ WMIN   =  1.500 WRNMXD =  0.500 E14FAC =  1.000 EPS    =  1.000
+ NBXMOD =      5
+ PME EWALD OPTIONS: KAPPA  =  0.320  QCOR =  0.000  Bspline order = 6
+ FFTX=  40  FFTY=  40  FFTZ=  40
+                Using FFTW
+                Real-to-Complex FFT
+                Using Column FFT 
+ There are        0 atom  pairs and        0 atom  exclusions.
+ There are        0 group pairs and        0 group exclusions.
+ <MAKINB> with mode   5 found   6089 exclusions and    102 interactions(1-4)
+ <MAKGRP> found     32 group exclusions.
+ <MAKGRP> found      0 image group exclusions.
+ Generating nonbond list with Exclusion mode = 5
+ == PRIMARY == SPACE FOR  1089898 ATOM PAIRS AND        0 GROUP PAIRS
+ == PRIMARY == SPACE FOR  1634867 ATOM PAIRS AND        0 GROUP PAIRS
+
+ General atom nonbond list generation found:
+  1462123 ATOM PAIRS WERE FOUND FOR ATOM LIST
+    91358 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+ SPACE FOR  1862070 ATOM PAIRS AND        0 GROUP PAIRS
+
+ Image nonbond list generation found:
+   580595 ATOM PAIRS WERE FOUND FOR ATOM LIST
+        0 ATOM PAIRS WERE FOUND FOR ATOM SELF LIST
+    56803 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+  
+ VCLOSE: Closing unit   99 with status "KEEP"
+
+                    RETURNING TO INPUT STREAM     5
+  
+ CHARMM>    else
+ Skip commands until next ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>    faster on
+ MISCOM> FAST option: EXPANDED (limited fast routines)
+  
+ CHARMM>     
+  
+ CHARMM>    if @minimizeflag .eq. 1 then ! only defined in variables1.inp
+ Parameter: MINIMIZEFLAG -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>    define uninitialized select .not. initialized end
+ SELRPN>      0 atoms have been selected out of   6023
+  
+ CHARMM>    if ?nsel .eq. 0 then
+ RDCMND substituted energy or value "?NSEL" to "0"
+ Comparing "0" and "0".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>       ! domdec gpu only dlb off ndir 1 @nnodes 1
+  
+ CHARMM>       mini sd nstep 100 nprint 10 step 0.005                  !! Do min, Steepest-Decent
+
+ SELECTED IMAGES ATOMS BEING CENTERED ABOUT  0.000000  0.000000  0.000000
+
+ <MKIMAT2>: updating the image atom lists and remapping
+ Transformation   Atoms  Groups  Residues  Min-Distance
+    1  N1N1N1R1 has      51      17      17        3.22
+    2  N1Z0N1R1 has     375     125     125        0.51
+    3  N1P1N1R1 has      54      18      18        2.77
+    4  Z0N1N1R1 has     351     117     117        1.63
+    5  Z0Z0N1R1 has    1863     623     623        0.00
+    6  Z0P1N1R1 has     300     100     100        1.67
+    7  N1N1Z0R1 has     342     114     114        1.09
+    8  N1Z0Z0R1 has    1796     600     600        0.00
+    9  N1P1Z0R1 has     330     110     110        0.66
+   10  Z0N1Z0R1 has    1771     591     591        0.00
+   12  N1N1P1R1 has      45      15      15        1.80
+   13  N1Z0P1R1 has     339     113     113        0.53
+   14  N1P1P1R1 has      33      11      11        2.54
+ Total of13673 atoms and 4564 groups and 4554 residues were included
+
+ <MAKGRP> found      0 image group exclusions.
+ <PME> Total heap storage needed =      313807
+
+ NONBOND OPTION FLAGS: 
+     ELEC     VDW      ATOMs    CDIElec  FSHIft   VATOm    VFSWIt  
+     BYGRoup  NOEXtnd  EWALd   
+ CUTNB  = 12.000 CTEXNB =999.000 CTONNB =  9.000 CTOFNB = 10.000
+ CGONNB =  0.000 CGOFNB = 10.000
+ WMIN   =  1.500 WRNMXD =  0.500 E14FAC =  1.000 EPS    =  1.000
+ NBXMOD =      5
+ PME EWALD OPTIONS: KAPPA  =  0.320  QCOR =  0.000  Bspline order = 6
+ FFTX=  40  FFTY=  40  FFTZ=  40
+                Using FFTW
+                Real-to-Complex FFT
+                Using Column FFT 
+ There are  1462123 atom  pairs and     6191 atom  exclusions.
+ There are        0 group pairs and       32 group exclusions.
+ Generating nonbond list with Exclusion mode = 5
+ == PRIMARY == SPACE FOR  1634867 ATOM PAIRS AND        0 GROUP PAIRS
+
+ General atom nonbond list generation found:
+  1462123 ATOM PAIRS WERE FOUND FOR ATOM LIST
+    91358 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+ SPACE FOR  1862070 ATOM PAIRS AND        0 GROUP PAIRS
+
+ Image nonbond list generation found:
+   580595 ATOM PAIRS WERE FOUND FOR ATOM LIST
+        0 ATOM PAIRS WERE FOUND FOR ATOM SELF LIST
+    56803 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+
+
+ STEEPD> An energy minimization has been requested.
+
+ NSTEP  =          100   NPRINT =           10
+ STEP   =    0.0050000   TOLFUN =    0.0000000
+ TOLGRD =    0.0000000   TOLSTP =    0.0000000
+

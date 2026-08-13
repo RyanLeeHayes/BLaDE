@@ -1,0 +1,50 @@
+! Save selections needed in block section
+variables calculate ii int + {aainitl} 1
+while <= {ii} {aafinal}
+   variables set segid {segid{ii}}
+   variables set resid {resid{ii}}
+   variables set site {ii}
+
+   selection define site{site}suball and segid {segid} resid {resid}
+
+   selection define site{site}consN  and and segid {segid} resid {resid} atomnames N__A N__B N__C N__D N__E N__F N__G N__H N__I N__J N__K N__L N__M N__N N__O N__P N__Q N__R N__S N__T N__U N__V N__W N__Y N__Z N
+   selection define site{site}consCA and and segid {segid} resid {resid} atomnames CA_A CA_B CA_C CA_D CA_E CA_F CA_G CA_H CA_I CA_J CA_K CA_L CA_M CA_N CA_O CA_P CA_Q CA_R CA_S CA_T CA_U CA_V CA_W CA_Y CA_Z CA
+   selection define site{site}consHA and and segid {segid} resid {resid} atomnames HA_A HA_B HA_C HA_D HA_E HA_F HA2G HA_H HA_I HA_J HA_K HA_L HA_M HA_N HA_O HA_P HA_Q HA_R HA_S HA_T HA_U HA_V HA_W HA_Y HA_Z HA HA2
+   selection define site{site}consC  and and segid {segid} resid {resid} atomnames C__A C__B C__C C__D C__E C__F C__G C__H C__I C__J C__K C__L C__M C__N C__O C__P C__Q C__R C__S C__T C__U C__V C__W C__Y C__Z C
+   selection define site{site}consO  and and segid {segid} resid {resid} atomnames O__A O__B O__C O__D O__E O__F O__G O__H O__I O__J O__K O__L O__M O__N O__O O__P O__Q O__R O__S O__T O__U O__V O__W O__Y O__Z O
+
+   ! Use cats (1) unless site is a terminal residue or terminal deletion
+   if || || || == {ii} {nterdel_{segid}} == {resid} {nterres_{segid}} == {ii} {cterdel_{segid}} == {resid} {cterres_{segid}}
+      selection define site{site}consN none
+      selection define site{site}consCA none
+      selection define site{site}consHA none
+      selection define site{site}consC none
+      selection define site{site}consO none
+   endif
+
+   ! include residues in a possible terminal deletion
+   if == {ii} {nterdel_{segid}}
+      selection define site{site}suball and segid {segid} residrange {nterres_{segid}} {resid}
+   endif
+   if == {ii} {cterdel_{segid}}
+      selection define site{site}suball and segid {segid} residrange {resid} {cterres_{segid}}
+   endif
+
+   selection define site{site}sub1 selection site{site}suball
+
+   variables set jj 2
+   while <= {jj} {nsubs{ii}}
+
+      variables set sub {jj}
+      variables set seqjj {s{ii}seq{jj}}
+      
+      variables setupper SEQJJ {seqjj}
+      selection define site{site}sub{sub} atomsearch {segid} {resid} %%%{SEQJJ}
+
+      selection define site{site}sub1 and selection site{site}sub1 not selection site{site}sub{sub}
+
+      variables calculate jj int + {jj} 1
+   endwhile
+
+   variables calculate ii int + {ii} 1
+endwhile

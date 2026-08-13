@@ -1,0 +1,58 @@
+! Save selections needed in block section
+calc ii = @aainitl + 1
+label selesiteloop
+if @ii .le. @aafinal then
+   set segid = @segid@@ii
+   set resid = @resid@@ii
+   set site = @ii
+
+   define site@{site}suball - 
+      select ( -
+      segid @segid .and. resid @resid ) show end
+
+   ! Use cats (1) unless site is a terminal residue or terminal deletion
+   set site@{ii}cats = 1
+   if @resid .eq. @{nterres_@@segid} then
+      set site@{ii}cats = 0
+   endif
+   if @resid .eq. @{cterres_@@segid} then
+      set site@{ii}cats = 0
+   endif
+
+   ! include residues in a possible terminal deletion
+   if @ii .eq. @{nterdel_@@segid} then
+      define site@{site}suball -
+         select ( -
+         segid @segid .and. resid @{nterres_@@segid}:@resid ) show end
+      set site@{ii}cats = 0
+   endif
+   if @ii .eq. @{cterdel_@@segid} then
+      define site@{site}suball -
+         select ( -
+         segid @segid .and. resid @resid:@{cterres_@@segid} ) show end
+      set site@{ii}cats = 0
+   endif
+
+   define site@{site}sub1 -
+      select ( site@{site}suball ) show end
+
+   set jj = 2
+   label seleloop
+   if @jj .le. @nsubs@@ii then
+
+      set sub = @jj
+      set seqjj = @{s@@{ii}seq@@jj}
+      
+      define site@{site}sub@{sub} select ( segid @segid .and. resid @resid .and. type %%%@{seqjj} ) show end
+
+      define site@{site}sub1 -
+         select ( -
+         site@{site}sub1 .and. .not. site@{site}sub@{sub} ) show end
+
+      calc jj = @jj + 1
+      goto seleloop
+   endif
+
+   calc ii = @ii + 1
+   goto selesiteloop
+endif

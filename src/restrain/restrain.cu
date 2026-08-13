@@ -390,7 +390,7 @@ __device__ void function_torsion(DiRestPotential dr,real phi,real *fphi,real *lE
 }
 
 template <bool flagBox,typename box_type>
-__global__ void getforce_dihedralRestraint_kernel(int diRestCount,DiRestPotential *diRests,real3 *position,real3_f *force,box_type box,real *lambda,real_f *lambdaForce,real_e *energy)
+__global__ void getforce_dihedralRestraint_kernel(int diRestCount,DiRestPotential *diRests,real3 *position,real3_f *force,box_type box,real *lambda,real_f *lambdaForce,real *savedPhi,real_e *energy)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
   int ii,jj,kk,ll;
@@ -449,7 +449,9 @@ __global__ void getforce_dihedralRestraint_kernel(int diRestCount,DiRestPotentia
     sinp=real3_dot<real>(bhatnorm,normcross);
     cosp=real3_dot<real>(mvecnorm,nvecnorm);
     phi=atan2f(sinp,cosp);
-
+    if (dr.printAng) {
+      savedPhi[i] = phi;
+    }
     // Interaction
     function_torsion(dr,phi,&fphir,&lEnergy, b || energy);
 
@@ -508,7 +510,7 @@ void getforce_diRestT(System *system,box_type box,bool calcEnergy)
   }
 
   N=p->diRestCount;
-  if (N>0) getforce_dihedralRestraint_kernel <flagBox> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->diRests_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,pEnergy);
+  if (N>0) getforce_dihedralRestraint_kernel <flagBox> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->diRests_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,(real*)p->savedPhi_d,pEnergy);
 }
 
 void getforce_diRest(System *system,bool calcEnergy)

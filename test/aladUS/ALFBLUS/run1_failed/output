@@ -1,0 +1,254 @@
+Creating a copy of system
+Opening file ../msld_flat.inp for r
+IN1> ! BLaDE input file for lambda dynamics
+IN1> !
+IN1> 
+IN1> ! This script expects esteps (equilibration steps) and nsteps
+IN1> ! (production steps) to be set by the calling process in
+IN1> ! arguments.inp
+IN1> !
+IN1> ! Other important variables such as temp (the system temperature), and
+IN1> ! sysname (the system name in the prep directory) are set by
+IN1> ! variablesflat.inp. minimizeflag is unused in blade
+IN1> 
+IN1> verbose 0
+IN1> 
+IN1> variables set restartfile null
+IN1> 
+IN1> stream arguments.inp
+Opening file arguments.inp for r
+IN2> variables set esteps 13000
+IN2> variables set nsteps 39000IN1> 
+IN1> variables set fnex 5.5
+IN1> 
+IN1> stream variablesflat.inp
+Opening file variablesflat.inp for r
+IN2> variables set lams1s1    -0.00
+IN2> variables set lams1s2    -0.00
+IN2> variables set cs1s1s1s2    -0.00
+IN2> variables set xs1s1s1s2    -0.00
+IN2> variables set xs1s2s1s1    -0.00
+IN2> variables set ss1s1s1s2    -0.00
+IN2> variables set ss1s2s1s1    -0.00
+IN2> variables set sysname aladBlade
+IN2> variables set nnodes 1
+IN2> variables set nreps 1
+IN2> variables set ncentral 0
+IN2> variables set nblocks 2
+IN2> variables set nsites 1
+IN2> variables set nsubs1 2
+IN2> variables set temp 298.15
+IN1> 
+IN1> stream prep/{sysname}.inp
+SUBSTITUTE> stream prep/aladBlade.inp
+Opening file prep/aladBlade.inp for r
+IN2> ! doing it with BLADE 
+IN2> ! change from charmm
+IN2> 
+IN2> variables set box 40
+IN2> 
+IN2> stream prep/alchemical_definitions.inp
+Opening file prep/alchemical_definitions.inp for r
+IN3> ! List all mutation sites and mutants at each site
+IN3> ! j is hsp
+IN3> variables set resid1 1
+IN3> variables set s1seq1 0 ! alad 
+IN3> variables set s1seq2 v
+IN3> variables set segid1 HETA
+IN3> variables set resid 1
+IN3> variables set segid HETA
+IN3> 
+IN3> ! Set the terminal properties of any segid mutated above no terminal properties
+IN3> 
+IN3> ! Only modify aainitl and aafinal if you're mutating things besides proteins
+IN3> variables set aainitl 0
+IN3> variables set aafinal {nsites}
+SUBSTITUTE> variables set aafinal 1
+IN2> 
+IN2> parameters file prep/toppar/par_all36m_prot.prm
+Opening file prep/toppar/par_all36m_prot.prm for r
+TITLE> *>>>> CHARMM36 All-Hydrogen Parameter File for Proteins <<<<<<<<<<
+TITLE> *>>>>> Includes phi, psi cross term map (CMAP) correction <<<<<<<<
+TITLE> *>>>>>>>>>>>>>>>>>>>>>>>>>> Jan. 2016 <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+TITLE> * All comments to the CHARMM web site: www.charmm.org
+TITLE> *             parameter set discussion forum
+TITLE> *
+allocating kcmap=0x2b86490
+allocating kcmap=0x2b876b0
+allocating kcmap=0x2b88a10
+allocating kcmap=0x2b89d70
+allocating kcmap=0x2b8b0d0
+allocating kcmap=0x2b8c430
+Unparsed line> HBOND  CUTHB 0.5  ! If you want to do hbond analysis (only), then use
+IN2> parameters file prep/toppar/par_all36_cgenff.prm
+Opening file prep/toppar/par_all36_cgenff.prm for r
+TITLE> *  --------------------------------------------------------------------------  *
+TITLE> *         CGenFF: Parameters for the Charmm General Force Field v. 4.6         *
+TITLE> *                    for Small Molecule Drug Design                            *
+TITLE> *  --------------------------------------------------------------------------  *
+TITLE> *  2017/8: If protein, nucleic acid and carbohydrate topology and parameter files
+TITLE> *  are NOT read prior to the CGenFF files "WARNING: ATOMS IN NBFIX ' errors will
+TITLE> *  be encountered.  These can be passed by setting BOMLEV ( -2) prior to reading
+TITLE> *  this file. In addition, when generating aromatic halogens (Cl, Br, I) with
+TITLE> *  pre c41b/c42a versions of CHARMM "MISSING PARAMETER" errors will be
+TITLE> *  encountered that also require setting BOMLEV ( -2).
+TITLE> *
+Warning: atom type OC2D1 found in NBFIX but not declared in ATOMS
+Warning: atom type OC2D2 found in NBFIX but not declared in ATOMS
+Warning: atom type OC2D3 found in NBFIX but not declared in ATOMS
+Warning: atom type OC2D4 found in NBFIX but not declared in ATOMS
+Warning: atom type OC2D2 found in NBFIX but not declared in ATOMS
+Warning: atom type OC2D3 found in NBFIX but not declared in ATOMS
+Warning: atom type OC2D4 found in NBFIX but not declared in ATOMS
+Warning: atom type OBL found in NBFIX but not declared in ATOMS
+Warning: atom type NH3L found in NBFIX but not declared in ATOMS
+Warning: atom type OCL found in NBFIX but not declared in ATOMS
+Warning: atom type OBL found in NBFIX but not declared in ATOMS
+Warning: atom type NH3L found in NBFIX but not declared in ATOMS
+Warning: atom type OCL found in NBFIX but not declared in ATOMS
+Warning: atom type NN1 found in NBFIX but not declared in ATOMS
+Warning: atom type NN2 found in NBFIX but not declared in ATOMS
+Warning: atom type NN2U found in NBFIX but not declared in ATOMS
+Warning: atom type NN2G found in NBFIX but not declared in ATOMS
+Warning: atom type NN3 found in NBFIX but not declared in ATOMS
+Warning: atom type NN3A found in NBFIX but not declared in ATOMS
+Warning: atom type NN3G found in NBFIX but not declared in ATOMS
+Warning: atom type NN4 found in NBFIX but not declared in ATOMS
+Warning: atom type ON1 found in NBFIX but not declared in ATOMS
+Warning: atom type ON1C found in NBFIX but not declared in ATOMS
+Warning: atom type NN1 found in NBFIX but not declared in ATOMS
+Warning: atom type NN2 found in NBFIX but not declared in ATOMS
+Warning: atom type NN2U found in NBFIX but not declared in ATOMS
+Warning: atom type NN2G found in NBFIX but not declared in ATOMS
+Warning: atom type NN3 found in NBFIX but not declared in ATOMS
+Warning: atom type NN3A found in NBFIX but not declared in ATOMS
+Warning: atom type NN3G found in NBFIX but not declared in ATOMS
+Warning: atom type NN4 found in NBFIX but not declared in ATOMS
+Warning: atom type ON1 found in NBFIX but not declared in ATOMS
+Warning: atom type ON1C found in NBFIX but not declared in ATOMS
+Unparsed line> HBOND  CUTHB 0.5  ! If you want to do hbond analysis (only), then use
+IN2> parameters file prep/toppar/par_water_ions.prm
+Opening file prep/toppar/par_water_ions.prm for r
+TITLE> * Parameters for water and ions
+TITLE> *
+Warning: atom type ON3 found in NBFIX but not declared in ATOMS
+Warning: atom type OCL found in NBFIX but not declared in ATOMS
+Warning: atom type OBL found in NBFIX but not declared in ATOMS
+Warning: atom type O2L found in NBFIX but not declared in ATOMS
+Warning: atom type OC2D2 found in NBFIX but not declared in ATOMS
+Warning: atom type OC2DP found in NBFIX but not declared in ATOMS
+IN2> 
+IN2> ! stream mslddipep.str
+IN2> 
+IN2> structure file psf prep/minimized.psf
+Opening file prep/minimized.psf for r
+Reading PSF, found header string: 'EXT'
+Reading PSF, found header string: 'CMAP'
+Reading PSF, found header string: 'XPLOR'
+Reading PSF, found header string: 'AUTOG'
+Reading PSF, expect !NTITLE: got  !NTITLE
+Reading PSF, expect !NATOM: got  !NATOM
+Reading PSF, expect !NBOND: bonds: got  !NBOND: bonds
+Reading PSF, expect !NTHETA: angles: got  !NTHETA: angles
+Reading PSF, expect !NPHI: dihedrals: got  !NPHI: dihedrals
+Reading PSF, expect !NIMPHI: impropers: got  !NIMPHI: impropers
+Reading PSF, expect !NDON: donors: got  !NDON: donors
+Reading PSF, expect !NACC: acceptors: got  !NACC: acceptors
+Reading PSF, expect !NNB: got  !NNB
+Reading PSF, expect !NGRP NST2: got          0 !NGRP NST2
+Reading PSF, expect !NUMLP NUMLPH: got  !NUMLP NUMLPH
+Reading PSF, expect !NCRTERM: got  !NCRTERM: cross-terms
+IN2> structure shake hbond
+IN2> 
+IN2> coordinates file crd prep/minimized.crd
+Opening file prep/minimized.crd for r
+IN2> coordinates box cubi {box} {box} {box} 90 90 90
+SUBSTITUTE> coordinates box cubi 40 40 40 90 90 90
+IN2> coordinates velocity 298.15
+IN2> 
+IN2> selection limit 200
+New selection limit set to 200 (be careful, selections can take up a lot of memory. Use selection delete [name] when done with a selection.)
+IN2> 
+IN2> stream prep/restraints.inp
+Opening file prep/restraints.inp for r
+IN3> ! this is the place to place all restraints
+IN3> selection define clp atom HETA 1 CLP
+SELECTION> add clp to selections after parsing  atom HETA 1 CLP
+
+IN3> selection define nl atom HETA 1 NL
+SELECTION> add nl to selections after parsing  atom HETA 1 NL
+
+IN3> selection define ca atom HETA 1 CA
+SELECTION> add ca to selections after parsing  atom HETA 1 CA
+
+IN3> selection define crp atom HETA 1 CRP
+SELECTION> add crp to selections after parsing  atom HETA 1 CRP
+
+IN3> structure dihedral clp nl ca crp 10 10 1
+IN2> 
+IN2> ! stream prep/patchloop.inp
+IN2> stream prep/selectloop.inp
+Opening file prep/selectloop.inp for r
+IN3> ! Save selections needed in block section
+IN3>    variables set ii 1
+IN3>    variables set segid {segid{ii}}
+SUBSTITUTE>    variables set segid HETA
+IN3>    variables set resid {resid{ii}}
+SUBSTITUTE>    variables set resid 1
+IN3>    variables set site {ii}
+SUBSTITUTE>    variables set site 1
+IN3> 
+IN3>    selection define site{site}suball and segid {segid} resid {resid}
+SUBSTITUTE>    selection define site1suball and segid HETA resid 1
+SELECTION> add site1suball to selections after parsing  and segid HETA resid 1
+
+IN3> 
+IN3>    selection define site{site}consN  and and segid {segid} resid {resid} atomnames N__A N__B N__C N__D N__E N__F N__G N__H N__I N__J N__K N__L N__M N__N N__O N__P N__Q N__R N__S N__T N__U N__V N__W N__Y N__Z NL N
+SUBSTITUTE>    selection define site1consN  and and segid HETA resid 1 atomnames N__A N__B N__C N__D N__E N__F N__G N__H N__I N__J N__K N__L N__M N__N N__O N__P N__Q N__R N__S N__T N__U N__V N__W N__Y N__Z NL N
+SELECTION> add site1consN to selections after parsing   and and segid HETA resid 1 atomnames N__A N__B N__C N__D N__E N__F N__G N__H N__I N__J N__K N__L N__M N__N N__O N__P N__Q N__R N__S N__T N__U N__V N__W N__Y N__Z NL N
+
+IN3>    selection define site{site}consCA and and segid {segid} resid {resid} atomnames CA_A CA_B CA_C CA_D CA_E CA_F CA_G CA_H CA_I CA_J CA_K CA_L CA_M CA_N CA_O CA_P CA_Q CA_R CA_S CA_T CA_U CA_V CA_W CA_Y CA_Z CA
+SUBSTITUTE>    selection define site1consCA and and segid HETA resid 1 atomnames CA_A CA_B CA_C CA_D CA_E CA_F CA_G CA_H CA_I CA_J CA_K CA_L CA_M CA_N CA_O CA_P CA_Q CA_R CA_S CA_T CA_U CA_V CA_W CA_Y CA_Z CA
+SELECTION> add site1consCA to selections after parsing  and and segid HETA resid 1 atomnames CA_A CA_B CA_C CA_D CA_E CA_F CA_G CA_H CA_I CA_J CA_K CA_L CA_M CA_N CA_O CA_P CA_Q CA_R CA_S CA_T CA_U CA_V CA_W CA_Y CA_Z CA
+
+IN3>    selection define site{site}consHA and and segid {segid} resid {resid} atomnames HA_A HA_B HA_C HA_D HA_E HA_F HA2G HA_H HA_I HA_J HA_K HA_L HA_M HA_N HA_O HA_P HA_Q HA_R HA_S HA_T HA_U HA_V HA_W HA_Y HA_Z HA HA2
+SUBSTITUTE>    selection define site1consHA and and segid HETA resid 1 atomnames HA_A HA_B HA_C HA_D HA_E HA_F HA2G HA_H HA_I HA_J HA_K HA_L HA_M HA_N HA_O HA_P HA_Q HA_R HA_S HA_T HA_U HA_V HA_W HA_Y HA_Z HA HA2
+SELECTION> add site1consHA to selections after parsing  and and segid HETA resid 1 atomnames HA_A HA_B HA_C HA_D HA_E HA_F HA2G HA_H HA_I HA_J HA_K HA_L HA_M HA_N HA_O HA_P HA_Q HA_R HA_S HA_T HA_U HA_V HA_W HA_Y HA_Z HA HA2
+
+IN3>    selection define site{site}consC  and and segid {segid} resid {resid} atomnames C__A C__B C__C C__D C__E C__F C__G C__H C__I C__J C__K C__L C__M C__N C__O C__P C__Q C__R C__S C__T C__U C__V C__W C__Y C__Z C CRP
+SUBSTITUTE>    selection define site1consC  and and segid HETA resid 1 atomnames C__A C__B C__C C__D C__E C__F C__G C__H C__I C__J C__K C__L C__M C__N C__O C__P C__Q C__R C__S C__T C__U C__V C__W C__Y C__Z C CRP
+SELECTION> add site1consC to selections after parsing   and and segid HETA resid 1 atomnames C__A C__B C__C C__D C__E C__F C__G C__H C__I C__J C__K C__L C__M C__N C__O C__P C__Q C__R C__S C__T C__U C__V C__W C__Y C__Z C CRP
+
+IN3>    selection define site{site}consO  and and segid {segid} resid {resid} atomnames O__A O__B O__C O__D O__E O__F O__G O__H O__I O__J O__K O__L O__M O__N O__O O__P O__Q O__R O__S O__T O__U O__V O__W O__Y O__Z O OR
+SUBSTITUTE>    selection define site1consO  and and segid HETA resid 1 atomnames O__A O__B O__C O__D O__E O__F O__G O__H O__I O__J O__K O__L O__M O__N O__O O__P O__Q O__R O__S O__T O__U O__V O__W O__Y O__Z O OR
+SELECTION> add site1consO to selections after parsing   and and segid HETA resid 1 atomnames O__A O__B O__C O__D O__E O__F O__G O__H O__I O__J O__K O__L O__M O__N O__O O__P O__Q O__R O__S O__T O__U O__V O__W O__Y O__Z O OR
+
+IN3> 
+IN3>    selection define dipepends and and segid {segid} resid {resid} atomnames CL CLP HL% OL CR NR HR HR%
+SUBSTITUTE>    selection define dipepends and and segid HETA resid 1 atomnames CL CLP HL% OL CR NR HR HR%
+SELECTION> add dipepends to selections after parsing  and and segid HETA resid 1 atomnames CL CLP HL% OL CR NR HR HR%
+
+IN3>    selection define site{site}sub1 and selection site{site}suball not selection dipepends
+SUBSTITUTE>    selection define site1sub1 and selection site1suball not selection dipepends
+SELECTION> add site1sub1 to selections after parsing  and selection site1suball not selection dipepends
+
+IN3>    ! include residues in a possible terminal deletion
+IN3> 
+IN3>    variables set jj 2
+IN3>    while <= {jj} {nsubs{ii}}
+SUBSTITUTE>    while <= 2 2
+while> evaluated as true
+IN3> 
+IN3>       variables set sub {jj}
+SUBSTITUTE>       variables set sub 2
+IN3>       variables set seqjj {s{ii}seq{jj}}
+SUBSTITUTE>       variables set seqjj v
+IN3>       
+IN3>       variables set upper SEQJJ {seqjj}
+SUBSTITUTE>       variables set upper SEQJJ v
+IN3>       selection define site{site}sub{sub} atomsearch {segid} {resid} %%%{SEQJJ}
+DEBUG: openBrace 54 closeBrace 60
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/io/variables.cxx:173
+Unrecognized variable token name {SEQJJ} in line "      selection define site1sub2 atomsearch HETA 1 %%%{SEQJJ}
+"

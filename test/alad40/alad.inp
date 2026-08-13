@@ -1,0 +1,50 @@
+! * Benchmark dynamics for alanine dipeptide in cubic box 40 angstroms^3 of solvent 
+! * using PBC w/ PME.
+! * fill in rest of parameters later
+
+verbose 0
+
+parameters file par_all36m_prot.prm
+parameters file par_water_ions.prm 
+
+structure file psf step3_pbcsetup.psf
+structure shake hbond
+
+coordinates file crd step4_equilibration.crd
+coordinates box cubi 40 40 40 90 90 90
+coordinates velocity 298.15
+selection define clp atom HETA 1 CLP
+selection define nl atom HETA 1 NL
+selection define ca atom HETA 1 CA
+selection define crp atom HETA 1 CRP
+structure dihedral clp nl ca crp 100 51 1
+msld nblocks 0
+
+structure shake hbond
+run setvariable gamma 5
+
+run setvariable fnmxtc prod.xtc
+run setvariable fnmnrg prod.nrg
+run setvariable fnmlmd prod.lmd_0
+
+run setvariable nsteps 50000
+run setvariable T 298.15
+run setvariable freqxtc 1000
+run setvariable freqnrg 1000
+run setvariable freqnpt 0
+run setvariable freqlmd 50000
+run setvariable hrlmd no
+
+!set nonbonded options
+run setvariable rswitch 7.5
+run setvariable rcut 9.0
+run setvariable invbetaewald 3.125
+run setvariable orderewald 4
+run setvariable gridspace 1.1
+
+run setvariable shaketolerance 0.00000001
+
+run setvariable dt 0.002
+
+run dynamics
+  

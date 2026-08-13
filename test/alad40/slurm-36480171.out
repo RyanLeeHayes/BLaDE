@@ -1,0 +1,3 @@
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/system/system.cxx:239
+Running with 3 omp threads but only 1 GPUs

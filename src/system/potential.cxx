@@ -141,6 +141,9 @@ Potential::Potential() {
   diRestCount=0;
   diRests=NULL;
   diRests_d=NULL;
+  savedPhi=NULL;
+  savedPhi_d=NULL;
+  anyDiRestPrint=false;
   resdCount=0;   // eeresd
   resds=NULL;    // eeresd
   resds_d=NULL;  // eeresd
@@ -252,6 +255,8 @@ Potential::~Potential()
   if (anRests_d) cudaFree(anRests_d);
   if (diRests) free(diRests);
   if (diRests_d) cudaFree(diRests_d);
+  if (savedPhi) free(savedPhi);
+  if (savedPhi_d) cudaFree(savedPhi_d);
   if (resds) free(resds);           // eeresd
   if (resds_d) cudaFree(resds_d);   // eeresd
 
@@ -1744,6 +1749,13 @@ void Potential::initialize(System *system)
       diRests[i].phi0=system->structure->diRestList[i].phi0;
       diRests[i].width=system->structure->diRestList[i].width;
       diRests[i].block=system->structure->diRestList[i].block;
+      diRests[i].printAng=system->structure->diRestList[i].printAng;
+      if (diRests[i].printAng) anyDiRestPrint=true;
+    }
+    if (anyDiRestPrint) {
+      cudaMalloc(&savedPhi_d,diRestCount*sizeof(real));
+      cudaMemset(savedPhi_d,0,diRestCount*sizeof(real));
+      savedPhi=(real*)calloc(diRestCount,sizeof(real));
     }
     cudaMemcpy(diRests_d,diRests,diRestCount*sizeof(struct DiRestPotential),cudaMemcpyHostToDevice);
   }

@@ -45,12 +45,14 @@ class Run {
   std::string fnmXTC;
   std::string fnmLMD;
   std::string fnmNRG;
+  std::string fnmREST;
   std::string fnmCPI;
   std::string fnmCPO;
   XDRFILE *fpXTC;
   XDRFILE *fpXLMD;
   FILE *fpLMD;
   FILE *fpNRG;
+  FILE *fpREST;
   int freqXTC;
   int freqLMD;
   int freqNRG;

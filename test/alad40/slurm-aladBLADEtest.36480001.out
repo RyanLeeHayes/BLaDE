@@ -1,0 +1,2 @@
+/export/spool/slurm/slurmd.spool/job36480001/slurm_script: line 12: source: /dfs8/rhayes1_lab/cyeh5/BLaDE/build/blade: cannot execute binary file
+/export/spool/slurm/slurmd.spool/job36480001/slurm_script: line 14: blade: command not found

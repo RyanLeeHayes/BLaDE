@@ -1,0 +1,129 @@
+msld nblocks {nblocks}
+
+variables set prevblock 0
+variables set ii 1
+while <= {ii} {nsites}
+   variables set jj 1
+   while <= {jj} {nsubs{ii}}
+      variables calculate jp0 int + {jj} {prevblock}
+
+      msld call {jp0} site{ii}sub{jj}
+
+      variables calculate jj int + {jj} 1
+   endwhile
+
+   if && > {ii} {aainitl} <= {ii} {aafinal}
+   variables set resid {resid{ii}}
+   variables set site {ii}
+   if not || || || == {ii} {nterdel_{segid}} == {resid} {nterres_{segid}} == {ii} {cterdel_{segid}} == {resid} {cterres_{segid}}
+      msld restrain site{site}consN
+      msld restrain site{site}consCA
+      msld restrain site{site}consHA
+      msld restrain site{site}consC
+      msld restrain site{site}consO
+   endif
+   endif
+
+   variables calculate prevblock int + {prevblock} {nsubs{ii}}
+   variables calculate ii int + {ii} 1
+endwhile
+
+!               B S   t0  tv  tm  fb   q
+   msld initialize 0 0 0 0 5 0 0
+
+variables set blockassign 0
+variables set prevblock 0
+variables set ii 1
+while <= {ii} {nsites}
+   variables set jj 1
+   variables set theta0 1
+   while <= {jj} {nsubs{ii}}
+      variables calculate jp0 int + {jj} {prevblock}
+
+!               B S   t0  tv  tm  fb   q
+      msld initialize {jp0} {ii} {theta0} 0 5 {lams{ii}s{jj}} 0
+
+      variables set theta0 -1
+      variables calculate jj int + {jj} 1
+   endwhile
+   variables calculate prevblock int + {prevblock} {nsubs{ii}}
+   variables calculate ii int + {ii} 1
+endwhile
+   msld removescaling bond urey angle impr
+
+   msld fnex {fnex}
+   msld softcore on
+   msld softcore14 on
+
+   msld thetabias independent nsites {nsites}
+   variables set ii 1
+   while <= {ii} {nsites}
+     msld thetabias independent auto {ii} {nsubs{ii}} {temp}
+     variables calculate ii int + {ii} 1
+   endwhile
+
+   ! msld ewaldtype 2 ! pmel ex
+
+   ! Check block.doc for functional form of these biasing potentials
+variables set iblock 0
+variables set si 1
+while <= {si} {nsites}
+   variables set jblock {iblock}
+   variables set sj {si}
+   while <= {sj} {nsites}
+      variables set ii 1
+      while <= {ii} {nsubs{si}}
+         variables calculate ip0 int + {ii} {iblock}
+         variables set jj 1
+         if == {si} {sj}
+            variables calculate jj int + {ii} 1
+         endif
+         while <= {jj} {nsubs{sj}}
+            variables calculate jp0 int + {jj} {jblock}
+
+!        s1s2 t  l0   k n
+            msld bias {ip0} {jp0} 6 0.0 {cs{si}s{ii}s{sj}s{jj}} 0
+            msld bias {ip0} {jp0} 10 -5.56 {xs{si}s{ii}s{sj}s{jj}} 0
+            msld bias {ip0} {jp0} 8 0.017 {ss{si}s{ii}s{sj}s{jj}} 0
+            ! msld bias {ip0} {jp0} 8 -1.017 {ts{si}s{ii}s{sj}s{jj}} 0
+            ! msld bias {ip0} {jp0} 12 0.017 {us{si}s{ii}s{sj}s{jj}} 2
+            msld bias {jp0} {ip0} 10 -5.56 {xs{sj}s{jj}s{si}s{ii}} 0
+            msld bias {jp0} {ip0} 8 0.017 {ss{sj}s{jj}s{si}s{ii}} 0
+            ! msld bias {jp0} {ip0} 8 -1.017 {ts{sj}s{jj}s{si}s{ii}} 0
+            ! msld bias {jp0} {ip0} 12 0.017 {us{sj}s{jj}s{si}s{ii}} 2
+            variables calculate jj int + {jj} 1
+         endwhile
+         variables calculate ii int + {ii} 1
+      endwhile
+      variables calculate jblock int + {jblock} {nsubs{sj}}
+      variables calculate sj int + {sj} 1
+   endwhile
+   variables calculate iblock int + {iblock} {nsubs{si}}
+   variables calculate si int + {si} 1
+endwhile
+
+
+   msld parameter krestraint 59.2
+
+   msld parameter softbondradius inf
+   msld parameter softbondexponent 2
+   msld parameter softnotbondexponent 2 ! should be 1?
+
+variables calculate ii int + {aainitl} 1
+while <= {ii} {nsites}
+   selection define testpro and and segid {segid} resid {resid{ii}} resname PRO
+   selection count testpro nsel
+   if > {nsel} 0
+      selection define probond or atom {segid} {resid{ii}} CB atom {segid} {resid{ii}} CG
+      msld softbond probond
+   endif
+   variables set jj 2
+   while <= {jj} {nsubs{ii}}
+      if eq {s{ii}seq{jj}} p
+         selection define probond or atom {segid} {resid{ii}} CB_P atom {segid} {resid{ii}} CG_P
+         msld softbond probond
+      endif
+      variables calculate jj int + {jj} 1
+   endwhile
+   variables calculate ii int + {ii} 1
+endwhile

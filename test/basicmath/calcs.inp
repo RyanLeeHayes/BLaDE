@@ -1,0 +1,5 @@
+verbose 1
+variables set phi -90
+while <= {phi} -40
+   variables calculate phi int + {phi} 17
+endwhile

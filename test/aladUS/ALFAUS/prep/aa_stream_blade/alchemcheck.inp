@@ -1,0 +1,59 @@
+!! Make certain that the alchemical_definitions.inp file has the right definitions included
+!! Most likely error (in my experience) being that you forgot to change the segid to match your current system
+calc chknterres = @?{nterres_@@segid}
+calc chkcterres = @?{cterres_@@segid}
+calc chknterc = @?{nterc_@@segid}
+calc chkcterc = @?{cterc_@@segid}
+calc chknterdel = @?{nterdel_@@segid}
+calc chkcterdel = @?{cterdel_@@segid}
+
+calc paramcheck = @chknterres * @chkcterres * @chknterc * @chkcterc * @chknterdel * @chkcterdel
+if paramcheck .eq. 0 then
+   echo "Error,  check that: nterres_@SEGID, cterres_@SEGID, nterc_@SEGID, cterc_@SEGID, nterdel_@SEGID, and cterdel_@SEGID have been set in alchemical definitions.inp or system.inp file"
+   echo "I would recommend first checking whether or not your segid matches"
+   stop
+endif
+
+!! Makes certain the nter cap selected for this residue is not actually a cterminal cap and vice versa 
+if @{nterc_@@segid} .ne. 2 then
+   if @{nterc_@@segid} .ne. 4 then
+      echo "Error,  nterc_@SEGID=@{NTERC_@@SEGID} is not a valid cap for an N-terminus"
+      echo "Set nterc_@SEGID to 2 for NTER/GLYP/PROP cap or to 4 for ACE/ACP cap"
+      stop
+   endif
+endif
+if @{cterc_@@segid} .ne. 3 then
+   if @{cterc_@@segid} .ne. 5 then
+      echo "Error,  cterc_@SEGID=@{CTERC_@@SEGID} is not a valid cap for a C-terminus"
+      echo "Set cterc_@SEGID to 3 for CTER cap or to 5 for CT3 cap"
+      stop
+   endif
+endif
+
+!! Makes certain that the nterdel/cterdel sites are the first/last mutation sites in a protein segment
+!! Without these lines, the system will die after running minimization and before dynamics due to
+!! alchemical atoms being assigned to the wrong block in the blocksetup.inp Call lines among other errors
+if @ii .eq. @{nterdel_@@segid} then
+   calc mm = @aainitl + 1
+   label ndelorder
+   if @mm .lt. @ii then
+      if @segid@@mm .eq. @segid then
+         echo "Error, nterdel_@SEGID must come BEFORE all other mutation sites in protein segment @SEGID"
+         stop
+      endif
+      calc mm = @mm + 1
+      goto ndelorder
+   endif
+endif
+if @ii .eq. @{cterdel_@@segid} then
+   calc mm = @ii + 1
+   label cdelorder
+   if @mm .le. @aafinal then
+      if @segid@@mm .eq. @segid then
+         echo "Error, cterdel_@SEGID must come AFTER all other mutation sites in protein segment @SEGID"
+         stop
+      endif
+      calc mm = @mm + 1
+      goto cdelorder
+   endif
+endif

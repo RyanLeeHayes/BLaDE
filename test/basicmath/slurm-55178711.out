@@ -1,0 +1,9 @@
+Creating a copy of system
+Opening file calcs.inp for r
+IN1> verbose 1
+IN1> variables set phi = -90
+IN1> while <= {phi} -40
+SUBSTITUTE> while <= = -90 -40
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/io/calculate.cxx:86
+Unrecognized token (=) in calculate statement

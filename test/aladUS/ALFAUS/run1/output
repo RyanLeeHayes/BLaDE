@@ -1,0 +1,3965 @@
+ Parameter: ESTEPS <- "13000"
+ Parameter: NSTEPS <- "39000"
+ Parameter: SEED <- "48912"
+1
+                 Chemistry at HARvard Macromolecular Mechanics
+           (CHARMM) - Developmental Version 50a2   February 15, 2025            
+                            Git commit ID 4a690e562                             
+       Copyright(c) 1984-2023  President and Fellows of Harvard College
+                              All Rights Reserved
+  Current operating system: Linux-4.18.0-553.22.1.el8_10.x86_64(x86_64)@hpc3-   
+                 Created on  4/28/25 at 16:15:05 by user: cyeh5       
+
+            Maximum number of ATOMS:    360720, and RESidues:      120240
+ RDTITL> * CHARMM WITH BLADE INPUT FILE FOR LAMBDA DYNAMICS
+ RDTITL> *
+  
+ CHARMM>     
+  
+ CHARMM>    ! This script expects esteps (equilibration steps), nsteps (production
+ CHARMM>    ! steps), and seed (random number seed) to be set by the calling process
+ CHARMM>    !
+ CHARMM>    ! Other important variables such as minimizeflag (whether or not to
+ CHARMM>    ! minimize), temp (the system temperature), and sysname (the system name
+ CHARMM>    ! in the prep directory) are set by variablesflat.inp
+ CHARMM>     
+  
+ CHARMM>    set fnex = 5.5
+ Parameter: FNEX <- "5.5"
+  
+ CHARMM>     
+  
+ CHARMM>    stream "variablesflat.inp"
+ VOPEN> Attempting to open::variablesflat.inp::
+ OPNLGU> Unit 99 opened for READONLY access to variablesflat.inp
+
+                    INPUT STREAM SWITCHING TO UNIT    99
+ RDTITL> * VARIABLES FROM STEP 1 OF ALF
+ RDTITL> *
+ Parameter: IN1 <- "" <empty>
+  
+ CHARMM>     
+  
+ CHARMM>    set lams1s1 =     0.00
+ Parameter: LAMS1S1 <- "0.00"
+  
+ CHARMM>    set lams1s2 =     0.00
+ Parameter: LAMS1S2 <- "0.00"
+  
+ CHARMM>    set cs1s1s1s2 =    -0.00
+ Parameter: CS1S1S1S2 <- "-0.00"
+  
+ CHARMM>    set xs1s1s1s2 =    -0.00
+ Parameter: XS1S1S1S2 <- "-0.00"
+  
+ CHARMM>    set xs1s2s1s1 =    -0.00
+ Parameter: XS1S2S1S1 <- "-0.00"
+  
+ CHARMM>    set ss1s1s1s2 =    -0.00
+ Parameter: SS1S1S1S2 <- "-0.00"
+  
+ CHARMM>    set ss1s2s1s1 =    -0.00
+ Parameter: SS1S2S1S1 <- "-0.00"
+  
+ CHARMM>    set sysname = "aladsetup
+ Parameter: SYSNAME <- ""aladsetup"
+  
+ CHARMM>    trim sysname from 2
+ Parameter: SYSNAME <- "aladsetup"
+  
+ CHARMM>    set nnodes = 1
+ Parameter: NNODES <- "1"
+  
+ CHARMM>    set nreps = 1
+ Parameter: NREPS <- "1"
+  
+ CHARMM>    set ncentral = 0
+ Parameter: NCENTRAL <- "0"
+  
+ CHARMM>    set nblocks = 2
+ Parameter: NBLOCKS <- "2"
+  
+ CHARMM>    set nsites = 1
+ Parameter: NSITES <- "1"
+  
+ CHARMM>    set nsubs1 = 2
+ Parameter: NSUBS1 <- "2"
+  
+ CHARMM>    set temp = 298.15
+ Parameter: TEMP <- "298.15"
+  
+ CHARMM>    set minimizeflag = 1
+ Parameter: MINIMIZEFLAG <- "1"
+  
+ CHARMM>     
+  
+ VCLOSE: Closing unit   99 with status "KEEP"
+
+                    RETURNING TO INPUT STREAM     5
+  
+ CHARMM>     
+  
+ CHARMM>    bomblev -1
+  
+ CHARMM>     
+  
+ CHARMM>    stream "prep/@{SYSNAME}.inp"
+ Parameter: SYSNAME -> "aladsetup"
+ VOPEN> Attempting to open::prep/aladsetup.inp::
+ OPNLGU> Unit 99 opened for READONLY access to prep/aladsetup.inp
+
+                    INPUT STREAM SWITCHING TO UNIT    99
+ RDTITL> * SETTING UP WITH CHARMM IG - RUN WITH BLADE
+ RDTITL> *
+ Parameter: IN1 <- "" <empty>
+  
+ CHARMM>     
+  
+ CHARMM>    set box = 40
+ Parameter: BOX <- "40"
+  
+ CHARMM>     
+  
+ CHARMM>    set resid1 = 1
+ Parameter: RESID1 <- "1"
+  
+ CHARMM>    set s1seq1 = 0 !alad
+ Parameter: S1SEQ1 <- "0"
+  
+ CHARMM>    set s1seq2 = v
+ Parameter: S1SEQ2 <- "V"
+  
+ CHARMM>    set segid1 = HETA
+ Parameter: SEGID1 <- "HETA"
+  
+ CHARMM>    set segid = HETA
+ Parameter: SEGID <- "HETA"
+  
+ CHARMM>    set resid = 1
+ Parameter: RESID <- "1"
+  
+ CHARMM>    !no terminal residue variables - dipeptide capped
+ CHARMM>     
+  
+ CHARMM>    set bomlev = ?bomlev
+ RDCMND substituted energy or value "?BOMLEV" to "-1"
+ Parameter: BOMLEV <- "-1"
+  
+ CHARMM>    bomlev -1
+  
+ CHARMM>    read rtf card name prep/toppar/top_all36_prot.rtf
+ VOPEN> Attempting to open::prep/toppar/top_all36_prot.rtf::
+ MAINIO> Residue topology file being read from unit  90.
+ TITLE> *>>>>>>>>CHARMM36 ALL-HYDROGEN TOPOLOGY FILE FOR PROTEINS <<<<<<
+ TITLE> *>>>>> INCLUDES PHI, PSI CROSS TERM MAP (CMAP) CORRECTION <<<<<<<
+ TITLE> *>>>>>>>>>>>>>>>>>>>>>>>>>> MAY 2011 <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+ TITLE> * ALL COMMENTS TO THE CHARMM WEB SITE: WWW.CHARMM.ORG
+ TITLE> *             PARAMETER SET DISCUSSION FORUM
+ TITLE> *
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    read param card flex name prep/toppar/par_all36m_prot.prm
+ VOPEN> Attempting to open::prep/toppar/par_all36m_prot.prm::
+
+          PARAMETER FILE BEING READ FROM UNIT 90
+ TITLE> *>>>> CHARMM36 ALL-HYDROGEN PARAMETER FILE FOR PROTEINS <<<<<<<<<<
+ TITLE> *>>>>> INCLUDES PHI, PSI CROSS TERM MAP (CMAP) CORRECTION <<<<<<<<
+ TITLE> *>>>>>>>>>>>>>>>>>>>>>>>>>> JAN. 2016 <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+ TITLE> * ALL COMMENTS TO THE CHARMM WEB SITE: WWW.CHARMM.ORG
+ TITLE> *             PARAMETER SET DISCUSSION FORUM
+ TITLE> *
+ PARMIO> NONBOND, HBOND lists and IMAGE atoms cleared.
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    read rtf card append name "prep/toppar/top_all36_cgenff.rtf"
+ VOPEN> Attempting to open::prep/toppar/top_all36_cgenff.rtf::
+ MAINIO> Residue topology file being read from unit  90.
+ TITLE> *  --------------------------------------------------------------------------  *
+ TITLE> *          CGENFF: TOPOLOGY FOR THE CHARMM GENERAL FORCE FIELD V. 4.6          *
+ TITLE> *                    FOR SMALL MOLECULE DRUG DESIGN                            *
+ TITLE> *  --------------------------------------------------------------------------  *
+ TITLE> *
+
+ DRUDES PARTICLES WILL BE GENERATED AUTOMATICALLY FOR ALL ATOMS WITH NON-ZERO ALPHA
+ Thole-type dipole screening, Slater-Delta shape {S(u) = 1 - (1+u/2)*exp(-u)}, default radius =  1.300000
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    read param card flex append name "prep/toppar/par_all36_cgenff.prm"
+ VOPEN> Attempting to open::prep/toppar/par_all36_cgenff.prm::
+
+          PARAMETER FILE BEING READ FROM UNIT 90
+ TITLE> *  --------------------------------------------------------------------------  *
+ TITLE> *         CGENFF: PARAMETERS FOR THE CHARMM GENERAL FORCE FIELD V. 4.6         *
+ TITLE> *                    FOR SMALL MOLECULE DRUG DESIGN                            *
+ TITLE> *  --------------------------------------------------------------------------  *
+ TITLE> *  2017/8: IF PROTEIN, NUCLEIC ACID AND CARBOHYDRATE TOPOLOGY AND PARAMETER FILES
+ TITLE> *  ARE NOT READ PRIOR TO THE CGENFF FILES "WARNING: ATOMS IN NBFIX ' errors will
+ TITLE> *  BE ENCOUNTERED.  THESE CAN BE PASSED BY SETTING BOMLEV ( -2) PRIOR TO READING
+ TITLE> *  THIS FILE. IN ADDITION, WHEN GENERATING AROMATIC HALOGENS (CL, BR, I) WITH
+ TITLE> *  PRE C41B/C42A VERSIONS OF CHARMM "MISSING PARAMETER" ERRORS WILL BE
+ TITLE> *  ENCOUNTERED THAT ALSO REQUIRE SETTING BOMLEV ( -2).
+ TITLE> *
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D CLGR   -2.50000   2.80000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D BRGR   -1.25000   2.98000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D BRGR   -0.27000   3.52000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OC2D BRGR   -0.27000   3.52000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OBL  CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NH3L CLGR   -3.60000   3.18000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OCL  CLGR   -2.50000   2.80000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OBL  BRGR   -0.27000   3.52000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NH3L BRGR   -3.65000   3.33000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX OCL  BRGR   -1.25000   2.98000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN1  CLGR   -0.40000   3.88000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2  CLGR   -0.48000   3.75000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2U CLGR   -0.48000   3.75000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2G CLGR   -0.48000   3.75000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3  CLGR   -0.46000   3.42000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3A CLGR   -0.46000   3.42000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3G CLGR   -0.46000   3.42000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN4  CLGR   -0.46000   3.42000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX ON1  CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX ON1C CLGR   -0.20000   3.40000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN1  BRGR   -0.30000   4.05000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2  BRGR   -0.72000   3.80000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2U BRGR   -0.72000   3.80000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN2G BRGR   -0.72000   3.80000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3  BRGR   -0.22000   3.61000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3A BRGR   -0.22000   3.61000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN3G BRGR   -0.22000   3.61000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX NN4  BRGR   -0.22000   3.61000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX ON1  BRGR   -0.27000   3.52000 DONT EXIST
+
+      ***** LEVEL  0 WARNING FROM <PARRDR> *****
+      ***** NO MATCH FOR NBFIX
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+ PARRDR> WARNING: ATOMS IN NBFIX ON1C BRGR   -0.27000   3.52000 DONT EXIST
+ PARMIO> NONBOND, HBOND lists and IMAGE atoms cleared.
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    stream "prep/toppar/toppar_water_ions.str"
+ VOPEN> Attempting to open::prep/toppar/toppar_water_ions.str::
+ OPNLGU> Unit 98 opened for READONLY access to prep/toppar/toppar_water_ions.str
+
+                    INPUT STREAM SWITCHING TO UNIT    98
+ RDTITL> * TOPLOGY AND PARAMETER INFORMATION FOR WATER AND IONS.
+ RDTITL> *
+ Parameter: IN1 <- "" <empty>
+  
+ CHARMM>     
+  
+ CHARMM>    !Testcase
+ CHARMM>    !test_water_ions.inp
+ CHARMM>     
+  
+ CHARMM>    ! IMPORTANT NOTE: this file contains NBFixes between carboxylates and sodium,
+ CHARMM>    ! which will only apply if the main files containing carboxylate atom types
+ CHARMM>    ! have been read in first!
+ CHARMM>     
+  
+ CHARMM>    !references
+ CHARMM>    !
+ CHARMM>    !TIP3P water model
+ CHARMM>    !
+ CHARMM>    !W.L. Jorgensen; J.Chandrasekhar; J.D. Madura; R.W. Impey;
+ CHARMM>    !M.L. Klein; "Comparison of simple potential functions for
+ CHARMM>    !simulating liquid water", J. Chem. Phys. 79 926-935 (1983).
+ CHARMM>    !
+ CHARMM>    !IONS
+ CHARMM>    !
+ CHARMM>    !Ions from Roux and coworkers
+ CHARMM>    !
+ CHARMM>    !Beglov, D. and Roux, B., Finite Representation of an Infinite
+ CHARMM>    !Bulk System: Solvent Boundary Potential for Computer Simulations,
+ CHARMM>    !Journal of Chemical Physics, 1994, 100: 9050-9063
+ CHARMM>    !
+ CHARMM>    !ZINC
+ CHARMM>    !
+ CHARMM>    !Stote, R.H. and Karplus, M. Zinc Binding in Proteins and
+ CHARMM>    !Solution: A Simple but Accurate Nonbonded Representation, PROTEINS:
+ CHARMM>    !Structure, Function, and Genetics 23:12-31 (1995)
+ CHARMM>     
+  
+ CHARMM>    !test "append" to determine if previous toppar files have been read and
+ CHARMM>    !add append to "read rtf card" if true
+ CHARMM>    set nat ?NATC
+ RDCMND substituted energy or value "?NATC" to "215"
+ Parameter: NAT <- "215"
+  
+ CHARMM>    set app
+ Parameter: APP <- "" <empty>
+  
+ CHARMM>    !We're exploiting what is arguably a bug in the parser. On the left hand side,
+ CHARMM>    !the quotes have priority, so NAT is correctly substituted. On the right hand
+ CHARMM>    !side, the ? has priority and NATC" (sic) is not a valid substitution...
+ CHARMM>    if "@NAT" ne "?NATC" if @nat ne 0 set app append
+ Parameter: NAT -> "215"
+ Parameter: NAT -> "215"
+ RDCMND: can not substitute energy "?NATC""
+ Comparing ""215"" and ""?NATC"".
+ IF test evaluated as true.  Performing command
+ Comparing "215" and "0".
+ IF test evaluated as true.  Performing command
+ Parameter: APP <- "APPEND"
+  
+ CHARMM>     
+  
+ CHARMM>    read rtf card @app
+ Parameter: APP -> "APPEND"
+ MAINIO> Residue topology file being read from unit  98.
+ RDTITL> * TOPOLOGY FOR WATER AND IONS
+ RDTITL> *
+  
+ CHARMM>     
+  
+ CHARMM>    read para card flex @app
+ Parameter: APP -> "APPEND"
+
+          PARAMETER FILE BEING READ FROM UNIT 98
+ RDTITL> * PARAMETERS FOR WATER AND IONS
+ RDTITL> *
+ PARMIO> NONBOND, HBOND lists and IMAGE atoms cleared.
+  
+ CHARMM>     
+  
+ CHARMM>    ! The following section contains NBFixes for sodium interacting with
+ CHARMM>    ! carboxylate oxygens of various CHARMM force fields. It will generate
+ CHARMM>    ! level -1 warnings whenever any of these force fields have not been
+ CHARMM>    ! read prior to the current stream file. Since we don't want to force
+ CHARMM>    ! the user to always read all the force fields, we're suppressing the
+ CHARMM>    ! warnings. The only side effect is that you will have "most severe
+ CHARMM>    ! warning was at level 0" at the end of your output. Also note that
+ CHARMM>    ! the user is responsible for reading the current file last if they
+ CHARMM>    ! want the NBFixes to apply. A more elegant solution would require new
+ CHARMM>    ! features to be added to CHARMM.
+ CHARMM>    ! parallel fix, to avoid duplicated messages in the log
+ CHARMM>    set para
+ Parameter: PARA <- "" <empty>
+  
+ CHARMM>    if ?NUMNODE gt 1 set para node 0
+ RDCMND substituted energy or value "?NUMNODE" to "1"
+ Comparing "1" and "1".
+ IF test evaluated as false.  Skipping command
+  
+ CHARMM>     
+  
+ CHARMM>    set wrn ?WRNLEV
+ RDCMND substituted energy or value "?WRNLEV" to "5"
+ Parameter: WRN <- "5"
+  
+ CHARMM>    ! Some versions of CHARMM don't seem to initialize wrnlev...
+ CHARMM>    if "@WRN" eq "?WRNLEV" set wrn 5
+ Parameter: WRN -> "5"
+ RDCMND: can not substitute energy "?WRNLEV""
+ Comparing ""5"" and ""?WRNLEV"".
+ IF test evaluated as false.  Skipping command
+  
+ CHARMM>    set bom ?bomlev
+ RDCMND substituted energy or value "?BOMLEV" to "-1"
+ Parameter: BOM <- "-1"
+  
+ CHARMM>    WRNLEV -1 @PARA
+ Parameter: PARA -> "" <empty>
+  
+ CHARMM>    BOMLEV -1 @PARA
+ Parameter: PARA -> "" <empty>
+  
+ CHARMM>    read para card flex append
+
+          PARAMETER FILE BEING READ FROM UNIT 98
+ RDTITL> * NBFIX BETWEEN CARBOXYLATE AND SODIUM
+ RDTITL> *
+ PARMIO> NONBOND, HBOND lists and IMAGE atoms cleared.
+  
+ CHARMM>    BOMLEV @bom @PARA
+ Parameter: BOM -> "-1"
+ Parameter: PARA -> "" <empty>
+  
+ CHARMM>    WRNLEV @wrn @PARA
+ Parameter: WRN -> "5"
+ Parameter: PARA -> "" <empty>
+  
+ CHARMM>     
+  
+ CHARMM>    return
+ VCLOSE: Closing unit   98 with status "KEEP"
+
+                    RETURNING TO INPUT STREAM    99
+  
+ CHARMM>    bomlev @bomlev
+ Parameter: BOMLEV -> "-1"
+  
+ CHARMM>     
+  
+ CHARMM>    stream prep/mslddipep.str
+ VOPEN> Attempting to open::prep/mslddipep.str::
+ OPNLGU> Unit 98 opened for READONLY access to prep/mslddipep.str
+
+                    INPUT STREAM SWITCHING TO UNIT    98
+ RDTITL> READ RTF APPEND CARD
+ RDTITL> No title read.
+ Parameter: IN1 <- "" <empty>
+  
+ CHARMM>    read rtf append card
+ MAINIO> Residue topology file being read from unit  98.
+ RDTITL> * ALL THE PATCHES
+ RDTITL> *
+  
+ VCLOSE: Closing unit   98 with status "KEEP"
+
+                    RETURNING TO INPUT STREAM    99
+  
+ CHARMM>     
+  
+ CHARMM>    read sequ coor resid segid HETA name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+ MAINIO> Sequence information being read from unit  90.
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+          RESIDUE SEQUENCE --     1 RESIDUES
+          ALAD
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    generate HETA setup
+ NO PATCHING WILL BE DONE ON THE FIRST RESIDUE
+ NO PATCHING WILL BE DONE ON THE LAST  RESIDUE
+ AUTGEN: Autogenerating specified angles and dihedrals.
+ GENPSF> Segment   1 has been generated. Its identifier is HETA.
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        1   Number of residues   =        1
+         Number of atoms         =       22   Number of groups     =        6
+         Number of bonds         =       21   Number of angles     =       36
+         Number of dihedrals     =       41   Number of impropers  =        4
+         Number of cross-terms   =        1   Number of autogens   =        0
+         Number of HB acceptors  =        0   Number of HB donors  =        0
+         Number of NB exclusions =        0   Total charge =    0.00000
+ QXFORM> Expanded format used.
+         More than 4 character atom type used.
+  
+ CHARMM>     
+  
+ CHARMM>    read coor card resid name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+          SPATIAL COORDINATES BEING READ FROM UNIT 90
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= OH2     
+ *** LEVEL  1 WARNING *** BOMLEV IS   -1
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= H1      
+ *** LEVEL  1 WARNING *** BOMLEV IS   -1
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= H2      
+ *** LEVEL  1 WARNING *** BOMLEV IS   -1
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=2        RESNAME= TIP3     TYPE= OH2     
+ *** LEVEL  1 WARNING *** BOMLEV IS   -1
+
+ ** MESSAGE **  5985 atoms in coordinate file were outside the specified sequence range.
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>     
+  
+ CHARMM>    bomlev -2
+  
+ CHARMM>     
+  
+ CHARMM>    set procount=0
+ Parameter: PROCOUNT=0 <- "" <empty>
+  
+ CHARMM>    set ii = 1
+ Parameter: II <- "1"
+  
+ CHARMM>     
+  
+ CHARMM>    define testpro select segid @segid .and. resid @resid .and. resname PRO end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      0 atoms have been selected out of     22
+  
+ CHARMM>    if ?nsel .gt. 0 then
+ RDCMND substituted energy or value "?NSEL" to "0"
+ Comparing "0" and "0".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>    set jj = 2
+ Parameter: JJ <- "2"
+  
+ CHARMM>    label patchloop
+  
+ CHARMM>    if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>     
+  
+ CHARMM>         set seqjj = @{s@@{ii}seq@@jj}
+ Parameter: JJ -> "2"
+ Parameter: II -> "1"
+ Parameter: S1SEQ2 -> "V"
+ Parameter: SEQJJ <- "V"
+  
+ CHARMM>         patch aa_@{seqjj} @segid @resid setup warn
+ Parameter: SEQJJ -> "V"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ ATOM  HETA     ALAD     1        N__V     ADDED.
+ ATOM  HETA     ALAD     1        HN_V     ADDED.
+ ATOM  HETA     ALAD     1        CA_V     ADDED.
+ ATOM  HETA     ALAD     1        HA_V     ADDED.
+ ATOM  HETA     ALAD     1        CB_V     ADDED.
+ ATOM  HETA     ALAD     1        HB_V     ADDED.
+ ATOM  HETA     ALAD     1        CG1V     ADDED.
+ ATOM  HETA     ALAD     1        HG1V     ADDED.
+ ATOM  HETA     ALAD     1        HG2V     ADDED.
+ ATOM  HETA     ALAD     1        HG3V     ADDED.
+ ATOM  HETA     ALAD     1        CG2V     ADDED.
+ ATOM  HETA     ALAD     1        HG4V     ADDED.
+ ATOM  HETA     ALAD     1        HG5V     ADDED.
+ ATOM  HETA     ALAD     1        HG6V     ADDED.
+ ATOM  HETA     ALAD     1        C__V     ADDED.
+ ATOM  HETA     ALAD     1        O__V     ADDED.
+
+ Message from MAPIC: Atom numbers are changed.
+ AUTGEN: Autogenerating specified angles and dihedrals.
+ AUTOGEN:    36 angles are removed before regeneration for selected atoms.
+ AUTOGEN:    41 dihedrals are removed before regeneration for selected atoms.
+ CHECKDH> dihedral missing angle parameters:    9    7    5   23 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    8    7    5   23 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    9   15   17   37 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   16   15   17   37 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    7    5   23   24 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    7    5   23   25 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   15   17   37   25 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   15   17   37   38 will NOT be generated
+ PATCH: Check angles and dihedrals autogenerated.
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        1   Number of residues   =        1
+         Number of atoms         =       38   Number of groups     =       11
+         Number of bonds         =       38   Number of angles     =       72
+         Number of dihedrals     =       94   Number of impropers  =        8
+         Number of cross-terms   =        2   Number of autogens   =        0
+         Number of HB acceptors  =        1   Number of HB donors  =        1
+         Number of NB exclusions =        0   Total charge =    0.00000
+  
+ CHARMM>     
+  
+ CHARMM>         if @{seqjj} .eq. p then
+ Parameter: SEQJJ -> "V"
+ Comparing "V" and "P".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>      ! no patching end residue logic needed for dipeptide
+  
+ CHARMM>      ! no links either
+  
+ CHARMM>     
+  
+ CHARMM>         calc moveit = ( @jj - 1 ) * 0.01
+ Parameter: JJ -> "2"
+Evaluating: (2-1)*0.01
+ Parameter: MOVEIT <- "1E-02"
+  
+ CHARMM>         coor dupl sele atom @segid @resid NL end sele atom @segid @resid N__@{seqjj} end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>         scalar Z add @moveit sele atom @segid @resid N__@{seqjj} end
+ Parameter: MOVEIT -> "1E-02"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>         coor dupl sele atom @segid @resid CA end sele atom @segid @resid CA_@{seqjj} end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>         scalar Z add @moveit sele atom @segid @resid CA_@{seqjj} end
+ Parameter: MOVEIT -> "1E-02"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>         coor dupl sele atom @segid @resid CRP end sele atom @segid @resid C__@{seqjj} end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>         scalar Z add @moveit sele atom @segid @resid C__@{seqjj} end
+ Parameter: MOVEIT -> "1E-02"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEQJJ -> "V"
+ SELRPN>      1 atoms have been selected out of     38
+  
+ CHARMM>     
+  
+ CHARMM>         calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+ CHARMM>         goto patchloop
+  
+ CHARMM>    if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>    read coor card resid name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+          SPATIAL COORDINATES BEING READ FROM UNIT 90
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= OH2     
+ *** LEVEL  1 WARNING *** BOMLEV IS   -2
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= H1      
+ *** LEVEL  1 WARNING *** BOMLEV IS   -2
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=1        RESNAME= TIP3     TYPE= H2      
+ *** LEVEL  1 WARNING *** BOMLEV IS   -2
+
+ ** WARNING ** For atom in coordinate file, could not find residue in PSF, and is thus ignored:
+
+  SEGID=SOLV     RESID=2        RESNAME= TIP3     TYPE= OH2     
+ *** LEVEL  1 WARNING *** BOMLEV IS   -2
+ ** WARNING ** After reading, there are no coordinates for selected atom:    24     1 ALAD     HN_V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    26     1 ALAD     HA_V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    27     1 ALAD     CB_V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    28     1 ALAD     HB_V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    29     1 ALAD     CG1V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    30     1 ALAD     HG1V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    31     1 ALAD     HG2V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    32     1 ALAD     HG3V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    33     1 ALAD     CG2V    
+ ** WARNING ** After reading, there are no coordinates for selected atom:    34     1 ALAD     HG4V    
+
+ ** A total of    13 selected atoms have no coordinates
+
+ ** WARNING ** Coordinates were overwritten for    22 atoms.
+
+ ** MESSAGE **  5985 atoms in coordinate file were outside the specified sequence range.
+ *** LEVEL  2 WARNING *** BOMLEV IS   -2
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    ic param
+  
+ CHARMM>    ic build
+  
+ CHARMM>     
+  
+ CHARMM>    set site = 1
+ Parameter: SITE <- "1"
+  
+ CHARMM>    define site@{site}suball -
+ CHARMM>      select ( segid @segid .and. resid @resid ) show end
+ Parameter: SITE -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD CL HL1 HL2 HL3 CLP OL NL HL CA HA CB HB1 HB2 HB3 CRP OR NR HR CR HR1 HR2 HR3 N__V HN_V CA_V HA_V CB_V    
+  HB_V CG1V HG1V HG2V HG3V CG2V HG4V HG5V HG6V C__V O__V    
+ SELRPN>     38 atoms have been selected out of     38
+  
+ CHARMM>    set site@{site}cats = 1
+ Parameter: SITE -> "1"
+ Parameter: SITE1CATS <- "1"
+  
+ CHARMM>    define dipepends -
+ CHARMM>      select (segid @segid .and. resid @resid .and. ( type CL .or. type CLP .or. type HL% .or. type OL .or. type CR .or. type NR .or. type HR .or. type HR% ) ) show end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD CL HL1 HL2 HL3 CLP OL NR HR CR HR1 HR2 HR3     
+ SELRPN>     12 atoms have been selected out of     38
+  
+ CHARMM>    define site@{site}sub1 -
+ CHARMM>      select (site@{site}suball .and. .not. dipepends) show end
+ Parameter: SITE -> "1"
+ Parameter: SITE -> "1"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD NL HL CA HA CB HB1 HB2 HB3 CRP OR N__V HN_V CA_V HA_V CB_V HB_V CG1V HG1V HG2V HG3V CG2V HG4V HG5V    
+  HG6V C__V O__V    
+ SELRPN>     26 atoms have been selected out of     38
+  
+ CHARMM>    set jj = 2
+ Parameter: JJ <- "2"
+  
+ CHARMM>    label seleloop
+  
+ CHARMM>    if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>     
+  
+ CHARMM>      set sub = @jj
+ Parameter: JJ -> "2"
+ Parameter: SUB <- "2"
+  
+ CHARMM>      set seqjj = @{s@@{site}seq@@jj}
+ Parameter: JJ -> "2"
+ Parameter: SITE -> "1"
+ Parameter: S1SEQ2 -> "V"
+ Parameter: SEQJJ <- "V"
+  
+ CHARMM>      define site@{site}sub@@jj sele atom @segid @resid %%%@@seqjj show end
+ Parameter: SEQJJ -> "V"
+ Parameter: JJ -> "2"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SITE -> "1"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD N__V HN_V CA_V HA_V CB_V HB_V CG1V HG1V HG2V HG3V CG2V HG4V HG5V HG6V C__V O__V    
+ SELRPN>     16 atoms have been selected out of     38
+  
+ CHARMM>      !no cap needed
+  
+ CHARMM>      !no replacement needed
+  
+ CHARMM>      define site@{site}sub1 -
+ CHARMM>             select ( -
+ CHARMM>             site@{site}sub1 .and. .not. site@{site}sub@{sub} ) show end
+ Parameter: SITE -> "1"
+ Parameter: SITE -> "1"
+ Parameter: SITE -> "1"
+ Parameter: SUB -> "2"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD NL HL CA HA CB HB1 HB2 HB3 CRP OR      
+ SELRPN>     10 atoms have been selected out of     38
+  
+ CHARMM>      calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+ CHARMM>      goto seleloop
+  
+ CHARMM>    if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>    auto angle dihe
+ AUTGEN: Autogenerating specified angles and dihedrals.
+ AUTOGEN:    72 angles are removed before regeneration for selected atoms.
+ AUTOGEN:    94 dihedrals are removed before regeneration for selected atoms.
+ CHECKDH> dihedral missing angle parameters:    9    7    5   23 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    8    7    5   23 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    9   15   17   37 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   16   15   17   37 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    7    5   23   24 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:    7    5   23   25 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   15   17   37   25 will NOT be generated
+ CHECKDH> dihedral missing angle parameters:   15   17   37   38 will NOT be generated
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        1   Number of residues   =        1
+         Number of atoms         =       38   Number of groups     =       11
+         Number of bonds         =       38   Number of angles     =       72
+         Number of dihedrals     =       94   Number of impropers  =        8
+         Number of cross-terms   =        2   Number of autogens   =        0
+         Number of HB acceptors  =        1   Number of HB donors  =        1
+         Number of NB exclusions =        0   Total charge =    0.00000
+  
+ CHARMM>    bomlev -1
+  
+ CHARMM>     
+  
+ CHARMM>    set ii = 1
+ Parameter: II <- "1"
+  
+ CHARMM>       set jj = 1
+ Parameter: JJ <- "1"
+  
+ CHARMM>       label delete1loop
+  
+ CHARMM>       if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "1"
+ Parameter: NSUBS1 -> "2"
+ Comparing "1" and "2".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>     
+  
+ CHARMM>          calc kk = @jj + 1
+ Parameter: JJ -> "1"
+Evaluating: 1+1
+ Parameter: KK <- "2"
+  
+ CHARMM>          label delete2loop
+  
+ CHARMM>          if @kk .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: KK -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>     
+  
+ CHARMM>             dele conn sele ( site@{ii}sub@{jj} ) show end sele ( site@{ii}sub@{kk} ) show end
+ Parameter: II -> "1"
+ Parameter: JJ -> "1"
+ Parameter: II -> "1"
+ Parameter: KK -> "2"
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD NL HL CA HA CB HB1 HB2 HB3 CRP OR      
+ SELRPN>     10 atoms have been selected out of     38
+ The following atoms are currently set:
+SEGId RESId RESName  .. TYPEs ..
+ HETA     1        ALAD N__V HN_V CA_V HA_V CB_V HB_V CG1V HG1V HG2V HG3V CG2V HG4V HG5V HG6V C__V O__V    
+ SELRPN>     16 atoms have been selected out of     38
+ DELTIC:         2 angles deleted
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        1   Number of residues   =        1
+         Number of atoms         =       38   Number of groups     =       11
+         Number of bonds         =       38   Number of angles     =       70
+         Number of dihedrals     =       94   Number of impropers  =        8
+         Number of cross-terms   =        2   Number of autogens   =        0
+         Number of HB acceptors  =        1   Number of HB donors  =        1
+         Number of NB exclusions =        0   Total charge =    0.00000
+  
+ CHARMM>     
+  
+ CHARMM>             calc kk = @kk + 1
+ Parameter: KK -> "2"
+Evaluating: 2+1
+ Parameter: KK <- "3"
+  
+ CHARMM>             goto delete2loop
+  
+ CHARMM>          if @kk .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: KK -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>          calc jj = @jj + 1
+ Parameter: JJ -> "1"
+Evaluating: 1+1
+ Parameter: JJ <- "2"
+  
+ CHARMM>          goto delete1loop
+  
+ CHARMM>       if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>     
+  
+ CHARMM>          calc kk = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: KK <- "3"
+  
+ CHARMM>          label delete2loop
+  
+ CHARMM>          if @kk .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: KK -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>          calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+ CHARMM>          goto delete1loop
+  
+ CHARMM>       if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>     
+  
+ CHARMM>    ! read sequ coor resid segid WT00 name "prep/step3_pbcsetup.crd"
+ CHARMM>    ! generate WT00 first none last none setup noangl nodihe
+ CHARMM>    read sequ coor resid segid SOLV name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+ MAINIO> Sequence information being read from unit  90.
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+          RESIDUE SEQUENCE --  1993 RESIDUES
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+          TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    TIP3    
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    generate SOLV first none last none setup noangl nodihe
+ NO PATCHING WILL BE DONE ON THE FIRST RESIDUE
+ NO PATCHING WILL BE DONE ON THE LAST  RESIDUE
+ GENPSF> Segment   2 has been generated. Its identifier is SOLV.
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        2   Number of residues   =     1994
+         Number of atoms         =     6017   Number of groups     =     2004
+         Number of bonds         =     6017   Number of angles     =     2063
+         Number of dihedrals     =       94   Number of impropers  =        8
+         Number of cross-terms   =        2   Number of autogens   =        0
+         Number of HB acceptors  =     1994   Number of HB donors  =     3987
+         Number of NB exclusions =        0   Total charge =    0.00000
+  
+ CHARMM>    read sequ coor resid segid IONS name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+ MAINIO> Sequence information being read from unit  90.
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+          RESIDUE SEQUENCE --     6 RESIDUES
+          SOD     SOD     SOD     CLA     CLA     CLA     
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    generate IONS setup
+ NO PATCHING WILL BE DONE ON THE FIRST RESIDUE
+ NO PATCHING WILL BE DONE ON THE LAST  RESIDUE
+ AUTGEN: Autogenerating specified angles and dihedrals.
+ GENPSF> Segment   3 has been generated. Its identifier is IONS.
+ PSFSUM> PSF modified: NONBOND lists and IMAGE atoms cleared.
+ PSFSUM> Summary of the structure file counters :
+         Number of segments      =        3   Number of residues   =     2000
+         Number of atoms         =     6023   Number of groups     =     2010
+         Number of bonds         =     6017   Number of angles     =     2063
+         Number of dihedrals     =       94   Number of impropers  =        8
+         Number of cross-terms   =        2   Number of autogens   =        0
+         Number of HB acceptors  =     1994   Number of HB donors  =     3987
+         Number of NB exclusions =        0   Total charge =    0.00000
+  
+ CHARMM>     
+  
+ CHARMM>    read coor card resid name "prep/step3_pbcsetup.crd"
+ VOPEN> Attempting to open::prep/step3_pbcsetup.crd::
+          SPATIAL COORDINATES BEING READ FROM UNIT 90
+ TITLE> * GENERATED BY CHARMM-GUI (HTTP://WWW.CHARMM-GUI.ORG) V3.7 ON FEB, 11. 2025. JOB
+ TITLE> * SETUP PERIODIC BOUNDARY CONDITION
+ TITLE> *  DATE:     2/11/25     14:57: 3      CREATED BY USER: CHARMM-GUI
+ TITLE> *
+
+ ** WARNING ** Coordinates were overwritten for    22 atoms.
+ *** LEVEL  2 WARNING *** BOMLEV IS   -1
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>     
+  
+ CHARMM>    write psf card name patch.psf
+ VOPEN> Attempting to open::patch.psf::
+ RDTITL> WRITE COOR CARD NAME PATCH.CRD
+ RDTITL> No title read.
+ VCLOSE: Closing unit   90 with status "KEEP"
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    write coor card name patch.crd
+ VOPEN> Attempting to open::patch.crd::
+ RDTITL>  
+ RDTITL> No title read.
+ VCLOSE: Closing unit   90 with status "KEEP"
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>     
+  
+ CHARMM>    PRINt COORdinate SELEct .NOT. INITialized END
+ SELRPN>      0 atoms have been selected out of   6023
+
+      ***** LEVEL  2 WARNING FROM <COORIO> *****
+      ***** ZERO ATOMS SPECIFIED TO WRITE. NO FILE CREATED
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+  
+ CHARMM>    coor stat
+ STATISTICS FOR      6023 SELECTED ATOMS:
+    XMIN =  -20.125313 XMAX =   20.349711 XAVE =    0.032617
+    YMIN =  -20.142165 YMAX =   20.202143 YAVE =   -0.026927
+    ZMIN =  -20.442929 ZMAX =   20.133634 ZAVE =    0.003162
+    WMIN =   -1.000000 WMAX =    1.000000 WAVE =    0.000000
+  
+ CHARMM>    crystal define CUBI @box @box @box 90 90 90
+ Parameter: BOX -> "40"
+ Parameter: BOX -> "40"
+ Parameter: BOX -> "40"
+ Crystal Parameters : Crystal Type = CUBI
+           A     =   40.00000 B    =   40.00000 C     =   40.00000
+           Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+  
+ CHARMM>    crystal build cutoff 15 nope 0
+ XBUILD> Building all transformations with a minimum atom-atom
+         contact distance of less than   15.00 Angstroms.
+
+ Range of Grid Search for Transformation     1 :
+ Lattice Vector A    -2 TO     2
+ Lattice Vector B    -2 TO     2
+ Lattice Vector C    -2 TO     2
+
+
+ The number of transformations generated =    26
+
+
+ Number  Symop   A   B   C   Distance
+
+      1      1  -1  -1  -1     7.0991
+      2      1  -1   0  -1     6.3324
+      3      1  -1   1  -1     6.9419
+      4      1   0  -1  -1     4.8598
+      5      1   0   0  -1     4.0308
+      6      1   0   1  -1     4.7246
+      7      1  -1  -1   0     3.5102
+      8      1  -1   0   0     1.8109
+      9      1  -1   1   0     2.9622
+     10      1   0  -1   0     2.2194
+     11      1   0   1   0     2.2194
+     12      1  -1  -1   1     6.5310
+     13      1  -1   0   1     5.0924
+     14      1  -1   1   1     6.6937
+     15      1   0  -1   1     4.7246
+     16      1   0   0   1     4.0308
+     17      1   0   1   1     4.8598
+     18      1   1   1   1     7.0991
+     19      1   1   0   1     6.3324
+     20      1   1  -1   1     6.9419
+     21      1   1   1   0     3.5102
+     22      1   1   0   0     1.8109
+     23      1   1  -1   0     2.9622
+     24      1   1   1  -1     6.5310
+     25      1   1   0  -1     5.0924
+     26      1   1  -1  -1     6.6937
+                     THERE ARE NO ROTATIONS FOR THIS TRANSFORMATION SET
+    26 Transformations have been processed.
+
+  
+ CHARMM>    image byseg xcen 0 ycen 0 zcen 0 sele .not. ( resn TIP3 .or. segid IONS ) end
+ SELRPN>     38 atoms have been selected out of   6023
+ IMAGE CENTERING ON FOR SOME ATOMS
+  
+ CHARMM>    image byres xcen 0 ycen 0 zcen 0 sele resn TIP3 .or. segid IONS end
+ SELRPN>   5985 atoms have been selected out of   6023
+ IMAGE CENTERING ON FOR SOME ATOMS
+  
+ CHARMM>     
+  
+ CHARMM>    calc blockplusone = @nblocks + 1
+ Parameter: NBLOCKS -> "2"
+Evaluating: 2+1
+ Parameter: BLOCKPLUSONE <- "3"
+  
+ CHARMM>    BLOCK @blockplusone
+ Parameter: BLOCKPLUSONE -> "3"
+ Block structure initialized with   3 blocks.
+ All atoms have been assigned to block 1.
+ All interaction coefficients have been set to unity.
+  Setting number of block exclusions nblock_excldPairs=0
+  
+  BLOCK>      clear
+ Block Structure has been turned off.
+  
+  BLOCK>    END
+  
+ CHARMM>     
+  
+ CHARMM>    if @nreps .eq. 1 then !for alad only one rep
+ Parameter: NREPS -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>      BLOCK @blockplusone
+ Parameter: BLOCKPLUSONE -> "3"
+ Block structure initialized with   3 blocks.
+ All atoms have been assigned to block 1.
+ All interaction coefficients have been set to unity.
+  Setting number of block exclusions nblock_excldPairs=0
+  
+  BLOCK>    else
+ Skip commands until next ENDIF
+  
+  BLOCK>    scat on
+Turning on MSLD scaling of constrained atoms
+Constraints must be set up with "scat k [value]"
+Warning, only works with domdec
+
+  
+  BLOCK>    scat k 118.4
+Setting k constant for MSLD scaling of
+constrained atoms
+
+  
+  BLOCK>     
+  
+  BLOCK>    set prevblock = 0
+ Parameter: PREVBLOCK <- "0"
+  
+  BLOCK>    set ii = 1
+ Parameter: II <- "1"
+  
+  BLOCK>    set jj = 1
+ Parameter: JJ <- "1"
+  
+  BLOCK>    label callloop
+  
+  BLOCK>      if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "1"
+ Parameter: NSUBS1 -> "2"
+ Comparing "1" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       calc jp1 = @jj + 1 + @prevblock
+ Parameter: JJ -> "1"
+ Parameter: PREVBLOCK -> "0"
+Evaluating: 1+1+0
+ Parameter: JP1 <- "2"
+  
+  BLOCK>     
+  
+  BLOCK>       Call @jp1 sele site@{ii}sub@{jj} end
+ Parameter: JP1 -> "2"
+ Parameter: II -> "1"
+ Parameter: JJ -> "1"
+ SELRPN>     10 atoms have been selected out of   6023
+ The selected atoms have been reassigned to block   2
+  
+  BLOCK>     
+  
+  BLOCK>       calc jj = @jj + 1
+ Parameter: JJ -> "1"
+Evaluating: 1+1
+ Parameter: JJ <- "2"
+  
+  BLOCK>       goto callloop
+  
+  BLOCK>      if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       calc jp1 = @jj + 1 + @prevblock
+ Parameter: JJ -> "2"
+ Parameter: PREVBLOCK -> "0"
+Evaluating: 2+1+0
+ Parameter: JP1 <- "3"
+  
+  BLOCK>     
+  
+  BLOCK>       Call @jp1 sele site@{ii}sub@{jj} end
+ Parameter: JP1 -> "3"
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ SELRPN>     16 atoms have been selected out of   6023
+ The selected atoms have been reassigned to block   3
+  
+  BLOCK>     
+  
+  BLOCK>       calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+  BLOCK>       goto callloop
+  
+  BLOCK>      if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>     
+  
+  BLOCK>      qldm theta
+  
+  BLOCK>      lang temp @temp
+ Parameter: TEMP -> "298.15"
+  
+  BLOCK>    if @nreps .eq. 1 then
+ Parameter: NREPS -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>      ldin 1 1.0 0.0 5.0 0.0 5.0
+  
+  BLOCK>    else
+ Skip commands until next ENDIF
+  
+  BLOCK>     
+  
+  BLOCK>    set blockassign = 0
+ Parameter: BLOCKASSIGN <- "0"
+  
+  BLOCK>    set nbiaspot = 0
+ Parameter: NBIASPOT <- "0"
+  
+  BLOCK>    set prevblock = 0
+ Parameter: PREVBLOCK <- "0"
+  
+  BLOCK>    set ii = 1
+ Parameter: II <- "1"
+  
+  BLOCK>    calc lambda0 = 1.001 - 0.001 * @nsubs@@{ii}
+ Parameter: II -> "1"
+ Parameter: NSUBS1 -> "2"
+Evaluating: 1.001-0.001*2
+ Parameter: LAMBDA0 <- "0.999"
+  
+  BLOCK>    calc nbiaspot = @nbiaspot + 5 * ( @nsubs@@{ii} * ( @nsubs@@{ii} - 1 ) ) / 2
+ Parameter: II -> "1"
+ Parameter: II -> "1"
+ Parameter: NSUBS1 -> "2"
+ Parameter: NBIASPOT -> "0"
+ Parameter: NSUBS1 -> "2"
+Evaluating: 0+5*(2*(2-1))/2
+ Parameter: NBIASPOT <- "5"
+  
+  BLOCK>    set jj = 1
+ Parameter: JJ <- "1"
+  
+  BLOCK>    label ldinloop
+  
+  BLOCK>     if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "1"
+ Parameter: NSUBS1 -> "2"
+ Comparing "1" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       calc jp1 = @jj + 1 + @prevblock
+ Parameter: JJ -> "1"
+ Parameter: PREVBLOCK -> "0"
+Evaluating: 1+1+0
+ Parameter: JP1 <- "2"
+  
+  BLOCK>     if @nreps .eq. 1 then
+ Parameter: NREPS -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>          ldin @jp1 @lambda0 0.0  5.0  @lams@@{ii}s@@{jj} 5.0
+ Parameter: JJ -> "1"
+ Parameter: II -> "1"
+ Parameter: JP1 -> "2"
+ Parameter: LAMBDA0 -> "0.999"
+ Parameter: LAMS1S1 -> "0.00"
+  
+  BLOCK>     else
+ Skip commands until next ENDIF
+  
+  BLOCK>     set lambda0 = 0.001
+ Parameter: LAMBDA0 <- "0.001"
+  
+  BLOCK>     set blockassign = @blockassign @ii
+ Parameter: BLOCKASSIGN -> "0"
+ Parameter: II -> "1"
+ Parameter: BLOCKASSIGN <- "0 1"
+  
+  BLOCK>     calc jj = @jj + 1
+ Parameter: JJ -> "1"
+Evaluating: 1+1
+ Parameter: JJ <- "2"
+  
+  BLOCK>    goto ldinloop
+  
+  BLOCK>     if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       calc jp1 = @jj + 1 + @prevblock
+ Parameter: JJ -> "2"
+ Parameter: PREVBLOCK -> "0"
+Evaluating: 2+1+0
+ Parameter: JP1 <- "3"
+  
+  BLOCK>     if @nreps .eq. 1 then
+ Parameter: NREPS -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>          ldin @jp1 @lambda0 0.0  5.0  @lams@@{ii}s@@{jj} 5.0
+ Parameter: JJ -> "2"
+ Parameter: II -> "1"
+ Parameter: JP1 -> "3"
+ Parameter: LAMBDA0 -> "0.001"
+ Parameter: LAMS1S2 -> "0.00"
+  
+  BLOCK>     else
+ Skip commands until next ENDIF
+  
+  BLOCK>     set lambda0 = 0.001
+ Parameter: LAMBDA0 <- "0.001"
+  
+  BLOCK>     set blockassign = @blockassign @ii
+ Parameter: BLOCKASSIGN -> "0 1"
+ Parameter: II -> "1"
+ Parameter: BLOCKASSIGN <- "0 1 1"
+  
+  BLOCK>     calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+  BLOCK>    goto ldinloop
+  
+  BLOCK>     if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>    rmla bonda thet impr
+ RMLAMBDA list
+  BOND T THETA T PHI F IMPHI T CMAPF UREY-BT
+  
+  BLOCK>    msld @blockassign fnex @fnex
+ Parameter: BLOCKASSIGN -> "0 1 1"
+ Parameter: FNEX -> "5.5"
+ BLOCK    1 has been assigned to SITE    0
+ BLOCK    2 has been assigned to SITE    1
+ BLOCK    3 has been assigned to SITE    1
+   2 SITES have been assigned for Multi-site Lambda-dynamics
+ EXP function selected for MSLD simulations
+ FNEXP_FACTOR:    5.50000
+  
+  BLOCK>    msma
+ WARNING: Incompatible initial lambda value for Block:            3
+ WARNING: Renormalizing initial lambda values.
+>>> BLOCK MATRIX WAS REBUILT 
+  
+  BLOCK>    thbv inde all auto
+  
+  BLOCK>     
+  
+  BLOCK>    set ii=1
+ Parameter: II=1 <- "" <empty>
+  
+  BLOCK>    set resid = @resid@@ii
+ Parameter: II -> "1"
+ Parameter: RESID1 -> "1"
+ Parameter: RESID <- "1"
+  
+  BLOCK>    set segid = @segid@@ii
+ Parameter: II -> "1"
+ Parameter: SEGID1 -> "HETA"
+ Parameter: SEGID <- "HETA"
+  
+  BLOCK>     
+  
+  BLOCK>    define testgly select atom @segid @resid HA2 end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      0 atoms have been selected out of   6023
+  
+  BLOCK>    set HA = HA
+ Parameter: HA <- "HA"
+  
+  BLOCK>    if ?nsel .eq. 1 then
+ RDCMND substituted energy or value "?NSEL" to "0"
+ Comparing "0" and "1".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>    cats sele atom @segid @resid NL .or. atom @segid @resid N__% end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      2 atoms have been selected out of   6023
+  
+  BLOCK>    cats sele atom @segid @resid CA .or. atom @segid @resid CA_% end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      2 atoms have been selected out of   6023
+  
+  BLOCK>    cats sele atom @segid @resid @HA .or. atom @segid @resid HA_% end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: HA -> "HA"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      2 atoms have been selected out of   6023
+  
+  BLOCK>    cats sele atom @segid @resid CRP .or. atom @segid @resid C__% end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      2 atoms have been selected out of   6023
+  
+  BLOCK>    cats sele atom @segid @resid OR .or. atom @segid @resid O__% end
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID -> "1"
+ SELRPN>      2 atoms have been selected out of   6023
+  
+  BLOCK>     
+  
+  BLOCK>    soft w14
+Turning on MSLD soft cores
+Applying MSLD soft cores to nonbonded and 1-4 interactions
+Warning, soft cores only work with domdec
+See Hayes et al JPC B (2017) for functional form
+
+  
+  BLOCK>    pmel ex
+Enabling PME with MSLD
+Warning, only works with domdec
+See Huang, Chen, Wallace, and Shen, JCTC (2016) for a description
+
+Using second PME exclusions strategy.
+
+  
+  BLOCK>     
+  
+  BLOCK>    calc nbiaspot = 5 * ( @nblocks * ( @nblocks - 1 ) ) / 2
+ Parameter: NBLOCKS -> "2"
+ Parameter: NBLOCKS -> "2"
+Evaluating: 5*(2*(2-1))/2
+ Parameter: NBIASPOT <- "5"
+  
+  BLOCK>    ldbi @nbiaspot
+ Parameter: NBIASPOT -> "5"
+ Total No. of biasing potentials is    5
+  
+  BLOCK>     
+  
+  BLOCK>    set ibias = 1
+ Parameter: IBIAS <- "1"
+  
+  BLOCK>    set iblock = 0
+ Parameter: IBLOCK <- "0"
+  
+  BLOCK>    set si = 1
+ Parameter: SI <- "1"
+  
+  BLOCK>    label loop5
+  
+  BLOCK>    if @si .le. @nsites then
+ Parameter: SI -> "1"
+ Parameter: NSITES -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       set jblock = @iblock
+ Parameter: IBLOCK -> "0"
+ Parameter: JBLOCK <- "0"
+  
+  BLOCK>       set sj = @si
+ Parameter: SI -> "1"
+ Parameter: SJ <- "1"
+  
+  BLOCK>       label loop5b
+  
+  BLOCK>       if @sj .le. @nsites then
+ Parameter: SJ -> "1"
+ Parameter: NSITES -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>          set ii = 1
+ Parameter: II <- "1"
+  
+  BLOCK>          label loop6
+  
+  BLOCK>          if @ii .le. @nsubs@@{si} then
+ Parameter: SI -> "1"
+ Parameter: II -> "1"
+ Parameter: NSUBS1 -> "2"
+ Comparing "1" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>             calc ip1 = @ii + 1 + @iblock
+ Parameter: II -> "1"
+ Parameter: IBLOCK -> "0"
+Evaluating: 1+1+0
+ Parameter: IP1 <- "2"
+  
+  BLOCK>             set jj = 1
+ Parameter: JJ <- "1"
+  
+  BLOCK>             if @si .eq. @sj then
+ Parameter: SI -> "1"
+ Parameter: SJ -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>                calc jj = @ii + 1
+ Parameter: II -> "1"
+Evaluating: 1+1
+ Parameter: JJ <- "2"
+  
+  BLOCK>             endif
+  
+  BLOCK>             label loop7
+  
+  BLOCK>             if @jj .le. @nsubs@@{sj} then
+ Parameter: SJ -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>                calc jp1 = @jj + 1 + @jblock
+ Parameter: JJ -> "2"
+ Parameter: JBLOCK -> "0"
+Evaluating: 2+1+0
+ Parameter: JP1 <- "3"
+  
+  BLOCK>                if @si .eq. @sj then
+ Parameter: SI -> "1"
+ Parameter: SJ -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>                   adex @ip1 @jp1
+ Parameter: IP1 -> "2"
+ Parameter: JP1 -> "3"
+ Number of block exclusions nblock_excldPairs=         160
+  
+  BLOCK>                endif
+  
+  BLOCK>     
+  
+  BLOCK>                ldbv @ibias @ip1 @jp1 6 0.0 @cs@@{si}s@@{ii}s@@{sj}s@@{jj} 0
+ Parameter: JJ -> "2"
+ Parameter: SJ -> "1"
+ Parameter: II -> "1"
+ Parameter: SI -> "1"
+ Parameter: IBIAS -> "1"
+ Parameter: IP1 -> "2"
+ Parameter: JP1 -> "3"
+ Parameter: CS1S1S1S2 -> "-0.00"
+  
+  BLOCK>                calc ibias = @ibias + 1
+ Parameter: IBIAS -> "1"
+Evaluating: 1+1
+ Parameter: IBIAS <- "2"
+  
+  BLOCK>                ldbv @ibias @ip1 @jp1 10 -5.56 @xs@@{si}s@@{ii}s@@{sj}s@@{jj} 0
+ Parameter: JJ -> "2"
+ Parameter: SJ -> "1"
+ Parameter: II -> "1"
+ Parameter: SI -> "1"
+ Parameter: IBIAS -> "2"
+ Parameter: IP1 -> "2"
+ Parameter: JP1 -> "3"
+ Parameter: XS1S1S1S2 -> "-0.00"
+  
+  BLOCK>                calc ibias = @ibias + 1
+ Parameter: IBIAS -> "2"
+Evaluating: 2+1
+ Parameter: IBIAS <- "3"
+  
+  BLOCK>                ldbv @ibias @ip1 @jp1 8 0.017 @ss@@{si}s@@{ii}s@@{sj}s@@{jj} 0
+ Parameter: JJ -> "2"
+ Parameter: SJ -> "1"
+ Parameter: II -> "1"
+ Parameter: SI -> "1"
+ Parameter: IBIAS -> "3"
+ Parameter: IP1 -> "2"
+ Parameter: JP1 -> "3"
+ Parameter: SS1S1S1S2 -> "-0.00"
+  
+  BLOCK>                calc ibias = @ibias + 1
+ Parameter: IBIAS -> "3"
+Evaluating: 3+1
+ Parameter: IBIAS <- "4"
+  
+  BLOCK>                ldbv @ibias @jp1 @ip1 10 -5.56 @xs@@{sj}s@@{jj}s@@{si}s@@{ii} 0
+ Parameter: II -> "1"
+ Parameter: SI -> "1"
+ Parameter: JJ -> "2"
+ Parameter: SJ -> "1"
+ Parameter: IBIAS -> "4"
+ Parameter: JP1 -> "3"
+ Parameter: IP1 -> "2"
+ Parameter: XS1S2S1S1 -> "-0.00"
+  
+  BLOCK>                calc ibias = @ibias + 1
+ Parameter: IBIAS -> "4"
+Evaluating: 4+1
+ Parameter: IBIAS <- "5"
+  
+  BLOCK>                ldbv @ibias @jp1 @ip1 8 0.017 @ss@@{sj}s@@{jj}s@@{si}s@@{ii} 0
+ Parameter: II -> "1"
+ Parameter: SI -> "1"
+ Parameter: JJ -> "2"
+ Parameter: SJ -> "1"
+ Parameter: IBIAS -> "5"
+ Parameter: JP1 -> "3"
+ Parameter: IP1 -> "2"
+ Parameter: SS1S2S1S1 -> "-0.00"
+  
+  BLOCK>                calc ibias = @ibias + 1
+ Parameter: IBIAS -> "5"
+Evaluating: 5+1
+ Parameter: IBIAS <- "6"
+  
+  BLOCK>                calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+  BLOCK>                goto loop7
+  
+  BLOCK>             if @jj .le. @nsubs@@{sj} then
+ Parameter: SJ -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>             calc ii = @ii + 1
+ Parameter: II -> "1"
+Evaluating: 1+1
+ Parameter: II <- "2"
+  
+  BLOCK>             goto loop6
+  
+  BLOCK>          if @ii .le. @nsubs@@{si} then
+ Parameter: SI -> "1"
+ Parameter: II -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>             calc ip1 = @ii + 1 + @iblock
+ Parameter: II -> "2"
+ Parameter: IBLOCK -> "0"
+Evaluating: 2+1+0
+ Parameter: IP1 <- "3"
+  
+  BLOCK>             set jj = 1
+ Parameter: JJ <- "1"
+  
+  BLOCK>             if @si .eq. @sj then
+ Parameter: SI -> "1"
+ Parameter: SJ -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>                calc jj = @ii + 1
+ Parameter: II -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+  BLOCK>             endif
+  
+  BLOCK>             label loop7
+  
+  BLOCK>             if @jj .le. @nsubs@@{sj} then
+ Parameter: SJ -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>             calc ii = @ii + 1
+ Parameter: II -> "2"
+Evaluating: 2+1
+ Parameter: II <- "3"
+  
+  BLOCK>             goto loop6
+  
+  BLOCK>          if @ii .le. @nsubs@@{si} then
+ Parameter: SI -> "1"
+ Parameter: II -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>          calc jblock = @jblock + @nsubs@@{sj}
+ Parameter: SJ -> "1"
+ Parameter: JBLOCK -> "0"
+ Parameter: NSUBS1 -> "2"
+Evaluating: 0+2
+ Parameter: JBLOCK <- "2"
+  
+  BLOCK>          calc sj = @sj + 1
+ Parameter: SJ -> "1"
+Evaluating: 1+1
+ Parameter: SJ <- "2"
+  
+  BLOCK>          goto loop5b
+  
+  BLOCK>       if @sj .le. @nsites then
+ Parameter: SJ -> "2"
+ Parameter: NSITES -> "1"
+ Comparing "2" and "1".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>       calc iblock = @iblock + @nsubs@@{si}
+ Parameter: SI -> "1"
+ Parameter: IBLOCK -> "0"
+ Parameter: NSUBS1 -> "2"
+Evaluating: 0+2
+ Parameter: IBLOCK <- "2"
+  
+  BLOCK>       calc si = @si + 1
+ Parameter: SI -> "1"
+Evaluating: 1+1
+ Parameter: SI <- "2"
+  
+  BLOCK>       goto loop5
+  
+  BLOCK>    if @si .le. @nsites then
+ Parameter: SI -> "2"
+ Parameter: NSITES -> "1"
+ Comparing "2" and "1".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>     
+  
+  BLOCK>    nsob @procount LEXP 2.0 RALF -1.0
+  * WARNING * <PARSUB> Command ignored. Token not found: >PROCOUNT<
+
+      ***** LEVEL  0 WARNING FROM <PARSE1> *****
+      ***** Error in parameter substitution.
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+  
+  BLOCK>    set isobo = 1
+ Parameter: ISOBO <- "1"
+  
+  BLOCK>    set ii = 1
+ Parameter: II <- "1"
+  
+  BLOCK>    label softsiteloop
+  
+  BLOCK>    if @ii .le. @nsites then
+ Parameter: II -> "1"
+ Parameter: NSITES -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>       define testpro select segid @segid .and. resid @resid@@ii .and. resname PRO end
+ Parameter: II -> "1"
+ Parameter: SEGID -> "HETA"
+ Parameter: RESID1 -> "1"
+ SELRPN>      0 atoms have been selected out of   6023
+  
+  BLOCK>       if ?nsel .gt. 0 then
+ RDCMND substituted energy or value "?NSEL" to "0"
+ Comparing "0" and "0".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>       set jj = 2
+ Parameter: JJ <- "2"
+  
+  BLOCK>       label softloop
+  
+  BLOCK>       if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "2"
+ Parameter: NSUBS1 -> "2"
+ Comparing "2" and "2".
+ IF test evaluated as true.  Performing command
+  
+  BLOCK>          if @{s@@{ii}seq@@jj} .eq. p then
+ Parameter: JJ -> "2"
+ Parameter: II -> "1"
+ Parameter: S1SEQ2 -> "V"
+ Comparing "V" and "P".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>          calc jj = @jj + 1
+ Parameter: JJ -> "2"
+Evaluating: 2+1
+ Parameter: JJ <- "3"
+  
+  BLOCK>          goto softloop
+  
+  BLOCK>       if @jj .le. @nsubs@@ii then
+ Parameter: II -> "1"
+ Parameter: JJ -> "3"
+ Parameter: NSUBS1 -> "2"
+ Comparing "3" and "2".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>       calc ii = @ii + 1
+ Parameter: II -> "1"
+Evaluating: 1+1
+ Parameter: II <- "2"
+  
+  BLOCK>       goto softsiteloop
+  
+  BLOCK>    if @ii .le. @nsites then
+ Parameter: II -> "2"
+ Parameter: NSITES -> "1"
+ Comparing "2" and "1".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+  BLOCK>     
+  
+  BLOCK>    END
+ Matrix of Interaction Coefficients
+ 
+    1.00000
+    0.99188   0.99188
+    0.00812   0.00000   0.00812
+ Matrix of BOND Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+ Matrix of ANGLE Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+ Matrix of DIHE Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+ Matrix of CROSS Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+ Matrix of ELEC Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+ Matrix of VDW Interaction Coefficients
+ 
+    1.00000
+    1.00000   1.00000
+    1.00000   1.00000   1.00000
+  
+ CHARMM>     
+  
+ VCLOSE: Closing unit   99 with status "KEEP"
+
+                    RETURNING TO INPUT STREAM     5
+  
+ CHARMM>     
+  
+ CHARMM>    ! Set nonbonded options
+ CHARMM>    open unit 101 read unform name prep/nbond.str
+ VOPEN> Attempting to open::prep/nbond.str::
+ OPNLGU> Unit101 opened for READONLY access to prep/nbond.str
+  
+ CHARMM>    if ?IOSTAT .eq. 1 then ! 1 if does exist, -1 if does not exist
+ RDCMND substituted energy or value "?IOSTAT" to "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>       stream prep/nbond.str
+ VOPEN> Attempting to open::prep/nbond.str::
+ VCLOSE: Closing unit  101 with status "KEEP"
+ OPNLGU> Unit 99 opened for READONLY access to prep/nbond.str
+
+                    INPUT STREAM SWITCHING TO UNIT    99
+ RDTITL> * NONBONDED OPTION SETUP
+ RDTITL> *
+ Parameter: IN1 <- "" <empty>
+  
+ CHARMM>     
+  
+ CHARMM>    ! ! Set nonbonded options
+ CHARMM>    ! nbonds atom -
+ CHARMM>    ! fswitch -                !! (use "switch" for openMM) Use force switch for elec-nb interactions
+ CHARMM>    ! cdie eps 1 -             !! Set constant dielectric value of 1
+ CHARMM>    ! vdw vfswitch -            !! Set nb VDW using switching function
+ CHARMM>    ! cutnb 15.0 -             !! Set nb list cut off to 15A
+ CHARMM>    ! cutim 15.0 -             !! Set image nb list cut off to 15A
+ CHARMM>    ! ctonnb 10.0 ctofnb 12.0   !! Switching function used from 10A to 12A for VDW interaction
+ CHARMM>     
+  
+ CHARMM>    ! Set nonbonded options
+ CHARMM>    nbonds atom -
+ CHARMM>     - ! fswitch -                !! Use force switch for elec-nb interactions
+ CHARMM>    cdie eps 1 -             !! Set constant dielectric value of 1
+ CHARMM>    vdw vfswitch -            !! Set nb VDW using switching function
+ CHARMM>    cutnb 12.0 -             !! Was 15.0 Set nb list cut off to 15A
+ CHARMM>    cutim 12.0 -             !! Was 15.0 Set image nb list cut off to 15A
+ CHARMM>    ctonnb 9.0 ctofnb 10.0 - !! Were 10.0 and 12.0 Switching function used from 10A to 12A for VDW interaction
+ CHARMM>    Ewald -                  !! Use Ewald electrostatics
+ CHARMM>    kappa 0.320 -            !! 0.320 makes direct space decay to 10^-5 at 10 A
+ CHARMM>    pmEwald -                !! Keyword
+ CHARMM>    order 6 -                !! Interpolation order
+ CHARMM>    fftx 40 ffty 40 fftz 40  !! Choose approximate box length
+
+ SELECTED IMAGES ATOMS BEING CENTERED ABOUT  0.000000  0.000000  0.000000
+
+ <MKIMAT2>: updating the image atom lists and remapping
+ Transformation   Atoms  Groups  Residues  Min-Distance
+    1  N1N1N1R1 has      51      17      17        3.22
+    2  N1Z0N1R1 has     375     125     125        0.51
+    3  N1P1N1R1 has      54      18      18        2.77
+    4  Z0N1N1R1 has     351     117     117        1.63
+    5  Z0Z0N1R1 has    1863     623     623        0.00
+    6  Z0P1N1R1 has     300     100     100        1.67
+    7  N1N1Z0R1 has     342     114     114        1.09
+    8  N1Z0Z0R1 has    1796     600     600        0.00
+    9  N1P1Z0R1 has     330     110     110        0.66
+   10  Z0N1Z0R1 has    1771     591     591        0.00
+   12  N1N1P1R1 has      45      15      15        1.80
+   13  N1Z0P1R1 has     339     113     113        0.53
+   14  N1P1P1R1 has      33      11      11        2.54
+ Total of13673 atoms and 4564 groups and 4554 residues were included
+
+ <PME> Total heap storage needed =      313807
+ Fill Ewald table: Number of points=     10000 EWXmax=    3.360000
+ fill erfc table: linear inter has rms error = 0.688344D-08 maximum error = 0.136719D-07
+ fill erfc table: cubic spline has rms error = 0.199973D-11 maximum error = 0.535849D-11
+
+ NONBOND OPTION FLAGS: 
+     ELEC     VDW      ATOMs    CDIElec  FSHIft   VATOm    VFSWIt  
+     BYGRoup  NOEXtnd  EWALd   
+ CUTNB  = 12.000 CTEXNB =999.000 CTONNB =  9.000 CTOFNB = 10.000
+ CGONNB =  0.000 CGOFNB = 10.000
+ WMIN   =  1.500 WRNMXD =  0.500 E14FAC =  1.000 EPS    =  1.000
+ NBXMOD =      5
+ PME EWALD OPTIONS: KAPPA  =  0.320  QCOR =  0.000  Bspline order = 6
+ FFTX=  40  FFTY=  40  FFTZ=  40
+                Using FFTW
+                Real-to-Complex FFT
+                Using Column FFT 
+ There are        0 atom  pairs and        0 atom  exclusions.
+ There are        0 group pairs and        0 group exclusions.
+ <MAKINB> with mode   5 found   6247 exclusions and     94 interactions(1-4)
+ <MAKGRP> found     43 group exclusions.
+ <MAKGRP> found      0 image group exclusions.
+ Generating nonbond list with Exclusion mode = 5
+ == PRIMARY == SPACE FOR  1089898 ATOM PAIRS AND        0 GROUP PAIRS
+ == PRIMARY == SPACE FOR  1634867 ATOM PAIRS AND        0 GROUP PAIRS
+
+ General atom nonbond list generation found:
+  1461965 ATOM PAIRS WERE FOUND FOR ATOM LIST
+    91358 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+ SPACE FOR  1861868 ATOM PAIRS AND        0 GROUP PAIRS
+
+ Image nonbond list generation found:
+   580595 ATOM PAIRS WERE FOUND FOR ATOM LIST
+        0 ATOM PAIRS WERE FOUND FOR ATOM SELF LIST
+    56803 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+  
+ VCLOSE: Closing unit   99 with status "KEEP"
+
+                    RETURNING TO INPUT STREAM     5
+  
+ CHARMM>    else
+ Skip commands until next ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>    faster on
+ MISCOM> FAST option: EXPANDED (limited fast routines)
+  
+ CHARMM>     
+  
+ CHARMM>    if @minimizeflag .eq. 1 then ! only defined in variables1.inp
+ Parameter: MINIMIZEFLAG -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>    define uninitialized select .not. initialized end
+ SELRPN>      0 atoms have been selected out of   6023
+  
+ CHARMM>    if ?nsel .eq. 0 then
+ RDCMND substituted energy or value "?NSEL" to "0"
+ Comparing "0" and "0".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>       ! domdec gpu only dlb off ndir 1 @nnodes 1
+  
+ CHARMM>       mini sd nstep 100 nprint 10 step 0.005                  !! Do min, Steepest-Decent
+
+ SELECTED IMAGES ATOMS BEING CENTERED ABOUT  0.000000  0.000000  0.000000
+
+ <MKIMAT2>: updating the image atom lists and remapping
+ Transformation   Atoms  Groups  Residues  Min-Distance
+    1  N1N1N1R1 has      51      17      17        3.22
+    2  N1Z0N1R1 has     375     125     125        0.51
+    3  N1P1N1R1 has      54      18      18        2.77
+    4  Z0N1N1R1 has     351     117     117        1.63
+    5  Z0Z0N1R1 has    1863     623     623        0.00
+    6  Z0P1N1R1 has     300     100     100        1.67
+    7  N1N1Z0R1 has     342     114     114        1.09
+    8  N1Z0Z0R1 has    1796     600     600        0.00
+    9  N1P1Z0R1 has     330     110     110        0.66
+   10  Z0N1Z0R1 has    1771     591     591        0.00
+   12  N1N1P1R1 has      45      15      15        1.80
+   13  N1Z0P1R1 has     339     113     113        0.53
+   14  N1P1P1R1 has      33      11      11        2.54
+ Total of13673 atoms and 4564 groups and 4554 residues were included
+
+ <MAKGRP> found      0 image group exclusions.
+ <PME> Total heap storage needed =      313807
+
+ NONBOND OPTION FLAGS: 
+     ELEC     VDW      ATOMs    CDIElec  FSHIft   VATOm    VFSWIt  
+     BYGRoup  NOEXtnd  EWALd   
+ CUTNB  = 12.000 CTEXNB =999.000 CTONNB =  9.000 CTOFNB = 10.000
+ CGONNB =  0.000 CGOFNB = 10.000
+ WMIN   =  1.500 WRNMXD =  0.500 E14FAC =  1.000 EPS    =  1.000
+ NBXMOD =      5
+ PME EWALD OPTIONS: KAPPA  =  0.320  QCOR =  0.000  Bspline order = 6
+ FFTX=  40  FFTY=  40  FFTZ=  40
+                Using FFTW
+                Real-to-Complex FFT
+                Using Column FFT 
+ There are  1461965 atom  pairs and     6341 atom  exclusions.
+ There are        0 group pairs and       43 group exclusions.
+ Generating nonbond list with Exclusion mode = 5
+ == PRIMARY == SPACE FOR  1634867 ATOM PAIRS AND        0 GROUP PAIRS
+
+ General atom nonbond list generation found:
+  1461965 ATOM PAIRS WERE FOUND FOR ATOM LIST
+    91358 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+ SPACE FOR  1861868 ATOM PAIRS AND        0 GROUP PAIRS
+
+ Image nonbond list generation found:
+   580595 ATOM PAIRS WERE FOUND FOR ATOM LIST
+        0 ATOM PAIRS WERE FOUND FOR ATOM SELF LIST
+    56803 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+
+
+ STEEPD> An energy minimization has been requested.
+
+ NSTEP  =          100   NPRINT =           10
+ STEP   =    0.0050000   TOLFUN =    0.0000000
+ TOLGRD =    0.0000000   TOLSTP =    0.0000000
+
+Splitting recip cores into (y by z):   1 by    1
+MINI MIN: Cycle      ENERgy      Delta-E         GRMS    Step-size
+MINI INTERN:          BONDs       ANGLes       UREY-b    DIHEdrals    IMPRopers
+MINI CROSS:           CMAPs        PMF1D        PMF2D        PRIMO
+MINI EXTERN:        VDWaals         ELEC       HBONds          ASP         USER
+MINI IMAGES:        IMNBvdw       IMELec       IMHBnd       RXNField    EXTElec
+MINI EWALD:          EWKSum       EWSElf       EWEXcl       EWQCor       EWUTil
+MINI CONSTR:       HARMonic    CDIHedral          CIC     RESDistance       NOE
+ ----------       ---------    ---------    ---------    ---------    ---------
+MINI>        0 -24600.82083      0.00000      1.33584      0.00500
+MINI INTERN>      862.17886    509.69051      0.17831      3.92899      0.07392
+MINI CROSS>         0.13000      0.00000      0.00000      0.00000
+MINI EXTERN>     3326.48983 -24953.68611      0.00000      0.00000      0.00000
+MINI IMAGES>      185.65745  -2061.26373      0.00000      0.00000      0.00000
+MINI EWALD>       118.12948-125136.76170 122544.38691      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.04645
+ ----------       ---------    ---------    ---------    ---------    ---------
+MINI>       10 -24641.54031     40.71948      0.40994      0.00039
+MINI INTERN>      869.20521    511.74572      0.20278      3.97148      0.08838
+MINI CROSS>         0.12107      0.00000      0.00000      0.00000
+MINI EXTERN>     3319.64355 -24990.87789      0.00000      0.00000      0.00000
+MINI IMAGES>      182.92820  -2061.89466      0.00000      0.00000      0.00000
+MINI EWALD>       117.31456-125136.76170 122542.71497      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.05802
+ ----------       ---------    ---------    ---------    ---------    ---------
+MINI>       20 -24658.29047     16.75016      0.80288      0.00042
+MINI INTERN>      871.36391    512.26393      0.17932      3.97198      0.09825
+MINI CROSS>         0.09913      0.00000      0.00000      0.00000
+MINI EXTERN>     3319.60634 -25008.11103      0.00000      0.00000      0.00000
+MINI IMAGES>      181.61753  -2061.98646      0.00000      0.00000      0.00000
+MINI EWALD>       116.96634-125136.76170 122542.35290      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.04909
+ ----------       ---------    ---------    ---------    ---------    ---------
+MINI>       30 -24671.87720     13.58673      0.86752      0.00045
+MINI INTERN>      872.34528    512.35922      0.15238      3.96579      0.10386
+MINI CROSS>         0.07651      0.00000      0.00000      0.00000
+MINI EXTERN>     3320.22114 -25021.67837      0.00000      0.00000      0.00000
+MINI IMAGES>      180.69755  -2062.31158      0.00000      0.00000      0.00000
+MINI EWALD>       116.69898-125136.76170 122542.20971      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.04404
+ ----------       ---------    ---------    ---------    ---------    ---------
+MINI>       40 -24683.78448     11.90728      1.00286      0.00048
+MINI INTERN>      873.56097    512.58232      0.13621      3.95749      0.10946
+MINI CROSS>         0.05206      0.00000      0.00000      0.00000
+MINI EXTERN>     3321.11693 -25034.26305      0.00000      0.00000      0.00000
+MINI IMAGES>      179.94487  -2062.78544      0.00000      0.00000      0.00000
+MINI EWALD>       116.45361-125136.76170 122542.06993      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.04186
+ ----------       ---------    ---------    ---------    ---------    ---------
+ UPDECI: Image update at step        50
+
+ <MKIMAT2>: updating the image atom lists and remapping
+ Transformation   Atoms  Groups  Residues  Min-Distance
+    1  N1N1N1R1 has      51      17      17        3.19
+    2  N1Z0N1R1 has     375     125     125        0.54
+    3  N1P1N1R1 has      54      18      18        2.80
+    4  Z0N1N1R1 has     351     117     117        1.62
+    5  Z0Z0N1R1 has    1863     623     623        0.00
+    6  Z0P1N1R1 has     300     100     100        1.68
+    7  N1N1Z0R1 has     342     114     114        1.11
+    8  N1Z0Z0R1 has    1793     599     599        0.00
+    9  N1P1Z0R1 has     330     110     110        0.67
+   10  Z0N1Z0R1 has    1771     591     591        0.00
+   12  N1N1P1R1 has      45      15      15        1.80
+   13  N1Z0P1R1 has     342     114     114        0.55
+   14  N1P1P1R1 has      33      11      11        2.59
+ Total of13673 atoms and 4564 groups and 4554 residues were included
+
+ <MAKGRP> found      0 image group exclusions.
+ UPDECI: Nonbond update at step        50
+ Generating nonbond list with Exclusion mode = 5
+ == PRIMARY == SPACE FOR  1634867 ATOM PAIRS AND        0 GROUP PAIRS
+
+ General atom nonbond list generation found:
+  1461942 ATOM PAIRS WERE FOUND FOR ATOM LIST
+    91418 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+ SPACE FOR  1861868 ATOM PAIRS AND        0 GROUP PAIRS
+
+ Image nonbond list generation found:
+   580582 ATOM PAIRS WERE FOUND FOR ATOM LIST
+        0 ATOM PAIRS WERE FOUND FOR ATOM SELF LIST
+    56777 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+MINI>       50 -24694.58458     10.80009      0.97320      0.00052
+MINI INTERN>      874.01520    512.57120      0.12639      3.94973      0.11380
+MINI CROSS>         0.02851      0.00000      0.00000      0.00000
+MINI EXTERN>     3322.08925 -25045.07157      0.00000      0.00000      0.00000
+MINI IMAGES>      179.39177  -2063.35247      0.00000      0.00000      0.00000
+MINI EWALD>       116.26859-125136.76170 122542.00489      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.04185
+ ----------       ---------    ---------    ---------    ---------    ---------
+MINI>       60 -24704.05259      9.46802      1.06370      0.00056
+MINI INTERN>      874.96246    512.74005      0.12140      3.94226      0.11898
+MINI CROSS>         0.00333      0.00000      0.00000      0.00000
+MINI EXTERN>     3323.14962 -25055.28425      0.00000      0.00000      0.00000
+MINI IMAGES>      178.96468  -2064.05041      0.00000      0.00000      0.00000
+MINI EWALD>       116.09054-125136.76170 122541.90723      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.04323
+ ----------       ---------    ---------    ---------    ---------    ---------
+MINI>       70 -24713.38608      9.33348      1.16390      0.00060
+MINI INTERN>      875.98318    512.95657      0.11805      3.93509      0.12475
+MINI CROSS>        -0.02505      0.00000      0.00000      0.00000
+MINI EXTERN>     3324.33148 -25065.52239      0.00000      0.00000      0.00000
+MINI IMAGES>      178.63828  -2064.93286      0.00000      0.00000      0.00000
+MINI EWALD>       115.91528-125136.76170 122541.80753      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.04571
+ ----------       ---------    ---------    ---------    ---------    ---------
+MINI>       80 -24724.75521     11.36913      0.26850      0.00027
+MINI INTERN>      873.51168    511.95225      0.11397      3.93158      0.12507
+MINI CROSS>        -0.04543      0.00000      0.00000      0.00000
+MINI EXTERN>     3325.38444 -25073.68764      0.00000      0.00000      0.00000
+MINI IMAGES>      178.45272  -2065.80176      0.00000      0.00000      0.00000
+MINI EWALD>       115.92722-125136.76170 122542.09415      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.04824
+ ----------       ---------    ---------    ---------    ---------    ---------
+MINI>       90 -24733.90206      9.14685      0.49464      0.00029
+MINI INTERN>      874.36635    511.96462      0.11302      3.92646      0.13038
+MINI CROSS>        -0.07632      0.00000      0.00000      0.00000
+MINI EXTERN>     3326.72082 -25083.59164      0.00000      0.00000      0.00000
+MINI IMAGES>      178.32665  -2067.01466      0.00000      0.00000      0.00000
+MINI EWALD>       115.82101-125136.76170 122542.12099      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.05198
+ ----------       ---------    ---------    ---------    ---------    ---------
+ UPDECI: Image update at step       100
+
+ <MKIMAT2>: updating the image atom lists and remapping
+ Transformation   Atoms  Groups  Residues  Min-Distance
+    1  N1N1N1R1 has      51      17      17        3.17
+    2  N1Z0N1R1 has     375     125     125        0.55
+    3  N1P1N1R1 has      54      18      18        2.83
+    4  Z0N1N1R1 has     351     117     117        1.62
+    5  Z0Z0N1R1 has    1863     623     623        0.00
+    6  Z0P1N1R1 has     300     100     100        1.69
+    7  N1N1Z0R1 has     342     114     114        1.11
+    8  N1Z0Z0R1 has    1790     598     598        0.00
+    9  N1P1Z0R1 has     333     111     111        0.67
+   10  Z0N1Z0R1 has    1777     593     593        0.00
+   12  N1N1P1R1 has      42      14      14        1.78
+   13  N1Z0P1R1 has     345     115     115        0.55
+   14  N1P1P1R1 has      33      11      11        2.61
+ Total of13679 atoms and 4566 groups and 4556 residues were included
+
+ <MAKGRP> found      0 image group exclusions.
+ UPDECI: Nonbond update at step       100
+ Generating nonbond list with Exclusion mode = 5
+ == PRIMARY == SPACE FOR  1634867 ATOM PAIRS AND        0 GROUP PAIRS
+
+ General atom nonbond list generation found:
+  1461927 ATOM PAIRS WERE FOUND FOR ATOM LIST
+    91457 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+ SPACE FOR  1861868 ATOM PAIRS AND        0 GROUP PAIRS
+
+ Image nonbond list generation found:
+   580644 ATOM PAIRS WERE FOUND FOR ATOM LIST
+        0 ATOM PAIRS WERE FOUND FOR ATOM SELF LIST
+    56777 GROUP PAIRS REQUIRED ATOM SEARCHES
+
+MINI>      100 -24742.26164      8.35958      0.34078      0.00031
+MINI INTERN>      874.58420    512.05204      0.11330      3.92090      0.13659
+MINI CROSS>        -0.10725      0.00000      0.00000      0.00000
+MINI EXTERN>     3327.90175 -25091.95601      0.00000      0.00000      0.00000
+MINI IMAGES>      178.30099  -2068.18771      0.00000      0.00000      0.00000
+MINI EWALD>       115.67598-125136.76170 122542.00991      0.00000      0.00000
+MINI CONSTR>        0.00000      0.00000      0.00000      0.00000      0.05537
+ ----------       ---------    ---------    ---------    ---------    ---------
+
+ STEEPD> Minimization exiting with number of steps limit (       100) exceeded.
+
+STPD MIN: Cycle      ENERgy      Delta-E         GRMS    Step-size
+STPD INTERN:          BONDs       ANGLes       UREY-b    DIHEdrals    IMPRopers
+STPD CROSS:           CMAPs        PMF1D        PMF2D        PRIMO
+STPD EXTERN:        VDWaals         ELEC       HBONds          ASP         USER
+STPD IMAGES:        IMNBvdw       IMELec       IMHBnd       RXNField    EXTElec
+STPD EWALD:          EWKSum       EWSElf       EWEXcl       EWQCor       EWUTil
+STPD CONSTR:       HARMonic    CDIHedral          CIC     RESDistance       NOE
+ ----------       ---------    ---------    ---------    ---------    ---------
+STPD>      100 -24742.26164      8.35958      0.34078      0.00037
+STPD INTERN>      874.58420    512.05204      0.11330      3.92090      0.13659
+STPD CROSS>        -0.10725      0.00000      0.00000      0.00000
+STPD EXTERN>     3327.90175 -25091.95601      0.00000      0.00000      0.00000
+STPD IMAGES>      178.30099  -2068.18771      0.00000      0.00000      0.00000
+STPD EWALD>       115.67598-125136.76170 122542.00991      0.00000      0.00000
+STPD CONSTR>        0.00000      0.00000      0.00000      0.00000      0.05537
+ ----------       ---------    ---------    ---------    ---------    ---------
+  
+ CHARMM>       write psf card name prep/minimized.psf
+ VOPEN> Attempting to open::prep/minimized.psf::
+ RDTITL> * AFTER MINIMIZATION PSF
+ RDTITL> *
+ VCLOSE: Closing unit   90 with status "KEEP"
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>       write coor card name "prep/minimized.crd"
+ VOPEN> Attempting to open::prep/minimized.crd::
+ RDTITL> * PATCH CRD FILE
+ RDTITL> *
+ VCLOSE: Closing unit   90 with status "KEEP"
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>     
+  
+ CHARMM>     
+  
+ CHARMM>    else
+ Skip commands until next ENDIF
+  
+ CHARMM>    endif
+  
+ CHARMM>     
+  
+ CHARMM>    bomblev -1
+  
+ CHARMM>    open unit 101 read unform name "prep/minimized.crd"
+ VOPEN> Attempting to open::prep/minimized.crd::
+ OPNLGU> Unit101 opened for READONLY access to prep/minimized.crd
+  
+ CHARMM>    if ?IOSTAT .eq. 1 then ! 1 if does exist, -1 if does not exist
+ RDCMND substituted energy or value "?IOSTAT" to "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>       read coor card resid name "prep/minimized.crd"
+ VOPEN> Attempting to open::prep/minimized.crd::
+ VCLOSE: Closing unit  101 with status "KEEP"
+          SPATIAL COORDINATES BEING READ FROM UNIT 90
+ TITLE> * PATCH CRD FILE
+ TITLE> *  DATE:     4/28/25     16:15:14      CREATED BY USER: CYEH5
+ TITLE> *
+
+ ** WARNING ** Coordinates were overwritten for  6023 atoms.
+ *** LEVEL  2 WARNING *** BOMLEV IS   -1
+ VCLOSE: Closing unit   90 with status "KEEP"
+  
+ CHARMM>    else
+ Skip commands until next ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>     
+  
+ CHARMM>    !---------------------------------------------------------------------------
+ CHARMM>    ! Setup of dynamics run
+ CHARMM>    !---------------------------------------------------------------------------
+ CHARMM>     
+  
+ CHARMM>    if @nreps .eq. 1 then
+ Parameter: NREPS -> "1"
+ Comparing "1" and "1".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>       set myrep = 0
+ Parameter: MYREP <- "0"
+  
+ CHARMM>    else
+ Skip commands until next ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>    shake fast bonh param
+ SHKCOM> SHAKE parameters: TOL =   0.1000D-09 MXITer =    500
+
+            6000 constraints will held by SHAKE.
+ FSSHKINI: Fast shake initialized with      21 bond contraints and     1993 water constraints (3-center).
+ FSSHKINI:       21 constraints are in groups of:     1993
+ FSSHKINI:      6 2-body (CH),      0 3-body(CH2),      5 4-body(CH3),      0 >4-body. 
+ FSSHKINI: Fast shake initialized with      21 bond contraints and     1993 water constraints (3-center).
+ FSSHKINI:       21 constraints are in groups of:     1993
+ FSSHKINI:      6 2-body (CH),      0 3-body(CH2),      5 4-body(CH3),      0 >4-body. 
+   ==== COLLCT_FSTSHK ====
+ FSSHKINI: =========== Totals for all nodes:    6000 total constraints
+ FSSHKINI: Fast shake initialized with      21 bond contraints and     1993 water constraints (3-center).
+ FSSHKINI:      6 2-body (CH),      0 3-body(CH2),      5 4-body(CH3),      0 >4-body. 
+  
+ CHARMM>    scalar fbeta set 0.1 sele all end
+ SELRPN>   6023 atoms have been selected out of   6023
+  
+ CHARMM>     
+  
+ CHARMM>    ! domdec gpu only dlb off ndir 1 @nnodes 1
+ CHARMM>     
+  
+ CHARMM>    !! Heating run
+ CHARMM>    open unit 21 write unform name "dcd/@{SYSNAME}_heat.dcd"
+ Parameter: SYSNAME -> "aladsetup"
+ VOPEN> Attempting to open::dcd/aladsetup_heat.dcd::
+ OPNLGU> Unit 21 opened for WRITE access to dcd/aladsetup_heat.dcd
+  
+ CHARMM>    open unit 22 write form name "res/@{SYSNAME}_heat.res"
+ Parameter: SYSNAME -> "aladsetup"
+ VOPEN> Attempting to open::res/aladsetup_heat.res::
+ OPNLGU> Unit 22 opened for WRITE access to res/aladsetup_heat.res
+  
+ CHARMM>    open unit 24 write file name "res/@{SYSNAME}_heat.lmd"
+ Parameter: SYSNAME -> "aladsetup"
+ VOPEN> Attempting to open::res/aladsetup_heat.lmd::
+ OPNLGU> Unit 24 opened for WRITE access to res/aladsetup_heat.lmd
+  
+ CHARMM>    if nreps .gt. 1 then
+ Comparing "1" and "1".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>    if @?restartfile eq 0 then
+ Comparing "0" and "0".
+ IF test evaluated as true.  Performing command
+  
+ CHARMM>    set resttoken = start
+ Parameter: RESTTOKEN <- "START"
+  
+ CHARMM>    set iurest = -1
+ Parameter: IUREST <- "-1"
+  
+ CHARMM>    else
+ Skip commands until next ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>    calc seed = @seed
+ Parameter: SEED -> "48912"
+Evaluating: 48912
+ Parameter: SEED <- "48912"
+  
+ CHARMM>    calc pmass = ?natom * 0.12
+ RDCMND substituted energy or value "?NATOM" to "6023"
+Evaluating: 6023*0.12
+ Parameter: PMASS <- "722.76"
+  
+ CHARMM>    dynamics cpt @resttoken -
+ CHARMM>      blade prmc iprs 100 pref 1 prdv 100 -
+ CHARMM>      iseed @seed @seed @seed @seed -
+ CHARMM>      timestep 0.002 -      !!timestep interval
+ CHARMM>      nstep @esteps -       !!no. of steps  (== 200 ps)
+ CHARMM>      nprint 1000 -         !!freq of printout
+ CHARMM>      iprfrq 1000 -         !!freq of calc avg/rms energy
+ CHARMM>      nsavc 1000 -          !!freq of writing coordinates
+ CHARMM>      nsavl 10 -            !!freq of writing lambda histograms
+ CHARMM>      isvfrq @esteps -      !!freq of writing out restart files
+ CHARMM>      iunread @iurest -     !!read restart file
+ CHARMM>      iuncrd 21 -           !!write out coordinates
+ CHARMM>      iunwri 22 -           !!write out restart file
+ CHARMM>      iunldm 24 -           !!write out lambda histograms and biasing potential
+ CHARMM>      firstt @temp -        !!initial temp
+ CHARMM>      finalt @temp -        !!final temp
+ CHARMM>      tstruc @temp -        !!temp at which starting structure has been equilibrated
+ CHARMM>      tbath @temp -         !!temp of langevin bath
+ CHARMM>      pconstant -           !! use constant pressure (pressure.doc recommendations)
+ CHARMM>      pmass @pmass -        !! pressure "mass" 2% of mass or 400.0 amu
+ CHARMM>      pref 1.0 -            !! pressure in atm
+ CHARMM>      pgamma 20.0 -         !! pressure collision frequency
+ CHARMM>      hoover -
+ CHARMM>      reft @temp -
+ CHARMM>      tmass 1000 -
+ CHARMM>      ichecw 0 -            !!do not scale velocities to final temp (i.e. equilibrate)
+ CHARMM>      ihtfrq 0 -            !!freq of heating
+ CHARMM>      ieqfrq 0 -            !!freq of scaling/assigning velocity(X)
+ CHARMM>      iasors 1 -            !!assign velocities during heating (0 will be scale velocities)
+ CHARMM>      iasvel 1 -            !!using gaussian distribution to assign velocities
+ CHARMM>      iscvel 0 -
+ CHARMM>      inbfrq 0 - ! -1 -
+ CHARMM>      ilbfrq 0 -
+ CHARMM>      imgfrq 0 - ! -1 -
+ CHARMM>      ntrfrq 0 - ! 500 -
+ CHARMM>      echeck -1             !!energy tolerance check before crashing
+ Parameter: RESTTOKEN -> "START"
+ Parameter: SEED -> "48912"
+ Parameter: SEED -> "48912"
+ Parameter: SEED -> "48912"
+ Parameter: SEED -> "48912"
+ Parameter: ESTEPS -> "13000"
+ Parameter: ESTEPS -> "13000"
+ Parameter: IUREST -> "-1"
+ Parameter: TEMP -> "298.15"
+ Parameter: TEMP -> "298.15"
+ Parameter: TEMP -> "298.15"
+ Parameter: TEMP -> "298.15"
+ Parameter: PMASS -> "722.76"
+ Parameter: TEMP -> "298.15"
+  IUNREA = -1         IUNWRI = 22          IUNOS = -1
+  IUNCRD = 21         IUNVEL = -1          KUNIT = -1
+  IUNLDM = 24
+ DCNTRL> Constant pressure requested.
+         Reference pressure tensor (XX,YY,ZZ)=        1.0       1.0       1.0 atm.
+
+         Reference pressure tensor (XY,XZ,YZ)=        0.0       0.0       0.0 atm.
+
+ DCNTRL> Langevin integration requested.
+ DCNTRL>  BLaDE interface requested for energy and dynamics calculations.
+ DCNTRL>  CPT dynamics through BLaDE interface requested using Langevin heatbath.
+ DCNTRL>  MC barostat coupled to reference pressure    1.00  atmospheres.
+ DCNTRL>  MC barostat using reference temperature  298.15  K.
+ DCNTRL>  MC barostat volume move attempted every    100  timesteps.
+ DCNTRL>  MC barostat volume move size  100.00  A^3
+   NSTEP =    13000    NSAVC =     1000    NSAVV =       10
+  ISCALE =        0   ISCVEL =        0   IASORS =        1
+  IASVEL =        1   ICHECW =        0   NTRFRQ =        0
+  IHTFRQ =        0   IEQFRQ =        0   NPRINT =     1000
+  INBFRQ =        0   IHBFRQ =        0   IPRFRQ =    13000
+  ILBFRQ =        0   IMGFRQ =        0
+  ISVFRQ =    13000   NCYCLE =    13000    NSNOS =       10
+  FIRSTT =   298.150  TEMINC =     5.000  TSTRUC =   298.150
+  FINALT =   298.150  TWINDH =    10.000  TWINDL =   -10.000
+
+  TIME STEP =  4.09097E-02 AKMA       2.00000E-03 PS
+
+  RANDOM NUM. GEN. SEED(S) = 48912 48912 48912 48912
+
+           SHAKE TOLERANCE =     0.10000E-09
+ NUMBER OF DEGREES OF FREEDOM =  12071
+
+          GAUSSIAN OPTION                  IS            1
+          VELOCITIES ASSIGNED AT TEMPERATURE =    298.1500
+          SEED FOR RANDOM NUMBER GENERATOR IS:
+          SEEDS> 48912 48912 48912 48912
+
+     DETAILS ABOUT CENTRE OF MASS
+     POSITION          :   2.89342381E-02  -3.02501085E-02   3.27258866E-02
+     VELOCITY          :   7.40125132E-03  -2.67707769E-03   4.87232357E-03
+     ANGULAR MOMENTUM  :   -5540.8254        1287.4722        2512.7107    
+     KINETIC ENERGY    :    1.5561782    
+Creating a copy of system
+allocating kcmap=0xa6c4d10
+allocating kcmap=0xa6c4d10
+allocating kcmap=0xa6c4d10
+allocating kcmap=0xa6c4d10
+allocating kcmap=0xa6c4d10
+allocating kcmap=0xa6c4d10
+Assuming fbeta =    0.00489
+
+      ***** LEVEL  1 WARNING FROM BLaDe *****
+      ***** PME being used for electrostatics in BLaDE
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+
+      ***** LEVEL  1 WARNING FROM BLaDe *****
+      ***** VFSWITCH being used for vdW switching in BLaDE
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+Found pme kappa =    0.32000
+Found ctofnb =   10.00000 ctonnb =    9.00000
+Warning: Both elec and vdw energies placed in vdw
+PME grid(0) size: 40
+PME grid(1) size: 40
+PME grid(2) size: 40
+maxBlocks=225
+The following parameters are set heuristically at /share/crsp/lab/rhayes1/share/git/CHARMM/dev-release/source/blade/src/domdec/domdec.cu:120, and can cause errors if set too low
+maxPartnersPerBlock=603
+freqDomdec=10 (how many steps before domain reset)
+cullPad=3.44948 (spatial padding for considering which blocks could interact
+maxBlockExclCount=1617 (can reallocate dynamically with "run setvariable domdecheuristic off")
+BLaDE: Velocities scaled or randomized
+DYNA DYN: Step         Time      TOTEner        TOTKe       ENERgy  TEMPerature
+DYNA PROP:             GRMS      HFCTote        HFCKe       EHFCor        VIRKe
+DYNA INTERN:          BONDs       ANGLes       UREY-b    DIHEdrals    IMPRopers
+DYNA CROSS:           CMAPs        PMF1D        PMF2D        PRIMO
+DYNA EXTERN:        VDWaals         ELEC       HBONds          ASP         USER
+DYNA EWALD:          EWKSum       EWSElf       EWEXcl       EWQCor       EWUTil
+DYNA PRESS:            VIRE         VIRI       PRESSE       PRESSI       VOLUme
+ ----------       ---------    ---------    ---------    ---------    ---------
+DYNA>        0      0.00000 -19836.64609   3537.59186 -23374.23795    294.95439
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        0.49355      4.01879      0.91451      3.92089      0.12992
+DYNA CROSS>        -0.10725      0.00000      0.00000      0.00000
+DYNA EXTERN>   -21109.66773      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       126.31430-125136.77100 122736.45801      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   40.00000 B    =   40.00000 C     =   40.00000
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     1000      2.00000 -19354.82564   2554.03270 -21908.85834    212.94801
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.65969     12.29015      2.67877      3.99071      1.53913
+DYNA CROSS>        -0.07236      0.00000      0.00000      0.00000
+DYNA EXTERN>   -19628.31401      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>        97.44410-125129.06006 122725.16089      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.78527 B    =   39.78527 C     =   39.78527
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     2000      4.00000 -18920.70882   2681.30216 -21602.01099    223.55938
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.46378     14.49822      2.12565      4.91696      2.28378
+DYNA CROSS>        -1.10692      0.00000      0.00000      0.00000
+DYNA EXTERN>   -19327.97045      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       108.41865-125111.00586 122699.13721      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.71571 B    =   39.71571 C     =   39.71571
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     3000      6.00000 -18616.43215   2869.10305 -21485.53519    239.21768
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        5.02898     11.36106      1.75680      5.73203      0.43300
+DYNA CROSS>         0.26045      0.00000      0.00000      0.00000
+DYNA EXTERN>   -19217.02083      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       116.51594-125111.27295 122699.05420      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.65448 B    =   39.65448 C     =   39.65448
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     4000      8.00000 -18388.35149   2878.68965 -21267.04114    240.01699
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        5.74608     17.83018      2.05192      4.83967      0.20933
+DYNA CROSS>         0.19021      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18997.71112      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       109.40378-125110.89014 122699.00488      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.60136 B    =   39.60136 C     =   39.60136
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     5000     10.00000 -18222.64890   2953.88844 -21176.53734    246.28685
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.61660     12.38557      0.83658      6.32090      1.56372
+DYNA CROSS>         0.59552      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18902.87730      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       111.34548-125110.89893 122699.10376      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.51321 B    =   39.51321 C     =   39.51321
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     6000     12.00000 -17906.41892   3078.55171 -20984.97063    256.68092
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.62785     13.11228      1.48466      4.10354      0.24909
+DYNA CROSS>         0.72856      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18715.77657      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       117.72891-125110.97461 122699.20605      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.53725 B    =   39.53725 C     =   39.53725
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     7000     14.00000 -17627.88330   3101.28090 -20729.16420    258.57602
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.00872     16.34636      1.55343      3.68165      0.29090
+DYNA CROSS>        -2.13730      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18456.90491      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       115.93415-125111.74072 122699.77808      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.33525 B    =   39.33525 C     =   39.33525
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     8000     16.00000 -17465.50120   3289.51436 -20755.01557    274.27039
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.68897     15.34927      2.48111      5.44734      0.87606
+DYNA CROSS>        -0.62440      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18493.16802      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       118.58786-125113.42773 122703.17822      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.32330 B    =   39.32330 C     =   39.32330
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     9000     18.00000 -17348.80932   3264.60237 -20613.41169    272.19330
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        5.93086     13.77711      1.24182      6.20105      0.80351
+DYNA CROSS>        -1.43583      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18342.66962      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       112.51475-125112.34473 122701.76807      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.30839 B    =   39.30839 C     =   39.30839
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    10000     20.00000 -17258.56314   3285.93808 -20544.50122    273.97221
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.88102     16.28100      1.36974      4.31295      0.91716
+DYNA CROSS>        -0.86549      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18276.09771      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       117.90710-125110.96533 122699.09082      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.29688 B    =   39.29688 C     =   39.29688
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    11000     22.00000 -17125.33062   3303.85017 -20429.18079    275.46567
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        6.35789     14.89768      2.06080      4.74227      0.13210
+DYNA CROSS>         0.33393      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18175.64760      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       128.25094-125114.72754 122703.30176      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.24892 B    =   39.24892 C     =   39.24892
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    12000     24.00000 -17077.77973   3394.82964 -20472.60937    283.05128
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.96794     13.04279      2.00883      6.06855      1.25654
+DYNA CROSS>        -1.49751      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18215.41021      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       129.96815-125112.89893 122700.97388      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.26467 B    =   39.26467 C     =   39.26467
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    13000     26.00000 -16993.42664   3424.25996 -20417.68660    285.50509
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        5.32066     10.60224      1.02020      6.02081      1.22686
+DYNA CROSS>        -1.30863      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18153.99985      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       123.79294-125110.94043 122698.98047      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.09671 B    =   39.09671 C     =   39.09671
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+
+     13   COORDINATE SETS STARTING FROM
+     STEP NO     1000   FOR EVERY  1000  STEPS
+     WRITTEN ON UNIT   21
+
+ VCLOSE: Closing unit   21 with status "KEEP"
+
+        1300   LAMBDA SETS STARTING FROM
+     STEP NO      13000   FOR EVERY    10  STEPS
+     WRITTEN ON UNIT   24
+
+ VCLOSE: Closing unit   24 with status "KEEP"
+ WRIDYN: RESTart file was written at step   13000
+ VCLOSE: Closing unit   22 with status "KEEP"
+
+     DETAILS ABOUT CENTRE OF MASS
+     POSITION          :  -0.10771344      -9.57522738E-02   0.10909861    
+     VELOCITY          :   5.01183840E-03  -2.62897163E-03  -1.05756882E-03
+     ANGULAR MOMENTUM  :    1552.3136       -261.71919        1603.3496    
+     KINETIC ENERGY    :   0.60203120    
+  
+ CHARMM>     
+  
+ CHARMM>    !! Production flattening run
+ CHARMM>    open unit 21 write unform name "dcd/@{SYSNAME}_flat.dcd"
+ Parameter: SYSNAME -> "aladsetup"
+ VOPEN> Attempting to open::dcd/aladsetup_flat.dcd::
+ OPNLGU> Unit 21 opened for WRITE access to dcd/aladsetup_flat.dcd
+  
+ CHARMM>    open unit 22 write form name "res/@{SYSNAME}_flat.res"
+ Parameter: SYSNAME -> "aladsetup"
+ VOPEN> Attempting to open::res/aladsetup_flat.res::
+ OPNLGU> Unit 22 opened for WRITE access to res/aladsetup_flat.res
+  
+ CHARMM>    ! open unit 23 read form name "res/@{SYSNAME}_heat.res"
+ CHARMM>    open unit 24 write file name "res/@{SYSNAME}_flat.lmd"
+ Parameter: SYSNAME -> "aladsetup"
+ VOPEN> Attempting to open::res/aladsetup_flat.lmd::
+ OPNLGU> Unit 24 opened for WRITE access to res/aladsetup_flat.lmd
+  
+ CHARMM>    if nreps .gt. 1 then
+ Comparing "1" and "1".
+ IF test evaluated as false.  Skip to ELSE or ENDIF
+  
+ CHARMM>     
+  
+ CHARMM>    calc pmass = ?natom * 0.12
+ RDCMND substituted energy or value "?NATOM" to "6023"
+Evaluating: 6023*0.12
+ Parameter: PMASS <- "722.76"
+  
+ CHARMM>    dynamics cpt start -
+ CHARMM>      blade prmc iprs 100 pref 1 prdv 100 -
+ CHARMM>      timestep 0.002 -      !!timestep interval
+ CHARMM>      nstep  @nsteps -      !!no. of steps  (== 2 ns)
+ CHARMM>      nprint 1000 -         !!freq of printout
+ CHARMM>      iprfrq 1000 -         !!freq of calc avg/rms energy
+ CHARMM>      nsavc 1000 -          !!freq of writing coordinates
+ CHARMM>      nsavl 10 -            !!freq of writing lambda histograms
+ CHARMM>      isvfrq @nsteps -      !!freq of writing out restart files
+ CHARMM>      iunread -1 - ! 23 -   !!read restart file
+ CHARMM>      iuncrd 21 -           !!write out coordinates
+ CHARMM>      iunwri 22 -           !!write out restart file
+ CHARMM>      iunldm 24 -           !!write out lambda histograms and biasing potential
+ CHARMM>      firstt @temp -        !!initial temp
+ CHARMM>      finalt @temp -        !!final temp
+ CHARMM>      tstruc @temp -        !!temp at which starting structure has been equilibrated
+ CHARMM>      tbath @temp -         !!temp of langevin bath
+ CHARMM>      pconstant -           !! use constant pressure (pressure.doc recommendations)
+ CHARMM>      pmass @pmass -        !! pressure "mass" 2% of mass or 400.0 amu
+ CHARMM>      pref 1.0 -            !! pressure in atm
+ CHARMM>      pgamma 20.0 -         !! pressure collision frequency
+ CHARMM>      hoover -
+ CHARMM>      reft @temp -
+ CHARMM>      tmass 1000 -
+ CHARMM>      ichecw 0 -            !!do not scale velocities to final temp (i.e. equilibrate)
+ CHARMM>      ihtfrq 0 -            !!freq of heating
+ CHARMM>      ieqfrq 0 -            !!freq of scaling/assigning velocity(X)
+ CHARMM>      iasors 1 -            !!assign velocities during heating (0 will be scale velocities)
+ CHARMM>      iasvel 1 -            !!using gaussian distribution to assign velocities
+ CHARMM>      iscvel 0 -
+ CHARMM>      inbfrq 0 - ! -1 -
+ CHARMM>      ilbfrq 0 -
+ CHARMM>      imgfrq 0 - ! -1 -
+ CHARMM>      ntrfrq 0 - ! 500 -
+ CHARMM>      echeck -1             !!energy tolerance check before crashing
+ Parameter: NSTEPS -> "39000"
+ Parameter: NSTEPS -> "39000"
+ Parameter: TEMP -> "298.15"
+ Parameter: TEMP -> "298.15"
+ Parameter: TEMP -> "298.15"
+ Parameter: TEMP -> "298.15"
+ Parameter: PMASS -> "722.76"
+ Parameter: TEMP -> "298.15"
+  IUNREA = -1         IUNWRI = 22          IUNOS = -1
+  IUNCRD = 21         IUNVEL = -1          KUNIT = -1
+  IUNLDM = 24
+ DCNTRL> Constant pressure requested.
+         Reference pressure tensor (XX,YY,ZZ)=        1.0       1.0       1.0 atm.
+
+         Reference pressure tensor (XY,XZ,YZ)=        0.0       0.0       0.0 atm.
+
+ DCNTRL> Langevin integration requested.
+ DCNTRL>  BLaDE interface requested for energy and dynamics calculations.
+ DCNTRL>  CPT dynamics through BLaDE interface requested using Langevin heatbath.
+ DCNTRL>  MC barostat coupled to reference pressure    1.00  atmospheres.
+ DCNTRL>  MC barostat using reference temperature  298.15  K.
+ DCNTRL>  MC barostat volume move attempted every    100  timesteps.
+ DCNTRL>  MC barostat volume move size  100.00  A^3
+   NSTEP =    39000    NSAVC =     1000    NSAVV =       10
+  ISCALE =        0   ISCVEL =        0   IASORS =        1
+  IASVEL =        1   ICHECW =        0   NTRFRQ =        0
+  IHTFRQ =        0   IEQFRQ =        0   NPRINT =     1000
+  INBFRQ =        0   IHBFRQ =        0   IPRFRQ =    39000
+  ILBFRQ =        0   IMGFRQ =        0
+  ISVFRQ =    39000   NCYCLE =    39000    NSNOS =       10
+  FIRSTT =   298.150  TEMINC =     5.000  TSTRUC =   298.150
+  FINALT =   298.150  TWINDH =    10.000  TWINDL =   -10.000
+
+  TIME STEP =  4.09097E-02 AKMA       2.00000E-03 PS
+
+  RANDOM NUM. GEN. SEED(S) = 807322464 807322464 807322464 807322464
+
+           SHAKE TOLERANCE =     0.10000E-09
+ NUMBER OF DEGREES OF FREEDOM =  12071
+
+          GAUSSIAN OPTION                  IS            1
+          VELOCITIES ASSIGNED AT TEMPERATURE =    298.1500
+          SEED FOR RANDOM NUMBER GENERATOR IS:
+          SEEDS> 807322464 807322464 807322464 807322464
+
+     DETAILS ABOUT CENTRE OF MASS
+     POSITION          :  -0.10771344      -9.57522738E-02   0.10909861    
+     VELOCITY          :  -3.00849037E-04   7.06803878E-03   1.63456428E-04
+     ANGULAR MOMENTUM  :   -290.57533       -2062.1787        1579.0797    
+     KINETIC ENERGY    :   0.90943423    
+Destroying a copy of system
+Creating a copy of system
+allocating kcmap=0xbb088b0
+allocating kcmap=0xbb088b0
+allocating kcmap=0xbb088b0
+allocating kcmap=0xbb088b0
+allocating kcmap=0xbb088b0
+allocating kcmap=0xbb088b0
+Assuming fbeta =    0.00489
+
+      ***** LEVEL  1 WARNING FROM BLaDe *****
+      ***** PME being used for electrostatics in BLaDE
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+
+      ***** LEVEL  1 WARNING FROM BLaDe *****
+      ***** VFSWITCH being used for vdW switching in BLaDE
+      ******************************************
+      BOMLEV ( -1) IS NOT REACHED. WRNLEV IS  5
+
+Found pme kappa =    0.32000
+Found ctofnb =   10.00000 ctonnb =    9.00000
+Warning: Both elec and vdw energies placed in vdw
+PME grid(0) size: 40
+PME grid(1) size: 40
+PME grid(2) size: 40
+maxBlocks=225
+The following parameters are set heuristically at /share/crsp/lab/rhayes1/share/git/CHARMM/dev-release/source/blade/src/domdec/domdec.cu:120, and can cause errors if set too low
+maxPartnersPerBlock=624
+freqDomdec=10 (how many steps before domain reset)
+cullPad=3.44948 (spatial padding for considering which blocks could interact
+maxBlockExclCount=1617 (can reallocate dynamically with "run setvariable domdecheuristic off")
+BLaDE: Velocities scaled or randomized
+DYNA DYN: Step         Time      TOTEner        TOTKe       ENERgy  TEMPerature
+DYNA PROP:             GRMS      HFCTote        HFCKe       EHFCor        VIRKe
+DYNA INTERN:          BONDs       ANGLes       UREY-b    DIHEdrals    IMPRopers
+DYNA CROSS:           CMAPs        PMF1D        PMF2D        PRIMO
+DYNA EXTERN:        VDWaals         ELEC       HBONds          ASP         USER
+DYNA EWALD:          EWKSum       EWSElf       EWEXcl       EWQCor       EWUTil
+DYNA PRESS:            VIRE         VIRI       PRESSE       PRESSI       VOLUme
+ ----------       ---------    ---------    ---------    ---------    ---------
+DYNA>        0      0.00000 -16886.21351   3531.47444 -20417.68795    294.44433
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        5.32066     10.60224      1.02020      6.02081      1.22686
+DYNA CROSS>        -1.30863      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18154.00021      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       123.79294-125110.94043 122698.97949      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.09671 B    =   39.09671 C     =   39.09671
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     1000      2.00000 -16798.02386   3413.11649 -20211.14034    284.57598
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.51585     15.57694      1.51887      5.34564      1.01106
+DYNA CROSS>        -0.97968      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17964.36574      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       134.48880-125110.90723 122699.33887      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.14132 B    =   39.14132 C     =   39.14132
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     2000      4.00000 -16797.90811   3456.81585 -20254.72396    288.21951
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.91067     13.34027      1.01155      3.07862      0.61109
+DYNA CROSS>        -1.72208      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18010.54722      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       132.03610-125136.91504 122735.99780      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.09067 B    =   39.09067 C     =   39.09067
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     3000      6.00000 -16776.09621   3479.92928 -20256.02549    290.14664
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.13211     17.59207      2.86019      4.63753      1.07411
+DYNA CROSS>         0.09527      0.00000      0.00000      0.00000
+DYNA EXTERN>   -18006.89416      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       130.51356-125110.89893 122699.03784      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.06370 B    =   39.06370 C     =   39.06370
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     4000      8.00000 -16728.94465   3459.86932 -20188.81397    288.47410
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.67426     13.32453      1.10729      4.08454      1.47416
+DYNA CROSS>        -0.02586      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17944.86341      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       127.04256-125137.59277 122737.74316      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   38.99111 B    =   38.99111 C     =   38.99111
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     5000     10.00000 -16637.91258   3460.77640 -20098.68898    288.54973
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        7.95541     18.44741      2.09203      4.25739      0.44996
+DYNA CROSS>        -1.58290      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17866.41280      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       135.76764-125130.64697 122727.01050      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.02174 B    =   39.02174 C     =   39.02174
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     6000     12.00000 -16579.88649   3561.47395 -20141.36045    296.94561
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.02412     14.14104      1.73253      3.70930      1.39530
+DYNA CROSS>         1.07649      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17898.23435      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       129.53281-125137.67822 122737.24121      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.03260 B    =   39.03260 C     =   39.03260
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     7000     14.00000 -16553.44126   3483.38853 -20036.82979    290.43507
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.04560     16.79470      2.27353      4.46357      1.16732
+DYNA CROSS>        -1.22737      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17795.30877      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       129.12497-125137.66846 122737.30493      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.05029 B    =   39.05029 C     =   39.05029
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     8000     16.00000 -16512.97854   3572.98394 -20085.96248    297.90528
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.05133     14.96988      1.64777      4.75778      1.44879
+DYNA CROSS>        -0.59471      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17839.76027      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       125.07373-125137.49365 122737.78540      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.02022 B    =   39.02022 C     =   39.02022
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>     9000     18.00000 -16499.13868   3520.60455 -20019.74323    293.53803
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.62336     12.91397      1.94912      5.88171      1.10642
+DYNA CROSS>         0.56831      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17776.58495      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       125.67111-125137.56201 122737.26367      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   38.93429 B    =   38.93429 C     =   38.93429
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    10000     20.00000 -16510.34199   3599.46677 -20109.80876    300.11334
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        5.13424     18.90931      1.47684      6.11952      1.59479
+DYNA CROSS>        -0.17102      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17876.41244      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       128.27175-125137.37646 122736.41431      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.07869 B    =   39.07869 C     =   39.07869
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    11000     22.00000 -16476.03307   3598.53506 -20074.56813    300.03566
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.18766     10.02054      1.69277      2.44706      0.32224
+DYNA CROSS>        -0.95720      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17825.56902      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       129.97189-125137.11084 122737.10010      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.11026 B    =   39.11026 C     =   39.11026
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    12000     24.00000 -16428.53267   3602.92411 -20031.45678    300.40160
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.63708     16.30398      0.77056      3.59033      0.28300
+DYNA CROSS>        -0.13699      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17799.24256      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       141.94800-125137.61670 122736.86548      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.12227 B    =   39.12227 C     =   39.12227
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    13000     26.00000 -16409.34906   3566.44633 -19975.79540    297.36019
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.68586     16.16313      1.42173      2.60762      0.98957
+DYNA CROSS>         0.68659      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17747.54395      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       143.74138-125137.62988 122736.61279      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.12886 B    =   39.12886 C     =   39.12886
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    14000     28.00000 -16434.10528   3606.24642 -20040.35170    300.67861
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.02183     11.97259      1.66130      2.28367      0.69581
+DYNA CROSS>        -0.08763      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17799.44367      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       135.48119-125137.24219 122736.56738      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.09257 B    =   39.09257 C     =   39.09257
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    15000     30.00000 -16441.13439   3616.86630 -20058.00069    301.56407
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        6.11090     15.73874      1.62454      2.03051      1.31597
+DYNA CROSS>        -0.37779      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17817.87940      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       131.65190-125137.38428 122736.36450      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.10943 B    =   39.10943 C     =   39.10943
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    16000     32.00000 -16457.16957   3549.13761 -20006.30718    295.91704
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.81175     11.20495      2.15210      2.15427      0.38460
+DYNA CROSS>        -0.23078      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17759.27547      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       123.86180-125137.63232 122737.54175      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.14356 B    =   39.14356 C     =   39.14356
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    17000     34.00000 -16421.11603   3637.55225 -20058.66828    303.28880
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.70030     12.38025      1.74089      4.73688      2.13981
+DYNA CROSS>        -0.77580      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17817.41623      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       129.30900-125137.66846 122737.58374      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.14370 B    =   39.14370 C     =   39.14370
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    18000     36.00000 -16406.38360   3621.81206 -20028.19566    301.97643
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.74555     12.37762      1.55314      3.03878      1.01788
+DYNA CROSS>         0.51343      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17780.04187      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       130.78838-125131.74365 122729.30933      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.15383 B    =   39.15383 C     =   39.15383
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    19000     38.00000 -16384.97905   3554.14185 -19939.12090    296.33428
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.75996     12.58550      3.18791      5.33653      2.37408
+DYNA CROSS>        -1.17331      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17701.34085      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       132.11669-125137.42822 122737.38037      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.23577 B    =   39.23577 C     =   39.23577
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    20000     40.00000 -16416.38817   3585.29429 -20001.68246    298.93168
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.18657     13.84362      1.47834      3.78943      0.17784
+DYNA CROSS>        -0.40974      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17760.44625      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       133.59126-125137.49951 122737.57959      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.28683 B    =   39.28683 C     =   39.28683
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    21000     42.00000 -16384.55011   3621.04607 -20005.59618    301.91256
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.68225     17.23289      2.94277      5.86908      0.76532
+DYNA CROSS>        -0.84060      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17768.10013      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       129.65683-125137.62842 122737.07300      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.26377 B    =   39.26377 C     =   39.26377
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    22000     44.00000 -16371.54171   3553.97436 -19925.51607    296.32031
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.64714     13.69618      1.24309      4.46394      0.58416
+DYNA CROSS>        -0.67969      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17679.17798      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       126.36362-125137.68262 122738.39380      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.27535 B    =   39.27535 C     =   39.27535
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    23000     46.00000 -16382.16442   3567.90895 -19950.07337    297.48214
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.02638     18.67874      2.19999      3.74164      1.14903
+DYNA CROSS>        -1.27121      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17717.25744      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       135.58098-125137.66943 122737.65479      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.33823 B    =   39.33823 C     =   39.33823
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    24000     48.00000 -16289.09115   3587.92351 -19877.01466    299.15090
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.03024     11.44660      1.57788      4.75061      0.81775
+DYNA CROSS>        -0.06881      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17638.22629      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       135.88938-125137.68262 122737.91846      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.33850 B    =   39.33850 C     =   39.33850
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    25000     50.00000 -16325.42680   3594.80489 -19920.23169    299.72465
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        6.02529     15.99338      1.40301      2.30891      0.43012
+DYNA CROSS>        -1.02363      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17690.93295      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       140.39775-125137.66650 122737.60156      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.26703 B    =   39.26703 C     =   39.26703
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    26000     52.00000 -16384.24338   3577.11819 -19961.36157    298.24998
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        7.18930     12.51389      1.66285      2.34667      1.16500
+DYNA CROSS>        -1.60937      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17714.11008      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       126.66578-125135.06934 122734.06738      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.25003 B    =   39.25003 C     =   39.25003
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    27000     54.00000 -16337.65061   3574.13209 -19911.78270    298.00101
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        6.45578     12.07628      2.08379      2.17361      0.74581
+DYNA CROSS>        -0.92658      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17679.99079      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       143.44173-125136.09473 122734.83276      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.20459 B    =   39.20459 C     =   39.20459
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    28000     56.00000 -16369.78327   3629.68068 -19999.46394    302.63249
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.51593     12.62462      1.46590      1.56595      0.52643
+DYNA CROSS>        -0.40105      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17752.43656      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       131.03445-125137.66943 122737.45483      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.19980 B    =   39.19980 C     =   39.19980
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    29000     58.00000 -16407.31993   3540.07784 -19947.39777    295.16166
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.63619     13.31114      2.00180      3.24911      0.35138
+DYNA CROSS>        -1.53261      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17703.08721      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       134.60209-125137.09521 122736.43896      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.13306 B    =   39.13306 C     =   39.13306
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    30000     60.00000 -16441.62509   3535.90736 -19977.53245    294.81394
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        5.15331     15.30914      1.54068      1.91490      0.54174
+DYNA CROSS>        -1.40763      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17736.73878      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       133.32334-125137.66943 122736.88818      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.13899 B    =   39.13899 C     =   39.13899
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    31000     62.00000 -16496.22599   3565.06740 -20061.29340    297.24522
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.95717     15.11385      2.18040      2.61265      0.17812
+DYNA CROSS>        -1.81071      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17813.22663      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       128.25335-125136.85107 122735.88647      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.15620 B    =   39.15620 C     =   39.15620
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    32000     64.00000 -16442.96318   3588.99064 -20031.95382    299.23987
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.02850     13.35505      1.26523      2.93508      0.80081
+DYNA CROSS>        -1.64400      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17787.73178      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       133.86972-125137.56738 122737.29541      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.14412 B    =   39.14412 C     =   39.14412
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    33000     66.00000 -16529.91966   3527.58105 -20057.50071    294.11971
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.63779     12.42217      1.27067      5.25034      1.46782
+DYNA CROSS>        -1.64506      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17813.34234      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       133.06169-125137.56787 122736.86255      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.08420 B    =   39.08420 C     =   39.08420
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    34000     68.00000 -16465.73655   3570.12875 -20035.86530    297.66722
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        6.77784     12.69994      1.95379      3.88672      0.66158
+DYNA CROSS>         0.02530      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17795.89430      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       128.83635-125136.70068 122735.76733      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.08198 B    =   39.08198 C     =   39.08198
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    35000     70.00000 -16378.68361   3657.40129 -20036.08491    304.94376
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.36492     14.38094      1.12001      4.76699      1.86599
+DYNA CROSS>        -0.28021      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17785.60691      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       135.93690-125110.98193 122698.96851      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.02349 B    =   39.02349 C     =   39.02349
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    36000     72.00000 -16412.91577   3599.24024 -20012.15601    300.09445
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.43889     14.89339      1.35195      4.15108      0.49062
+DYNA CROSS>         0.10919      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17758.43142      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       130.12473-125110.90381 122699.11768      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.07669 B    =   39.07669 C     =   39.07669
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    37000     74.00000 -16420.51331   3551.97415 -19972.48746    296.15354
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        4.81205     11.64036      2.06920      3.02197      0.67641
+DYNA CROSS>        -1.40454      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17726.21341      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       129.69268-125137.63721 122737.41406      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.06526 B    =   39.06526 C     =   39.06526
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    38000     76.00000 -16374.01408   3598.67692 -19972.69099    300.04749
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        2.90912     10.96504      1.87511      4.55340      0.75442
+DYNA CROSS>        -0.68810      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17727.29495      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       132.65802-125137.47119 122737.12500      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.02880 B    =   39.02880 C     =   39.02880
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+DYNA>    39000     78.00000 -16393.89523   3590.91740 -19984.81263    299.40052
+DYNA PROP>          0.00000      0.00000      0.00000      0.00000      0.00000
+DYNA INTERN>        3.90574     16.72265      2.21404      3.07203      0.16477
+DYNA CROSS>        -0.04075      0.00000      0.00000      0.00000
+DYNA EXTERN>   -17746.18040      0.00000      0.00000      0.00000      0.00000
+DYNA EWALD>       131.22392-125137.51270 122736.45728      0.00000      0.00000
+DYNA PRESS>         0.00000      0.00000      0.00000      0.00000      0.00000
+ ----------       ---------    ---------    ---------    ---------    ---------
+ Crystal Parameters : Crystal Type = CUBI
+      DYNA A     =   39.08540 B    =   39.08540 C     =   39.08540
+      DYNA Alpha =   90.00000 Beta =   90.00000 Gamma =   90.00000
+      DYNA PIXX =        0.00 PIYY =       0.00 PIZZ =       0.00
+      DYNA PIXY =        0.00 PIXZ =       0.00 PIYZ =       0.00
+      DYNA Gradient Norm =    0.00000
+
+
+     39   COORDINATE SETS STARTING FROM
+     STEP NO     1000   FOR EVERY  1000  STEPS
+     WRITTEN ON UNIT   21
+
+ VCLOSE: Closing unit   21 with status "KEEP"
+
+        3900   LAMBDA SETS STARTING FROM
+     STEP NO      39000   FOR EVERY    10  STEPS
+     WRITTEN ON UNIT   24
+
+ VCLOSE: Closing unit   24 with status "KEEP"
+ WRIDYN: RESTart file was written at step   39000
+ VCLOSE: Closing unit   22 with status "KEEP"
+
+     DETAILS ABOUT CENTRE OF MASS
+     POSITION          :  -3.17069567E-02  -0.16008729      -3.14895607E-02
+     VELOCITY          :   2.03701154E-03   1.78946114E-03   3.10260296E-03
+     ANGULAR MOMENTUM  :   -660.15640        1882.8400       -878.01253    
+     KINETIC ENERGY    :   0.30834380    
+  
+ CHARMM>     
+  
+ CHARMM>    !----------------------------------------------------------------------------
+ CHARMM>    ! Write out structure after simulation
+ CHARMM>    !----------------------------------------------------------------------------
+ CHARMM>    ! write psf card name "@{SYSNAME}_flat.psf"
+ CHARMM>    ! * after dynamics psf
+ CHARMM>    ! *
+ CHARMM>    ! write coor pdb name "@{SYSNAME}_flat.pdb"
+ CHARMM>    ! * after dynamics pdb
+ CHARMM>    ! *
+ CHARMM>     
+  
+ CHARMM>    !---------------------------------------------------------------------------
+ CHARMM>    ! Analyze l-dynamics output
+ CHARMM>    !---------------------------------------------------------------------------
+ CHARMM>    ! open unit 44 read file name "res/@{SYSNAME}_flat.lmd"
+ CHARMM>    !
+ CHARMM>    ! traj lamb print ctlo 0.8 cthi 0.95 first 44 nunit 1
+ CHARMM>     
+  
+ CHARMM>    stop
+      $$$$$$  New timer profile Local node$$$$$
+   Shake Setup                     0.00 Other:            0.00
+   First List                      0.00 Other:            0.00
+   Dynamics total                  0.10 Other:            0.00
+      Image Update                    0.01 Other:            0.00
+      Heuristic check                 0.00 Other:            0.00
+      NBONDS                          0.22 Other:            0.00
+   List time                       0.23 Other:            0.00
+            Direct Ewald time               6.55 Other:            0.00
+         Ewald time                      7.21 Other:            0.66
+      Nonbond force                   7.24 Other:            0.03
+         Bond energy                     0.01 Other:            0.00
+         Angle energy                    0.01 Other:            0.00
+         Dihedral energy                 0.00 Other:            0.00
+         Restraints energy               0.00 Other:            0.00
+      INTRNL energy                   0.03 Other:            0.01
+      Comm energy                     0.00 Other:            0.00
+      Comm force                      0.00 Other:            0.00
+         Fill charge grid                0.24 Other:            0.00
+         Scalar sum                      0.07 Other:            0.00
+         Grad sum                        0.21 Other:            0.00
+            FFTcomm                         0.03 Other:            0.00
+         FFT                             0.14 Other:            0.11
+      Recip Ewald time                0.65 Other:            0.00
+   Energy time                     7.92 Other:            0.00
+   BLaDE overhead                  0.49 Other:            0.00
+ Total time                     34.10 Other:           25.36
+         $$$$$$  Average   profile $$$$$
+   Shake Setup                     0.00 Other:            0.00
+   First List                      0.00 Other:            0.00
+   Dynamics total                  0.10 Other:            0.00
+      Image Update                    0.01 Other:            0.00
+      Heuristic check                 0.00 Other:            0.00
+      NBONDS                          0.22 Other:            0.00
+   List time                       0.23 Other:            0.00
+            Direct Ewald time               6.55 Other:            0.00
+         Ewald time                      7.21 Other:            0.66
+      Nonbond force                   7.24 Other:            0.03
+         Bond energy                     0.01 Other:            0.00
+         Angle energy                    0.01 Other:            0.00
+         Dihedral energy                 0.00 Other:            0.00
+         Restraints energy               0.00 Other:            0.00
+      INTRNL energy                   0.03 Other:            0.01
+      Comm energy                     0.00 Other:            0.00
+      Comm force                      0.00 Other:            0.00
+         Fill charge grid                0.24 Other:            0.00
+         Scalar sum                      0.07 Other:            0.00
+         Grad sum                        0.21 Other:            0.00
+            FFTcomm                         0.03 Other:            0.00
+         FFT                             0.14 Other:            0.11
+      Recip Ewald time                0.65 Other:            0.00
+   Energy time                     7.92 Other:            0.00
+   BLaDE overhead                  0.49 Other:            0.00
+ Total time                     34.10 Other:           25.36
+
+                    NORMAL TERMINATION BY NORMAL STOP
+                    MOST SEVERE WARNING WAS AT LEVEL  0
+
+                    $$$$$ JOB ACCOUNTING INFORMATION $$$$$
+                     ELAPSED TIME:    34.16  SECONDS 
+                         CPU TIME:    33.12  SECONDS 

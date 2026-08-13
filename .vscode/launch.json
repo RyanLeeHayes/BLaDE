@@ -1,0 +1,30 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "BLade Release",
+            "type": "cuda-gdb",
+            "debuggerPath": "/opt/apps/cuda/11.7.1/bin/cuda-gdb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/blade",
+            "args": "alad.inp",
+            "cwd": "${workspaceFolder}/test/alad40",
+            "environment": [{"name": "OMP_NUM_THREADS", "value": "1"}],
+            "preLaunchTask": "Build Release"
+        },
+        {
+            "name": "BLaDE Debug",
+            "type": "cuda-gdb",
+            "debuggerPath": "/opt/apps/cuda/11.7.1/bin/cuda-gdb",
+            "request": "launch",
+            "program": "${workspaceFolder}/buildDebug/blade",
+            "args": "alad.inp",
+            "cwd": "${workspaceFolder}/test/alad40",
+            "environment": [{"name": "OMP_NUM_THREADS", "value": "1"}],
+            "preLaunchTask": "Build Debug"
+        }
+    ]
+}

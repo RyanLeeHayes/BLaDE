@@ -1,0 +1,314 @@
+Creating a copy of system
+Opening file aladUS.inp for r
+IN1> ! * Benchmark dynamics for alanine dipeptide in cubic box 40 angstroms^3 of solvent 
+IN1> ! * using PBC w/ PME.
+IN1> ! * fill in rest of parameters later
+IN1> variables set dir ../aladUS
+IN1> variables set box 40 
+IN1> verbose 0
+IN1> 
+IN1> variables set resid1 1
+IN1> variables set s1seq1 0 ! a
+IN1> variables set s1seq2 v
+IN1> variables set segid HETA
+IN1> variables set nterdel 0
+IN1> variables set nterres 1
+IN1> variables set cterres 1
+IN1> variables set ntercap nter
+IN1> variables set nterc 4
+IN1> variables set cterc 5
+IN1> variables set ctercap cter
+IN1> variables set cterdel 0
+IN1> variables set nsites 1
+IN1> variables set nsubs1 2
+IN1> variables set nblocks 2
+IN1> parameters file par_all36m_prot.prm
+Opening file par_all36m_prot.prm for r
+TITLE> *>>>> CHARMM36 All-Hydrogen Parameter File for Proteins <<<<<<<<<<
+TITLE> *>>>>> Includes phi, psi cross term map (CMAP) correction <<<<<<<<
+TITLE> *>>>>>>>>>>>>>>>>>>>>>>>>>> Jan. 2016 <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+TITLE> * All comments to the CHARMM web site: www.charmm.org
+TITLE> *             parameter set discussion forum
+TITLE> *
+allocating kcmap=0x265a850
+allocating kcmap=0x265ba70
+allocating kcmap=0x265cdd0
+allocating kcmap=0x265e130
+allocating kcmap=0x265f490
+allocating kcmap=0x26607f0
+Unparsed line> HBOND  CUTHB 0.5  ! If you want to do hbond analysis (only), then use
+IN1> parameters file par_water_ions.prm 
+Opening file par_water_ions.prm for r
+TITLE> * Parameters for water and ions
+TITLE> *
+Warning: atom type ON3 found in NBFIX but not declared in ATOMS
+Warning: atom type OCL found in NBFIX but not declared in ATOMS
+Warning: atom type OBL found in NBFIX but not declared in ATOMS
+Warning: atom type O2L found in NBFIX but not declared in ATOMS
+Warning: atom type OC2D2 found in NBFIX but not declared in ATOMS
+Warning: atom type OC2DP found in NBFIX but not declared in ATOMS
+Warning: atom type OG2D2 found in NBFIX but not declared in ATOMS
+Warning: atom type OG2P1 found in NBFIX but not declared in ATOMS
+IN1> 
+IN1> structure file psf step3_pbcsetup.psf
+Opening file step3_pbcsetup.psf for r
+Reading PSF, found header string: 'EXT'
+Reading PSF, found header string: 'CMAP'
+Reading PSF, found header string: 'XPLOR'
+Reading PSF, found header string: 'AUTOG'
+Reading PSF, expect !NTITLE: got  !NTITLE
+Reading PSF, expect !NATOM: got  !NATOM
+Reading PSF, expect !NBOND: bonds: got  !NBOND: bonds
+Reading PSF, expect !NTHETA: angles: got  !NTHETA: angles
+Reading PSF, expect !NPHI: dihedrals: got  !NPHI: dihedrals
+Reading PSF, expect !NIMPHI: impropers: got  !NIMPHI: impropers
+Reading PSF, expect !NDON: donors: got  !NDON: donors
+Reading PSF, expect !NACC: acceptors: got  !NACC: acceptors
+Reading PSF, expect !NNB: got  !NNB
+Reading PSF, expect !NGRP NST2: got          0 !NGRP NST2
+Reading PSF, expect !NUMLP NUMLPH: got  !NUMLP NUMLPH
+Reading PSF, expect !NCRTERM: got  !NCRTERM: cross-terms
+IN1> structure shake hbond
+IN1> 
+IN1> coordinates file crd step4_equilibration.crd
+Opening file step4_equilibration.crd for r
+IN1> coordinates box cubi {box} {box} {box} 90 90 90
+SUBSTITUTE> coordinates box cubi 40 40 40 90 90 90
+IN1> coordinates velocity 298.15
+IN1> selection define clp atom HETA 1 CLP
+SELECTION> add clp to selections after parsing  atom HETA 1 CLP
+
+IN1> selection define nl atom HETA 1 NL
+SELECTION> add nl to selections after parsing  atom HETA 1 NL
+
+IN1> selection define ca atom HETA 1 CA
+SELECTION> add ca to selections after parsing  atom HETA 1 CA
+
+IN1> selection define crp atom HETA 1 CRP
+SELECTION> add crp to selections after parsing  atom HETA 1 CRP
+
+IN1> structure dihedral clp nl ca crp 100 50 1
+IN1> 
+IN1> variables set ii 1
+IN1> while <= {ii} {nsites}
+SUBSTITUTE> while <= 1 1
+while> evaluated as true
+IN1>    variables set resid {resid{ii}}
+SUBSTITUTE>    variables set resid 1
+IN1>    variables set site {ii}
+SUBSTITUTE>    variables set site 1
+IN1> 
+IN1>    selection define site{site}suball and segid {segid} resid {resid}
+SUBSTITUTE>    selection define site1suball and segid HETA resid 1
+SELECTION> add site1suball to selections after parsing  and segid HETA resid 1
+
+IN1> 
+IN1>    selection define site{site}consN  and and segid {segid} resid {resid} atomnames NA_A NB_A NC_A ND_A NE_A NF_A NG_A NH_A NI_A NJ_A NK_A NL_A NM_A NN_A NP_A NQ_A NR_A NS_A NT_A NV_A NW_A NY_A N
+SUBSTITUTE>    selection define site1consN  and and segid HETA resid 1 atomnames NA_A NB_A NC_A ND_A NE_A NF_A NG_A NH_A NI_A NJ_A NK_A NL_A NM_A NN_A NP_A NQ_A NR_A NS_A NT_A NV_A NW_A NY_A N
+SELECTION> add site1consN to selections after parsing   and and segid HETA resid 1 atomnames NA_A NB_A NC_A ND_A NE_A NF_A NG_A NH_A NI_A NJ_A NK_A NL_A NM_A NN_A NP_A NQ_A NR_A NS_A NT_A NV_A NW_A NY_A N
+
+IN1>    selection define site{site}consCA and and segid {segid} resid {resid} atomnames CA_A CB_A CC_A CD_A CE_A CF_A CG_A CH_A CI_A CJ_A CK_A CL_A CM_A CN_A CP_A CQ_A CR_A CS_A CT_A CV_A CW_A CY_A CA
+SUBSTITUTE>    selection define site1consCA and and segid HETA resid 1 atomnames CA_A CB_A CC_A CD_A CE_A CF_A CG_A CH_A CI_A CJ_A CK_A CL_A CM_A CN_A CP_A CQ_A CR_A CS_A CT_A CV_A CW_A CY_A CA
+SELECTION> add site1consCA to selections after parsing  and and segid HETA resid 1 atomnames CA_A CB_A CC_A CD_A CE_A CF_A CG_A CH_A CI_A CJ_A CK_A CL_A CM_A CN_A CP_A CQ_A CR_A CS_A CT_A CV_A CW_A CY_A CA
+
+IN1>    selection define site{site}consHA and and segid {segid} resid {resid} atomnames HA_B HB_B HC_B HD_B HE_B HF_B HG_B HH_B HI_B HJ_B HK_B HL_B HM_B HN_B HP_B HQ_B HR_B HS_B HT_B HV_B HW_B HY_B HA HA2
+SUBSTITUTE>    selection define site1consHA and and segid HETA resid 1 atomnames HA_B HB_B HC_B HD_B HE_B HF_B HG_B HH_B HI_B HJ_B HK_B HL_B HM_B HN_B HP_B HQ_B HR_B HS_B HT_B HV_B HW_B HY_B HA HA2
+SELECTION> add site1consHA to selections after parsing  and and segid HETA resid 1 atomnames HA_B HB_B HC_B HD_B HE_B HF_B HG_B HH_B HI_B HJ_B HK_B HL_B HM_B HN_B HP_B HQ_B HR_B HS_B HT_B HV_B HW_B HY_B HA HA2
+
+IN1>    selection define site{site}consC  and and segid {segid} resid {resid} atomnames CA_B CB_B CC_B CD_B CE_B CF_B CG_B CH_B CI_B CJ_B CK_B CL_B CM_B CN_B CP_B CQ_B CR_B CS_B CT_B CV_B CW_B CY_B C
+SUBSTITUTE>    selection define site1consC  and and segid HETA resid 1 atomnames CA_B CB_B CC_B CD_B CE_B CF_B CG_B CH_B CI_B CJ_B CK_B CL_B CM_B CN_B CP_B CQ_B CR_B CS_B CT_B CV_B CW_B CY_B C
+SELECTION> add site1consC to selections after parsing   and and segid HETA resid 1 atomnames CA_B CB_B CC_B CD_B CE_B CF_B CG_B CH_B CI_B CJ_B CK_B CL_B CM_B CN_B CP_B CQ_B CR_B CS_B CT_B CV_B CW_B CY_B C
+
+IN1>    selection define site{site}consO  and and segid {segid} resid {resid} atomnames OA_A OB_A OC_A OD_A OE_A OF_A OG_A OH_A OI_A OJ_A OK_A OL_A OM_A ON_A OP_A OQ_A OR_A OS_A OT_A OV_A OW_A OY_A O
+SUBSTITUTE>    selection define site1consO  and and segid HETA resid 1 atomnames OA_A OB_A OC_A OD_A OE_A OF_A OG_A OH_A OI_A OJ_A OK_A OL_A OM_A ON_A OP_A OQ_A OR_A OS_A OT_A OV_A OW_A OY_A O
+SELECTION> add site1consO to selections after parsing   and and segid HETA resid 1 atomnames OA_A OB_A OC_A OD_A OE_A OF_A OG_A OH_A OI_A OJ_A OK_A OL_A OM_A ON_A OP_A OQ_A OR_A OS_A OT_A OV_A OW_A OY_A O
+
+IN1> 
+IN1>    if || || || == {ii} {nterdel} == {resid} {nterres} == {ii} {cterdel} == {resid} {cterres}
+SUBSTITUTE>    if || || || == 1 0 == 1 1 == 1 0 == 1 1
+if/elseif/else> evaluated as true
+IN1>       selection define site{site}consN none
+SUBSTITUTE>       selection define site1consN none
+SELECTION> add site1consN to selections after parsing  none
+
+IN1>       selection define site{site}consCA none
+SUBSTITUTE>       selection define site1consCA none
+SELECTION> add site1consCA to selections after parsing  none
+
+IN1>       selection define site{site}consHA none
+SUBSTITUTE>       selection define site1consHA none
+SELECTION> add site1consHA to selections after parsing  none
+
+IN1>       selection define site{site}consC none
+SUBSTITUTE>       selection define site1consC none
+SELECTION> add site1consC to selections after parsing  none
+
+IN1>       selection define site{site}consO none
+SUBSTITUTE>       selection define site1consO none
+SELECTION> add site1consO to selections after parsing  none
+
+IN1>    endif
+IN1> 
+IN1>    ! include residues in a possible terminal deletion
+IN1>    if == {ii} {nterdel}
+SUBSTITUTE>    if == 1 0
+if/elseif> evaluated as false
+IN1>    if == {ii} {cterdel}
+SUBSTITUTE>    if == 1 0
+if/elseif> evaluated as false
+IN1> 
+IN1>    selection define site{site}sub1 selection site{site}suball
+SUBSTITUTE>    selection define site1sub1 selection site1suball
+SELECTION> add site1sub1 to selections after parsing  selection site1suball
+
+IN1> 
+IN1>    variables set jj 2
+IN1>    while <= {jj} {nsubs{ii}}
+SUBSTITUTE>    while <= 2 2
+while> evaluated as true
+IN1> 
+IN1>       variables set sub {jj}
+SUBSTITUTE>       variables set sub 2
+IN1>       variables set seqjj {s{ii}seq{jj}}
+SUBSTITUTE>       variables set seqjj v
+IN1>       stream {dir}/aa_stream/sele_{seqjj}.str
+SUBSTITUTE>       stream ../aladUS/aa_stream/sele_v.str
+Opening file ../aladUS/aa_stream/sele_v.str for r
+IN2> selection define site{site}sub{sub} and and segid {segid} resid {resid} atomnames NV_A HV_A CV_A HV_B CV_C HV_C CV_D HV_D HV_E HV_F CV_E HV_G HV_H HV_I CV_B OV_A
+SUBSTITUTE> selection define site1sub2 and and segid HETA resid 1 atomnames NV_A HV_A CV_A HV_B CV_C HV_C CV_D HV_D HV_E HV_F CV_E HV_G HV_H HV_I CV_B OV_A
+SELECTION> add site1sub2 to selections after parsing  and and segid HETA resid 1 atomnames NV_A HV_A CV_A HV_B CV_C HV_C CV_D HV_D HV_E HV_F CV_E HV_G HV_H HV_I CV_B OV_A
+
+IN1> 
+IN1>       ! account for cap in case of terminal deletion
+IN1>       if == {ii} {nterdel}
+SUBSTITUTE>       if == 1 0
+if/elseif> evaluated as false
+IN1>       if == {resid} {nterres}
+SUBSTITUTE>       if == 1 1
+if/elseif/else> evaluated as true
+IN1>          stream {dir}/aa_stream/sele_{seqjj}{nterc}.str
+SUBSTITUTE>          stream ../aladUS/aa_stream/sele_v4.str
+Opening file ../aladUS/aa_stream/sele_v4.str for r
+IN2> selection define site{site}cap{sub} and and segid {segid} resid {resid} atomnames CVTA HVTA HVTB HVTC CVTB OVTA
+SUBSTITUTE> selection define site1cap2 and and segid HETA resid 1 atomnames CVTA HVTA HVTB HVTC CVTB OVTA
+SELECTION> add site1cap2 to selections after parsing  and and segid HETA resid 1 atomnames CVTA HVTA HVTB HVTC CVTB OVTA
+
+IN1>          selection define site{site}sub{sub} or selection site{site}sub{sub} selection site{site}cap{sub}
+SUBSTITUTE>          selection define site1sub2 or selection site1sub2 selection site1cap2
+SELECTION> add site1sub2 to selections after parsing  or selection site1sub2 selection site1cap2
+
+IN1>       endif
+IN1>       if == {ii} {cterdel}
+SUBSTITUTE>       if == 1 0
+if/elseif> evaluated as false
+IN1>       if == {resid} {cterres}
+SUBSTITUTE>       if == 1 1
+if/elseif/else> evaluated as true
+IN1>          stream {dir}/aa_stream/sele_{seqjj}{cterc}.str
+SUBSTITUTE>          stream ../aladUS/aa_stream/sele_v5.str
+Opening file ../aladUS/aa_stream/sele_v5.str for r
+IN2> selection define site{site}cap{sub} and and segid {segid} resid {resid} atomnames CV_B OV_A NVTA HVTA CVTA HVTB HVTC HVTD
+SUBSTITUTE> selection define site1cap2 and and segid HETA resid 1 atomnames CV_B OV_A NVTA HVTA CVTA HVTB HVTC HVTD
+SELECTION> add site1cap2 to selections after parsing  and and segid HETA resid 1 atomnames CV_B OV_A NVTA HVTA CVTA HVTB HVTC HVTD
+
+IN1>          selection define site{site}sub{sub} or selection site{site}sub{sub} selection site{site}cap{sub}
+SUBSTITUTE>          selection define site1sub2 or selection site1sub2 selection site1cap2
+SELECTION> add site1sub2 to selections after parsing  or selection site1sub2 selection site1cap2
+
+IN1>       endif
+IN1> 
+IN1>       selection define site{site}sub1 and selection site{site}sub1 not selection site{site}sub{sub}
+SUBSTITUTE>       selection define site1sub1 and selection site1sub1 not selection site1sub2
+SELECTION> add site1sub1 to selections after parsing  and selection site1sub1 not selection site1sub2
+
+IN1> 
+IN1>       variables calculate jj int + {jj} 1
+SUBSTITUTE>       variables calculate jj int + 2 1
+IN1>    endwhile
+SUBSTITUTE>    while <= 3 2
+while> evaluated as false
+IN1> 
+IN1>    variables calculate ii int + {ii} 1
+SUBSTITUTE>    variables calculate ii int + 1 1
+IN1> endwhile
+SUBSTITUTE> while <= 2 1
+while> evaluated as false
+IN1> 
+IN1> 
+IN1> 
+IN1> msld nblocks {nblocks}
+SUBSTITUTE> msld nblocks 2
+NYI - Initialize all blocks in first site /dfs8/rhayes1_lab/cyeh5/BLaDE/src/msld/msld.cu:172
+IN1> 
+IN1> variables set prevblock 0
+IN1> variables set ii 1
+IN1> while <= {ii} {nsites}
+SUBSTITUTE> while <= 1 1
+while> evaluated as true
+IN1>    variables set jj 1
+IN1>    while <= {jj} {nsubs{ii}}
+SUBSTITUTE>    while <= 1 2
+while> evaluated as true
+IN1>       variables calculate jp0 int + {jj} {prevblock}
+SUBSTITUTE>       variables calculate jp0 int + 1 0
+IN1> 
+IN1>       msld call {jp0} site{ii}sub{jj}
+SUBSTITUTE>       msld call 1 site1sub1
+IN1> 
+IN1>       variables calculate jj int + {jj} 1
+SUBSTITUTE>       variables calculate jj int + 1 1
+IN1>    endwhile
+SUBSTITUTE>    while <= 2 2
+while> evaluated as true
+IN1>       variables calculate jp0 int + {jj} {prevblock}
+SUBSTITUTE>       variables calculate jp0 int + 2 0
+IN1> 
+IN1>       msld call {jp0} site{ii}sub{jj}
+SUBSTITUTE>       msld call 2 site1sub2
+IN1> 
+IN1>       variables calculate jj int + {jj} 1
+SUBSTITUTE>       variables calculate jj int + 2 1
+IN1>    endwhile
+SUBSTITUTE>    while <= 3 2
+while> evaluated as false
+IN1> 
+IN1>    variables set resid {resid{ii}}
+SUBSTITUTE>    variables set resid 1
+IN1>    variables set site {ii}
+SUBSTITUTE>    variables set site 1
+IN1>    if not || || || == {ii} {nterdel} == {resid} {nterres} == {ii} {cterdel} == {resid} {cterres}
+SUBSTITUTE>    if not || || || == 1 0 == 1 1 == 1 0 == 1 1
+if/elseif> evaluated as false
+IN1> 
+IN1>    variables calculate prevblock int + {prevblock} {nsubs{ii}}
+SUBSTITUTE>    variables calculate prevblock int + 0 2
+IN1>    variables calculate ii int + {ii} 1
+SUBSTITUTE>    variables calculate ii int + 1 1
+IN1> endwhile
+SUBSTITUTE> while <= 2 1
+while> evaluated as false
+IN1> 
+IN1> !               B S   t0  tv  tm  fb   q
+IN1>    msld initialize 0 0 0 0 5 0 0
+IN1> 
+IN1> variables set blockassign 0
+IN1> variables set prevblock 0
+IN1> variables set ii 1
+IN1> while <= {ii} {nsites}
+SUBSTITUTE> while <= 1 1
+while> evaluated as true
+IN1>    variables set jj 1
+IN1>    variables set theta0 1
+IN1>    while <= {jj} {nsubs{ii}}
+SUBSTITUTE>    while <= 1 2
+while> evaluated as true
+IN1>       variables calculate jp0 int + {jj} {prevblock}
+SUBSTITUTE>       variables calculate jp0 int + 1 0
+IN1> 
+IN1> !               B S   t0  tv  tm  fb   q
+IN1>       msld initialize {jp0} {ii} {theta0} 0 5 {lams{ii}s{jj}} 0
+DEBUG: openBrace 32 closeBrace 40
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/io/variables.cxx:207
+Unrecognized variable token name {lams1s1} in line "      msld initialize 1 1 1 0 5 {lams1s1} 0
+"

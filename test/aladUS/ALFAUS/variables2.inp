@@ -1,0 +1,23 @@
+* Variables from step 2 of ALF
+*
+
+set lams1s1 =     0.00
+set lams1s2 =     2.64
+set cs1s1s1s2 =    10.74
+set xs1s1s1s2 =     0.05
+set xs1s2s1s1 =    -3.00
+set ss1s1s1s2 =     0.51
+set ss1s2s1s1 =     0.26
+set sysname = "aladsetup
+trim sysname from 2
+set nnodes = 1
+set nreps = 1
+set ncentral = 0
+set nblocks = 2
+set nsites = 1
+set nsubs1 = 2
+set temp = 298.15
+set minimizeflag = 0
+
+set restartfile = "../run1/res/aladsetup_flat.res
+trim restartfile from 2

@@ -1,0 +1,235 @@
+bomlev -2
+
+! Don't autogen whole system on every patch command
+autogen nopatch
+
+set procount = 0
+
+! Apply patches:
+! aa_x to apply mutation x
+! cap_xi if the mutation x occurs on one terminuse or the other with terminal patch i
+! l_00x and l_x00 (or  l_x10 if proline is next to apply CMAP and impropers for neighboring native residues
+! l_0xy and l_xy0 for interactions between neighboring mutants x and y
+! l_x0y for CMAP between x and y separated by one
+! l_xyz for CMAP between three adjacent mutants x, y, and z
+! And additional complications if mutations are near termini
+calc ii = @aainitl + 1
+label patchsiteloop
+if @ii .le. @aafinal then
+
+   set segid = @segid@@ii
+   set resid = @resid@@ii
+ 
+   ! check for errors in alchemical_definitions.inp
+   stream "prep/aa_stream/alchemcheck.inp"
+
+   ! Switch to iresid from resid based checks because of resid names in antibodies
+   define test select segid @segid .and. resid @resid end
+   set iresid = ?selires
+   set iresid@ii = @iresid
+   calc iresidminus2 = @iresid - 2
+   calc iresidminus1 = @iresid - 1
+   calc iresidplus1 = @iresid + 1
+   define test select segid @segid .and. ires @iresidminus2 end
+   set residminus2 = ?selresi
+   define test select segid @segid .and. ires @iresidminus1 end
+   set residminus1 = ?selresi
+   define test select segid @segid .and. ires @iresidplus1 end
+   set residplus1 = ?selresi
+   define test select segid @segid .and. resid @{nterres_@@segid} end
+   set nterires_@segid = ?selires
+   define test select segid @segid .and. resid @{cterres_@@segid} end
+   set cterires_@segid = ?selires
+   calc iiminus2 = @ii - 2
+   calc iiminus1 = @ii - 1
+
+   ! determine proline in current position
+   define testpro select segid @segid .and. resid @resid .and. resname PRO end
+   if ?nsel .gt. 0 then
+      calc procount = @procount + 1
+   endif
+   ! determine proline in residplus1 position
+   define testpro select segid @segid .and. resid @residplus1 .and. resname PRO end
+   set ptag = 0
+   if ?nsel .gt. 0 then
+      set ptag = 1
+   endif
+
+   set jj = 2
+   label patchloop
+   if @jj .le. @nsubs@@ii then
+
+      set seqjj = @{s@@{ii}seq@@jj}
+      patch aa_@{seqjj} @segid @resid@@ii setup warn ! setup for IC table
+
+      if @{seqjj} .eq. p then
+         calc procount = @procount + 1
+      endif
+
+      !! nterires and cterires connectivity deletion necessary for multiple chains
+      if @iresid .eq. @{nterires_@@segid} then
+         dele conn sele ( ires @iresidminus1 .and. type C ) show end -
+            sele ( atom @segid @resid@@ii N__@{seqjj} ) show end
+         patch cap_@{seqjj}@{nterc_@@segid} @segid @resid@@ii setup ! setup for IC table
+      endif
+      if @iresid .eq. @{cterires_@@segid} then
+         dele conn sele ( atom @segid @resid@@ii C__@{seqjj} ) show end -
+            sele ( ires @iresidplus1 .and. type N ) show end
+         patch cap_@{seqjj}@{cterc_@@segid} @segid @resid@@ii setup ! setup for IC table
+      endif
+
+      !! Internal "if not a terminal residue" loop stops script from breaking if one of the
+      !!    "terminal deletion sites" was already a terminus of the loaded protein
+      if @ii .eq. @{nterdel_@@segid} then
+         if @iresid .ne. @{nterires_@@segid} then
+            patch cap_@{seqjj}@{nterc_@@segid} @segid @resid@@ii setup ! setup for IC table
+         else
+            echo "Error, mutation site for n terminal deletion should be first nondeleted site"
+            stop
+         endif
+      endif
+      if @ii .eq. @{cterdel_@@segid} then
+         if @iresid .ne. @{cterires_@@segid} then
+            patch cap_@{seqjj}@{cterc_@@segid} @segid @resid@@ii setup ! setup for IC table
+         else
+            echo "Error, mutation site for c terminal deletion should be first nondeleted site"
+            stop
+         endif
+      endif
+
+      ! add links
+      ! Some of these links should not be included for terminal deletions, but
+      ! deletloop.inp will take care of them
+      if @iresidminus1 .gt. @{nterires_@@segid} then
+         patch l_00@{seqjj} @segid @residminus1 ! setup
+      endif
+      if @iresidminus1 .eq. @{nterires_@@segid} then
+         patch l_@{nterc_@@segid}0@{seqjj} @segid @residminus1 ! setup
+      endif
+      if @iresidplus1 .lt. @{cterires_@@segid} then
+         patch l_@{seqjj}@{ptag}0 @segid @residplus1 ! setup
+      endif
+      if @iresidplus1 .eq. @{cterires_@@segid} then
+         patch l_@{seqjj}@{ptag}@{cterc_@@segid} @segid @residplus1 ! setup
+      endif
+
+      calc aainitlp1 = @aainitl + 1
+      ! add pairwise links
+      if @ii .gt. @aainitlp1 then
+       if @segid@@iiminus1 .eq. @segid then
+         if @iresid@@iiminus1 .gt. @iresid@@ii then
+            echo "Error, resids in the same segid must be in order. Sites @IIMINUS1 and @II are out of order"
+            stop
+         endif
+         if @iresid@@iiminus1 .eq. @iresidminus1 then
+            set kk = 2
+            label linkloop1
+            if @kk .le. @nsubs@@iiminus1 then
+               set seqkk = @{s@@{iiminus1}seq@@kk}
+               if @iresidminus1 .eq. @{nterires_@@segid} then
+                  patch l_@{nterc_@@segid}@{seqkk}@{seqjj} @segid @residminus1
+               else
+                  if @{nterdel_@@segid} .eq. @iiminus1 then
+                     patch l_@{nterc_@@segid}@{seqkk}@{seqjj} @segid @residminus1
+                  else
+                     patch l_0@{seqkk}@{seqjj} @segid @residminus1
+                  endif
+               endif
+               if @iresid .eq. @{cterires_@@segid} then
+                  patch l_@{seqkk}@{seqjj}@{cterc_@@segid} @segid @resid
+               else
+                  if @{cterdel_@@segid} .eq. @ii then
+                     patch l_@{seqkk}@{seqjj}@{cterc_@@segid} @segid @resid
+                  else
+                     patch l_@{seqkk}@{seqjj}0 @segid @resid
+                  endif
+               endif
+               calc kk = @kk + 1
+               goto linkloop1
+            endif
+         endif
+         if @iresid@@iiminus1 .eq. @iresidminus2 then
+            set kk = 2
+            label linkloop2
+            if @kk .le. @nsubs@@iiminus1 then
+               set seqkk = @{s@@{iiminus1}seq@@kk}
+               patch l_@{seqkk}0@{seqjj} @segid @residminus1
+               calc kk = @kk + 1
+               goto linkloop2
+            endif
+         endif
+       else
+         set finished@segid@@iiminus1 = @iiminus1
+         if @?finished@@segid .gt. 0 then
+            echo "Error, finished segid @SEGID at site @FINISHED@@SEGID and resumed at site @II. Don't do one segid, do another, and then go back to the first"
+            stop
+         endif
+       endif
+      endif
+
+      calc aainitlp2 = @aainitl + 2
+      ! add three-way links
+      if @ii .gt. @aainitlp2 then
+       if @segid@@iiminus2 .eq. @segid then
+         if @iresid@@iiminus1 .eq. @iresidminus1 then
+            if @iresid@@iiminus2 .eq. @iresidminus2 then
+               set ll = 2
+               label linkloop3
+               if @ll .le. @nsubs@@iiminus2 then
+                  set seqll = @{s@@{iiminus2}seq@@ll}
+                  patch l_@{seqll}0@{seqjj} @segid @residminus1
+                  set kk = 2
+                  label linkloop4
+                  if @kk .le. @nsubs@@iiminus1 then
+                     set seqkk = @{s@@{iiminus1}seq@@kk}
+                     patch l_@{seqll}@{seqkk}@{seqjj} @segid @residminus1
+                     calc kk = @kk + 1
+                     goto linkloop4
+                  endif
+                  calc ll = @ll + 1
+                  goto linkloop3
+               endif
+            endif
+         endif
+       endif
+      endif
+
+      ! Copy backbone positions and move them slightly to prevent EWEX = NAN
+      calc moveit = ( @jj - 1 ) * 0.01
+      coor dupl sele atom @segid @resid N end sele atom @segid @resid N__@{seqjj} end
+      scalar Z add @moveit sele atom @segid @resid N__@{seqjj} end
+      coor dupl sele atom @segid @resid CA end sele atom @segid @resid CA_@{seqjj} end
+      scalar Z add @moveit sele atom @segid @resid CA_@{seqjj} end
+      coor dupl sele atom @segid @resid C end sele atom @segid @resid C__@{seqjj} end
+      scalar Z add @moveit sele atom @segid @resid C__@{seqjj} end
+
+      calc jj = @jj + 1
+      goto patchloop
+   endif
+
+   calc ii = @ii + 1
+   goto patchsiteloop
+endif
+
+ic param
+ic build
+
+
+! Next identify mutating atoms only and autogen angles and dihedrals there.
+define siteallsuball select none end
+
+calc ii = @aainitl + 1
+label autogenloop
+if @ii .le. @aafinal then
+   set segid = @segid@@ii
+   set resid = @resid@@ii
+
+   define siteallsuball select siteallsuball .or. -
+      ( segid @segid .and. resid @resid ) end
+
+   calc ii = @ii + 1
+   goto autogenloop
+endif
+
+auto angle dihe sele .bonded. .bonded. .bonded. siteallsuball end
+

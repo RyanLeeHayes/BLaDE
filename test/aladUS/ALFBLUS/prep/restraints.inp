@@ -1,0 +1,6 @@
+! this is the place to place all restraints
+selection define clp atom HETA 1 CLP
+selection define nl atom HETA 1 NL
+selection define ca atom HETA 1 CA
+selection define crp atom HETA 1 CRP
+structure dihedral clp nl ca crp 10 10 1
