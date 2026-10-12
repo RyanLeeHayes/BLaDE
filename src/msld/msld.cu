@@ -1634,6 +1634,7 @@ void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCor
 
 void blade_add_msld_charges(System *system,double kChargeRestraint1,double kChargeRestraint2,double kChargeRestraint3,double q0ChargeRestraint3,double wChargeRestraint3)
 {
+  system+=omp_get_thread_num();
   system->msld->kChargeRestraint1=kChargeRestraint1;
   system->msld->kChargeRestraint2=kChargeRestraint2;
   system->msld->kChargeRestraint3=kChargeRestraint3;
