@@ -85,8 +85,12 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
 
       fpair[0]=6*pp.c6*A6*(rinv3-B6)*rinv3*rinv-12*pp.c12*A12*(rinv6-B12)*rinv6*rinv;
       if (calcEnergy) {
-        real dv6=-1/rCut6;
-        real dv12=-1/(rCut6*rCut6);
+        // Shift below rSwitch, so the energy is continuous there. As in
+        // enbfix14_kernel.inc, -1/rCut^6 and -1/rCut^12 apply only without a
+        // switching region; with one they underestimate each 1-4 pair's
+        // energy by a constant (about 1 kcal/mol over DHFR's 6556 pairs).
+        real dv6=(rc.rSwitch<rc.rCut?-1/(rCut3*rSwitch3):-1/rCut6);
+        real dv12=(rc.rSwitch<rc.rCut?-1/(rCut6*rSwitch6):-1/(rCut6*rCut6));
 
         real CC6=(r<rc.rSwitch?dv6:0);
         real CC12=(r<rc.rSwitch?dv12:0);
