@@ -1,5 +1,5 @@
-#ifndef RESTRIAN_RESTRAIN_H
-#define RESTRAINT_RESTRAIN_H
+#ifndef RESTRAIN_RESTRAIN_H
+#define RESTRAIN_RESTRAIN_H
 
 // Forward definitions
 class System;
