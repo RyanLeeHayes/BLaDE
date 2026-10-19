@@ -14,6 +14,7 @@ struct HarmonicPotential;
 struct BoRestPotential;
 struct AnRestPotential;
 struct DiRestPotential;
+struct RmsdRestPotential;
 struct ResdPotential; // eeresd
 struct MLPotential;   // eemlp
 struct VirtualSite2; // Colinear lone pair
@@ -29,8 +30,6 @@ struct AtomStructure {
   real charge;
   real mass;
 };
-
-
 
 class Structure {
   public:
@@ -72,6 +71,9 @@ class Structure {
   int boRestCount;
   std::vector<struct BoRestPotential> boRestList;
 
+  int rmsdRestCount;
+  std::vector<struct RmsdRestPotential> rmsdRestList;
+
   int anRestCount;
   std::vector<struct AnRestPotential> anRestList;
 
@@ -99,6 +101,7 @@ class Structure {
   void parse_boRest(char *line,char *token,System *system);
   void parse_anRest(char *line,char *token,System *system);
   void parse_diRest(char *line,char *token,System *system);
+  void parse_rmsdRest(char *line, char *token,System *system);
   void parse_resd(char *line,char *token,System *system); // eeresd
   void parse_mlp(char *line,char *token,System *system); // eemlp
   void dump(char *line,char *token,System *system);
