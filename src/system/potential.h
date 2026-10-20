@@ -199,13 +199,15 @@ struct DiRestPotential {
   int block;
 };
 
+struct RmsdRestAtom {
+  int idx;
+  real w;
+  real3 refPos;
+};
+
 struct RmsdRestPotential { // host arrays
-  std::vector<int> frame;
-  std::vector<int> restrained;
-  std::vector<real> wfs;
-  std::vector<real> wrs;
-  std::vector<real3> centeredr;
-  std::vector<real3> centeredf;
+  std::vector<RmsdRestAtom> frame;
+  std::vector<RmsdRestAtom> restrained;
   real3 c0;
   real Wf;
   real Wr;
@@ -219,20 +221,12 @@ struct RmsdRestPotentialDev { // device arrays
   int fCount;
   int rStartIdx;
   int rCount;
-  real3 c0;
   real Wf;
   real Wr;
   real k;
   real d0;
   int block;
 };
-
-struct RmsdRestAtom {
-  int idx;
-  real w;
-  real3 ref;
-};
-
 
 // eeresd-begin
 struct ResdPotential {
@@ -424,8 +418,8 @@ class Potential {
   int rmsdRestCount;
   struct RmsdRestPotentialDev *rmsdRests;
   struct RmsdRestPotentialDev *rmsdRests_d;
-  struct RmsdRestAtom *rmsdAtoms;
-  struct RmsdRestAtom *rmsdAtoms_d;
+  struct RmsdRestAtom *rmsdRestAtoms;
+  struct RmsdRestAtom *rmsdRestAtoms_d;
   int resdCount;                 // eeresd 
   struct ResdPotential *resds;   // eeresd     
   struct ResdPotential *resds_d; // eeresd  

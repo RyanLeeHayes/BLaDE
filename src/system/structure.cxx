@@ -505,58 +505,64 @@ void Structure::parse_rmsdRest(char *line,char *token,System *system) {
       fatal(__FILE__,__LINE__,"Unrecognized restrained selection name %s for RMSD restraints\n",rselection.c_str());
     }
     struct RmsdRestPotential rmsd;
-    rmsd.c0 = real3_reset<real3>();
-    std::vector<real3> coordsf; // need coords for centering
-    std::vector<real3> coordsr; // need coords for centering
+    rmsd.c0.x=0;
+    rmsd.c0.y=0;
+    rmsd.c0.z=0;
     real Wf=0;
     real Wr=0;
     // populate frame and restrained atoms for host arrays
     for (int f=0; f<system->selections->selectionMap[fselection].boolCount; f++) {
-      real w;
-      real x;
-      real y;
-      real z;
       if (system->selections->selectionMap[fselection].boolSelection[f]) {
-        rmsd.frame.push_back(f);
-        w=atomList[f].mass;
-        rmsd.wfs.push_back(w);
+        real w=atomList[f].mass;
         Wf+=w;
-        x=system->coordinates->particlePosition[f][0];
-        y=system->coordinates->particlePosition[f][1];
-        z=system->coordinates->particlePosition[f][2];
-        coordsf.push_back({x, y, z});
-        rmsd.c0.x+=w*x;
-        rmsd.c0.y+=w*y;
-        rmsd.c0.z+=w*z;
+        real3 xyz={
+          system->coordinates->particlePosition[f][0],
+          system->coordinates->particlePosition[f][1],
+          system->coordinates->particlePosition[f][2],
+        };
+        struct RmsdRestAtom atom;
+        atom.idx=f;
+        atom.w=w;
+        atom.refPos=xyz; // uncentered
+        rmsd.frame.push_back(atom);
+        rmsd.c0.x+=w*xyz.x;
+        rmsd.c0.y+=w*xyz.y;
+        rmsd.c0.z+=w*xyz.z;
       }
     }
-    if (coordsf.size() < 3) {
+    if (rmsd.frame.size() < 3) {
       fatal(__FILE__,__LINE__,"Frame atoms less than 1, selection can not compute weights properly.\n");
     }
     rmsd.c0.x/=Wf;
     rmsd.c0.y/=Wf;
     rmsd.c0.z/=Wf;
-    for (int f=0; f<coordsf.size(); f++) {
-      rmsd.centeredf.push_back(real3_sub(coordsf[f], rmsd.c0));
+    // center frame positions
+    for (int f=0; f<rmsd.frame.size(); f++) {
+      rmsd.frame[f].refPos.x=rmsd.frame[f].refPos.x-rmsd.c0.x;
+      rmsd.frame[f].refPos.y=rmsd.frame[f].refPos.y-rmsd.c0.y;
+      rmsd.frame[f].refPos.z=rmsd.frame[f].refPos.z-rmsd.c0.z;
     }
     for (int r=0; r<system->selections->selectionMap[rselection].boolCount; r++) {
-      real w;
-      real x;
-      real y;
-      real z;
       if (system->selections->selectionMap[rselection].boolSelection[r]) {
-        rmsd.restrained.push_back(r);
-        w=atomList[r].mass;
-        rmsd.wrs.push_back(w);
+        real w=atomList[r].mass;
         Wr+=w;
-        x=system->coordinates->particlePosition[r][0];
-        y=system->coordinates->particlePosition[r][1];
-        z=system->coordinates->particlePosition[r][2];
-        coordsr.push_back({x, y, z});
+        real3 xyz={
+          system->coordinates->particlePosition[r][0],
+          system->coordinates->particlePosition[r][1],
+          system->coordinates->particlePosition[r][2],
+        };
+        struct RmsdRestAtom atom;
+        atom.idx=r;
+        atom.w=w;
+        atom.refPos=xyz; // uncentered
+        rmsd.restrained.push_back(atom);
       }
     }
-    for (int r=0; r<coordsr.size(); r++) {
-      rmsd.centeredr.push_back(real3_sub(coordsr[r], rmsd.c0));
+    // center restrained positions
+    for (int r=0; r<rmsd.restrained.size(); r++) {
+      rmsd.restrained[r].refPos.x=rmsd.restrained[r].refPos.x-rmsd.c0.x;
+      rmsd.restrained[r].refPos.y=rmsd.restrained[r].refPos.y-rmsd.c0.y;
+      rmsd.restrained[r].refPos.z=rmsd.restrained[r].refPos.z-rmsd.c0.z;
     }
     rmsd.k=k*(KCAL_MOL/ANGSTROM/ANGSTROM);
     rmsd.d0=d0*ANGSTROM;
