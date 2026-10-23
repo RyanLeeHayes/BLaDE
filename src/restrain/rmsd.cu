@@ -39,10 +39,11 @@ __device__ void block_sum(real *input,int dim,real* shared) {
   }
 }
 
-__device__ void calculate_quaternion_matrix_from_crosscovariance(real* B[3][3]) {
+__device__ real* quaternion_matrix(const real* B, real* F) {
   // F is symmetric 4x4 matrix of linear summation of B elements
   //
   // Inputs:
+  // F: symmetric 4x4 matrix to be assigned
   // B: symmetric 3x3 matrix of cross-covariance
   //
   // Procedure:
@@ -50,19 +51,30 @@ __device__ void calculate_quaternion_matrix_from_crosscovariance(real* B[3][3]) 
   //
   // Outputs:
   // F: symmetric 4x4 matrix of quaternion coefficients
+  F[0]=B[0]+B[4]+B[8];    // B11+B22+B33
+  F[1]=B[7]-B[5];         // B32-B23
+  F[2]=B[2]-B[6];         // B13-B31
+  F[3]=B[3]-B[1];         // B21-B12
 
-  // initialize eigenvectors as identity matrix
-  //real eigenvecs[4][4];
-  //for (int i=0; i<eigenvectors.size(); i++) {
-  // for (int j=0; j<eigenvectors.size(); j++) {
-  //    if (i==j) { eigenvectors[i][j] = 1; }
-  //    else { eigenvectors[i][j] = 0; }
-  //  }
-  //}
-  //return F;
+  F[4]=F[1];
+  F[5]=B[0]-B[4]-B[8];    // B11-B22-B33
+  F[6]=B[1]+B[3];         // B12+B21
+  F[7]=B[2]+B[6];         // B13+B31
+
+  F[8]=F[2];
+  F[9]=F[6];
+  F[10]=-B[0]+B[4]-B[8];   // -B11+B22-B33
+  F[11]=B[5]+B[7];         // B23+B32
+
+  F[12]=F[3];
+  F[13]=F[7];
+  F[14]=F[11];
+  F[15]=-B[0]-B[4]+B[8];   // -B11-B22+B33
+                            //
+  return F;
 }
 
-__device__ void calculate_quaternion_from_quaternion_matrix(real F[4][4]) {
+__device__ void jacobi_eigensolver(real* F,real* evals,real* evecs, int dim, int max_iter=100, double tol=1e-12) {
   // F*eigenvecs = mu*eigenvecs
   //
   // Inputs:
@@ -74,13 +86,82 @@ __device__ void calculate_quaternion_from_quaternion_matrix(real F[4][4]) {
   // Output:
   // eigenvecs: 4x4 of eigenvectors (q = eigenvecs[0], what to calcualate optimal R from)
   // mu: eigenvalues
-  //
-  //return std::make_pair(mu, eigenvecs);
+
+  for (int i=0; i<dim; i++) {
+    for (int j=0; j<dim; j++) {
+      evecs[dim*i+j]=static_cast<double>(i==j);
+    }
+  }
+
+  for (int iter=0; iter<max_iter; iter++) {
+    // Find largest off-diag elements
+    double max_off_diag=0.0;
+
+    int p=0;
+    int q=0;
+
+    for (int i=0; i<dim; i++) {
+      for (int j=i+1; j<dim; j++) {
+        if (fabs(F[dim*i+j])>max_off_diag) {
+          max_off_diag=fabs(F[dim*i+j]); 
+          p=i;
+          q=j;
+        }
+      }
+    }
+
+    // is it already converge
+    if (max_off_diag<tol) {
+      break;
+    }
+
+    // if it isn't, rotate:
+
+    // get rotation angle
+    double fpp=F[dim*p+p];
+    double fqq=F[dim*q+q];
+    double fpq=F[dim*p+q];
+
+    double theta=0.5*atan2(2.0*fpq,fqq-fpp);
+    double c=cos(theta);
+    double s=sin(theta);
+
+    // rotate F
+    F[dim*p+p]=c*c*fpp - 2*s*c*fpq + s*s*fqq;
+    F[dim*q+q]=s*s*fpp + 2*s*c*fpq + c*c*fqq;
+    F[dim*p+q]=0.0;
+    F[dim*q+p]=0.0;
+
+    for (int i=0; i<dim; i++) {
+      if (i!=p && i!=q) {
+        double fip=F[dim*i+p];
+        double fiq=F[dim*i+q];
+        F[dim*i+p]=c*fip - s*fiq;
+        F[dim*p+i]=F[dim*i+p];
+        F[dim*i+q]=s*fip + c*fiq;
+        F[dim*q+i]=F[dim*i+q];
+      }
+    }
+
+    // extract eigenvectors
+    for (int i=0; i<dim; i++) {
+      double vip=evecs[dim*i+p];
+      double viq=evecs[dim*i+q];
+      evecs[dim*i+p]=c*vip - s*viq;
+      evecs[dim*i+q]=s*vip + c*viq;
+    }
+  }
+
+  // accumulate eigenvalues from diagonal of F
+  for (int i=0; i<dim; i++) {
+    for (int j=0; j<dim; j++) {
+      if (i==j) { evals[i]=F[dim*i+j]; }
+    }
+  }
 }
 
 
-__device__ void quaternion_to_rotation(real q[4]) // this is 1x4 array of quaternion
-{
+__device__ void quaternion_to_rotation(real* q,real* R) {
   // R has a quadratic summation relationship to q with pre-defined coefficients
   //
   // Inputs:
@@ -91,11 +172,6 @@ __device__ void quaternion_to_rotation(real q[4]) // this is 1x4 array of quater
   //
   // Outputs:
   // R: 3x3 optimal rotation matrix
-}
-
-__device__ void calculate_optimal_rotation(RmsdRestAtom* frameStart, int fCount)
-{
-  // calculate optimal R
 }
 
 __device__ void potential(int RmsdRestCount,RmsdRestPotentialDev *rmsdRests,RmsdRestAtom *rmsdRestAtoms)
@@ -123,18 +199,18 @@ __global__ void getforce_rmsdRestraint_kernel(int rmsdRestCount,RmsdRestPotentia
     // each thread gets frame atom index (threadIdx.x + n*256)
     for (int k=threadIdx.x; k<rmsdRest.fCount; k+=blockDim.x) {
       RmsdRestAtom fatom=rmsdRestAtoms[rmsdRest.fStartIdx+k];
-      real3 xp=real3_add(anchor, real3_subpbc<flagBox>(position[fatom.idx], anchor, box));
-      cpart[0]+=fatom.w*xp.x;
-      cpart[1]+=fatom.w*xp.y;
-      cpart[2]+=fatom.w*xp.z;
+      real3 xp_3=real3_add(anchor, real3_subpbc<flagBox>(position[fatom.idx],anchor,box));
+      cpart[0]+=fatom.w*xp_3.x;
+      cpart[1]+=fatom.w*xp_3.y;
+      cpart[2]+=fatom.w*xp_3.z;
     }
     block_sum(cpart,3,sred);
     anchor.x=cpart[0]/rmsdRest.Wf;
     anchor.y=cpart[1]/rmsdRest.Wf;
     anchor.z=cpart[2]/rmsdRest.Wf;
   }
-  real3 c=anchor;
-  real carr[3]={c.x,c.y,c.z};
+  real3 c_3=anchor;
+  real c[3]={c_3.x,c_3.y,c_3.z};
   
   // STAGE 2: CROSS-COVARIANCE 
   real Bpart[9]={0};
@@ -142,14 +218,14 @@ __global__ void getforce_rmsdRestraint_kernel(int rmsdRestCount,RmsdRestPotentia
 
   for (int k=threadIdx.x; k<rmsdRest.fCount; k+=blockDim.x) {
     RmsdRestAtom fatom=rmsdRestAtoms[rmsdRest.fStartIdx+k];
-    real3 xp=real3_subpbc<flagBox>(position[fatom.idx],c,box); // centered coords
-    real3 xp0=fatom.refPos;
+    real3 xp_3=real3_subpbc<flagBox>(position[fatom.idx],c_3,box); // centered coords
+    real3 xp0_3=fatom.refPos;
 
-    real x[3]={xp.x,xp.y,xp.z};
-    real x0[3]={xp0.x,xp0.y,xp0.z};
+    real xp[3]={xp_3.x,xp_3.y,xp_3.z};
+    real xp0[3]={xp0_3.x,xp0_3.y,xp0_3.z};
     for (int a=0; a<3; a++) {
       for (int b=0; b<3; b++) {
-        Bpart[3*a+b]+=fatom.w*x[a]*x0[b];
+        Bpart[3*a+b]+=fatom.w*xp[a]*xp0[b];
       }
     }
   }
@@ -159,13 +235,38 @@ __global__ void getforce_rmsdRestraint_kernel(int rmsdRestCount,RmsdRestPotentia
     B[j]=Bpart[j];
   }
 
+  // STAGE 3: QUATERNION MATRIX
+  real F[16];
+  quaternion_matrix(B,F);
 
+  // STAGE 4: QUATERNION
+  real evals[4];
+  real evecs[16];
+  jacobi_eigensolver(F,evals,evecs,4);
+
+  int max_eval_idx=0;
+
+  for (int i=1; i<4; i++) {
+    if (evals[i]>evals[max_eval_idx]) {
+      max_eval_idx=i;
+    }
+  }
+
+  real q[4];
+  for (int j=0; j<4; j++) { q[j]=evecs[4*j+max_eval_idx]; }
+
+  // STAGE 5: OPTIMAL ROTATION
+  real R[9]={0};
+  quaternion_to_rotation(q,R);
+            
   if (threadIdx.x==0) {
-  printf("RMSD %d c  %.6f %.6f %.6f  Wf %.4f\n",blockIdx.x,carr[0],carr[1],carr[2],rmsdRest.Wf);
-  printf("RMSD %d B  %.5f %.5f %.5f  %.5f %.5f %.5f  %.5f %.5f %.5f\n",blockIdx.x,
-         B[0],B[1],B[2],B[3],B[4],B[5],B[6],B[7],B[8]);
-}
-
+    printf("RMSD %d evals %.3f %.3f %.3f %.3f  argmax %d  mu_max-TrB %.3f\n",blockIdx.x,
+           evals[0],evals[1],evals[2],evals[3],max_eval_idx,evals[max_eval_idx]-(B[0]+B[4]+B[8]));
+    printf("RMSD %d q  %.6f %.6f %.6f %.6f  |q| %.6f\n",blockIdx.x,
+           q[0],q[1],q[2],q[3],sqrt(q[0]*q[0]+q[1]*q[1]+q[2]*q[2]+q[3]*q[3]));
+    printf("RMSD %d R  %.6f %.6f %.6f  %.6f %.6f %.6f  %.6f %.6f %.6f\n",blockIdx.x,
+           R[0],R[1],R[2],R[3],R[4],R[5],R[6],R[7],R[8]);
+  }
 
   // STOPPAGE
 
