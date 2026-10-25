@@ -530,7 +530,7 @@ void Structure::parse_rmsdRest(char *line,char *token,System *system) {
         rmsd.c0.z+=w*xyz.z;
       }
     }
-    if (rmsd.frame.size() < 3) {
+    if (rmsd.frame.size() < 1) {
       fatal(__FILE__,__LINE__,"Frame atoms less than 1, selection can not compute weights properly.\n");
     }
     rmsd.c0.x/=Wf;

@@ -1783,24 +1783,24 @@ void Potential::initialize(System *system)
       rmsdRests[i].k=Rest.k;
       rmsdRests[i].d0=Rest.d0;
       rmsdRests[i].block=Rest.block;
+      rmsdRests[i].fCount=Rest.frame.size();
+      rmsdRests[i].rCount=Rest.restrained.size();
 
       rmsdRests[i].fStartIdx=pos;
-      rmsdRests[i].fCount=Rest.frame.size();
       for (j=0; j<Rest.frame.size(); j++) {
         rmsdRestAtoms[pos+j].idx=Rest.frame[j].idx;
         rmsdRestAtoms[pos+j].w=Rest.frame[j].w;
         rmsdRestAtoms[pos+j].refPos=Rest.frame[j].refPos;
       }
+
       pos+=Rest.frame.size();
 
       rmsdRests[i].rStartIdx=pos;
-      rmsdRests[i].rCount=Rest.restrained.size();
       for (j=0; j<Rest.restrained.size(); j++) {
         rmsdRestAtoms[pos+j].idx=Rest.restrained[j].idx;
         rmsdRestAtoms[pos+j].w=Rest.restrained[j].w;
         rmsdRestAtoms[pos+j].refPos=Rest.restrained[j].refPos;
       }
-      pos+=Rest.restrained.size();
     }
     gpuCheck(cudaMemcpy(rmsdRests_d,rmsdRests,rmsdRestCount*sizeof(struct RmsdRestPotentialDev),cudaMemcpyHostToDevice));
     gpuCheck(cudaMemcpy(rmsdRestAtoms_d,rmsdRestAtoms,rmsdAtomCount*sizeof(struct RmsdRestAtom),cudaMemcpyHostToDevice));
