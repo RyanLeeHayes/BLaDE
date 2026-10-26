@@ -166,6 +166,7 @@ class State {
   void recv_position();
   void recv_lambda();
   void recv_energy();
+  bool recv_energy_safe();
   void reset_nan_flag();
   void check_nan_flag();
 
@@ -187,7 +188,7 @@ class State {
   // From update/minimize.cu
   void min_init(System *system);
   void min_dest(System *system);
-  void min_move(int step,int nsteps,System *system);
+  bool min_move(int step,int nsteps,System *system);
 };
 
 #endif

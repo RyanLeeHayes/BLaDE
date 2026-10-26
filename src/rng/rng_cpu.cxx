@@ -49,6 +49,7 @@ R
 #include <stdlib.h>
 
 #include "rng/rng_cpu.h"
+#include "io/io.h"
  
 /* Period parameters */
 #define MT_N 624
@@ -73,6 +74,12 @@ RngCPU::~RngCPU()
   free_mtstate(mtState);
 }
 
+void RngCPU::seed(unsigned long s)
+{
+  init_genrand(s,mtState->mt,&(mtState->mti));
+  mtState->bNextReal=false;
+}
+
 
 
 /* initializes mt[N] with a seed */
@@ -80,6 +87,7 @@ void RngCPU::init_genrand(unsigned long s, unsigned long *mt, int* pt_mti)
 {
     int mti=pt_mti[0];
     mt[0]= s & 0xffffffffUL;
+    printlog("BLaDE CPU RNG seeded with x%lx\n",s);
     for (mti=1; mti<MT_N; mti++) {
         mt[mti] =
             (1812433253UL * (mt[mti-1] ^ (mt[mti-1] >> 30)) + mti);

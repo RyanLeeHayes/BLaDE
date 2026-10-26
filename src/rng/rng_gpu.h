@@ -22,6 +22,7 @@ public:
   RngGPU(); // (unnsigned long long seed)
   ~RngGPU();
 
+  void seed(unsigned long long seed);
   // Generate n random numbers in the pointer p
   void rand_normal(int n,real *p,cudaStream_t s);
   void rand_uniform(int n,real *p,cudaStream_t s);
@@ -57,6 +58,7 @@ class RngGPU
   }
 
   void setup();
+  void seed(unsigned long long seed);
   // Generate n random numbers in the pointer p
   void rand_normal(int n,real *p,cudaStream_t s);
   void rand_uniform(int n,real *p,cudaStream_t s);

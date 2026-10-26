@@ -398,7 +398,7 @@ class Potential {
   void initialize(System *system);
 
   void reset_force(System *system,bool calcEnergy);
-  void calc_force(long int step,System *system);
+  void calc_force(long int step,System *system,bool refillRandom);
 };
 
 #endif

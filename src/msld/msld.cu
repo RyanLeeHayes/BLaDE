@@ -1734,3 +1734,29 @@ void blade_add_msld_atomrestraint_element(System *system,int i)
   system+=omp_get_thread_num();
   system->msld->atomRestraints.back().push_back(i-1);
 }
+
+// RLH 2026-10-23: prefer to deprecate this function
+int blade_sync_msld_bias(System *system,double *biases,int count)
+{
+  if (!system || !biases || count <= 0) return 0;
+
+  int systemCount=(system->idCount > 0) ? system->idCount : 1;
+  for (int j=0; j<systemCount; j++) {
+    System *current=&system[j];
+    if (!current->msld || current->msld->blockCount != count ||
+        !current->msld->lambdaBias || !current->msld->lambdaBias_d) return 0;
+  }
+
+  printlog("NOTE: Function blade_sync_msld_bias used for fast replica exchange, slow replica exchange is recommended\n");
+  for (int j=0; j<systemCount; j++) {
+    System *current=&system[j];
+    gpuCheck(cudaSetDevice(current->gpu));
+    for (int i=0; i<count; i++) {
+      // CHARMM uses -BIELAM*lambda; BLaDE stores that coefficient directly.
+      current->msld->lambdaBias[i]=-(real)biases[i];
+    }
+    gpuCheck(cudaMemcpy(current->msld->lambdaBias_d,current->msld->lambdaBias,
+                        count*sizeof(real),cudaMemcpyHostToDevice));
+  }
+  return 1;
+}

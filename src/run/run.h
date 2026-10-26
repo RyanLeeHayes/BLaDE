@@ -23,6 +23,7 @@ typedef enum emin {
   elbfgs, // Limited memory BFGS algo
   esd, // steepest descent
   esdfd, // steepest descent with finite difference to choose step length
+  esdmd, // guarded steepest descent with monotonic energy
   eminend} EMin;
 
 typedef enum eelec {

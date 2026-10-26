@@ -69,7 +69,7 @@ void replica_exchange(System *system)
 
     // Evaluate new energy
     system->domdec->update_domdec(system,true);
-    system->potential->calc_force(0,system); // 0 tells it to calculate energy freqNRG
+    system->potential->calc_force(0,system,false); // 0 tells it to calculate energy freqNRG
 
     if (system->id==0) {
       // Get new energy

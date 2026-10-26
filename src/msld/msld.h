@@ -162,6 +162,7 @@ extern "C" {
   void blade_add_msld_atomrestraint(System *system);
   void blade_add_msld_atomrestraint_element(System *system,int i);
   void blade_set_msld_block_fixed(System *system,int blockIdx,int fixed);
+  int blade_sync_msld_bias(System *system,double *bias,int count); // deprecate
 }
 
 #endif

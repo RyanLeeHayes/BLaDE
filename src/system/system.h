@@ -87,6 +87,7 @@ extern "C" {
   System* blade_init_system(int ngpus,int *gpus);
   void blade_dest_system(System *system);
   void blade_set_device(System *system);
+  void blade_set_seed(System *system,int seed,int rank);
   void blade_set_verbose(System *system,int v);
 }
 

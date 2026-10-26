@@ -321,7 +321,7 @@ void Domdec::setup_exclusions(System *system)
   if (id>=0) {
     // Create localExcls_d (the sort tokens)
 
-    global_to_local_excl_kernel<<<(system->potential->exclCount+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,system->potential->excls_d,globalToBlock_d,id,domain_d,localExcls_d);
+    global_to_local_excl_kernel<<<(system->potential->exclCount+1+BLNB-1)/BLNB,BLNB,0,r->updateStream>>>(system->potential->exclCount,system->potential->excls_d,globalToBlock_d,id,domain_d,localExcls_d);
     gpuCheck(cudaGetLastError());
 
     // Create exclSort (the sort tree)

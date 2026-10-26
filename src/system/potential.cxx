@@ -1848,7 +1848,8 @@ void Potential::reset_force(System *system,bool calcEnergy)
   }
 }
 
-void Potential::calc_force(long int step,System *system)
+#warning "Get rid of refillRandom if possible"
+void Potential::calc_force(long int step,System *system,bool refillRandom)
 {
   bool calcEnergy=(step%system->run->freqNRG==0);
   int helper=(system->idCount==2); // 0 unless there are 2 GPUs, then it's 1.
@@ -1885,7 +1886,9 @@ void Potential::calc_force(long int step,System *system)
     cudaStreamWaitEvent(r->nbrecipStream,r->forceBegin,0);
     getforce_ewaldself(system,calcEnergy);
     getforce_ewald(system,calcEnergy);
-    system->rngGPU->rand_normal(s->leapState->N,s->leapState->random,r->nbrecipStream);
+    if (refillRandom) {
+      system->rngGPU->rand_normal(s->leapState->N,s->leapState->random,r->nbrecipStream);
+    }
     cudaEventRecord(r->nbrecipComplete,r->nbrecipStream);
     cudaStreamWaitEvent(r->updateStream,r->nbrecipComplete,0);
   }

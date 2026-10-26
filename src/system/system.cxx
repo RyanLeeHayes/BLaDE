@@ -322,6 +322,21 @@ void blade_set_device(System *system)
   gpuCheck(cudaSetDevice(system->gpu));
 }
 
+#warning "Probably AI generated function"
+#warning "Standalone BLaDE does not set seeds with this function and probably should"
+void blade_set_seed(System *system,int seed,int rank)
+{
+  system+=omp_get_thread_num();
+  // Pack the CHARMM seed and global rank; use a separate GPU-stream salt.
+  unsigned long long streamSeed=
+    ((unsigned long long)(unsigned int)seed<<32)|(unsigned int)rank;
+  streamSeed^=0x9e3779b97f4a7c15ULL*(unsigned int)system->id;
+  unsigned long cpuSeed=(unsigned long)
+    ((unsigned int)streamSeed^(unsigned int)(streamSeed>>32));
+  system->rngCPU->seed(cpuSeed);
+  system->rngGPU->seed(streamSeed);
+}
+
 void blade_set_verbose(System *system,int v)
 {
   system+=omp_get_thread_num();

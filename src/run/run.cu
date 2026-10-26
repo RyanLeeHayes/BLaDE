@@ -215,7 +215,7 @@ void Run::setup_parse_run()
   parseRun["reset"]=&Run::reset;
   helpRun["reset"]="?run reset> Resets the run data structure to it's default values\n";
   parseRun["setvariable"]=&Run::set_variable;
-  helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Available \"name\"s are: dt (time step in ps), nsteps (number of steps of dynamics to run), fnmxtc (filename for the coordinate output), fnmlmd (filename for the lambda output), fnmnrg (filename for the energy output)\n";
+  helpRun["setvariable"]="?run setvariable \"name\" \"value\"> Set the variable \"name\" to \"value\". Available \"name\"s include: dt (time step in ps), nsteps (number of steps of dynamics to run), fnmxtc (filename for the coordinate output), fnmlmd (filename for the lambda output), fnmnrg (filename for the energy output), mintype (lbfgs, sd, sdfd, or sdmd)\n";
   parseRun["setterm"]=&Run::set_term;
   helpRun["setterm"]="?run setterm [term] [on|off]> Turn terms (including bond, angle, dihe, impr, nb14 nbdirect, nbrecip, nbrecipself, nbrecipexcl, lambda, and bias) on or off\n";
   parseRun["energy"]=&Run::energy;
@@ -398,8 +398,10 @@ void Run::set_variable(char *line,char *token,System *system)
       minType=esd;
     } else if (strcmp(minString.c_str(),"sdfd")==0) {
       minType=esdfd;
+    } else if (strcmp(minString.c_str(),"sdmd")==0) {
+      minType=esdmd;
     } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: lbfgs, sd, or sdfd\n",minString.c_str());
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for minimization type minType. Options are: lbfgs, sd, sdfd, or sdmd\n",minString.c_str());
     }
   } else if (strcmp(token,"domdecheuristic")==0) {
     printlog("domdecheuristic is no longer used, it is always on\n");
@@ -438,7 +440,7 @@ void shift_kernel(real_x *x,real_x dx)
 void Run::energy(char *line,char *token,System *system)
 {
   dynamics_initialize(system);
-  system->potential->calc_force(0,system);
+  system->potential->calc_force(0,system,false);
   system->state->recv_energy();
   print_nrg(0,system);
   display_nrg(system);
@@ -458,7 +460,7 @@ void Run::test(char *line,char *token,System *system)
   dynamics_initialize(system);
 
   // Calculate forces
-  system->potential->calc_force(0,system);
+  system->potential->calc_force(0,system,false);
   system->msld->calc_thetaForce_from_lambdaForce(system->run->updateStream, system);
   // Save position and forces
   system->state->backup_position();
@@ -502,7 +504,7 @@ void Run::test(char *line,char *token,System *system)
           
           // Calculate energy
           system->domdec->update_domdec(system,0);
-          system->potential->calc_force(0,system);
+          system->potential->calc_force(0,system,false);
           system->msld->calc_thetaForce_from_lambdaForce(system->run->updateStream, system);
 
           // Save relevant data
@@ -527,19 +529,31 @@ void Run::test(char *line,char *token,System *system)
 
 void Run::minimize(char *line,char *token,System *system)
 {
+  bool success=true;
+
   dynamics_initialize(system);
   system->state->min_init(system);
 
   for (step=0; step<nsteps; step++) {
-    system->domdec->update_domdec(system,true); // true to always update neighbor list
-    system->potential->calc_force(0,system); // step 0 to always calculate energy
-    system->state->min_move(step,nsteps,system);
-    print_dynamics_output(step,system);
+    const auto outputStep=step;
+    if (minType!=esdmd || step==0) {
+      system->domdec->update_domdec(system,true); // true to always update neighbor list
+      system->potential->calc_force(0,system,false); // step 0 to always calculate energy
+    }
+    if (!system->state->min_move(step,nsteps,system)) {
+      success=false;
+      break;
+    }
+    print_dynamics_output(outputStep,system);
     gpuCheck(cudaPeekAtLastError());
   }
 
   system->state->min_dest(system);
   dynamics_finalize(system);
+#pragma omp barrier
+  if (!success && system->id==0) {
+    fatal(__FILE__,__LINE__,"SDMD minimization failed after restoring the last accepted state\n");
+  }
 }
 
 void Run::dynamics(char *line,char *token,System *system)
@@ -556,7 +570,7 @@ void Run::dynamics(char *line,char *token,System *system)
       printlog("Step %d\n",step);
     }
     system->domdec->update_domdec(system,(step%system->domdec->freqDomdec)==0);
-    system->potential->calc_force(step,system);
+    system->potential->calc_force(step,system,true);
     system->state->update(step,system);
 #warning "Need to copy coordinates before update"
     print_dynamics_output(step,system);
@@ -713,7 +727,7 @@ void blade_run_energy(System *system)
     system->run=new Run(system);
   }
   system->run->dynamics_initialize(system);
-  system->potential->calc_force(0,system);
+  system->potential->calc_force(0,system,false);
   system->state->recv_energy();
   system->run->dynamics_finalize(system);
 }

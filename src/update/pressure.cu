@@ -148,7 +148,7 @@ void pressure_coupling(System *system)
   system->domdec->update_domdec(system,false);
   // nvtxRangePop();
   // nvtxRangePushA("calc_force");
-  p->calc_force(0,system); // 0 tells it to calculate energy freqNRG
+  p->calc_force(0,system,false); // 0 tells it to calculate energy freqNRG
   // nvtxRangePop();
 
   if (system->id==0) {
