@@ -85,8 +85,10 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
 
       fpair[0]=6*pp.c6*A6*(rinv3-B6)*rinv3*rinv-12*pp.c12*A12*(rinv6-B12)*rinv6*rinv;
       if (calcEnergy) {
-        real dv6=-1/rCut6;
-        real dv12=-1/(rCut6*rCut6);
+        // Shift below rSwitch, so the energy is continuous there, as in
+        // nbdirect.cu (-1/rCut^6 and -1/rCut^12 when rSwitch==rCut).
+        real dv6=-1/(rCut3*rSwitch3);
+        real dv12=-1/(rCut6*rSwitch6);
 
         real CC6=(r<rc.rSwitch?dv6:0);
         real CC12=(r<rc.rSwitch?dv12:0);
