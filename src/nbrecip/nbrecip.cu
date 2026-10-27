@@ -220,9 +220,9 @@ __global__ void getforce_ewald_spread_kernel(int atomCount,real *charge,int *ato
 template <bool flagBox,typename box_type>
 __global__ void getforce_ewald_convolution_kernel(int3 gridDimPME,myCufftComplex *fourierGridPME,real *bGridPME,real betaEwald,box_type kbox)
 {
-  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  int k=blockIdx.x*blockDim.x+threadIdx.x;
   int j=blockIdx.y*blockDim.y+threadIdx.y;
-  int k=blockIdx.z*blockDim.z+threadIdx.z;
+  int i=blockIdx.z*blockDim.z+threadIdx.z;
   int ijk=((i*gridDimPME.y)+j)*(gridDimPME.z/2+1)+k;
   real Vinv=boxxx(kbox)*boxyy(kbox)*boxzz(kbox);
   real kcomp;
@@ -515,8 +515,8 @@ void getforce_ewaldTT(System *system,box_type kbox,bool calcEnergy)
   myCufftExecR2C(p->planFFTPME,p->chargeGridPME_d,p->fourierGridPME_d);
 
   // Convolution kernel
-  dim3 blockCount((p->gridDimPME[0]+8-1)/8,(p->gridDimPME[1]+8-1)/8,(p->gridDimPME[2]/2+1+8-1)/8);
-  dim3 blockSize(8,8,8);
+  dim3 blockCount((p->gridDimPME[2]/2+1+32-1)/32,(p->gridDimPME[1]+8-1)/8,p->gridDimPME[0]);
+  dim3 blockSize(32,8,1);
   getforce_ewald_convolution_kernel<flagBox><<<blockCount,blockSize,0,r->nbrecipStream>>>(((int3*)p->gridDimPME)[0],p->fourierGridPME_d,p->bGridPME_d,system->run->betaEwald,kbox);
   gpuCheck(cudaGetLastError());
 
