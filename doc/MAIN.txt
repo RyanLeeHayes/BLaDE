@@ -197,9 +197,18 @@ freqnpt (frequency of pressure coupling moves. 10 or less reproduces bulk dynami
 volumefluctuation (rms volume move for pressure coupling, input in A^3, recommend sqrt(V*(1 A^3)), rms fluctuations are typically sqrt(V*(2 A^3))
 pressure (pressure for pressure coupling, input in atmospheres)
 domdecheuristic (use heuristics for domdec limits without checking their validity - "off" is safer)
+dxatommax (maximum atomic displacement during minimization, in A)
+dxrmsinit (initial RMS displacement during minimization, in A)
+mintype (minimization method: lbfgs, sd, sdfd, or sdmd)
 
 When you're ready to run dynamics, call
 
 run dynamics
 
 This may be called multiple times. Subsequent calls with use the ending coordinates, and the previous values of any paremeters not changed by "run setvariable". You can also calculate the energy of the current configuration with "run energy".
+
+To run minimization instead, call
+
+run minimize
+
+This will run minimization with the option set by "run setvariable". The minimization methods are L-BFGS (lbfgs), adaptive steepest descent (sd), finite-difference steepest descent (sdfd), and guarded steepest descent (sdmd). SDMD keeps the last accepted state, retries smaller steps when a trial is invalid or raises the potential energy, and accepts a trial only when its potential energy is finite and no higher than the accepted-state comparison. Its first RMS displacement is min(dxrmsinit, 0.001 A).

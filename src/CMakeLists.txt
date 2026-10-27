@@ -54,6 +54,7 @@ if (PRECISION STREQUAL "DOUBLE")
 endif()
 
 add_executable(blade ${sources})
+target_compile_options(blade PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:-Xcompiler ${OpenMP_CXX_FLAGS}>") # suggested by Stan 2026-10-26 in pull request 16; necessary for OpenMP multi-GPU support
 
 # ADDED: enforce standard at target level too
 if (WITH_TORCH)
@@ -76,7 +77,7 @@ if (WITH_TORCH)
 endif()
 
 target_link_libraries(blade CUDA::curand CUDA::cufft)
-target_link_libraries(blade ${OpenMP_EXE_LINKER_FLAGS})
+target_link_libraries(blade OpenMP::OpenMP_CXX)
 
 if (RX)
   target_link_libraries(blade ${MPI_CXX_LIBRARIES})
