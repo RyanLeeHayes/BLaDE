@@ -1897,6 +1897,7 @@ void Potential::calc_force(long int step,System *system,bool refillRandom)
     cudaStreamWaitEvent(r->biaspotStream,r->forceBegin,0);
     system->msld->getforce_fixedBias(system,calcEnergy);
     system->msld->getforce_variableBias(system,calcEnergy);
+    system->msld->getforce_collectiveBias(system,calcEnergy);
     system->msld->getforce_thetaBias(system,calcEnergy);
     system->msld->getforce_atomRestraints(system,calcEnergy);
     system->msld->getforce_chargeRestraints(system,calcEnergy);

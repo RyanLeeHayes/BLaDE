@@ -58,6 +58,15 @@ Msld::Msld() {
   variableBias=NULL;
   variableBias_d=NULL;
 
+  collectiveBias_tmp.clear();
+  collectiveBiasCount=0;
+  collectiveBias=NULL;
+  collectiveBias_d=NULL;
+  collectiveComp_tmp.clear();
+  collectiveCompCount=0;
+  collectiveComp=NULL;
+  collectiveComp_d=NULL;
+
   thetaCollBiasCount=0;
   kThetaCollBias=NULL;
   kThetaCollBias_d=NULL;
@@ -107,6 +116,8 @@ Msld::~Msld() {
   if (thetaFriction) free(thetaFriction);
   if (blockFixed) free(blockFixed);
   if (variableBias) free(variableBias);
+  if (collectiveBias) free(collectiveBias);
+  if (collectiveComp) free(collectiveComp);
   if (kThetaCollBias) free(kThetaCollBias);
   if (nThetaCollBias) free(nThetaCollBias);
   if (kThetaIndeBias) free(kThetaIndeBias);
@@ -117,6 +128,8 @@ Msld::~Msld() {
   if (lambdaCharge_d) gpuCheck(cudaFree(lambdaCharge_d));
   if (netCharge_d) gpuCheck(cudaFree(netCharge_d));
   if (variableBias_d) gpuCheck(cudaFree(variableBias_d));
+  if (collectiveBias_d) gpuCheck(cudaFree(collectiveBias_d));
+  if (collectiveComp_d) gpuCheck(cudaFree(collectiveComp_d));
   if (kThetaCollBias_d) gpuCheck(cudaFree(kThetaCollBias_d));
   if (nThetaCollBias_d) gpuCheck(cudaFree(nThetaCollBias_d));
   if (kThetaIndeBias_d) gpuCheck(cudaFree(kThetaIndeBias_d));
@@ -249,7 +262,7 @@ void parse_msld(char *line,System *system)
     }
     vb.type=io_nexti(line);
     // if (vb.type!=6 && vb.type!=8 && vb.type!=10)
-    if (vb.type<=0 || vb.type>12) {
+    if (vb.type<=0 || vb.type>15) {
       fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type\n",vb.type);
     }
     vb.l0=io_nextf(line);
@@ -702,6 +715,21 @@ void Msld::initialize(System *system)
   }
   gpuCheck(cudaMemcpy(variableBias_d,variableBias,variableBiasCount*sizeof(struct VariableBias),cudaMemcpyHostToDevice));
 
+  collectiveBiasCount=collectiveBias_tmp.size();
+  collectiveBias=(struct CollectiveBias*)calloc(collectiveBiasCount,sizeof(struct CollectiveBias));
+  gpuCheck(cudaMalloc(&collectiveBias_d,collectiveBiasCount*sizeof(struct CollectiveBias)));
+  for (i=0; i<collectiveBiasCount; i++) {
+    collectiveBias[i]=collectiveBias_tmp[i];
+  }
+  gpuCheck(cudaMemcpy(collectiveBias_d,collectiveBias,collectiveBiasCount*sizeof(struct CollectiveBias),cudaMemcpyHostToDevice));
+  collectiveCompCount=collectiveComp_tmp.size();
+  collectiveComp=(struct CollectiveComp*)calloc(collectiveCompCount,sizeof(struct CollectiveComp));
+  gpuCheck(cudaMalloc(&collectiveComp_d,collectiveCompCount*sizeof(struct CollectiveComp)));
+  for (i=0; i<collectiveCompCount; i++) {
+    collectiveComp[i]=collectiveComp_tmp[i];
+  }
+  gpuCheck(cudaMemcpy(collectiveComp_d,collectiveComp,collectiveCompCount*sizeof(struct CollectiveComp),cudaMemcpyHostToDevice));
+
   if (thetaCollBiasCount>0) {
     gpuCheck(cudaMalloc(&kThetaCollBias_d,thetaCollBiasCount*sizeof(real)));
     gpuCheck(cudaMemcpy(kThetaCollBias_d,kThetaCollBias,thetaCollBiasCount*sizeof(real),cudaMemcpyHostToDevice));
@@ -1100,6 +1128,18 @@ __global__ void getforce_variableBias_kernel(real *lambda,real_f *lambdaForce,re
       lEnergy=vb.k*li*pow(lj,vb.n)/(li+vb.l0);
       fi=vb.k*vb.l0*pow(lj,vb.n)/((li+vb.l0)*(li+vb.l0));
       fj=vb.k*vb.n*li*pow(lj,vb.n-1)/(li+vb.l0);
+    } else if (vb.type==13) {
+      lEnergy=vb.k*li*(1-li);
+      fi=vb.k*(1-2*li);
+      fj=0;
+    } else if (vb.type==14) {
+      lEnergy=vb.k*((li/(li+vb.l0))-li*(1/(1+vb.l0)));
+      fi=vb.k*(vb.l0/((li+vb.l0)*(li+vb.l0))-(1/(1+vb.l0)));
+      fj=0;
+    } else if (vb.type==15) {
+      lEnergy=vb.k*((1-exp(vb.l0*li))-li*(1-exp(vb.l0)));
+      fi=vb.k*(-vb.l0*exp(vb.l0*li)-(1-exp(vb.l0)));
+      fj=0;
 /*
     } else if (vb.type==13 && vb.k) {
       lEnergy=vb.k*li*lj*(1-li-lj)/(vb.l0+1-li-lj);
@@ -1148,6 +1188,308 @@ void Msld::getforce_variableBias(System *system,bool calcEnergy)
 
   if (variableBiasCount>0) {
     getforce_variableBias_kernel<<<(variableBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,variableBiasCount,variableBias_d);
+    gpuCheck(cudaGetLastError());
+  }
+}
+
+__global__ void getforce_collectiveBias1_kernel(real *lambda,real_f *lambdaForce,real_e *energy,int collectiveBiasCount,struct CollectiveBias *collectiveBias,struct CollectiveComp *collectiveComp)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  struct CollectiveBias cb;
+  struct CollectiveComp cc[3];
+  int j, i1, i2, i3;
+  int compindex;
+  int lindex[3];
+  real l[3];
+  real l0[3];
+  real f[3];
+  real df[3];
+  real vol[3];
+  real vinv2[4];
+  real fall[4];
+  real dfall[4][3];
+  extern __shared__ real sEnergy[];
+  real lEnergy=0;
+
+  if (i<collectiveBiasCount) {
+    cb=collectiveBias[i];
+    if (cb.type==1) {
+      compindex=cb.i;
+      for (j=0; j<3; j++) {
+        cc[j]=collectiveComp[compindex+j];
+        lindex[j]=cc[j].i;
+        l[j]=lambda[lindex[j]];
+        l0[j]=cc[j].l0;
+        f[j]=l[j]/(l[j]+l0[j]);
+        df[j]=l0[j]/(l[j]+l0[j])/(l[j]+l0[j]);
+        vol[j]=abs(cc[j].k);
+        atomicAdd(&lambdaForce[lindex[j]],-cb.k*vol[j]/(1+l0[j]));
+        lEnergy+=-cb.k*vol[j]*l[j]/(1+l0[j]);
+      }
+      vinv2[0]=0;
+      fall[0]=-cb.k;
+      dfall[0][0]=-cb.k;
+      dfall[0][1]=-cb.k;
+      dfall[0][2]=-cb.k;
+      for (i1=0; i1<2; i1++) {
+        if (i1==0) {
+          vinv2[1]=vinv2[0];
+          fall[1]=fall[0];
+          dfall[1][0]=0;
+          dfall[1][1]=dfall[0][1];
+          dfall[1][2]=dfall[0][2];
+        } else {
+          vinv2[1]=vinv2[0]+1/(vol[0]*vol[0]);
+          fall[1]=-fall[0]*f[0];
+          dfall[1][0]=-dfall[0][0]*df[0];
+          dfall[1][1]=-dfall[0][1]*f[0];
+          dfall[1][2]=-dfall[0][2]*f[0];
+        }
+        for (i2=0; i2<2; i2++) {
+          if (i2==0) {
+            vinv2[2]=vinv2[1];
+            fall[2]=fall[1];
+            dfall[2][0]=dfall[1][0];
+            dfall[2][1]=0;
+            dfall[2][2]=dfall[1][2];
+          } else {
+            vinv2[2]=vinv2[1]+1/(vol[1]*vol[1]);
+            fall[2]=-fall[1]*f[1];
+            dfall[2][0]=-dfall[1][0]*f[1];
+            dfall[2][1]=-dfall[1][1]*df[1];
+            dfall[2][2]=-dfall[1][2]*f[1];
+          }
+          for (i3=0; i3<2; i3++) {
+            if (i3==0) {
+              vinv2[3]=vinv2[2];
+              fall[3]=fall[2];
+              dfall[3][0]=dfall[2][0];
+              dfall[3][1]=dfall[2][1];
+              dfall[3][2]=0;
+            } else {
+              vinv2[3]=vinv2[2]+1/(vol[2]*vol[2]);
+              fall[3]=-fall[2]*f[2];
+              dfall[3][0]=-dfall[2][0]*f[2];
+              dfall[3][1]=-dfall[2][1]*f[2];
+              dfall[3][2]=-dfall[2][2]*df[2];
+            }
+            if (i1==0 && i2==0 && i3==0) continue;
+            real v=1/sqrt(vinv2[3]);
+            lEnergy+=fall[3]*v;
+            if (i1==1) atomicAdd(&lambdaForce[lindex[0]],dfall[3][0]*v);
+            if (i2==1) atomicAdd(&lambdaForce[lindex[1]],dfall[3][1]*v);
+            if (i3==1) atomicAdd(&lambdaForce[lindex[2]],dfall[3][2]*v);
+          }
+        }
+      }
+      // printf("%f\n",lambdaForce[lindex[0]]);
+      // printf("%f\n",lambdaForce[lindex[1]]);
+      // printf("%f\n",lambdaForce[lindex[2]]);
+    } else {
+      lEnergy=0;
+    }
+  }
+
+  // Energy, if requested
+  if (energy) {
+    __syncthreads();
+    real_sum_reduce(lEnergy,sEnergy,energy);
+  }
+}
+
+#include "msld_collectiveBias2_gauss_256.h"
+
+__global__ void getforce_collectiveBias2_kernel(real *lambda,real_f *lambdaForce,real_e *energy,int collectiveBiasCount,struct CollectiveBias *collectiveBias,struct CollectiveComp *collectiveComp)
+{
+  int i = blockIdx.x;
+  struct CollectiveBias cb;
+  struct CollectiveComp cc;
+  struct CollectiveComp cck;
+  int j,k,iq;
+  int lindex;
+  real l;
+  real l0;
+  real vol;
+  real x;
+  real q;
+  real prod;
+  real integrand;
+  real exj;
+  real dqj;
+  real contrib;
+  real local;
+  real sqrt2pi=(real)2.5066282746310005024;
+  real cutoff=(real)5.0;
+  extern __shared__ real sEnergy[];
+  __shared__ real sXmax;
+  __shared__ real sNorm;
+  __shared__ int sCompindex;
+  __shared__ int sCount;
+  __shared__ real sK;
+  real lEnergy=0;
+
+  if (i<collectiveBiasCount) {
+    cb=collectiveBias[i];
+    if (cb.type==2) {
+      if (threadIdx.x == 0) {
+        real maxvol=0;
+        sCompindex=cb.i;
+        sCount=cb.count;
+        sK=cb.k;
+        for (j=0; j<cb.count; j++) {
+          cc=collectiveComp[sCompindex+j];
+          lindex=cc.i;
+          l=lambda[lindex];
+          l0=cc.l0;
+          vol=abs(cc.k);
+          if (vol>maxvol) maxvol=vol;
+          atomicAdd(&lambdaForce[lindex],-cb.k*vol/(1+l0));
+          lEnergy+=-cb.k*vol*l/(1+l0);
+        }
+        if (maxvol>0) {
+          sXmax=cutoff*maxvol;
+          sNorm=((real)2.0)*sXmax/sqrt2pi;
+        } else {
+          sXmax=0;
+          sNorm=0;
+        }
+      }
+      __syncthreads();
+
+      if (sXmax>0 && threadIdx.x < collectiveBias2_gauss_node_count) {
+        iq=threadIdx.x;
+        x=sXmax*collectiveBias2_gauss_nodes[iq];
+        prod=1;
+        for (j=0; j<sCount; j++) {
+          cc=collectiveComp[sCompindex+j];
+          l=lambda[cc.i];
+          l0=cc.l0;
+          vol=abs(cc.k);
+          q=(l/(l+l0))*exp(-(x*x)/((real)2.0*vol*vol));
+          prod*=(1-q);
+        }
+        integrand=1-prod;
+        lEnergy+=sK*sNorm*collectiveBias2_gauss_weights[iq]*integrand;
+      }
+      __syncthreads();
+
+      if (sXmax>0 && threadIdx.x < collectiveBias2_gauss_node_count) {
+        iq=threadIdx.x;
+        x=sXmax*collectiveBias2_gauss_nodes[iq];
+        prod=1;
+        for (j=0; j<sCount; j++) {
+          cc=collectiveComp[sCompindex+j];
+          l=lambda[cc.i];
+          l0=cc.l0;
+          vol=abs(cc.k);
+          q=(l/(l+l0))*exp(-(x*x)/((real)2.0*vol*vol));
+          prod*=(1-q);
+        }
+        for (j=0; j<sCount; j++) {
+          cc=collectiveComp[sCompindex+j];
+          lindex=cc.i;
+          l=lambda[lindex];
+          l0=cc.l0;
+          vol=abs(cc.k);
+          exj=exp(-(x*x)/((real)2.0*vol*vol));
+          q=(l/(l+l0))*exj;
+          dqj=(l0/((l+l0)*(l+l0)))*exj;
+          local=((real)1.0)-q;
+          if (abs(local)>(real)2.0e-2) {
+            contrib=collectiveBias2_gauss_weights[iq]*dqj*prod/local;
+          } else {
+            local=1;
+            for (k=0; k<sCount; k++) {
+              if (k==j) continue;
+              cck=collectiveComp[sCompindex+k];
+              l=lambda[cck.i];
+              l0=cck.l0;
+              vol=abs(cck.k);
+              q=(l/(l+l0))*exp(-(x*x)/((real)2.0*vol*vol));
+              local*=(((real)1.0)-q);
+            }
+            contrib=collectiveBias2_gauss_weights[iq]*dqj*local;
+          }
+          atomicAdd(&lambdaForce[lindex],sK*sNorm*contrib);
+        }
+      }
+    } else {
+      lEnergy=0;
+    }
+  }
+
+  if (energy) {
+    __syncthreads();
+    real_sum_reduce(lEnergy,sEnergy,energy);
+  }
+}
+
+__global__ void getforce_collectiveBiasD_kernel(real *lambda,real_f *lambdaForce,real_e *energy,int collectiveBiasCount,struct CollectiveBias *collectiveBias,struct CollectiveComp *collectiveComp)
+{
+  int i=blockIdx.x*blockDim.x+threadIdx.x;
+  struct CollectiveBias cb;
+  struct CollectiveComp cc;
+  int j;
+  real lj,flj;
+  extern __shared__ real sEnergy[];
+  real lEnergy=0;
+
+  if (i<collectiveBiasCount) {
+    cb=collectiveBias[i];
+    if (cb.type==3) {
+      real sum1=0;
+      real sum2=0;
+      real sum12=0;
+
+      for (j=0; j<cb.count; j++) {
+        cc=collectiveComp[cb.i+j];
+        lj=lambda[cc.i];
+        sum1+=cc.k*lj;
+        sum2+=cc.l0*lj;
+        sum12+=(cc.k*lj)*(cc.l0*lj);
+      }
+
+      lEnergy+=cb.k*(sum1*sum2-sum12);
+
+      for (j=0; j<cb.count; j++) {
+        cc=collectiveComp[cb.i+j];
+        lj=lambda[cc.i];
+        flj=sum1*cc.l0+sum2*cc.k-2*cc.k*cc.l0*lj;
+        if (flj!=0) atomicAdd(&lambdaForce[cc.i],flj);
+      }
+    }
+  }
+
+  if (energy) {
+    __syncthreads();
+    real_sum_reduce(lEnergy,sEnergy,energy);
+  }
+}
+
+void Msld::getforce_collectiveBias(System *system,bool calcEnergy)
+{
+  cudaStream_t stream=0;
+  Run *r=system->run;
+  State *s=system->state;
+  real_e *pEnergy=NULL;
+  int shMem=0;
+
+  if (r->calcTermFlag[eelambda]==false) return;
+
+  if (calcEnergy) {
+    shMem=BLMS*sizeof(real)/32;
+    pEnergy=s->energy_d+eelambda;
+  }
+  if (system->run) {
+    stream=system->run->biaspotStream;
+  }
+
+  if (collectiveBiasCount>0) {
+    getforce_collectiveBias2_kernel<<<collectiveBiasCount,256,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,collectiveBiasCount,collectiveBias_d,collectiveComp_d);
+    gpuCheck(cudaGetLastError());
+    getforce_collectiveBiasD_kernel<<<(collectiveBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,collectiveBiasCount,collectiveBias_d,collectiveComp_d);
+    gpuCheck(cudaGetLastError());
+    getforce_collectiveBias1_kernel<<<(collectiveBiasCount+BLMS-1)/BLMS,BLMS,shMem,stream>>>(s->lambda_fd,s->lambdaForce_d,pEnergy,collectiveBiasCount,collectiveBias_d,collectiveComp_d);
     gpuCheck(cudaGetLastError());
   }
 }
@@ -1664,13 +2006,40 @@ void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,
   vb.j=j-1;
   vb.type=type;
   // if (vb.type!=6 && vb.type!=8 && vb.type!=10)
-  if (vb.type<=0 || vb.type>12) {
+  if (vb.type<=0 || vb.type>15) {
     fatal(__FILE__,__LINE__,"Type of variable bias (%d) is not a recognized type\n",vb.type);
   }
   vb.l0=l0;
   vb.k=k;
   vb.n=n;
   system->msld->variableBias_tmp.push_back(vb);
+}
+
+void blade_add_msld_collectivebias(System *system,int i,int count,int type,double l0,double k,int n)
+{
+  system+=omp_get_thread_num();
+  struct CollectiveBias cb;
+  cb.i=i;
+  cb.count=count;
+  cb.type=type;
+  if (cb.type<=0 || cb.type>3) {
+    fatal(__FILE__,__LINE__,"Type of collective bias (%d) is not a recognized type\n",cb.type);
+  }
+  cb.l0=l0;
+  cb.k=k;
+  cb.n=n;
+  system->msld->collectiveBias_tmp.push_back(cb);
+}
+
+void blade_add_msld_collectivecomp(System *system,int i,double l0,double k,int n)
+{
+  system+=omp_get_thread_num();
+  struct CollectiveComp cc;
+  cc.i=i-1;
+  cc.l0=l0;
+  cc.k=k;
+  cc.n=n;
+  system->msld->collectiveComp_tmp.push_back(cc);
 }
 
 void blade_add_msld_thetacollbias(System *system,int sites,int i,double k,double n)

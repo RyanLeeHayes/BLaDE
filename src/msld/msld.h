@@ -18,6 +18,21 @@ struct VariableBias {
   int n;
 };
 
+struct CollectiveBias {
+  int i,count;
+  int type;
+  real l0;
+  real k;
+  int n;
+};
+
+struct CollectiveComp {
+  int i;
+  real l0;
+  real k;
+  int n;
+};
+
 class Msld {
   public:
   int blockCount;
@@ -67,6 +82,15 @@ class Msld {
   std::vector<struct VariableBias> variableBias_tmp;
   struct VariableBias *variableBias;
   struct VariableBias *variableBias_d;
+
+  int collectiveBiasCount;
+  std::vector<struct CollectiveBias> collectiveBias_tmp;
+  struct CollectiveBias *collectiveBias;
+  struct CollectiveBias *collectiveBias_d;
+  int collectiveCompCount;
+  std::vector<struct CollectiveComp> collectiveComp_tmp;
+  struct CollectiveComp *collectiveComp;
+  struct CollectiveComp *collectiveComp_d;
 
   int thetaCollBiasCount;
   real *kThetaCollBias;
@@ -136,6 +160,7 @@ class Msld {
   void calc_thetaForce_from_lambdaForce(cudaStream_t stream,System *system);
   void getforce_fixedBias(System *system,bool calcEnergy);
   void getforce_variableBias(System *system,bool calcEnergy);
+  void getforce_collectiveBias(System *system,bool calcEnergy);
   void getforce_thetaBias(System *system,bool calcEnergy);
   void getforce_atomRestraints(System *system,bool calcEnergy);
   void getforce_chargeRestraints(System *system,bool calcEnergy);
@@ -153,6 +178,8 @@ extern "C" {
   void blade_add_msld_flags(System *system,double gamma,double fnex,int useSoftCore,int useSoftCore14,int msldEwaldType,double kRestraint,double softBondRadius,double softBondExponent,double softNotBondExponent,int fix);
   void blade_add_msld_charges(System *system,double kChargeRestraint1,double kChargeRestraint2,double kChargeRestraint3,double q0ChargeRestraint3,double wChargeRestraint3);
   void blade_add_msld_bias(System *system,int i,int j,int type,double l0,double k,int n);
+  void blade_add_msld_collectivebias(System *system,int i,int count,int type,double l0,double k,int n);
+  void blade_add_msld_collectivecomp(System *system,int i,double l0,double k,int n);
   void blade_add_msld_thetacollbias(System *system,int sites,int i,double k,double n);
   void blade_add_msld_thetaindebias(System *system,int sites,int i,double k);
   void blade_set_msld_thetaedgebias(System *system,double k,double N,double alpha,double phi);
