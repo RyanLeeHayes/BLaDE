@@ -132,6 +132,9 @@ __global__ void getforce_nbdirect_kernel(
   real3 xi,xj,xjtmp;
   real3 fi,fj,fjtmp;
   real fli,flj,fljtmp;
+  real c6ii=0;
+  real c6jj=0;
+  real c6jjtmp=0;
   int bi,bj,bjtmp;
   real li,lj,ljtmp,lixljtmp;
   real rEff,dredr,dredll; // Soft core stuff
@@ -148,11 +151,20 @@ __global__ void getforce_nbdirect_kernel(
       // inp=nbonds[ii];
       // xi=position[ii];
       inp=nbonds[32*iBlock+iThread];
+      if (vdwMethod == 3){ // LJ-PME
+#ifdef USE_TEXTURE
+        struct VdwPotential vdwpii;
+        ((real2*)(&vdwpii))[0]=tex1Dfetch<real2>(vdwParameters,inp.typeIdx*vdwParameterCount+inp.typeIdx);
+#else
+        struct VdwPotential vdwpii=vdwParameters[inp.typeIdx*vdwParameterCount+inp.typeIdx];
+#endif
+        c6ii = vdwpii.c6;
+      }
       xi=position[32*iBlock+iThread];
       if (calcAlch) {
-      bi=inp.siteBlock;
-      li=1;
-      if (bi) li=lambda[0xFFFF & bi];
+        bi=inp.siteBlock;
+        li=1;
+        if (bi) li=lambda[0xFFFF & bi];
       }
     }
     // iBlockVolume=blockVolume[iBlock];
@@ -188,6 +200,15 @@ __global__ void getforce_nbdirect_kernel(
         // jnp=nbonds[jj];
         // xj=position[jj];
         jnp=nbonds[32*jBlock+iThread];
+        if (vdwMethod == 3){ // LJ-PME
+#ifdef USE_TEXTURE
+          struct VdwPotential vdwpjj;
+          ((real2*)(&vdwpjj))[0]=tex1Dfetch<real2>(vdwParameters,jnp.typeIdx*vdwParameterCount+jnp.typeIdx);
+#else
+          struct VdwPotential vdwpjj=vdwParameters[jnp.typeIdx*vdwParameterCount+jnp.typeIdx];
+#endif
+          c6jj = vdwpjj.c6;
+        }
         xj=position[32*jBlock+iThread];
         // // real3_inc(&xj,boxShift);
         // xj.x+=boxShift.x;
@@ -203,9 +224,9 @@ __global__ void getforce_nbdirect_kernel(
           xj.z+=shift.z*boxzz(box);
         }
         if (calcAlch) {
-        bj=jnp.siteBlock;
-        lj=1;
-        if (bj) lj=lambda[0xFFFF & bj];
+          bj=jnp.siteBlock;
+          lj=1;
+          if (bj) lj=lambda[0xFFFF & bj];
         }
       }
       bool jFlag=check_proximity(iBlockVolume,xj,cutoffs.rCut*cutoffs.rCut);
@@ -221,9 +242,10 @@ __global__ void getforce_nbdirect_kernel(
           xjtmp.y=__shfl_sync(0xFFFFFFFF,xj.y,jtmp);
           xjtmp.z=__shfl_sync(0xFFFFFFFF,xj.z,jtmp);
           if (calcAlch) {
-          bjtmp=__shfl_sync(0xFFFFFFFF,bj,jtmp);
-          ljtmp=__shfl_sync(0xFFFFFFFF,lj,jtmp);
+            bjtmp=__shfl_sync(0xFFFFFFFF,bj,jtmp);
+            ljtmp=__shfl_sync(0xFFFFFFFF,lj,jtmp);
           }
+          if (vdwMethod == 3) { c6jjtmp=__shfl_sync(0xFFFFFFFF,c6jj,jtmp); } // LJ-PME
 
           fjtmp=real3_reset<real3>();
           if (calcAlch) fljtmp=0;
@@ -242,15 +264,15 @@ __global__ void getforce_nbdirect_kernel(
             if (r<cutoffs.rCut) {
               // Scaling
               if (calcAlch) {
-              if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
-                if (bi==bjtmp) {
-                  lixljtmp=li;
+                if ((bi&0xFFFF0000)==(bjtmp&0xFFFF0000)) {
+                  if (bi==bjtmp) {
+                    lixljtmp=li;
+                  } else {
+                    lixljtmp=0;
+                  }
                 } else {
-                  lixljtmp=0;
+                  lixljtmp=li*ljtmp;
                 }
-              } else {
-                lixljtmp=li*ljtmp;
-              }
               }
 
               rEff=r;
@@ -278,7 +300,7 @@ __global__ void getforce_nbdirect_kernel(
               // interaction
               // Electrostatics
               // unsmoothed electrostatic interaction eij=kELECTRIC*inp.q*jtmpnp_q*rinv;
-              if (elecMethod==0) { // FSWITCH
+              if (elecMethod==efswitch) { // FSWITCH
                 real roff2=cutoffs.rCut*cutoffs.rCut;
                 real ron2=cutoffs.rSwitch*cutoffs.rSwitch;
                 real ginv=1/((roff2-ron2)*(roff2-ron2)*(roff2-ron2));
@@ -298,7 +320,7 @@ __global__ void getforce_nbdirect_kernel(
                     kELECTRIC*inp.q*jtmpnp_q*(rinv+dvc):
                     kELECTRIC*inp.q*jtmpnp_q*(Aconst*(rinv-1/cutoffs.rCut)+Bconst*(cutoffs.rCut-rEff)+Cconst*(roff2*cutoffs.rCut-r3)+Dconst*(roff2*roff2*cutoffs.rCut-r5));
                 }
-              } else if (elecMethod==1) { // PME
+              } else if (elecMethod==epme) { // PME
                 real br=cutoffs.betaEwald*rEff;
                 // real erfcrinv=erfc(br)*rinv;
                 real erfcrinv=fasterfc(br)*rinv;
@@ -309,7 +331,7 @@ __global__ void getforce_nbdirect_kernel(
                 if (calcEnergy || (calcAlch && (bi || bjtmp))) {
                   eij=kELECTRIC*inp.q*jtmpnp_q*erfcrinv;
                 }
-              } else if (elecMethod==2) { // FSHIFT
+              } else if (elecMethod==efshift) { // FSHIFT
                 // E = (k*qi*qj) * (1/r - 2/roff + r/roff^2)
                 // F = -(k*qi*qj) * (1/r^2 - 1/roff^2)
                 real roff=cutoffs.rCut;
@@ -328,7 +350,7 @@ __global__ void getforce_nbdirect_kernel(
               // unsmoothed vdw potential: eij+=(vdwp.c12*rinv6-vdwp.c6)*rinv6;
               // See charmm/source/domdec/enbxfast.F90, functions calc_vdw_constants, vdw_attraction, vdw_repulsion
 
-              if (vdwMethod == 0) { // VFSWITCH
+              if (vdwMethod == evfswitch) { // VFSWITCH
                 // Force switching - smoothest forces, best for free energy
                 real rCut3=cutoffs.rCut*cutoffs.rCut*cutoffs.rCut;
                 real rSwitch3=cutoffs.rSwitch*cutoffs.rSwitch*cutoffs.rSwitch;
@@ -348,7 +370,7 @@ __global__ void getforce_nbdirect_kernel(
                     eij+=vdwp.c12*k12*(rinv6-rCutinv3*rCutinv3)*(rinv6-rCutinv3*rCutinv3)-vdwp.c6*k6*(rinv3-rCutinv3)*(rinv3-rCutinv3);
                   }
                 }
-              } else if (vdwMethod == 1) {  // VSWITCH
+              } else if (vdwMethod == evswitch) {  // VSWITCH
                 // Potential switching - polynomial smoothing (uses squared distances, not cubed)
                 if (rEff<cutoffs.rSwitch) {
                   fij+=(6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv;
@@ -370,7 +392,7 @@ __global__ void getforce_nbdirect_kernel(
                     eij+=fsw*(vdwp.c12*rinv6-vdwp.c6)*rinv6;
                   }
                 }
-              } else if (vdwMethod == 2) {  // VSHIFT
+              } else if (vdwMethod == evshift) {  // VSHIFT
                 // Potential shift - energy zero at cutoff, forces discontinuous
                 real r2 = rEff*rEff;
                 real r5 = r2*r2*rEff;
@@ -392,6 +414,29 @@ __global__ void getforce_nbdirect_kernel(
                 if (calcEnergy || (calcAlch && (bi || bjtmp))) {
                   eij += vdwp.c12*(rinv12 + 2*r6*roffinv18 - 3*roffinv12) -
                          vdwp.c6*(rinv6 + r6*roffinv12 - 2*roffinv6);
+                }
+              } else if (vdwMethod == eljpme) { // LJPME - vshift
+                real c6ij_recip = sqrt(c6ii*c6jjtmp); // no factor of 64 since (si/2+si/2 = si)
+                // U_VdW = U_lorentz + U_geo + U_smooth
+                real br = cutoffs.betaEwaldLJ*rEff;
+                real br2 = br*br;
+                real embr2 = exp(-br2);
+                real b2 = cutoffs.betaEwaldLJ*cutoffs.betaEwaldLJ;
+                real b6 = b2*b2*b2;
+                real fkr = embr2*(1+br2+br2*br2/2); 
+                real U_geo = c6ij_recip*rinv6*(1-fkr); 
+                fij += rinv*(c6ij_recip*b6*embr2 - 6*U_geo); // cancel recip
+                fij += (6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv; // regular 
+                // U_smooth makes the potential continuous
+                if (calcEnergy || (calcAlch && (bi || bjtmp))){
+                  real U_lorentz = vdwp.c12*rinv6*rinv6 - vdwp.c6*rinv6; 
+                  real rCut2 = cutoffs.rCut*cutoffs.rCut;
+                  real rCut6 = rCut2*rCut2*rCut2;
+                  br = cutoffs.betaEwaldLJ*cutoffs.rCut;
+                  br2 = br*br;
+                  fkr = exp(-br2)*(1+br2+br2*br2/2); 
+                  real U_smooth = -(vdwp.c12/rCut6 - vdwp.c6 + c6ij_recip*(1-fkr))/rCut6;
+                  eij += U_lorentz + U_geo + U_smooth;
                 }
               }
               if (calcAlch) fij*=lixljtmp;
@@ -538,24 +583,26 @@ void getforce_nbdirectTTTT(System *system,box_type box,bool calcEnergy)
 template <bool flagBox,bool calcAlch,bool useSoftCore,int vdwMethod,typename box_type>
 void getforce_nbdirectTTT(System *system,box_type box,bool calcEnergy)
 {
-  if (system->run->elecMethod==0) { // FSWITCH
-    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,0>(system,box,calcEnergy);
-  } else if (system->run->elecMethod==1) { // PME
-    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,1>(system,box,calcEnergy);
-  } else if (system->run->elecMethod==2) { // FSHIFT
-    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,2>(system,box,calcEnergy);
+  if (system->run->elecMethod==efswitch) { // FSWITCH
+    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,efswitch>(system,box,calcEnergy);
+  } else if (system->run->elecMethod==epme) { // PME
+    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,epme>(system,box,calcEnergy);
+  } else if (system->run->elecMethod==efshift) { // FSHIFT
+    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,efshift>(system,box,calcEnergy);
   }
 }
 
 template <bool flagBox,bool calcAlch,bool useSoftCore,typename box_type>
 void getforce_nbdirectTT(System *system,box_type box,bool calcEnergy)
 {
-  if (system->run->vdwMethod==0) { // VFSWITCH
-    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,0>(system,box,calcEnergy);
-  } else if (system->run->vdwMethod==1) { // VSWITCH
-    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,1>(system,box,calcEnergy);
-  } else if (system->run->vdwMethod==2) { // VSHIFT
-    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,2>(system,box,calcEnergy);
+  if (system->run->vdwMethod==evfswitch) { // VFSWITCH
+    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,evfswitch>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==evswitch) { // VSWITCH
+    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,evswitch>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==evshift) { // VSHIFT
+    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,evshift>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==eljpme) { // LJPME
+    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,eljpme>(system,box,calcEnergy);
   }
 }
 

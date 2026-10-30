@@ -94,6 +94,7 @@ struct Nb14Potential {
   real qxq;
   real c12;
   real c6;
+  real c6_recip;
   real e14fac;
 };
 
@@ -101,6 +102,7 @@ struct NbExPotential {
   int idx[2];
   int siteBlock[2];
   real qxq;
+  real c6_recip;
 };
 
 struct NbondPotential {
@@ -317,6 +319,9 @@ class Potential {
   real *charge;
   real *charge_d;
 
+  real *vdwDensity;
+  real *vdwDensity_d;
+
   int gridDimPME[3];
   myCufftReal *chargeGridPME_d;
   myCufftComplex *fourierGridPME_d;
@@ -327,6 +332,17 @@ class Potential {
   real *bGridPME, *bGridPME_d;
   cufftHandle planFFTPME, planIFFTPME;
   size_t bufferSizeFFTPME,bufferSizeIFFTPME;
+
+  int gridDimLJPME[3];
+  myCufftReal *densGridLJPME_d;
+  myCufftComplex *fourierGridLJPME_d;
+  myCufftReal *potGridLJPME_d;
+#ifdef USE_TEXTURE
+  cudaTextureObject_t potGridLJPME_tex;
+#endif
+  real *bGridLJPME, *bGridLJPME_d;
+  cufftHandle planFFTLJPME, planIFFTLJPME;
+  size_t bufferSizeFFTLJPME,bufferSizeIFFTLJPME;
 
   std::map<std::string,int> typeCount;
   std::set<struct CountType> typeSort;

@@ -413,6 +413,21 @@ void print_dynamics_output(long int step,System *system)
   }
 }
 
+void write_xyz_grad(System* system, std::string fnm){
+  State* s = system->state;
+  int N = 2*s->lambdaCount + 3*s->atomCount;
+  cudaMemcpy(s->forceBuffer, s->forceBuffer_d, N*sizeof(real_f), cudaMemcpyDefault);
+  real_f* dX = s->forceBuffer + s->lambdaCount;
+  FILE* fp = fopen(fnm.c_str(), "w");
+  bool dbl = sizeof(real_f) == 8;
+  printlog("Writing gradient to %s in %s precision!\n", fnm.c_str(), dbl ? "double" : "single");
+  std::string fmt = dbl ? "%20.16f %20.16f %20.16f\n" : "%14.7f %14.7f %14.7f";
+  fprintf(fp, "ATOMS: %d\n", s->atomCount);
+  for(int i = 0; i < 3*s->atomCount; i+=3){
+    fprintf(fp, fmt.c_str(), dX[i], dX[i+1], dX[i+2]);
+  }
+}
+
 void write_checkpoint_file(const char *fnm,System *system)
 {
   FILE *fp;
