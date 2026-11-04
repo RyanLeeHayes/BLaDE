@@ -19,11 +19,11 @@ __device__ void block_sum(real* input, int dim, real* shared) {
 
   for (int i = 0; i < dim; i++) {
     real local = input[i];
-    local += __shfl_down_sync(0xFFFFFFFF,local,1);
-    local += __shfl_down_sync(0xFFFFFFFF,local,2);
-    local += __shfl_down_sync(0xFFFFFFFF,local,4);
-    local += __shfl_down_sync(0xFFFFFFFF,local,8);
-    local += __shfl_down_sync(0xFFFFFFFF,local,16);
+    local += __shfl_down_sync(0xFFFFFFFF, local, 1);
+    local += __shfl_down_sync(0xFFFFFFFF, local, 2);
+    local += __shfl_down_sync(0xFFFFFFFF, local, 4);
+    local += __shfl_down_sync(0xFFFFFFFF, local, 8);
+    local += __shfl_down_sync(0xFFFFFFFF, local, 16);
 
     if (lane == 0) { shared[warp] = local; }
     __syncthreads();
@@ -39,7 +39,7 @@ __device__ void block_sum(real* input, int dim, real* shared) {
 }
 
 
-__device__ real* quaternion_matrix(const real* B, real* F) {
+__device__ void quaternion_matrix(const real* B, real* F) {
   F[0] = B[0] + B[4] + B[8];  // B11+B22+B33
   F[1] = B[7] - B[5];         // B32-B23
   F[2] = B[2] - B[6];         // B13-B31
@@ -58,10 +58,9 @@ __device__ real* quaternion_matrix(const real* B, real* F) {
   F[12] = F[3];
   F[13] = F[7];
   F[14] = F[11];
-  F[15] = -B[0] - B[4] + B[8];  // -B11-B22+B33
-
-  return F;
+  F[15] = -B[0] - B[4] + B[8]; // -B11-B22+B33
 }
+
 
 __device__ void jacobi_eigensolver(real* F, real* evals, real* evecs, const int dim, const int max_iter=100, const double tol=1e-12) {
   for (int i = 0; i < dim; i++) {
@@ -77,7 +76,7 @@ __device__ void jacobi_eigensolver(real* F, real* evals, real* evecs, const int 
 
     for (int i = 0; i < dim; i++) {
       for (int j = i+1; j < dim; j++) {
-        if (fabs(F[dim*i +j]) > max_off_diag) {
+        if (fabs(F[dim*i + j]) > max_off_diag) {
           max_off_diag = fabs(F[dim*i + j]); 
           p = i;
           q = j;
@@ -148,6 +147,7 @@ __device__ void quaternion_to_rotation(const real* q, real* R) {
   R[8] = q0*q0 - q1*q1 - q2*q2 + q3*q3;
 }
 
+
 __device__ real3 rotate_vector(const real* R, const real3* v) {
   real3 rotated;
   rotated.x = R[0]*v->x + R[1]*v->y + R[2]*v->z;
@@ -157,8 +157,42 @@ __device__ real3 rotate_vector(const real* R, const real3* v) {
 }
 
 
+__device__ void mat3_times_transposed_mat3(const real* B, real* R, real* G) {
+  for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        G[3*i + j] = B[3*i + 0]*R[3*j + 0] + B[3*i + 1]*R[3*j + 1] + B[3*i + 2]*R[3*j + 2];
+      }
+  }
+}
+
+
+__device__ void mat3_inverse(const real* M, real* K) {
+  real a = M[0];
+  real b = M[1];
+  real c = M[2];
+  real d = M[3];
+  real e = M[4];
+  real f = M[5];
+  real g = M[6];
+  real h = M[7];
+  real i = M[8];
+  real det = a*(e*i - f*h) - b*(d*i - f*g) + c*(d*h - e*g);
+  real inv = 1/det;
+
+  K[0] = (e*i - f*h)*inv;
+  K[1] = (c*h - b*i)*inv;
+  K[2] = (b*f - c*e)*inv;
+  K[3] = (f*g - d*i)*inv;
+  K[4] = (a*i - c*g)*inv;
+  K[5] = (c*d - a*f)*inv;
+  K[6] = (d*h - e*g)*inv;  
+  K[7] = (b*g - a*h)*inv;
+  K[8] = (a*e - b*d)*inv;
+}
+
+
 template <bool flagBox, typename box_type>
-__global__ void getforce_rmsdRestraint_kernel(int rmsdRestCount, RmsdRestPotentialDev* rmsdRests, RmsdRestAtom* rmsdRestAtoms, real3* position, real3_f* force, box_type box, real* lambda, real_f* lambdaForce, real_e* energy) {
+__global__ void getforce_rmsdRestraint_kernel(const int rmsdRestCount, const RmsdRestPotentialDev* rmsdRests, const RmsdRestAtom* rmsdRestAtoms, const real3* position, real3_f* force, const box_type box, real* lambda, real_f* lambdaForce, real_e* energy) {
   __shared__ real sred[32];
   real lEnergy = 0;
   real l = 1;
@@ -167,18 +201,16 @@ __global__ void getforce_rmsdRestraint_kernel(int rmsdRestCount, RmsdRestPotenti
   RmsdRestPotentialDev rmsdRest = rmsdRests[blockIdx.x];
   real Wf = rmsdRest.Wf;
   real Wr = rmsdRest.Wr;
-  real d0 = rmsdRest.d0;
+  real D0 = rmsdRest.D0;
   int block = rmsdRest.block;
 
   // STAGE 1: CENTROID
-  // wrapping has been a pain to implement. the following approachc computes the centroid
-  // in two passes: anchor frame[0] -> approx. centroid (some atoms could be out of box)
-  // -> real centroid
+  // The following approach computes the centroid in two passes: 
+  // anchor frame[0] -> approx. centroid (some atoms could be out of box) -> real centroid
 
   real3 anchor = position[rmsdRestAtoms[rmsdRest.fStartIdx].idx]; 
   for (int pass = 0; pass < 2; pass++) {
     real cpart[3] = {0};
-    // each thread gets frame atom index (threadIdx.x + n*256)
     for (int k = threadIdx.x; k < rmsdRest.fCount; k += blockDim.x) {
       RmsdRestAtom fatom = rmsdRestAtoms[rmsdRest.fStartIdx+k];
       real3 xp_3 = real3_add(anchor, real3_subpbc<flagBox>(position[fatom.idx], anchor, box));
@@ -186,7 +218,7 @@ __global__ void getforce_rmsdRestraint_kernel(int rmsdRestCount, RmsdRestPotenti
       cpart[1] += fatom.w*xp_3.y;
       cpart[2] += fatom.w*xp_3.z;
     }
-    block_sum(cpart,3,sred);
+    block_sum(cpart, 3, sred);
     anchor.x = cpart[0]/Wf;
     anchor.y = cpart[1]/Wf;
     anchor.z = cpart[2]/Wf;
@@ -213,10 +245,7 @@ __global__ void getforce_rmsdRestraint_kernel(int rmsdRestCount, RmsdRestPotenti
     }
   }
   block_sum(Bpart, 9, sred);
-
-  for (int j = 0; j < 9; j++) {
-    B[j] = Bpart[j];
-  }
+  for (int j = 0; j < 9; j++) { B[j] = Bpart[j]; }
 
   // STAGE 3: QUATERNION MATRIX
   real F[16];
@@ -243,31 +272,36 @@ __global__ void getforce_rmsdRestraint_kernel(int rmsdRestCount, RmsdRestPotenti
   quaternion_to_rotation(q, R);
   
   // STAGE 6: FORCES
-    // 6.1: Forces on frame
-
-
-  // 6.2: Forces on restrained
-
-  // calculate sum of squared residuals
-  real upart = 0;
+  // 6.1: Forces on restrained
+  real part[7] = {0}; // u, S.x, S.y, S.z, tau.x, tau.y, tau.z
   for (int k = threadIdx.x; k < rmsdRest.rCount; k += blockDim.x) {
     RmsdRestAtom ratom = rmsdRestAtoms[rmsdRest.rStartIdx + k];
     real3 xp_3 = real3_subpbc<flagBox>(position[ratom.idx], c_3, box); // centered coords
-    real3 xp0_3 = ratom.refPos; // already centered
-    real3 delta = real3_sub(xp_3, rotate_vector(R, &xp0_3));
+    real3 rxp0_3 = rotate_vector(R, &ratom.refPos); // rotated reference centered position, r_j
+    real3 delta = real3_sub(xp_3, rxp0_3);
+    real3 cr = real3_cross(rxp0_3, delta);
     real w = ratom.w;
-    upart += w*real3_mag2<real>(delta);
+
+    part[0] += w*real3_mag2<real>(delta);
+    part[1] += 2*w*delta.x;
+    part[2] += 2*w*delta.y;
+    part[3] += 2*w*delta.z;
+    part[4] += 2*w*cr.x;
+    part[5] += 2*w*cr.y;
+    part[6] += 2*w*cr.z;
   }
-  block_sum(&upart, 1, sred);
-  real u = upart;
+  block_sum(part, 7, sred);
+  real u = part[0];
+  real3 S = {part[1], part[2], part[3]};
+  real3 tau = {part[4], part[5], part[6]};
 
-  real d = sqrt(u/Wr);
-  real V = 0;
-  real dV = 0;
+  real D = sqrt(u/Wr); // mass-weighted RMSD of ligand from its fitted ref pose
+  real V = 0;          // flat-bottom harmonic
+  real dV = 0;         // flat-bottom harmonic derivative w.r.t u
 
-  if (d > d0) {
-    V = 0.5*rmsdRest.k*(d - d0)*(d - d0);
-    dV = rmsdRest.k*(d - d0)/(2*Wr*d);
+  if (D > D0) {
+    V = 0.5*rmsdRest.k*(D - D0)*(D - D0);
+    dV = rmsdRest.k*(D - D0)/(2*Wr*D);
   }
 
   if (block) { l = lambda[block]; }
@@ -283,7 +317,33 @@ __global__ void getforce_rmsdRestraint_kernel(int rmsdRestCount, RmsdRestPotenti
     RmsdRestAtom ratom = rmsdRestAtoms[rmsdRest.rStartIdx + k];
     real3 xp_3 = real3_subpbc<flagBox>(position[ratom.idx], c_3, box); // centered coords
     real3 delta = real3_sub<real3>(xp_3, rotate_vector(R, &ratom.refPos));
-    at_real3_scaleinc(&force[ratom.idx], -l*dV*2*ratom.w, delta);
+    at_real3_scaleinc(&force[ratom.idx], l*dV*2*ratom.w, delta); // force[] accumulates +dU/dx, integrator applies sign
+  }
+
+  // 6.2: Forces on frame
+  // dU/dx_i = -l*dV * [(w_i/W_f) S + w_i kappa x r_i], kappa = K tau, K = (Tr(G) I - G)^-1, G = B R^T, r_i = R x'_{i0}
+  real G[9];
+  mat3_times_transposed_mat3(B, R, G);
+  real trG = G[0] + G[4] + G[8];
+
+  real M[9];
+  for (int j = 0; j < 9; j++) { M[j] = -G[j]; }
+  M[0] += trG;
+  M[4] += trG;
+  M[8] += trG;
+
+  real K[9];
+  mat3_inverse(M, K);
+  real3 kappa = rotate_vector(K, &tau);
+
+  if (dV != 0) {
+    for (int k = threadIdx.x; k < rmsdRest.fCount; k += blockDim.x) {
+      RmsdRestAtom fatom = rmsdRestAtoms[rmsdRest.fStartIdx + k];
+      real3 ri = rotate_vector(R, &fatom.refPos);
+      real3 f = real3_scale<real3>(fatom.w/Wf, S);
+      real3_scaleinc(&f, fatom.w, real3_cross(kappa, ri));
+      at_real3_scaleinc(&force[fatom.idx], -l*dV, f);
+    }
   }
 
   // Energy, if requested
@@ -295,7 +355,7 @@ __global__ void getforce_rmsdRestraint_kernel(int rmsdRestCount, RmsdRestPotenti
 
 template <bool flagBox, typename box_type>
 void getforce_rmsdRestT(System* system, box_type box, bool calcEnergy) {
-  Potential *p = system->potential;
+  Potential* p = system->potential;
   State* s = system->state;
   Run* r = system->run;
   int N;
@@ -311,7 +371,7 @@ void getforce_rmsdRestT(System* system, box_type box, bool calcEnergy) {
 
   N = p->rmsdRestCount;
   if (N > 0) {
-    getforce_rmsdRestraint_kernel <flagBox> <<<N, BLBO, shMem, r->biaspotStream>>>(N, p->rmsdRests_d, p->rmsdRestAtoms_d, (real3*)s->position_fd, (real3_f*)s->force_d, box, s->lambda_fd, s->lambdaForce_d, pEnergy);
+    getforce_rmsdRestraint_kernel <flagBox> <<<N, BLBO, shMem, r->biaspotStream>>> (N, p->rmsdRests_d, p->rmsdRestAtoms_d, (real3*)s->position_fd, (real3_f*)s->force_d, box, s->lambda_fd, s->lambdaForce_d, pEnergy);
   gpuCheck(cudaGetLastError());
   }
 }

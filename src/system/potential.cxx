@@ -1781,7 +1781,7 @@ void Potential::initialize(System *system)
       rmsdRests[i].Wf=Rest.Wf;
       rmsdRests[i].Wr=Rest.Wr;
       rmsdRests[i].k=Rest.k;
-      rmsdRests[i].d0=Rest.d0;
+      rmsdRests[i].D0=Rest.D0;
       rmsdRests[i].block=Rest.block;
       rmsdRests[i].fCount=Rest.frame.size();
       rmsdRests[i].rCount=Rest.restrained.size();

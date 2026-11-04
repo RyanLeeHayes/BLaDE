@@ -76,7 +76,7 @@ void Structure::setup_parse_structure()
   parseStructure["diRest"]=&Structure::parse_diRest;
   helpStructure["diRest"]="[selection] [selection] [selection] [selection] [kconst] [angle0] [block]> Apply quadratic harmonic potential on the dihedral angle form by four selected atoms, scaled by the block's lambda.\n";
   parseStructure["rmsdRest"]=&Structure::parse_rmsdRest;
-  helpStructure["rmsdRest"]="[frame_selection] [restrained_selection] [kconst] [d0] [block]> Apply quadratic harmonic potential on RMSD of frame and restrained atoms, scaled by the block's lambda.\n";
+  helpStructure["rmsdRest"]="[frame_selection] [restrained_selection] [kconst] [D0] [block]> Apply quadratic harmonic potential on RMSD of frame and restrained atoms, scaled by the block's lambda.\n";
   parseStructure["resd"]=&Structure::parse_resd; //eeresd
   helpStructure["resd"]="?structure resd [selection_dist1_atom1] [selection_dist1_atom2] [selection_dist2_atom1] [selection_dist2_atom2] [dist1_coefficient] [dist2_coefficient] [ref_dist_diff] [k_dist_diff]> Apply a CHARMM-style RESD restraint with linear combination of two distances (dist1 and dist2)\n"; // eeresd
 #ifdef WITH_TORCH
@@ -493,7 +493,7 @@ void Structure::parse_rmsdRest(char *line,char *token,System *system) {
     std::string fselection=token;
     std::string rselection=io_nexts(line);
     real k=io_nextf(line);
-    real d0=io_nextf(line);
+    real D0=io_nextf(line);
     int block=io_nexti(line);
     if (!system->coordinates) {
       fatal(__FILE__,__LINE__,"Undefined system coordinates. Unable initialize RMSD restraints.\n");
@@ -565,7 +565,7 @@ void Structure::parse_rmsdRest(char *line,char *token,System *system) {
       rmsd.restrained[r].refPos.z=rmsd.restrained[r].refPos.z-rmsd.c0.z;
     }
     rmsd.k=k*(KCAL_MOL/ANGSTROM/ANGSTROM);
-    rmsd.d0=d0*ANGSTROM;
+    rmsd.D0=D0*ANGSTROM;
     rmsd.block=block;
     rmsd.Wf=Wf;
     rmsd.Wr=Wr;

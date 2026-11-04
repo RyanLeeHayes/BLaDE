@@ -212,7 +212,7 @@ struct RmsdRestPotential { // host arrays
   real Wf;
   real Wr;
   real k;
-  real d0;
+  real D0;
   int block;
 };
 
@@ -224,7 +224,7 @@ struct RmsdRestPotentialDev { // device arrays
   real Wf;
   real Wr;
   real k;
-  real d0;
+  real D0;
   int block;
 };
 
