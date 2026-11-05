@@ -204,6 +204,11 @@ __global__ void getforce_rmsdRestraint_kernel(const int rmsdRestCount, const Rms
   real D0 = rmsdRest.D0;
   int block = rmsdRest.block;
 
+
+  if (threadIdx.x==0) {
+    printf("rmsd %d: fCount %d rCount %d k %g D0 %g block %d\n", blockIdx.x,rmsdRest.fCount,rmsdRest.rCount,rmsdRest.k,D0,block);
+  }
+
   // STAGE 1: CENTROID
   // The following approach computes the centroid in two passes: 
   // anchor frame[0] -> approx. centroid (some atoms could be out of box) -> real centroid
@@ -311,6 +316,10 @@ __global__ void getforce_rmsdRestraint_kernel(const int rmsdRestCount, const Rms
       atomicAdd(&lambdaForce[block], V); // dU/dlambda, unscaled
     }
     lEnergy = l*V;
+  }
+
+  if (threadIdx.x==0) {
+    printf("rmsd %d: D %g dV %g l %g\n", blockIdx.x, D, dV, l);
   }
 
   for (int k = threadIdx.x; k < rmsdRest.rCount; k += blockDim.x) {

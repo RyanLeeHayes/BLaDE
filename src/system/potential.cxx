@@ -1792,7 +1792,6 @@ void Potential::initialize(System *system)
         rmsdRestAtoms[pos+j].w=Rest.frame[j].w;
         rmsdRestAtoms[pos+j].refPos=Rest.frame[j].refPos;
       }
-
       pos+=Rest.frame.size();
 
       rmsdRests[i].rStartIdx=pos;
@@ -1801,6 +1800,11 @@ void Potential::initialize(System *system)
         rmsdRestAtoms[pos+j].w=Rest.restrained[j].w;
         rmsdRestAtoms[pos+j].refPos=Rest.restrained[j].refPos;
       }
+      pos+= Rest.restrained.size();
+    }
+
+    if (pos!=rmsdAtomCount) {
+      fatal(__FILE__,__LINE__,"rmsdRest flatten: %d atoms wrriten, %d expected\n",pos,rmsdAtomCount);
     }
     gpuCheck(cudaMemcpy(rmsdRests_d,rmsdRests,rmsdRestCount*sizeof(struct RmsdRestPotentialDev),cudaMemcpyHostToDevice));
     gpuCheck(cudaMemcpy(rmsdRestAtoms_d,rmsdRestAtoms,rmsdAtomCount*sizeof(struct RmsdRestAtom),cudaMemcpyHostToDevice));
