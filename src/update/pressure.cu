@@ -161,7 +161,9 @@ void pressure_coupling(System *system)
     if (system->verbose>0) display_nrg(system);
 
     // Compare energy
-    N=s->atomCount-(2*p->triangleConsCount+p->branch1ConsCount+2*p->branch2ConsCount+3*p->branch3ConsCount);
+    // Virtual sites are dependent coordinates, not volume-scaling degrees of freedom.
+    N=s->atomCount-p->virtualSite2Count-p->virtualSite3Count
+      -(2*p->triangleConsCount+p->branch1ConsCount+2*p->branch2ConsCount+3*p->branch3ConsCount);
     kT=s->leapParms1->kT;
     dW=energyNew-energyOld+r->pressure*(volumeNew-volumeOld)-N*kT*log(volumeNew/volumeOld);
     if (system->verbose>0) {
