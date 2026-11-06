@@ -204,15 +204,8 @@ __global__ void getforce_rmsdRestraint_kernel(const int rmsdRestCount, const Rms
   real D0 = rmsdRest.D0;
   int block = rmsdRest.block;
 
-
-  if (threadIdx.x==0) {
-    printf("rmsd %d: fCount %d rCount %d k %g D0 %g block %d\n", blockIdx.x,rmsdRest.fCount,rmsdRest.rCount,rmsdRest.k,D0,block);
-  }
-
-  // STAGE 1: CENTROID
-  // The following approach computes the centroid in two passes: 
-  // anchor frame[0] -> approx. centroid (some atoms could be out of box) -> real centroid
-
+  // Stage 1: Centroid
+  // Computes the centroid in two passes to minimize effects of out of box atoms.
   real3 anchor = position[rmsdRestAtoms[rmsdRest.fStartIdx].idx]; 
   for (int pass = 0; pass < 2; pass++) {
     real cpart[3] = {0};
@@ -231,9 +224,7 @@ __global__ void getforce_rmsdRestraint_kernel(const int rmsdRestCount, const Rms
   real3 c_3 = anchor;
   real c[3] = {c_3.x, c_3.y, c_3.z};
   
-  // STAGE 2: CROSS-COVARIANCE 
-  // Bpart is redundant, but written for clarity
-  real Bpart[9] = {0};
+  // Stage 2: Cross-covariance
   real B[9] = {0};
 
   for (int k = threadIdx.x; k < rmsdRest.fCount; k += blockDim.x) {
@@ -245,18 +236,17 @@ __global__ void getforce_rmsdRestraint_kernel(const int rmsdRestCount, const Rms
     real xp0[3] = {xp0_3.x, xp0_3.y, xp0_3.z};
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-        Bpart[3*i + j] += fatom.w*xp[i]*xp0[j];
+        B[3*i + j] += fatom.w*xp[i]*xp0[j];
       }
     }
   }
-  block_sum(Bpart, 9, sred);
-  for (int j = 0; j < 9; j++) { B[j] = Bpart[j]; }
+  block_sum(B, 9, sred);
 
-  // STAGE 3: QUATERNION MATRIX
+  // Stage 3: Quaternion matrix
   real F[16];
   quaternion_matrix(B, F);
 
-  // STAGE 4: QUATERNION
+  // Stage 4: Quaternion
   real evals[4];
   real evecs[16];
   jacobi_eigensolver(F, evals, evecs, 4);
@@ -272,17 +262,17 @@ __global__ void getforce_rmsdRestraint_kernel(const int rmsdRestCount, const Rms
   real q[4];
   for (int j = 0; j < 4; j++) { q[j] = evecs[4*j + max_eval_idx]; }
 
-  // STAGE 5: OPTIMAL ROTATION
+  // Stage 5: Optimal rotation matrix
   real R[9] = {0};
   quaternion_to_rotation(q, R);
   
-  // STAGE 6: FORCES
+  // Stage 6: Forces
   // 6.1: Forces on restrained
   real part[7] = {0}; // u, S.x, S.y, S.z, tau.x, tau.y, tau.z
   for (int k = threadIdx.x; k < rmsdRest.rCount; k += blockDim.x) {
     RmsdRestAtom ratom = rmsdRestAtoms[rmsdRest.rStartIdx + k];
     real3 xp_3 = real3_subpbc<flagBox>(position[ratom.idx], c_3, box); // centered coords
-    real3 rxp0_3 = rotate_vector(R, &ratom.refPos); // rotated reference centered position, r_j
+    real3 rxp0_3 = rotate_vector(R, &ratom.refPos); // rotated ref centered position, r_j
     real3 delta = real3_sub(xp_3, rxp0_3);
     real3 cr = real3_cross(rxp0_3, delta);
     real w = ratom.w;
@@ -300,7 +290,7 @@ __global__ void getforce_rmsdRestraint_kernel(const int rmsdRestCount, const Rms
   real3 S = {part[1], part[2], part[3]};
   real3 tau = {part[4], part[5], part[6]};
 
-  real D = sqrt(u/Wr); // mass-weighted RMSD of ligand from its fitted ref pose
+  real D = sqrt(u/Wr); // RMSD of ligand from its fitted ref pose
   real V = 0;          // flat-bottom harmonic
   real dV = 0;         // flat-bottom harmonic derivative w.r.t u
 
@@ -316,10 +306,6 @@ __global__ void getforce_rmsdRestraint_kernel(const int rmsdRestCount, const Rms
       atomicAdd(&lambdaForce[block], V); // dU/dlambda, unscaled
     }
     lEnergy = l*V;
-  }
-
-  if (threadIdx.x==0) {
-    printf("rmsd %d: D %g dV %g l %g\n", blockIdx.x, D, dV, l);
   }
 
   for (int k = threadIdx.x; k < rmsdRest.rCount; k += blockDim.x) {
