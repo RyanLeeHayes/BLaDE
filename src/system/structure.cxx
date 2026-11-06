@@ -569,6 +569,11 @@ void Structure::parse_rmsdRest(char *line,char *token,System *system) {
     rmsd.block=block;
     rmsd.Wf=Wf;
     rmsd.Wr=Wr;
+    printlog("RMSD RESTRAINT> #%d: frame '%s' (%d atoms, Wf=%.2f amu), restrained '%s' (%d atoms, Wr=%.2f amu), k=%g kcal/mol/A^2, D0=%g A, block %d, reference centroid (%.3f %.3f %.3f) A\n",
+        (int)rmsdRestList.size(),
+        fselection.c_str(),(int)rmsd.frame.size(),(double)rmsd.Wf,
+        rselection.c_str(),(int)rmsd.restrained.size(),(double)rmsd.Wr,
+        (double)k,(double)D0,block, (double)rmsd.c0.x,(double)rmsd.c0.y,(double)rmsd.c0.z);
     rmsdRestList.push_back(rmsd);
   }
   rmsdRestCount=rmsdRestList.size();
