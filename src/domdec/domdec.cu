@@ -1,4 +1,8 @@
 #include <cuda_runtime.h>
+#include <cub/device/device_scan.cuh>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "domdec/domdec.h"
 #include "io/io.h"
@@ -9,10 +13,6 @@
 #include "holonomic/virtual.h"
 #include "main/real3.h"
 #include "main/gpu_check.h"
-
-#ifdef USE_TEXTURE
-#include <string.h> // for memset
-#endif
 
 
 
@@ -26,8 +26,14 @@ Domdec::Domdec()
   localPosition_d=NULL;
   localForce_d=NULL;
   localNbonds_d=NULL;
-  blockSort_d=NULL;
-  blockToken_d=NULL;
+  cellDivZ=1;
+  blockCellCount=0;
+  atomCell_d=NULL;
+  cellAtomCount_d=NULL;
+  cellAtomOffset_d=NULL;
+  blocksPerColumn_d=NULL;
+  scanTemp_d=NULL;
+  scanTempBytes=0;
   blockBounds_d=NULL;
   blockCount=NULL;
   blockCount_d=NULL;
@@ -58,8 +64,11 @@ Domdec::~Domdec()
   if (localPosition_d) gpuCheck(cudaFree(localPosition_d));
   if (localForce_d) gpuCheck(cudaFree(localForce_d));
   if (localNbonds_d) gpuCheck(cudaFree(localNbonds_d));
-  if (blockSort_d) gpuCheck(cudaFree(blockSort_d));
-  if (blockToken_d) gpuCheck(cudaFree(blockToken_d));
+  if (atomCell_d) gpuCheck(cudaFree(atomCell_d));
+  if (cellAtomCount_d) gpuCheck(cudaFree(cellAtomCount_d));
+  if (cellAtomOffset_d) gpuCheck(cudaFree(cellAtomOffset_d));
+  if (blocksPerColumn_d) gpuCheck(cudaFree(blocksPerColumn_d));
+  if (scanTemp_d) gpuCheck(cudaFree(scanTemp_d));
   if (blockBounds_d) gpuCheck(cudaFree(blockBounds_d));
   if (blockCount) free(blockCount);
   if (blockCount_d) gpuCheck(cudaFree(blockCount_d));
@@ -99,6 +108,17 @@ void Domdec::initialize(System *system)
 
   globalCount=system->state->atomCount;
 
+  int cellSubdivision=16;
+  const char *subdivision=getenv("BLADE_SCAN_Z_SUBDIVISION");
+  if (subdivision!=NULL) {
+    char *end;
+    long value=strtol(subdivision,&end,10);
+    if (*subdivision=='\0' || *end!='\0' || value<1 || value>32) {
+      fatal(__FILE__,__LINE__,"BLADE_SCAN_Z_SUBDIVISION must be an integer from 1 to 32\n");
+    }
+    cellSubdivision=(int)value;
+  }
+
   // Set maxBlocks
   // Note: orthBox_f is set by broadcast_box
   real3 box;
@@ -115,10 +135,30 @@ void Domdec::initialize(System *system)
   real approxBlockBox=exp(log(32*invDensity)/3);
   domainDiv.x=(int)ceil(box.x/(approxBlockBox*gridDomdec.x));
   domainDiv.y=(int)ceil(box.y/(approxBlockBox*gridDomdec.y));
+  long long columnCount64=(long long)idCount*domainDiv.x*domainDiv.y;
+  if (columnCount64>INT_MAX) {
+    fatal(__FILE__,__LINE__,"Domain-decomposition grid exceeds 32-bit indexing\n");
+  }
+  double cellDivZReal=ceil((double)cellSubdivision*box.z/(approxBlockBox*gridDomdec.z));
+  if (!(cellDivZReal>=1.0) || cellDivZReal>INT_MAX) {
+    fatal(__FILE__,__LINE__,"Scan z-cell count exceeds 32-bit indexing\n");
+  }
+  cellDivZ=(int)cellDivZReal;
+  long long blockCellCount64=columnCount64*cellDivZ;
+  if (blockCellCount64>INT_MAX) {
+    fatal(__FILE__,__LINE__,"Scan block-assignment grid exceeds 32-bit indexing\n");
+  }
+  blockCellCount=(int)blockCellCount64;
   // If each column has one empty block at the end, there cannot be more blocks than the number of atoms divided into 32 plus one for each column
-  maxBlocks=(globalCount/32+1)+(idCount*domainDiv.x*domainDiv.y);
+  long long maxBlocks64=globalCount/32+1+columnCount64;
+  if (maxBlocks64>INT_MAX) {
+    fatal(__FILE__,__LINE__,"Block count exceeds 32-bit indexing\n");
+  }
+  maxBlocks=(int)maxBlocks64;
   if (system->verbose > 0) {
     printlog("maxBlocks=%d\n",maxBlocks);
+    printlog("blockAssignment=cub-scan, scanZSubdivision=%d, blockCellCount=%d\n",
+      cellSubdivision,blockCellCount);
   }
 
   // Set maxPartnersPerBlock
@@ -152,8 +192,14 @@ void Domdec::initialize(System *system)
   gpuCheck(cudaMalloc(&localPosition_d,32*maxBlocks*sizeof(real3)));
   gpuCheck(cudaMalloc(&localForce_d,32*maxBlocks*sizeof(real3_f)));
   gpuCheck(cudaMalloc(&localNbonds_d,32*maxBlocks*sizeof(struct NbondPotential)));
-  gpuCheck(cudaMalloc(&blockSort_d,(globalCount+1)*sizeof(struct DomdecBlockSort)));
-  gpuCheck(cudaMalloc(&blockToken_d,(globalCount+1)*sizeof(struct DomdecBlockToken)));
+  int columnCount=idCount*domainDiv.x*domainDiv.y;
+  gpuCheck(cudaMalloc(&atomCell_d,globalCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&cellAtomCount_d,blockCellCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&cellAtomOffset_d,blockCellCount*sizeof(int)));
+  gpuCheck(cudaMalloc(&blocksPerColumn_d,columnCount*sizeof(int)));
+  gpuCheck(cub::DeviceScan::InclusiveSum(NULL,scanTempBytes,
+    cellAtomCount_d,cellAtomOffset_d,blockCellCount,system->run->updateStream));
+  gpuCheck(cudaMalloc(&scanTemp_d,scanTempBytes));
   gpuCheck(cudaMalloc(&blockBounds_d,maxBlocks*sizeof(int)));
   blockCount=(int*)calloc(idCount+1,sizeof(int));
   gpuCheck(cudaMalloc(&blockCount_d,(idCount+1)*sizeof(int)));

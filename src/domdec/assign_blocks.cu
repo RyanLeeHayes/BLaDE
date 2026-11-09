@@ -1,7 +1,7 @@
 #include <cuda_runtime.h>
+#include <cub/device/device_scan.cuh>
 
 #include "domdec/domdec.h"
-#include "io/io.h"
 #include "system/system.h"
 #include "system/state.h"
 #include "system/potential.h"
@@ -11,319 +11,111 @@
 
 
 
-__host__ __device__ static inline
-bool operator<(const DomdecBlockToken& a,const DomdecBlockToken& b)
-{
-  return (a.domain<b.domain || (a.domain==b.domain &&
-         (a.ix<b.ix || (a.ix==b.ix &&
-         (a.iy<b.iy || (a.iy==b.iy &&
-         (a.z<b.z)))))));
-}
-
-// assign_blocks_get_tokens_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,system->update->updateStream>>>(globalCount,idDomdec,gridDomdec,domainDiv,domain_d,system->state->position_d,system->state->orthBox,blockToken_d);
-__global__ void assign_blocks_get_tokens_kernel(int globalCount,int3 gridDomdec,int2 domainDiv,int *domain,real3 *position,real3 box,struct DomdecBlockToken *tokens)
+__global__ void assign_blocks_count_cells_kernel(
+  int globalCount,int3 gridDomdec,int2 domainDiv,int cellDivZ,int *domain,
+  real3 *position,real3 box,int *atomCell,int *cellAtomCount)
 {
   int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int3 idDomdec;
-  real3 xi;
-  real posInDomain;
-  struct DomdecBlockToken token;
-
-  if (i<globalCount+1) {
-    if (i==globalCount) {
-      token.domain=-1;
-    } else {
-      token.domain=domain[i];
-      idDomdec.x=token.domain/(gridDomdec.y*gridDomdec.z);
-      idDomdec.y=token.domain/gridDomdec.z-idDomdec.x*gridDomdec.y;
-      xi=position[i];
-      posInDomain=xi.x*gridDomdec.x/box.x-idDomdec.x;
-      token.ix=(int)floor(posInDomain*domainDiv.x);
-      // token.ix-=(token.ix>=domainDiv.x?domainDiv.x:0);
-      // token.ix+=(token.ix<0?domainDiv.x:0);
-      // No need to wrap, already in box. Fudge it in for rounding errors
-      token.ix=(token.ix>=domainDiv.x?(domainDiv.x-1):token.ix);
-      token.ix=(token.ix<0?0:token.ix);
-
-      posInDomain=xi.y*gridDomdec.y/box.y-idDomdec.y;
-      token.iy=(int)floor(posInDomain*domainDiv.y);
-      // token.iy-=(token.iy>=domainDiv.y?domainDiv.y:0);
-      // token.iy+=(token.iy<0?domainDiv.y:0);
-      // No need to wrap, already in box. Fudge it in for rounding errors
-      token.iy=(token.iy>=domainDiv.y?(domainDiv.y-1):token.iy);
-      token.iy=(token.iy<0?0:token.iy);
-
-      token.z=xi.z;
-    }
-    tokens[i]=token;
-  }
-}
-
-__global__ void assign_blocks_grow_tree_kernel(int globalCount,struct DomdecBlockToken *tokens,DomdecBlockSort *sort)
-{
-  int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int leafPos=globalCount; // Root is at end of array
-  int nextLeafPos, *nextLeafPosPointer;
-  struct DomdecBlockToken token, leafPosToken;
-  bool placed=false;
 
   if (i<globalCount) {
-    token=tokens[i];
-    if (token.ix>=0) {
-      while (!placed) {
-        leafPosToken=tokens[leafPos];
-        if (leafPosToken<token) {
-          nextLeafPosPointer=&sort[leafPos].upper;
-        } else {
-          nextLeafPosPointer=&sort[leafPos].lower;
-        }
-        nextLeafPos=*nextLeafPosPointer;
-        if (nextLeafPos==-1) { // Try to plant leaf here
-          nextLeafPos=atomicCAS(nextLeafPosPointer,-1,i);
-          if (nextLeafPos==-1) { // Planting was successful
-            placed=true;
-            sort[i].root=leafPos;
-          }
-        }
-        if (!placed) {
-          leafPos=nextLeafPos;
-        }
-      }
+    int domainIdx=domain[i];
+    int3 idDomdec;
+    idDomdec.x=domainIdx/(gridDomdec.y*gridDomdec.z);
+    idDomdec.y=domainIdx/gridDomdec.z-idDomdec.x*gridDomdec.y;
+    idDomdec.z=domainIdx-idDomdec.x*gridDomdec.y*gridDomdec.z-idDomdec.y*gridDomdec.z;
+
+    real3 xi=position[i];
+    int ix=(int)floor((xi.x*gridDomdec.x/box.x-idDomdec.x)*domainDiv.x);
+    int iy=(int)floor((xi.y*gridDomdec.y/box.y-idDomdec.y)*domainDiv.y);
+    int iz=(int)floor((xi.z*gridDomdec.z/box.z-idDomdec.z)*cellDivZ);
+    ix=(ix>=domainDiv.x?domainDiv.x-1:ix);
+    iy=(iy>=domainDiv.y?domainDiv.y-1:iy);
+    iz=(iz>=cellDivZ?cellDivZ-1:iz);
+    ix=(ix<0?0:ix);
+    iy=(iy<0?0:iy);
+    iz=(iz<0?0:iz);
+
+    int column=(domainIdx*domainDiv.x+ix)*domainDiv.y+iy;
+    int cell=column*cellDivZ+iz;
+    atomCell[i]=cell;
+    atomicAdd(&cellAtomCount[cell],1);
+  }
+}
+
+__global__ void assign_blocks_count_column_blocks_kernel(
+  int columnCount,int cellDivZ,int *cellAtomOffset,int *blocksPerColumn)
+{
+  int column=blockIdx.x*blockDim.x+threadIdx.x;
+
+  if (column<columnCount) {
+    int firstCell=column*cellDivZ;
+    int atomBegin=(firstCell==0?0:cellAtomOffset[firstCell-1]);
+    int atomEnd=cellAtomOffset[firstCell+cellDivZ-1];
+    blocksPerColumn[column]=(atomEnd-atomBegin+31)/32;
+  }
+}
+
+__global__ void assign_blocks_scan_bounds_kernel(
+  int columnCount,int columnsPerDomain,int cellDivZ,int globalCount,
+  int *cellAtomOffset,int *cumulativeBlocks,int *blockCount,int *blockBounds)
+{
+  int column=blockIdx.x*blockDim.x+threadIdx.x;
+
+  if (column<columnCount) {
+    int firstCell=column*cellDivZ;
+    int atomBegin=(firstCell==0?0:cellAtomOffset[firstCell-1]);
+    int blockBegin=(column==0?0:cumulativeBlocks[column-1]);
+    int blockEnd=cumulativeBlocks[column];
+
+    for (int block=blockBegin; block<blockEnd; block++) {
+      blockBounds[block]=atomBegin+32*(block-blockBegin);
+    }
+
+    if (column==0) {
+      blockCount[0]=0;
+    }
+    if ((column+1)%columnsPerDomain==0) {
+      blockCount[(column+1)/columnsPerDomain]=blockEnd;
+    }
+    if (column==columnCount-1) {
+      blockBounds[blockEnd]=globalCount;
     }
   }
 }
 
-// Work back up the tree to the root, counting leaves
-__global__ void assign_blocks_count_tree_kernel(int globalCount,struct DomdecBlockToken *tokens,volatile DomdecBlockSort *sort)
+__global__ void assign_blocks_prepare_cell_cursors_kernel(
+  int cellCount,int *cellAtomOffset,int *cellAtomCursor)
 {
-  int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int leafPos, nextLeafPos;
-  struct DomdecBlockSort s;
-  int count;
-  int whoAmI;
-  int findWhoAmI;
-  bool sister; // boolean for whether a sister exists at a particular level
-  bool finished=false;
+  int cell=blockIdx.x*blockDim.x+threadIdx.x;
 
-  if (i<globalCount) {
-    s=((struct DomdecBlockSort*)sort)[i];
-    // If this is a terminal leaf, start counting up the tree
-    if (s.root!=-1 && s.lower==-1 && s.upper==-1) {
-      sort[i].lowerCount=0;
-      sort[i].upperCount=0;
-      leafPos=i;
-      while (!finished) {
-        nextLeafPos=sort[leafPos].root;
-        count=sort[leafPos].lowerCount+sort[leafPos].upperCount+1;
-        sister=true;
-        
-        findWhoAmI=sort[nextLeafPos].lower;
-        if (findWhoAmI==-1) {
-          sort[nextLeafPos].lowerCount=0;
-          sister=false;
-        } else if (findWhoAmI==leafPos) {
-          sort[nextLeafPos].lowerCount=count;
-          whoAmI=0;
-        }
-        findWhoAmI=sort[nextLeafPos].upper;
-        if (findWhoAmI==-1) {
-          sort[nextLeafPos].upperCount=0;
-          sister=false;
-        } else if (findWhoAmI==leafPos) {
-          sort[nextLeafPos].upperCount=count;
-          whoAmI=1;
-        }
-
-        // Try to tell sister to go up tree
-        if (sister) {
-          if (atomicCAS((int*)&sort[nextLeafPos].whoCounts,-1,1-whoAmI)==-1) { // Succeeded
-            finished=true;
-          }
-        }
-          
-        if (nextLeafPos==globalCount) { // Made it all the way up the tree
-          finished=true;
-        }
-
-        leafPos=nextLeafPos;
-      }
-    }
+  if (cell<cellCount) {
+    cellAtomCursor[cell]=(cell==0?0:cellAtomOffset[cell-1]);
   }
 }
 
-__global__ void assign_blocks_localToGlobal_kernel(int globalCount,struct DomdecBlockSort *sort,int *localToGlobal)
+__global__ void assign_blocks_scatter_kernel(
+  int globalCount,int cellDivZ,int *atomCell,int *cellAtomCursor,
+  int *cellAtomOffset,int *cumulativeBlocks,int *localToGlobal,
+  int *globalToLane,int *globalToBlock,NbondPotential *nbonds,
+  NbondPotential *localNbonds)
 {
-  int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int leafPos=globalCount;
-  int count=0;
-  int nextCount;
-  bool finished=false;
+  int iGlobal=blockIdx.x*blockDim.x+threadIdx.x;
 
-  if (i<globalCount) {
-    // Move past root, which doesn't represent an actual atom
-    leafPos=sort[leafPos].upper;
-    while (!finished) {
-      nextCount=count+sort[leafPos].lowerCount;
-      if (nextCount<i) {
-        leafPos=sort[leafPos].upper;
-        count=nextCount+1;
-      } else if (nextCount>i) {
-        leafPos=sort[leafPos].lower;
-      } else {
-        finished=true;
-      }
-    }
-    localToGlobal[i]=leafPos;
-  }
-}
+  if (iGlobal<globalCount) {
+    int cell=atomCell[iGlobal];
+    int column=cell/cellDivZ;
+    int firstCell=column*cellDivZ;
+    int atomBegin=(firstCell==0?0:cellAtomOffset[firstCell-1]);
+    int blockBegin=(column==0?0:cumulativeBlocks[column-1]);
+    int iLocal=atomicAdd(&cellAtomCursor[cell],1);
+    int rank=iLocal-atomBegin;
+    int lane=rank&31;
+    int block=blockBegin+rank/32;
 
-// assign_blocks_blockBounds_kernel<<<1,idCount*domainDiv.x*domainDiv.y+1,2*(idCount*domainDiv.x*domainDiv.y+1)*sizeof(int),system->update->updateStream>>>(domainDiv,globalCount,localToGlobal_d,blockToken_d,blockCount_d,blockBounds_d);
-// Input
-// domainDiv - how many blocks a domain is divided into in the x and y directions
-// localCount - entries in localToGlobal
-// localToGlobal - list for binary search
-// tokens - tokens that were used for making the tree structure. Contain information on which column a particle is in
-// Output
-// blockCount - pointer to a single int for the total number of blocks
-// blockBounds - indices (in the local indexing) of first atom in each block
-__global__ void assign_blocks_blockBounds_kernel(int domainCount,int2 domainDiv,int globalCount,int *localToGlobal,struct DomdecBlockToken *tokens,int *blockCount,int *blockBounds,int maxBlocks)
-{
-  int i,i0;
-  int domain;
-  int ix,iy;
-  int probePos,hwidth,j;
-  int blocksInColumn;
-  extern __shared__ int columnBounds[]; // Two shared arrays of size blockDim.x+1
-  int *cumBlocks=columnBounds+blockDim.x+1; // Two shared arrays of size blockDim.x+1
-  struct DomdecBlockToken token,probeToken;
-
-  if (threadIdx.x==0) {
-    blockCount[0]=0;
-    columnBounds[0]=0;
-    cumBlocks[0]=0;
-  }
-
-  __syncthreads();
-
-  // Loop through domains (slabs in z direction)
-  for (domain=0; domain<domainCount; domain++) {
-    // Loops through columns in x and y dimension
-    for (i0=0; i0<domainDiv.x*domainDiv.y; i0+=blockDim.x) {
-      i=i0+threadIdx.x; // column index
-      ix=i/domainDiv.y; // x column index
-      iy=i-ix*domainDiv.y; // y column index
-
-      // Create search token
-      token.domain=domain;
-      token.ix=ix;
-      token.iy=iy;
-      token.z=INFINITY; // Infinity finds first element in next column
-
-      // Set bounds for binary search
-      int lowerPos=-1;
-      int upperPos=globalCount;
-
-      // Find half of next highest power of 2 above localCount+1
-      hwidth=globalCount; // (localCount+1)-1
-      hwidth|=hwidth>>1;
-      hwidth|=hwidth>>2;
-      hwidth|=hwidth>>4;
-      hwidth|=hwidth>>8;
-      hwidth|=hwidth>>16;
-      hwidth++;
-      hwidth=hwidth>>1;
-
-      // Do binary search
-      for (; hwidth>0; hwidth=hwidth>>1) {
-        probePos=lowerPos+hwidth;
-        if (probePos<upperPos) {
-          probeToken=tokens[localToGlobal[probePos]];
-          if (probeToken<token) {
-            lowerPos=probePos;
-          } else {
-            upperPos=probePos;
-          }
-        }
-      }
-
-      // Search complete, save to shared array columnBounds
-      int is0=threadIdx.x; // shared memory i position
-      int is1=threadIdx.x+1; // shared memory i+1 position
-      columnBounds[is1]=upperPos;
-
-      __syncthreads();
-
-      lowerPos=columnBounds[is0];
-      blocksInColumn=upperPos-lowerPos;
-      blocksInColumn=(blocksInColumn+31)/32;
-
-      // Compute cumulative sum of blocks in all previous columns in shared array cumBlocks
-      // Requires shared memory because the number of columns is unrelated to warp size
-      cumBlocks[is1]=blocksInColumn;
-      for (hwidth=1; hwidth<blockDim.x+1; hwidth*=2) {
-        __syncthreads();
-        if (hwidth&is1) {
-          cumBlocks[is1]+=cumBlocks[(is1|(hwidth-1))-hwidth];
-        }
-      }
-
-      __syncthreads();
-
-      // Save the block bounds into the blockBounds array
-      if (i<domainDiv.x*domainDiv.y) {
-        int j0=cumBlocks[is0];
-        // if (j0+blocksInColumn<=maxBlocks) {
-        for (j=0; j<blocksInColumn; j++) {
-          blockBounds[j+j0]=lowerPos+32*j;
-        }
-        // } else if (j0<maxBlocks) {
-        // warning "printf in kernel, this doesn't affect occupancy of 93.8\% on 2080 TI."
-        //   printf("Error: Overflow of maxBlocks. Use \"run setvariable domdecheuristic off\" - except that reallocation is not implemented here\n");
-        // Removed checks because block can't overflow anymore with new maxBlocks 2026-07-03
-        // }
-      }
-
-      __syncthreads();
-
-      // Update columnBounds and cumBlocks for next part of this domain
-      if (threadIdx.x==0) {
-        columnBounds[0]=columnBounds[blockDim.x];
-        cumBlocks[0]=cumBlocks[blockDim.x];
-      }
-      __syncthreads();
-    }
-
-    // Update blockCount for next domain after this one is complete
-    if (threadIdx.x==0) {
-      blockCount[domain+1]=cumBlocks[0];
-    }
-    __syncthreads();
-  }
-
-  // Set final bound
-  if (threadIdx.x==0) {
-    // blockBounds[blockCount[domainCount]]=globalCount;
-    blockBounds[cumBlocks[0]]=columnBounds[0]; // Equivalent statements
-  }
-}
-
-__global__ void assign_blocks_localNbonds_kernel(int blockCount,int *blockBounds,int *localToGlobal,int *globalToLane,int *globalToBlock,NbondPotential *nbonds,NbondPotential *localNbonds)
-{
-  int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int iBlock=i/32;
-  int iLocal,iGlobal,atomsInBlock;
-
-  if (iBlock<blockCount) {
-    iLocal=blockBounds[iBlock];
-    atomsInBlock=blockBounds[iBlock+1]-iLocal;
-    iLocal+=(i&31);
-    if ((i&31)<atomsInBlock) {
-      iGlobal=localToGlobal[iLocal];
-      // globalToLocal[iGlobal]=iLocal;
-      globalToLane[iGlobal]=(i&31);
-      globalToBlock[iGlobal]=iBlock;
-      localNbonds[i]=nbonds[iGlobal];
-    }
+    localToGlobal[iLocal]=iGlobal;
+    globalToLane[iGlobal]=lane;
+    globalToBlock[iGlobal]=block;
+    localNbonds[32*block+lane]=nbonds[iGlobal];
   }
 }
 
@@ -386,9 +178,6 @@ void Domdec::assign_blocks(System *system)
   Run *r=system->run;
 
   if (id>=0) { 
-
-    // Get the tokens for sorting
-
     real3 box;
     if (system->state->typeBox) {
       box.x=system->state->tricBox_f.a.x;
@@ -398,32 +187,41 @@ void Domdec::assign_blocks(System *system)
       box=system->state->orthBox_f;
     }
 
-    assign_blocks_get_tokens_kernel<<<(globalCount+1+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,gridDomdec,domainDiv,domain_d,(real3*)system->state->position_fd,box,blockToken_d);
+    int columnsPerDomain=domainDiv.x*domainDiv.y;
+    int columnCount=idCount*columnsPerDomain;
+
+    gpuCheck(cudaMemsetAsync(cellAtomCount_d,0,blockCellCount*sizeof(int),r->updateStream));
+    assign_blocks_count_cells_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(
+      globalCount,gridDomdec,domainDiv,cellDivZ,domain_d,
+      (real3*)system->state->position_fd,box,atomCell_d,cellAtomCount_d);
     gpuCheck(cudaGetLastError());
 
-    // Make the tree structure
+    gpuCheck(cub::DeviceScan::InclusiveSum(scanTemp_d,scanTempBytes,
+      cellAtomCount_d,cellAtomOffset_d,blockCellCount,r->updateStream));
 
-    gpuCheck(cudaMemsetAsync(blockSort_d,-1,(globalCount+1)*sizeof(struct DomdecBlockSort),r->updateStream));
-
-    assign_blocks_grow_tree_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,blockToken_d,blockSort_d);
-    gpuCheck(cudaGetLastError());
-    assign_blocks_count_tree_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,blockToken_d,blockSort_d);
+    assign_blocks_count_column_blocks_kernel<<<(columnCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(
+      columnCount,cellDivZ,cellAtomOffset_d,blocksPerColumn_d);
     gpuCheck(cudaGetLastError());
 
-    // Create sorted structures
+    gpuCheck(cub::DeviceScan::InclusiveSum(scanTemp_d,scanTempBytes,
+      blocksPerColumn_d,blocksPerColumn_d,columnCount,r->updateStream));
 
-    assign_blocks_localToGlobal_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(globalCount,blockSort_d,localToGlobal_d);
+    assign_blocks_scan_bounds_kernel<<<(columnCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(
+      columnCount,columnsPerDomain,cellDivZ,globalCount,cellAtomOffset_d,
+      blocksPerColumn_d,blockCount_d,blockBounds_d);
     gpuCheck(cudaGetLastError());
 
-    int ndiv=domainDiv.x*domainDiv.y;
-    ndiv=((ndiv>1024)?1024:ndiv);
-    assign_blocks_blockBounds_kernel<<<1,ndiv,2*(ndiv+1)*sizeof(int),r->updateStream>>>(idCount,domainDiv,globalCount,localToGlobal_d,blockToken_d,blockCount_d,blockBounds_d,maxBlocks);
+    assign_blocks_prepare_cell_cursors_kernel<<<(blockCellCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(
+      blockCellCount,cellAtomOffset_d,cellAtomCount_d);
+    gpuCheck(cudaGetLastError());
+
+    assign_blocks_scatter_kernel<<<(globalCount+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(
+      globalCount,cellDivZ,atomCell_d,cellAtomCount_d,cellAtomOffset_d,
+      blocksPerColumn_d,localToGlobal_d,globalToLane_d,globalToBlock_d,
+      system->potential->nbonds_d,localNbonds_d);
     gpuCheck(cudaGetLastError());
 
     gpuCheck(cudaMemcpy(blockCount,blockCount_d,(idCount+1)*sizeof(int),cudaMemcpyDeviceToHost));
-
-    assign_blocks_localNbonds_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,globalToLane_d,globalToBlock_d,system->potential->nbonds_d,localNbonds_d);
-    gpuCheck(cudaGetLastError());
 
     // Redundant with pack_positions, needed for call to cull
     assign_blocks_localPosition_kernel<<<(32*blockCount[idCount]+BLUP-1)/BLUP,BLUP,0,r->updateStream>>>(blockCount[idCount],blockBounds_d,localToGlobal_d,(real3*)system->state->position_fd,localPosition_d,blockVolume_d);

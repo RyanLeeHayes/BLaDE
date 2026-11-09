@@ -7,13 +7,6 @@ class System;
 struct NbondPotential; // system/potential.h
 struct ExclPotential; // system/potential.h
 
-// Data structure used for sorting, sort by ix, then iy, then z.
-struct DomdecBlockToken {
-  int domain;
-  int ix,iy;
-  real z;
-};
-
 // Structure for tree sort
 // Tree structure and unsorted array have the same elements in the same order.
 // Place the root of the whole tree at the end of the array
@@ -62,8 +55,13 @@ class Domdec {
   struct NbondPotential *localNbonds_d;
 // For sorting atoms into blocks
   int2 domainDiv;
-  struct DomdecBlockSort *blockSort_d;
-  struct DomdecBlockToken *blockToken_d;
+  int cellDivZ, blockCellCount;
+  int *atomCell_d;
+  int *cellAtomCount_d;
+  int *cellAtomOffset_d;
+  int *blocksPerColumn_d;
+  void *scanTemp_d;
+  size_t scanTempBytes;
   int *blockBounds_d;
   int *blockCount, *blockCount_d;
 // For deciding what's interacting
