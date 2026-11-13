@@ -1,0 +1,6 @@
+! Set nonbonded options
+run setvariable rswitch 9.0
+run setvariable rcut 10.0
+run setvariable invbetaewald 3.125
+run setvariable orderewald 6
+run setvariable gridspace 1.1 ! 1.1 A is max grid spacing, should give 40x40x40
