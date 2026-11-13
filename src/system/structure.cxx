@@ -37,6 +37,8 @@ Structure::Structure() {
   anRestList.clear();
   diRestCount=0;
   diRestList.clear();
+  rmsdRestCount=0;
+  rmsdRestList.clear();
   resdCount=0;      // eeresd
   resdList.clear(); // eeresd
   MLPModelCount=0;  // eemlp
@@ -73,6 +75,8 @@ void Structure::setup_parse_structure()
   helpStructure["anRest"]="[selection] [selection] [selection] [kconst] [angle0] [block]> Apply quadratic harmonic potential on the angle formed by three selected atoms, scaled by the block's lambda.\n";
   parseStructure["diRest"]=&Structure::parse_diRest;
   helpStructure["diRest"]="[selection] [selection] [selection] [selection] [kconst] [angle0] [block]> Apply quadratic harmonic potential on the dihedral angle form by four selected atoms, scaled by the block's lambda.\n";
+  parseStructure["rmsdRest"]=&Structure::parse_rmsdRest;
+  helpStructure["rmsdRest"]="[frame_selection] [restrained_selection] [kconst] [D0] [block]> Apply quadratic harmonic potential on RMSD of frame and restrained atoms, scaled by the block's lambda.\n";
   parseStructure["resd"]=&Structure::parse_resd; //eeresd
   helpStructure["resd"]="?structure resd [selection_dist1_atom1] [selection_dist1_atom2] [selection_dist2_atom1] [selection_dist2_atom2] [dist1_coefficient] [dist2_coefficient] [ref_dist_diff] [k_dist_diff]> Apply a CHARMM-style RESD restraint with linear combination of two distances (dist1 and dist2)\n"; // eeresd
 #ifdef WITH_TORCH
@@ -479,6 +483,100 @@ void Structure::parse_diRest(char *line,char *token,System *system){
     diRestList.push_back(dr);
   }
   diRestCount=diRestList.size();
+}
+
+void Structure::parse_rmsdRest(char *line,char *token,System *system) {
+  io_nexta(line,token);
+  if (strcmp(token,"reset")==0) {
+    rmsdRestList.clear();
+  } else {
+    std::string fselection=token;
+    std::string rselection=io_nexts(line);
+    real k=io_nextf(line);
+    real D0=io_nextf(line);
+    int block=io_nexti(line);
+    if (!system->coordinates) {
+      fatal(__FILE__,__LINE__,"Undefined system coordinates. Unable initialize RMSD restraints.\n");
+    }
+    if (system->selections->selectionMap.count(fselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized frame selection name %s for RMSD restraints\n",fselection.c_str());
+    }
+    if (system->selections->selectionMap.count(rselection)!=1) {
+      fatal(__FILE__,__LINE__,"Unrecognized restrained selection name %s for RMSD restraints\n",rselection.c_str());
+    }
+    struct RmsdRestPotential rmsd;
+    rmsd.c0.x=0;
+    rmsd.c0.y=0;
+    rmsd.c0.z=0;
+    real Wf=0;
+    real Wr=0;
+    // populate frame and restrained atoms for host arrays
+    for (int f=0; f<system->selections->selectionMap[fselection].boolCount; f++) {
+      if (system->selections->selectionMap[fselection].boolSelection[f]) {
+        real w=atomList[f].mass;
+        Wf+=w;
+        real3 xyz={
+          system->coordinates->particlePosition[f][0],
+          system->coordinates->particlePosition[f][1],
+          system->coordinates->particlePosition[f][2],
+        };
+        struct RmsdRestAtom atom;
+        atom.idx=f;
+        atom.w=w;
+        atom.refPos=xyz; // uncentered
+        rmsd.frame.push_back(atom);
+        rmsd.c0.x+=w*xyz.x;
+        rmsd.c0.y+=w*xyz.y;
+        rmsd.c0.z+=w*xyz.z;
+      }
+    }
+    if (rmsd.frame.size() < 1) {
+      fatal(__FILE__,__LINE__,"Frame atoms less than 1, selection can not compute weights properly.\n");
+    }
+    rmsd.c0.x/=Wf;
+    rmsd.c0.y/=Wf;
+    rmsd.c0.z/=Wf;
+    // center frame positions
+    for (int f=0; f<rmsd.frame.size(); f++) {
+      rmsd.frame[f].refPos.x=rmsd.frame[f].refPos.x-rmsd.c0.x;
+      rmsd.frame[f].refPos.y=rmsd.frame[f].refPos.y-rmsd.c0.y;
+      rmsd.frame[f].refPos.z=rmsd.frame[f].refPos.z-rmsd.c0.z;
+    }
+    for (int r=0; r<system->selections->selectionMap[rselection].boolCount; r++) {
+      if (system->selections->selectionMap[rselection].boolSelection[r]) {
+        real w=atomList[r].mass;
+        Wr+=w;
+        real3 xyz={
+          system->coordinates->particlePosition[r][0],
+          system->coordinates->particlePosition[r][1],
+          system->coordinates->particlePosition[r][2],
+        };
+        struct RmsdRestAtom atom;
+        atom.idx=r;
+        atom.w=w;
+        atom.refPos=xyz; // uncentered
+        rmsd.restrained.push_back(atom);
+      }
+    }
+    // center restrained positions
+    for (int r=0; r<rmsd.restrained.size(); r++) {
+      rmsd.restrained[r].refPos.x=rmsd.restrained[r].refPos.x-rmsd.c0.x;
+      rmsd.restrained[r].refPos.y=rmsd.restrained[r].refPos.y-rmsd.c0.y;
+      rmsd.restrained[r].refPos.z=rmsd.restrained[r].refPos.z-rmsd.c0.z;
+    }
+    rmsd.k=k*(KCAL_MOL/ANGSTROM/ANGSTROM);
+    rmsd.D0=D0*ANGSTROM;
+    rmsd.block=block;
+    rmsd.Wf=Wf;
+    rmsd.Wr=Wr;
+    printlog("RMSD RESTRAINT> #%d: frame '%s' (%d atoms, Wf=%.2f amu), restrained '%s' (%d atoms, Wr=%.2f amu), k=%g kcal/mol/A^2, D0=%g A, block %d, reference centroid (%.3f %.3f %.3f) A\n",
+        (int)rmsdRestList.size(),
+        fselection.c_str(),(int)rmsd.frame.size(),(double)rmsd.Wf,
+        rselection.c_str(),(int)rmsd.restrained.size(),(double)rmsd.Wr,
+        (double)k,(double)D0,block, (double)rmsd.c0.x,(double)rmsd.c0.y,(double)rmsd.c0.z);
+    rmsdRestList.push_back(rmsd);
+  }
+  rmsdRestCount=rmsdRestList.size();
 }
 
 // eeresd-begin

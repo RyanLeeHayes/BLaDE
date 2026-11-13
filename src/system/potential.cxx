@@ -144,6 +144,11 @@ Potential::Potential() {
   diRestCount=0;
   diRests=NULL;
   diRests_d=NULL;
+  rmsdRestCount=0;
+  rmsdRests=NULL;
+  rmsdRests_d=NULL;
+  rmsdRestAtoms=NULL;
+  rmsdRestAtoms_d=NULL;
   resdCount=0;   // eeresd
   resds=NULL;    // eeresd
   resds_d=NULL;  // eeresd
@@ -257,6 +262,10 @@ Potential::~Potential()
   if (anRests_d) gpuCheck(cudaFree(anRests_d));
   if (diRests) free(diRests);
   if (diRests_d) gpuCheck(cudaFree(diRests_d));
+  if (rmsdRests) free(rmsdRests);
+  if (rmsdRests_d) gpuCheck(cudaFree(rmsdRests_d));
+  if (rmsdRestAtoms) free(rmsdRestAtoms);
+  if (rmsdRestAtoms_d) gpuCheck(cudaFree(rmsdRestAtoms_d));
   if (resds) free(resds);           // eeresd
   if (resds_d) gpuCheck(cudaFree(resds_d));   // eeresd
 
@@ -1752,6 +1761,54 @@ void Potential::initialize(System *system)
     }
     gpuCheck(cudaMemcpy(diRests_d,diRests,diRestCount*sizeof(struct DiRestPotential),cudaMemcpyHostToDevice));
   }
+  // RMSD restraints
+  rmsdRestCount=system->structure->rmsdRestCount;
+  if (rmsdRestCount>0) {
+    rmsdRests=(struct RmsdRestPotentialDev*)calloc(rmsdRestCount,sizeof(struct RmsdRestPotentialDev));
+    gpuCheck(cudaMalloc(&rmsdRests_d,rmsdRestCount*sizeof(struct RmsdRestPotentialDev)));
+
+    int rmsdAtomCount=0;
+    for (i=0; i<rmsdRestCount; i++) {
+      rmsdAtomCount+=system->structure->rmsdRestList[i].frame.size();
+      rmsdAtomCount+=system->structure->rmsdRestList[i].restrained.size();
+    }
+    rmsdRestAtoms=(struct RmsdRestAtom*)calloc(rmsdAtomCount,sizeof(struct RmsdRestAtom));
+    gpuCheck(cudaMalloc(&rmsdRestAtoms_d,rmsdAtomCount*sizeof(struct RmsdRestAtom)));
+
+    int pos=0; // offset counter for flattened array
+    for (i=0; i<rmsdRestCount; i++) {
+      struct RmsdRestPotential &Rest=system->structure->rmsdRestList[i];
+      rmsdRests[i].Wf=Rest.Wf;
+      rmsdRests[i].Wr=Rest.Wr;
+      rmsdRests[i].k=Rest.k;
+      rmsdRests[i].D0=Rest.D0;
+      rmsdRests[i].block=Rest.block;
+      rmsdRests[i].fCount=Rest.frame.size();
+      rmsdRests[i].rCount=Rest.restrained.size();
+
+      rmsdRests[i].fStartIdx=pos;
+      for (j=0; j<Rest.frame.size(); j++) {
+        rmsdRestAtoms[pos+j].idx=Rest.frame[j].idx;
+        rmsdRestAtoms[pos+j].w=Rest.frame[j].w;
+        rmsdRestAtoms[pos+j].refPos=Rest.frame[j].refPos;
+      }
+      pos+=Rest.frame.size();
+
+      rmsdRests[i].rStartIdx=pos;
+      for (j=0; j<Rest.restrained.size(); j++) {
+        rmsdRestAtoms[pos+j].idx=Rest.restrained[j].idx;
+        rmsdRestAtoms[pos+j].w=Rest.restrained[j].w;
+        rmsdRestAtoms[pos+j].refPos=Rest.restrained[j].refPos;
+      }
+      pos+= Rest.restrained.size();
+    }
+
+    if (pos!=rmsdAtomCount) {
+      fatal(__FILE__,__LINE__,"rmsdRest flatten: %d atoms wrriten, %d expected\n",pos,rmsdAtomCount);
+    }
+    gpuCheck(cudaMemcpy(rmsdRests_d,rmsdRests,rmsdRestCount*sizeof(struct RmsdRestPotentialDev),cudaMemcpyHostToDevice));
+    gpuCheck(cudaMemcpy(rmsdRestAtoms_d,rmsdRestAtoms,rmsdAtomCount*sizeof(struct RmsdRestAtom),cudaMemcpyHostToDevice));
+  }
   
   // RESD Distance Restraint, 2 distances, eeresd-begin
   resdCount=system->structure->resdCount;
@@ -1906,6 +1963,7 @@ void Potential::calc_force(long int step,System *system,bool refillRandom)
     getforce_boRest(system,calcEnergy);
     getforce_anRest(system,calcEnergy);
     getforce_diRest(system,calcEnergy);
+    getforce_rmsdRest(system,calcEnergy);
     if (resdCount > 0) {                //eeresd-gaurd
       getforce_resd(system,calcEnergy); //eeresd
     }                                   //eeresd-gaurd

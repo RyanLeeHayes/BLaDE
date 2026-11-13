@@ -82,6 +82,12 @@ structure shake none
 
 The shake tolerance is set with the run command.
 
+Structure also defines restraints. An RMSD restraint holds a group of atoms (typically a ligand) near a reference pose defined in the frame of another group (or itself, and typically protein backbone atoms). RMSD restraints are established with the following syntax
+
+structure rmsdRest frame_selection restrained_selection k d0 block
+
+The reference pose is taken from the coordinates loaded when the command is read, so coordinates file and coordinates box must come before it and molecules are assumed to be whole. At each step, frame atoms are fit to their reference positions by an optimal rotation. The energy is a flat-bottom harmonic. Forces on the frame atoms are the reaction force and torque of the restraint, so the net force and torque on the system are zero. block 0 applies the restraint unscaled, and block b scales it by lambda_b. To apply a restraint with weight (1 - lambda_b), two lines are required with +k on block 0 and -k on block b.
+
 D. coordinates
 
 This class reads in initial conditions for the system. Particle positions may be read in with

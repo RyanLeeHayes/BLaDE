@@ -91,6 +91,7 @@ Run::Run(System *system)
   termStringToInt["noe"]=eenoe;
   termStringToInt["harmonic"]=eeharmonic;
   termStringToInt["mmfp"]=eemmfp;
+  termStringToInt["rmsd"]=eermsd;
   termStringToInt["resd"]=eeresd; // eeresd
   termStringToInt["mlp"]=eemlp;   // eemlp 
   termStringToInt["bias"]=eebias;

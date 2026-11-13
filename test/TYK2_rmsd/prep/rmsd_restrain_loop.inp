@@ -1,0 +1,15 @@
+variables set rmsd
+variables set ligsegid HETA
+variables calculate next_site int + {curr_block} {nsubs{rmsd_site}}
+
+while < {curr_block} {next_site}
+  variables set lig {curr_block}
+  selection define frame and segid PROA atomname CA
+  selection define restrained and segid {ligsegid} resid {lig}
+  selection print
+
+  structure rmsdRest frame restrained  100.0 0.0 0
+  structure rmsdRest frame restrained -100.0 0.0 {curr_block}
+
+  variables calculate curr_block int + {curr_block} 1
+endwhile

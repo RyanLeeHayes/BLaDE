@@ -35,6 +35,7 @@ typedef enum eeterm {
   eenoe,        // NOE restraint energy
   eeharmonic,   // Harmonic positional restraint energy
   eemmfp,       // MMFP (GEO) restraint energy
+  eermsd,       // RMSD restraint energy
   eeresd,       // eeresd
   eemlp,        // eemlp
   eebias,
@@ -198,6 +199,35 @@ struct DiRestPotential {
   int block;
 };
 
+struct RmsdRestAtom {
+  int idx;
+  real w;
+  real3 refPos;
+};
+
+struct RmsdRestPotential { // host arrays
+  std::vector<RmsdRestAtom> frame;
+  std::vector<RmsdRestAtom> restrained;
+  real3 c0;
+  real Wf;
+  real Wr;
+  real k;
+  real D0;
+  int block;
+};
+
+struct RmsdRestPotentialDev { // device arrays
+  int fStartIdx;
+  int fCount;
+  int rStartIdx;
+  int rCount;
+  real Wf;
+  real Wr;
+  real k;
+  real D0;
+  int block;
+};
+
 // eeresd-begin
 struct ResdPotential {
   int i1;
@@ -225,6 +255,7 @@ struct MLPotential { // host arrays
   torch::jit::script::Module model; // PyTorch model
 #endif
 };
+
 struct MLPotentialDev { //device arrays
   int  ptnml;
   int  mlnatoms;
@@ -384,6 +415,11 @@ class Potential {
   int diRestCount;
   struct DiRestPotential *diRests;
   struct DiRestPotential *diRests_d;
+  int rmsdRestCount;
+  struct RmsdRestPotentialDev *rmsdRests;
+  struct RmsdRestPotentialDev *rmsdRests_d;
+  struct RmsdRestAtom *rmsdRestAtoms;
+  struct RmsdRestAtom *rmsdRestAtoms_d;
   int resdCount;                 // eeresd 
   struct ResdPotential *resds;   // eeresd     
   struct ResdPotential *resds_d; // eeresd  
