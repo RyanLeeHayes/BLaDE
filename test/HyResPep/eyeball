@@ -1,0 +1,18 @@
+parameters file comp/param_hyres_mix.inp
+structure file psf demo.psf
+
+msld nblocks 0
+
+
+run setvariable debyelength 7.842
+run setvariable dielectric 60.53
+run setvariable rcut 18
+run setvariable rswitch 16
+run setvariable rswitchhyres 11
+run setvariable rcuthyres 12
+run setvariable vdwmethod hyres
+run setvariable elecmethod debye
+run setvariable hbond on
+run setvariable hbondlist domdec
+
+

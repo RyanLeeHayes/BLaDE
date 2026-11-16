@@ -14,6 +14,8 @@
 #include "rng/rng_gpu.h"
 #include "bonded/bonded.h"
 #include "bonded/pair.h"
+#include "hbond/hbond.h"
+#include "domdec/hbondlist.h"
 #include "nbrecip/nbrecip.h"
 #include "nbdirect/nbdirect.h"
 #include "restrain/restrain.h"
@@ -35,7 +37,7 @@ bool operator<(const CountType& a,const CountType& b)
   // Sort in descending order type count, not ascending
   return a.count>b.count || (a.count==b.count && a.type<b.type);
 }
-
+static const std::set<std::string> hyresBackboneNames={"N","H","C","O"};
 // Class constructors
 Potential::Potential() {
   atomCount=0;
@@ -163,6 +165,23 @@ Potential::Potential() {
   mlp_d.ml_qm_grad_s_d   = NULL;  
   // eemlp-end
 
+  //HyRes backbone H-bond list
+  hbondList.donorCount=0;
+  hbondList.acceptorCount=0;
+  hbondList.donors_d=NULL;
+  hbondList.acceptors_d=NULL;
+  hbondList.watchCount=0;
+  hbondList.watch_d=NULL;
+  hbondList.refPos_d=NULL;
+  hbondList.capacity=0;
+  hbondList.list_d=NULL;
+  hbondList.flags_d=NULL;
+  hbondList.skin=0;
+  hbondList.forceRebuild=true;
+  hbondList.role_d=NULL;
+  hbondList.donorRange_d=NULL;
+  hbondList.lastResetSerial=-1;
+
   prettifyPlan=NULL;
 }
 
@@ -206,6 +225,16 @@ Potential::~Potential()
   if (nb14s_d) cudaFree(nb14s_d);
   if (nbexs) free(nbexs);
   if (nbexs_d) cudaFree(nbexs_d);
+  
+
+  if (hbondList.donors_d) cudaFree(hbondList.donors_d);
+  if (hbondList.acceptors_d) cudaFree(hbondList.acceptors_d);
+  if (hbondList.watch_d) cudaFree(hbondList.watch_d);
+  if (hbondList.refPos_d) cudaFree(hbondList.refPos_d);
+  if (hbondList.list_d) cudaFree(hbondList.list_d);
+  if (hbondList.flags_d) cudaFree(hbondList.flags_d);
+  if (hbondList.role_d) cudaFree(hbondList.role_d);
+  if (hbondList.donorRange_d) cudaFree(hbondList.donorRange_d);
 
   delete [] virtExcl;
   delete [] bondExcl;
@@ -617,7 +646,16 @@ void Potential::initialize(System *system)
     angle.angle0=ap.angle0;
     bond.kb=ap.kureyb;
     bond.b0=ap.ureyb0;
-
+    
+    //HyRes Repulsive Angle Force Setup , regular harmonic if atoms are backbone atoms
+    angle.nreb=0;
+    if (system->run->useAngleReB) {
+      bool backbone=false;
+      for (j=0; j<3; j++) {
+        if (hyresBackboneNames.count(struc->atomList[angle.idx[j]].atomName)) backbone=true;
+      }
+      if (!backbone) angle.nreb=2;
+    } 
 #ifdef WITH_TORCH // eemlp-begin , Suppress classical angle and urey bradley if fully inside ML region
     if (ml_tmp && ml_tmp->is_tani==1 &&
         ml_tmp->mlmaskid[angle.idx[0]] &&
@@ -1358,6 +1396,102 @@ void Potential::initialize(System *system)
     nbonds[i]=nbond;
   }
   cudaMemcpy(nbonds_d,nbonds,atomCount*sizeof(NbondPotential),cudaMemcpyHostToDevice);
+
+  // HyRes backbone N-H..O list setup
+  // donors = atom N (residue not PRO) paired with atom H of the same residue
+  // acceptors = every atom O. No exclusions, matching OpenMM.
+  if (system->run->useHbond) {
+    hbondParameters.sigma=system->run->hbondSigma;
+    hbondParameters.epsilon=system->run->hbondEpsilon;
+    std::map<std::string,int> resN,resH;
+    std::vector<int> acceptors_tmp;
+    for (i=0; i<atomCount; i++) {
+      const struct AtomStructure &at=struc->atomList[i];
+      std::string key=at.segName+":"+at.resIdx+":"+std::to_string(nbonds[i].siteBlock);;
+      if (at.atomName=="N" && at.resName!="PRO") resN[key]=i;
+      if (at.atomName=="H") resH[key]=i;
+      if (at.atomName=="O") acceptors_tmp.push_back(i);
+    }
+    std::vector<HbondDonor> donors_tmp;
+    int noH=0;
+    for (std::map<std::string,int>::iterator ii=resN.begin(); ii!=resN.end(); ii++) {
+      if (resH.count(ii->first)) {
+        HbondDonor dn;
+        dn.idx[0]=ii->second;
+        dn.idx[1]=resH[ii->first];
+        donors_tmp.push_back(dn);
+      } else {
+        noH++;
+      }
+    }
+    if (noH>0) {
+      printlog("HBOND> %d non-proline residues have an N but no atom named H (e.g charged N termini); they are not donors\n",noH);
+    }
+    
+    for (int i=0;i<donors_tmp.size();i++) {
+      int sN=nbonds[donors_tmp[i].idx[0]].siteBlock;
+      int sH=nbonds[donors_tmp[i].idx[1]].siteBlock;
+      if ((0xFFFF&sN) && (0xFFFF&sH) && sN!=sH) {
+        fatal(__FILE__,__LINE__,"H-bond donor N %d and H %d are in different blocks\n",donors_tmp[i].idx[0],donors_tmp[i].idx[1]);
+      }
+      donors_tmp[i].siteBlock=((0xFFFF&sN)?sN:sH);
+    }
+    // if (acceptors_tmp.size()>donors_tmp.size()) acceptors_tmp.resize(donors_tmp.size()); //openMM chops off N acceptors from C terminus N=num prolines
+      hbondList.donorCount=donors_tmp.size();
+      hbondList.acceptorCount=acceptors_tmp.size();
+      if ((long long)hbondList.donorCount*hbondList.acceptorCount>2147483647LL) {
+        if (system->idCount>1 || system->run->hbondListDomdec==false) fatal(__FILE__,__LINE__,"Too many H-bond donor x acceptor pairs (%d x %d) for brute force list builds\n", hbondList.donorCount,hbondList.acceptorCount);
+      }
+      printlog("HBOND> %d donors, %d acceptors\n",hbondList.donorCount,hbondList.acceptorCount);
+
+      if (hbondList.donorCount>0 &&hbondList.acceptorCount>0) {
+      std::vector<int> watch_tmp;
+      for (i=0; i<hbondList.donorCount; i++) watch_tmp.push_back(donors_tmp[i].idx[0]);
+      for (i=0; i<hbondList.acceptorCount; i++) watch_tmp.push_back(acceptors_tmp[i]);
+      hbondList.watchCount=watch_tmp.size();
+
+      hbondList.capacity=hbondList.donorCount*HBONDLIST_PER_DONOR;
+      if ((long long)hbondList.capacity>(long long)hbondList.donorCount*hbondList.acceptorCount) {
+        hbondList.capacity=hbondList.donorCount*hbondList.acceptorCount;
+      }
+
+      cudaMalloc(&hbondList.donors_d,hbondList.donorCount*sizeof(HbondDonor));
+      cudaMalloc(&hbondList.acceptors_d,hbondList.acceptorCount*sizeof(int));
+      cudaMalloc(&hbondList.watch_d,hbondList.watchCount*sizeof(int));
+      cudaMalloc(&hbondList.refPos_d,hbondList.watchCount*sizeof(real3));
+      cudaMalloc(&hbondList.list_d,hbondList.capacity*sizeof(HbondPotential));
+      cudaMalloc(&hbondList.flags_d,3*sizeof(int));
+      cudaMemcpy(hbondList.donors_d,donors_tmp.data(),hbondList.donorCount*sizeof(HbondDonor),cudaMemcpyHostToDevice);
+      cudaMemcpy(hbondList.acceptors_d,acceptors_tmp.data(),hbondList.acceptorCount*sizeof(int),cudaMemcpyHostToDevice);
+      cudaMemcpy(hbondList.watch_d,watch_tmp.data(),hbondList.watchCount*sizeof(int),cudaMemcpyHostToDevice);
+      cudaMemset(hbondList.refPos_d,0,hbondList.watchCount*sizeof(real3));
+      cudaMemset(hbondList.flags_d,0,3*sizeof(int));
+
+
+      std::vector<int> role_tmp(atomCount,0);
+      std::vector<int2> donorRange_tmp(atomCount,make_int2(0,0));
+      for (i=0;i<hbondList.acceptorCount; i++) role_tmp[acceptors_tmp[i]] |=1;
+      for (i=0;i<hbondList.donorCount; i++) {
+        int n=donors_tmp[i].idx[0];
+	if ((role_tmp[n]&2)==0) {
+	  role_tmp[n] |=2;
+	  donorRange_tmp[n].x=i;
+	}
+	donorRange_tmp[n].y++;
+      }
+      cudaMalloc(&hbondList.role_d,atomCount*sizeof(int));
+      cudaMalloc(&hbondList.donorRange_d,atomCount*sizeof(int2));
+      cudaMemcpy(hbondList.role_d,role_tmp.data(),atomCount*sizeof(int),cudaMemcpyHostToDevice);
+      cudaMemcpy(hbondList.donorRange_d,donorRange_tmp.data(),atomCount*sizeof(int2),cudaMemcpyHostToDevice);
+    }
+  }
+  hbondList.skin=system->run->hbondSkin;
+  hbondList.forceRebuild=true;
+  hbondList.lastResetSerial=-1;
+  if (system->run->useHbond && system->run->hbondCut>system->run->rCut) {
+    fatal(__FILE__,__LINE__,"hbondcut (%f A) must not exceed rcut (%f A)\n",system->run->hbondCut/ANGSTROM,system->run->rCut/ANGSTROM);
+  }
+  hbondParameters.rCut=system->run->hbondCut;
   // Save van der Waals interaction parameters
   vdwParameterCount=typeList.size();
   vdwParameters=(VdwPotential*)calloc(vdwParameterCount*vdwParameterCount,sizeof(VdwPotential));
@@ -1884,6 +2018,8 @@ void Potential::calc_force(long int step,System *system)
     getforce_cmap(system,calcEnergy);
     getforce_nb14(system,calcEnergy);
     getforce_nbex(system,calcEnergy);
+    hbondlist_update(system,calcEnergy);
+    getforce_hbond(system,calcEnergy);
     cudaEventRecord(r->bondedComplete,r->bondedStream);
     cudaStreamWaitEvent(r->updateStream,r->bondedComplete,0);
   }

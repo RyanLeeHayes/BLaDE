@@ -2,8 +2,8 @@
 
 source modules
 
-mkdir buildDebug
-cd buildDebug
+mkdir buildDD
+cd buildDD
 cmake -DUNITS=AKMA -DCMAKE_BUILD_TYPE=Debug ../src
 # cmake -DUNITS=AKMA -DPRECISION=DOUBLE -DCMAKE_BUILD_TYPE=Debug ../src
 

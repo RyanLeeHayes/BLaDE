@@ -17,6 +17,10 @@ struct Cutoffs {
   real betaEwald;
   real rCut;
   real rSwitch;
+  real kappa;
+  real invDielectric;
+  real rCutHyRes;
+  real rSwitchHyRes;
 };
 
 typedef enum emin {
@@ -29,12 +33,14 @@ typedef enum eelec {
   efswitch, // force switching (no PME, no shift)
   epme,     // Particle Mesh Ewald
   efshift,  // force switching with shift
+  edebye,   // Debye-Huckel electrostatic for HyRes
   eelecend} EElec;
 
 typedef enum evdw {
   evfswitch, // 0: force switching (VFSWITCH)
   evswitch,  // 1: potential switching (VSWITCH)
   evshift,   // 2: potential shift (VSHIFT)
+  evhyres,   // 3: potential switching with openMM quintic (VSWITCHOMM) for HyRes
   evdwend} EVdw;
 
 class Run {
@@ -81,8 +87,23 @@ class Run {
   real betaEwald;
   real rCut;
   real rSwitch;
+  real kappa;
+  real invDielectric;
+  real rCutHyRes;
+  real rSwitchHyRes;
+  // HyRes backbone H-bond term
+  bool useHbond;        // on/off
+  real hbondSigma;      // position of the minimum
+  real hbondEpsilon;    // well depth (positive)
+  real hbondCut;        // hard O-N cutoff
+  real hbondSkin;       // list buffer for brute-force builds
+  bool hbondListDomdec; // build the list from domdec candidates (single GPU)
+
+  //HyRes Restricted Bending Angle
+  bool useAngleReB;
+
   EVdw vdwMethod;   // VDW method: evfswitch, evswitch, or evshift
-  EElec elecMethod; // electrostatic method: efswitch, epme, or efshift
+  EElec elecMethod; // electrostatic method: efswitch, epme, efshift or debye
   real gridSpace; // grid spacing for PME calculation
   int grid[3];
   int orderEwald; // interpolation order (4, 6, or 8 typically)
@@ -151,7 +172,7 @@ extern "C" {
   void blade_init_run(System *system);
   void blade_dest_run(System *system);
   void blade_add_run_flags(System *system,
-    double gamma, double betaEwald, double rCut, double rSwitch,
+    double gamma, double betaEwald, double rCut, double rSwitch, double kappa, double invDielectric,
     int vdWfSwitch, int elecPME,
     double gridSpace, int gridx, int gridy, int gridz,
     int orderEwald, double shakeTolerance);

@@ -511,6 +511,13 @@ void getforce_diRestT(System *system,box_type box,bool calcEnergy)
 
   N=p->diRestCount;
   if (N>0) getforce_dihedralRestraint_kernel <flagBox> <<<(N+BLBO-1)/BLBO,BLBO,shMem,r->biaspotStream>>>(N,p->diRests_d,(real3*)s->position_fd,(real3_f*)s->force_d,box,s->lambda_fd,s->lambdaForce_d,(real*)p->savedPhi_d,pEnergy);
+  real *savedPhi = p->savedPhi;
+  real *savedPhi_d = p->savedPhi_d;
+  if (p->anyDiRestPrint) { 
+    if (system->run->step % system->run->freqLMD == 0) {
+      cudaMemcpy(savedPhi,savedPhi_d,N*sizeof(real),cudaMemcpyDeviceToHost);
+    }
+  } 
 }
 
 void getforce_diRest(System *system,bool calcEnergy)

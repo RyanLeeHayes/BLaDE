@@ -58,7 +58,7 @@ static __forceinline__ __device__ float fasterfc(float a)
 // r*fpair=6*c6*r^-6*(rc^3-r^3)/(rc^3-rs^3) - 12*c12*r^-12*(rc^6-r^6)/(rc^6-rs^6)   rs<r<rc
 // lE=integral(fpair)
 // Use charmm shortcuts to calculate those
-// vdwMethod: 0=VFSWITCH, 1=VSWITCH, 2=VSHIFT
+// vdwMethod: 0=VFSWITCH, 1=VSWITCH, 2=VSHIFT, 3=OMMVSWITCH
 __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,real *lE,bool calcEnergy,int vdwMethod,int elecMethod)
 {
   real rinv=1/r;
@@ -126,10 +126,12 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
       fpair[0] = 6*pp.c6*(rinv7 - r5*roffinv12) -
                  12*pp.c12*(rinv13 + r5*roffinv18);
 
+
       if (calcEnergy) {
         lE[0] = pp.c12*(rinv12 + 2*r6*roffinv18 - 3*roffinv12) -
                 pp.c6*(rinv6 + r6*roffinv12 - 2*roffinv6);
       }
+
     }
 
     real kqq=kELECTRIC*pp.qxq;
@@ -171,6 +173,13 @@ __device__ void function_pair(Nb14Potential pp,Cutoffs rc,real r,real *fpair,rea
       fpair[0]+=-kqqe14*(rinv*rinv-roffinv2);
       if (calcEnergy) {
         lE[0]+=kqqe14*(rinv-2*roffinv+r*roffinv2);
+      }
+    } else if (elecMethod==3) { //DEBYE
+      real kqqe14=kqq*pp.e14fac*rc.invDielectric;
+      real E=kqqe14*expf(-rc.kappa*r)*rinv;
+      fpair[0]+=-E*(rinv+rc.kappa);
+      if (calcEnergy) {
+        lE[0]+=E;
       }
     }
   }
@@ -314,6 +323,8 @@ void getforce_nb14TTT(System *system,box_type box,bool calcEnergy)
     getforce_nb14TTTT<flagBox,useSoftCore,vdwMethod,1>(system,box,calcEnergy);
   } else if (system->run->elecMethod==2) { // FSHIFT
     getforce_nb14TTTT<flagBox,useSoftCore,vdwMethod,2>(system,box,calcEnergy);
+  } else if (system->run->elecMethod==3) { // DEBYE
+    getforce_nb14TTTT<flagBox,useSoftCore,vdwMethod,3>(system,box,calcEnergy);
   }
 }
 
@@ -326,6 +337,8 @@ void getforce_nb14TT(System *system,box_type box,bool calcEnergy)
     getforce_nb14TTT<flagBox,useSoftCore,1>(system,box,calcEnergy);
   } else if (system->run->vdwMethod==2) { // VSHIFT
     getforce_nb14TTT<flagBox,useSoftCore,2>(system,box,calcEnergy);
+  } else if (system->run->vdwMethod==3) { //HYRES
+    getforce_nb14TTT<flagBox,useSoftCore,1>(system,box,calcEnergy);
   }
 }
 

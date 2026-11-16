@@ -79,7 +79,7 @@ bool check_proximity(DomdecBlockVolume a,real3 b,real c2)
 }
 
 template <bool flagBox,bool calcAlch,bool useSoftCore,int vdwMethod,int elecMethod,bool calcEnergy,typename box_type>
-// elecMethod: 0=FSWITCH, 1=PME, 2=FSHIFT
+// elecMethod: 0=FSWITCH, 1=PME, 2=FSHIFT 3=DEBYE
 // vdwMethod: 0=VFSWITCH, 1=VSWITCH, 2=VSHIFT
 // __global__ void getforce_nbdirect_kernel(int startBlock,int endBlock,int maxPartnersPerBlock,int *blockBounds,int *blockPartnerCount,struct DomdecBlockPartners *blockPartners,struct DomdecBlockVolume *blockVolume,struct NbondPotential *nbonds,int vdwParameterCount,struct VdwPotential *vdwParameters,int *blockExcls,struct Cutoffs cutoffs,real3 *position,real3 *force,real3 box,real *lambda,real *lambdaForce,real *energy)
 __global__ void getforce_nbdirect_kernel(
@@ -318,8 +318,29 @@ __global__ void getforce_nbdirect_kernel(
                 if (calcEnergy || (calcAlch && (bi || bjtmp))) {
                   eij=qiqj*(rinv-2*roffinv+rEff*roffinv2);
                 }
-              }
-
+              } else if (elecMethod==3) { // DEBYE, openMM-style force switching
+		//Eij = A*inp.q*jtmpnp_q*rinv*expf(-cutoffs.kappa*rEff) A = kELECTRIC*cutoffs.invDielectric
+		//Fij = -Eij*(rinv + cutoffs.kappa)
+                real kappa = cutoffs.kappa;
+		real invDielectric = cutoffs.invDielectric;
+		real roff = cutoffs.rCut;
+		real ron = cutoffs.rSwitch;
+		real E = kELECTRIC*invDielectric*inp.q*jtmpnp_q*rinv*expf(-kappa*rEff);
+		fij=-E*(rinv+kappa);
+		if (rEff>ron) {
+		  real w=1/(roff-ron);
+		  real x=(rEff-ron)*w;
+		  real x2=x*x; 
+		  real x3=x2*x;
+		  real S=1+x3*(-10+x*(15-6*x));
+		  real dS=30*(-x2+2*x3-x2*x2)*w;
+		  fij = S*fij + dS*E;
+		  E*=S;
+		} 
+		if (calcEnergy || (calcAlch && (bi || bjtmp))) {
+                  eij=E;
+                } 
+	       }
               // Van der Waals
               real rinv3=rinv*rinv*rinv;
               real rinv6=rinv3*rinv3;
@@ -391,7 +412,29 @@ __global__ void getforce_nbdirect_kernel(
                   eij += vdwp.c12*(rinv12 + 2*r6*roffinv18 - 3*roffinv12) -
                          vdwp.c6*(rinv6 + r6*roffinv12 - 2*roffinv6);
                 }
+              } else if (vdwMethod==3) { // OPENMM QUINTIC VSWITCH FOR DEBYE COARSEGRAIN
+	        if (rEff<cutoffs.rCutHyRes) {
+                  real fLJ = (6*vdwp.c6-12*vdwp.c12*rinv6)*rinv6*rinv;
+		  real ELJ=(vdwp.c12*rinv6-vdwp.c6)*rinv6;
+		  if (rEff>cutoffs.rSwitchHyRes) {
+		    real roff=cutoffs.rCutHyRes;
+                    real ron=cutoffs.rSwitchHyRes;
+                    real w=1/(roff-ron);
+                    real x=(rEff-ron)*w;
+                    real x2=x*x;
+                    real x3=x2*x;
+                    real S=1+x3*(-10+x*(15-6*x));
+                    real dS=30*(-x2+2*x3-x2*x2)*w;
+                    fLJ+= S*fLJ + dS*ELJ;
+                    ELJ*=S;
+		  }
+		  fij+=fLJ;
+		  if (calcEnergy || (calcAlch && (bi || bjtmp))) {
+		    eij+=ELJ;
+		  }
+		}
               }
+
               if (calcAlch) fij*=lixljtmp;
 
               // Lambda force
@@ -541,6 +584,8 @@ void getforce_nbdirectTTT(System *system,box_type box,bool calcEnergy)
     getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,1>(system,box,calcEnergy);
   } else if (system->run->elecMethod==2) { // FSHIFT
     getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,2>(system,box,calcEnergy);
+  } else if (system->run->elecMethod==3) { // DEBYE
+    getforce_nbdirectTTTT<flagBox,calcAlch,useSoftCore,vdwMethod,3>(system,box,calcEnergy);
   }
 }
 
@@ -553,6 +598,8 @@ void getforce_nbdirectTT(System *system,box_type box,bool calcEnergy)
     getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,1>(system,box,calcEnergy);
   } else if (system->run->vdwMethod==2) { // VSHIFT
     getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,2>(system,box,calcEnergy);
+  } else if (system->run->elecMethod==3) { // DEBYE
+    getforce_nbdirectTTT<flagBox,calcAlch,useSoftCore,3>(system,box,calcEnergy);
   }
 }
 

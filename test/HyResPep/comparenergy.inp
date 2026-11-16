@@ -1,0 +1,32 @@
+variables set temp 298
+parameters file comp/param_hyres_mix.inp
+structure file psf demo.psf
+coordinates file crd minimized.crd
+msld nblocks 0
+coordinates box cubi 150 150 150 90 90 90
+coordinates velocity 298
+run setvariable debyelength 7.842
+run setvariable dielectric 60.53
+run setvariable rcut 18
+run setvariable rswitch 16
+run setvariable rswitchhyres 11
+run setvariable rcuthyres 12
+run setvariable vdwmethod hyres
+run setvariable elecmethod debye
+run setvariable hbond on
+run setvariable hbondlist domdec
+run setvariable fnmnrg compare.nrg
+run setvariable anglereb on 
+variables set numframes 100 
+variables set ii 0
+while < {ii} {numframes}
+  if > {ii} 9
+    coordinates file crd testcoords/frame_00{ii}.crd
+    run energy
+  endif
+  if <= {ii} 9
+    coordinates file crd testcoords/frame_000{ii}.crd
+    run energy
+  endif
+  variables calculate ii int + {ii} 1  
+endwhile

@@ -1,0 +1,67 @@
+Creating a copy of system
+Opening file input for r
+IN1> verbose 0
+IN1> 
+IN1> parameters file dhtest_v2fix.prm
+Opening file dhtest_v2fix.prm for r
+TITLE> * Debye-Huckel test parameters, v2
+TITLE> * Every atom type has a NONBONDED entry with explicit 1-4 columns,
+TITLE> * so no lookup in potentialnew.cxx depends on parser defaults.
+TITLE> *
+IN1> 
+IN1> structure file psf chain.psf
+Opening file chain.psf for r
+Reading PSF, found header string: 'CMAP'
+Reading PSF, found header string: 'XPLOR'
+Reading PSF, expect !NTITLE: got  !NTITLE
+Reading PSF, expect !NATOM: got  !NATOM
+Reading PSF, expect !NBOND: bonds: got  !NBOND: bonds
+Reading PSF, expect !NTHETA: angles: got  !NTHETA: angles
+Reading PSF, expect !NPHI: dihedrals: got  !NPHI: dihedrals
+Reading PSF, expect !NIMPHI: impropers: got  !NIMPHI: impropers
+Reading PSF, expect !NDON: donors: got  !NDON: donors
+Reading PSF, expect !NACC: acceptors: got  !NACC: acceptors
+Reading PSF, expect !NNB: got  !NNB
+Reading PSF, expect !NGRP NST2: got        0 !NGRP NST2
+Reading PSF, expect !NUMLP NUMLPH: got  !NUMLP NUMLPH
+Reading PSF, expect !NCRTERM: got  !NCRTERM: cross-terms
+IN1> msld nblocks 0
+NYI - Initialize all blocks in first site /dfs8/rhayes1_lab/cyeh5/BLaDE/src/msld/msld.cu:184
+IN1> coordinates box cubi 40 40 40 90 90 90
+IN1> run setvariable debyelength 7.83  
+IN1> run setvariable dielectric 60.0
+IN1> run setvariable rswitch 16
+IN1> run setvariable rcut 18
+IN1> run setvariable invbetaewald 3.125
+IN1> run setvariable orderewald 4
+IN1> run setvariable gridspace 1.1
+IN1> run setvariable elecmethod debye
+IN1> 
+IN1> coordinates file crd chain.crd
+Opening file chain.crd for r
+IN1> selection define testselection segid CHN
+SELECTION> add testselection to selections after parsing  segid CHN
+
+IN1> run setterm bond off
+IN1> run setterm angle off
+IN1> run setterm dihe off
+IN1> run test spatial testselection 0.01
+Opening file default.lmd for w
+Opening file default.nrg for w
+ij=      1, Emin= -0.2506982684135437, Emax= -0.2509003430604935, (Emax-Emin)/dx=-0.02020746514664885, force=-0.02020671032369137
+ij=      2, Emin= -0.2507537454366684, Emax= -0.2508446425199509, (Emax-Emin)/dx=-0.009089708531417889, force=-0.009091890417039394
+ij=      3, Emin= -0.2507991641759872, Emax= -0.2507991641759872, (Emax-Emin)/dx=                   0, force=                   0
+ij=      4, Emin= -0.2506045922636986, Emax= -0.2509941384196281, (Emax-Emin)/dx=-0.03895461646366007, force=-0.03895380347967148
+ij=      5, Emin= -0.2508446201682091, Emax= -0.2507537230849266, (Emax-Emin)/dx=0.009089708531417889, force=0.009091890417039394
+ij=      6, Emin= -0.2507991418242455, Emax= -0.2507991418242455, (Emax-Emin)/dx=                   0, force=                   0
+ij=      7, Emin= -0.2507992312312126, Emax= -0.2507992312312126, (Emax-Emin)/dx=                   0, force=                   0
+ij=      8, Emin= -0.2507992312312126, Emax= -0.2507992312312126, (Emax-Emin)/dx=                   0, force=                   0
+ij=      9, Emin= -0.2507992312312126, Emax= -0.2507992312312126, (Emax-Emin)/dx=                   0, force=                   0
+ij=     10, Emin= -0.2509941384196281, Emax= -0.2506045922636986, (Emax-Emin)/dx= 0.03895461646366007, force= 0.03895380347967148
+ij=     11, Emin= -0.2508446201682091, Emax= -0.2507537230849266, (Emax-Emin)/dx=0.009089708531417889, force=0.009091890417039394
+ij=     12, Emin= -0.2507991418242455, Emax= -0.2507991418242455, (Emax-Emin)/dx=                   0, force=                   0
+ij=     13, Emin= -0.2509003430604935, Emax= -0.2506982684135437, (Emax-Emin)/dx= 0.02020746514664885, force= 0.02020671032369137
+ij=     14, Emin= -0.2507537454366684, Emax= -0.2508446425199509, (Emax-Emin)/dx=-0.009089708531417889, force=-0.009091890417039394
+ij=     15, Emin= -0.2507991641759872, Emax= -0.2507991641759872, (Emax-Emin)/dx=                   0, force=                   0
+Opening file default.cpt for w
+Destroying a copy of system

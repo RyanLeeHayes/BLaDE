@@ -1,0 +1,30 @@
+* Debye-Huckel test parameters, v2
+* Every atom type has a NONBONDED entry with explicit 1-4 columns,
+* so no lookup in potentialnew.cxx depends on parser defaults.
+*
+
+ATOMS
+MASS  -1  IP   10.0
+MASS  -1  IN   10.0
+MASS  -1  QP   10.0
+MASS  -1  QN   10.0
+
+BONDS
+QP   QN    100.0   3.80
+
+ANGLES
+QP   QN   QP    10.0   110.0
+QN   QP   QN    10.0   110.0
+
+DIHEDRALS
+X    QP   QN   X     0.0   1     0.0   ! zero force, but dihedrals must exist for the 1-4 list
+
+NONBONDED nbxmod 5 atom cdiel fshift vatom vdistance vfswitch -
+  cutnb 20.0 ctofnb 18.0 ctonb 16.0 eps 1.0 e14fac 1.0 wmin 1.5
+!type ignored  eps    Rmin/2   ignored  eps14  Rmin14/2
+IP    0.0     -0.0    1.0      0.0     -0.0    1.0     ! no LJ: pure electrostatics
+IN    0.0     -0.0    1.0      0.0     -0.0    1.0
+QP    0.0     -0.1    2.0      0.0     -0.1    2.0     ! nonzero eps14 so OpenMM keeps 1-4 exceptions
+QN    0.0     -0.1    2.0      0.0     -0.1    2.0
+
+END

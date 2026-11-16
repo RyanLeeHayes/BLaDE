@@ -1,0 +1,69 @@
+Creating a copy of system
+Opening file input for r
+IN1> verbose 0
+IN1> 
+IN1> parameters file dhtest.prm
+Opening file dhtest.prm for r
+TITLE> * Debye-Huckel test parameters
+TITLE> *
+Warning: atom type QP found in BONDS but not declared in ATOMS
+Warning: atom type QN found in BONDS but not declared in ATOMS
+Warning: atom type QP found in ANGLES but not declared in ATOMS
+Warning: atom type QN found in ANGLES but not declared in ATOMS
+Warning: atom type QP found in ANGLES but not declared in ATOMS
+Warning: atom type QN found in ANGLES but not declared in ATOMS
+Warning: atom type QP found in ANGLES but not declared in ATOMS
+Warning: atom type QN found in ANGLES but not declared in ATOMS
+Warning: atom type QP found in DIHEDRALS but not declared in ATOMS
+Warning: atom type QN found in DIHEDRALS but not declared in ATOMS
+Warning: atom type IP found in NONBONDEDS but not declared in ATOMS
+Warning: atom type IN found in NONBONDEDS but not declared in ATOMS
+Warning: atom type QP found in NONBONDEDS but not declared in ATOMS
+Warning: atom type QN found in NONBONDEDS but not declared in ATOMS
+IN1> 
+IN1> structure file psf pair.psf
+Opening file pair.psf for r
+Reading PSF, found header string: 'CMAP'
+Reading PSF, expect !NTITLE: got  !NTITLE
+Reading PSF, expect !NATOM: got  !NATOM
+Reading PSF, expect !NBOND: bonds: got  !NBOND: bonds
+Reading PSF, expect !NTHETA: angles: got  !NTHETA: angles
+Reading PSF, expect !NPHI: dihedrals: got  !NPHI: dihedrals
+Reading PSF, expect !NIMPHI: impropers: got  !NIMPHI: impropers
+Reading PSF, expect !NDON: donors: got  !NDON: donors
+Reading PSF, expect !NACC: acceptors: got  !NACC: acceptors
+Reading PSF, expect !NNB: got  !NNB
+Reading PSF, expect !NGRP NST2: got        0 !NGRP NST2
+Reading PSF, expect !NUMLP NUMLPH: got  !NUMLP NUMLPH
+Reading PSF, expect !NCRTERM: got  !NCRTERM: cross-terms
+IN1> coordinates file crd pair_2.crd 
+Opening file pair_2.crd for r
+IN1> msld nblocks 0
+NYI - Initialize all blocks in first site /dfs8/rhayes1_lab/cyeh5/BLaDE/src/msld/msld.cu:184
+IN1> coordinates box cubi 40 40 40 90 90 90
+IN1> run setvariable debyelength 7.83  
+IN1> run setvariable dielectric 60.0
+IN1> run setvariable rswitch 16
+IN1> run setvariable rcut 18
+IN1> run setvariable invbetaewald 3.125
+IN1> run setvariable orderewald 4
+IN1> run setvariable gridspace 1.1
+IN1> run setvariable elecmethod debye
+IN1> 
+IN1> run energy 
+Opening file default.lmd for w
+Opening file default.nrg for w
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/system/potential.cxx:1390
+Nonbonded parameter for atom type 1 not found
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[51717,1],0]
+  Exit code:    1
+--------------------------------------------------------------------------

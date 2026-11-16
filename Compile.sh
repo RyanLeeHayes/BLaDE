@@ -2,8 +2,8 @@
 
 source modules
 
-mkdir build
-cd build
+mkdir buildDebye
+cd buildDebye
 #cmake -DUNITS=AKMA -DCMAKE_BUILD_TYPE=Release ../src
 cmake -DUNITS=AKMA -DRX=ON -DCMAKE_BUILD_TYPE=Release ../src
 # cmake -DUNITS=AKMA -DPRECISION=DOUBLE -DCMAKE_BUILD_TYPE=Release ../src

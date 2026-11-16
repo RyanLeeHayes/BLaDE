@@ -217,7 +217,6 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
     crop=real3_cross(drij,drkj); // c = a x b
     mcrop=real3_mag<real>(crop);
     t=atan2f(mcrop,dotp);
-
     // Scaling
     b[0]=0xFFFF & ap.siteBlock[0];
     b[1]=0xFFFF & ap.siteBlock[1];
@@ -229,9 +228,20 @@ __global__ void getforce_angle_kernel(int angleCount,struct AnglePotential *angl
     }
 
     // Interaction
+    real Eangle=((real)0.5)*ap.kangle*(t-ap.angle0)*(t-ap.angle0);
     fangle=ap.kangle*(t-ap.angle0);
+    if (ap.nreb==2) {
+      real mij,mkj,sinv,cot,sinv2;
+      mij=real3_mag<real>(drij);
+      mkj=real3_mag<real>(drkj);
+      sinv=mij*mkj/mcrop;
+      cot=dotp/mcrop;
+      sinv2=sinv*sinv;
+      fangle*=sinv2*(((real)1)-(t-ap.angle0)*cot);
+      Eangle*=sinv2;
+    }
     if (b[0] || energy) {
-      lEnergy=((real)0.5)*ap.kangle*(t-ap.angle0)*(t-ap.angle0);
+      lEnergy=Eangle;
     }
     if (soft) {
       fangle*=pow(l[0]*l[1],softExp);

@@ -1,0 +1,42 @@
+PSF CMAP XPLOR
+
+       2 !NTITLE
+* 5-BEAD DH TEST CHAIN                                                          
+*  DATE:     9/21/26     15:52:21      CREATED BY USER: cyeh5                   
+
+       5 !NATOM
+       1 CHN  1    CHN  A1   QP      1.00000       10.0000           0
+       2 CHN  1    CHN  A2   QN     -1.00000       10.0000           0
+       3 CHN  1    CHN  A3   QP      1.00000       10.0000           0
+       4 CHN  1    CHN  A4   QN     -1.00000       10.0000           0
+       5 CHN  1    CHN  A5   QP      1.00000       10.0000           0
+
+       4 !NBOND: bonds
+       1       2       2       3       3       4       4       5
+
+       3 !NTHETA: angles
+       1       2       3       2       3       4       3       4       5
+
+       2 !NPHI: dihedrals
+       1       2       3       4       2       3       4       5
+
+       0 !NIMPHI: impropers
+
+
+       0 !NDON: donors
+
+
+       0 !NACC: acceptors
+
+
+       0 !NNB
+
+       0       0       0       0       0
+
+       1       0 !NGRP NST2
+       0       2       0
+
+       0       0 !NUMLP NUMLPH
+
+       0 !NCRTERM: cross-terms
+

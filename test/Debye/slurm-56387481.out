@@ -1,0 +1,87 @@
+--------------------------------------------------------------------------
+Open MPI detected two devices on a single server that have different
+"receive_queues" parameter values (in the openib BTL).  Open MPI
+currently only supports one OpenFabrics receive_queues value in an MPI
+job, even if you have different types of OpenFabrics adapters on the
+same host.
+
+Device 2 (in the details shown below) will be ignored for the duration
+of this MPI job.
+
+You can fix this issue by one or more of the following:
+
+  1. Set the MCA parameter btl_openib_receive_queues to a value that
+     is usable by all the OpenFabrics devices that you will use.
+  2. Use the btl_openib_if_include or btl_openib_if_exclue MCA
+     parameters to select exactly which OpenFabrics devices to use in
+     your MPI job.
+
+Finally, note that the "receive_queues" values may have been set by
+the Open MPI device default settings file.  You may want to look in
+this file and see if your devices are getting receive_queues values
+from this file:
+
+    /opt/apps/openmpi/4.1.2/gcc/11.2.0/share/openmpi/mca-btl-openib-device-params.ini
+
+Here is more detailed information about the recieive_queus value
+conflict:
+
+  Local host:     hpc3-gpu-16-02
+  Device 1:       mlx5_0 (vendor 0x2c9, part ID 4119)
+  Receive queues: S,128,256,192,128:S,2048,1024,1008,64:S,12288,1024,1008,64:S,65536,1024,1008,64
+  Device 2:       qedr0 (vendor 0x1077, part ID 32880)
+  Receive queues: P,65536,64
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+WARNING: There was an error initializing an OpenFabrics device.
+
+  Local host:   hpc3-gpu-16-02
+  Local device: qedr0
+--------------------------------------------------------------------------
+Creating a copy of system
+Opening file input for r
+IN1> verbose 0
+IN1> 
+IN1> parameters file dhtest_v2fix.prm
+Opening file dhtest_v2fix.prm for r
+TITLE> * Debye-Huckel test parameters, v2
+TITLE> * Every atom type has a NONBONDED entry with explicit 1-4 columns,
+TITLE> * so no lookup in potentialnew.cxx depends on parser defaults.
+TITLE> *
+IN1> 
+IN1> structure file psf pair.psf
+Opening file pair.psf for r
+Reading PSF, found header string: 'CMAP'
+Reading PSF, found header string: 'XPLOR'
+Reading PSF, expect !NTITLE: got  !NTITLE
+Reading PSF, expect !NATOM: got  !NATOM
+Reading PSF, expect !NBOND: bonds: got  !NBOND: bonds
+Reading PSF, expect !NTHETA: angles: got  !NTHETA: angles
+Reading PSF, expect !NPHI: dihedrals: got  !NPHI: dihedrals
+Reading PSF, expect !NIMPHI: impropers: got  !NIMPHI: impropers
+Reading PSF, expect !NDON: donors: got  !NDON: donors
+Reading PSF, expect !NACC: acceptors: got  !NACC: acceptors
+Reading PSF, expect !NNB: got  !NNB
+Reading PSF, expect !NGRP NST2: got        0 !NGRP NST2
+Reading PSF, expect !NUMLP NUMLPH: got  !NUMLP NUMLPH
+Reading PSF, expect !NCRTERM: got  !NCRTERM: cross-terms
+IN1> coordinates file crd pair_2.crd 
+Opening file pair_2.crd for r
+IN1> msld nblocks 0
+NYI - Initialize all blocks in first site /dfs8/rhayes1_lab/cyeh5/BLaDE/src/msld/msld.cu:184
+IN1> coordinates box cubi 40 40 40 90 90 90
+IN1> run setvariable debyelength 7.83  
+IN1> run setvariable dielectric 60.0
+IN1> run setvariable rswitch 16
+IN1> run setvariable rcut 18
+IN1> run setvariable invbetaewald 3.125
+IN1> run setvariable orderewald 4
+IN1> run setvariable gridspace 1.1
+IN1> run setvariable elecmethod debye
+IN1> 
+IN1> run energy 
+Opening file default.lmd for w
+Opening file default.nrg for w
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -2.1435       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -2.1435       0.0000      -2.1435
+Opening file default.cpt for w
+Destroying a copy of system

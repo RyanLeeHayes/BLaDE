@@ -1,0 +1,134 @@
+Creating a copy of system
+Opening file peptide.inp for r
+IN1> variables set temp 298
+IN1> variables set nsteps 100000
+IN1> parameters file forcefield/param_hyres_mix.inp
+Opening file forcefield/param_hyres_mix.inp for r
+TITLE> * HyRes force field for hyres_iConRNA
+TITLE> * mass of backbone atoms and H was increased to 25
+TITLE> * strength of bonds and angles was halfed
+TITLE> * parameter file for coarse grained proteins with heavy backbones
+TITLE> * 
+Warning: atom type H found in BONDS but not declared in ATOMS
+Warning: atom type NH1 found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type NH1 found in BONDS but not declared in ATOMS
+Warning: atom type C2E found in BONDS but not declared in ATOMS
+Warning: atom type NH1 found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type N found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type C2E found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type O found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type NH1 found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type N found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type C3E found in BONDS but not declared in ATOMS
+Warning: atom type C3E found in BONDS but not declared in ATOMS
+Warning: atom type NH1 found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type C3E found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A2V found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A1L found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A1I found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A5M found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P5N found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type QaD found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P4Q found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type QaE found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P1C found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P1S found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P1T found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A3K found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A3R found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A4H found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A1F found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A1Y found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A1W found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A2P found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P2S found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P2T found in BONDS but not declared in ATOMS
+Warning: atom type A3K found in BONDS but not declared in ATOMS
+Warning: atom type QdK found in BONDS but not declared in ATOMS
+Warning: atom type A3R found in BONDS but not declared in ATOMS
+Warning: atom type QdR found in BONDS but not declared in ATOMS
+Warning: atom type A4H found in BONDS but not declared in ATOMS
+Warning: atom type P1H found in BONDS but not declared in ATOMS
+Warning: atom type A4H found in BONDS but not declared in ATOMS
+Warning: atom type P2H found in BONDS but not declared in ATOMS
+Warning: atom type P1H found in BONDS but not declared in ATOMS
+Warning: atom type P2H found in BONDS but not declared in ATOMS
+Warning: atom type A1F found in BONDS but not declared in ATOMS
+Warning: atom type A2F found in BONDS but not declared in ATOMS
+Warning: atom type A1F found in BONDS but not declared in ATOMS
+Warning: atom type A3F found in BONDS but not declared in ATOMS
+Warning: atom type A2F found in BONDS but not declared in ATOMS
+Warning: atom type A3F found in BONDS but not declared in ATOMS
+Warning: atom type A1Y found in BONDS but not declared in ATOMS
+Warning: atom type A2Y found in BONDS but not declared in ATOMS
+Warning: atom type A1Y found in BONDS but not declared in ATOMS
+Warning: atom type P1Y found in BONDS but not declared in ATOMS
+Warning: atom type A2Y found in BONDS but not declared in ATOMS
+Warning: atom type P1Y found in BONDS but not declared in ATOMS
+Warning: atom type A1W found in BONDS but not declared in ATOMS
+Warning: atom type P1W found in BONDS but not declared in ATOMS
+Warning: atom type A1W found in BONDS but not declared in ATOMS
+Warning: atom type A2W found in BONDS but not declared in ATOMS
+Warning: atom type P1W found in BONDS but not declared in ATOMS
+Warning: atom type A2W found in BONDS but not declared in ATOMS
+Warning: atom type A2W found in BONDS but not declared in ATOMS
+Warning: atom type A3W found in BONDS but not declared in ATOMS
+Warning: atom type A2W found in BONDS but not declared in ATOMS
+Warning: atom type A4W found in BONDS but not declared in ATOMS
+Warning: atom type A3W found in BONDS but not declared in ATOMS
+Warning: atom type A4W found in BONDS but not declared in ATOMS
+Warning: atom type P2S found in BONDS but not declared in ATOMS
+Warning: atom type P3S found in BONDS but not declared in ATOMS
+Warning: atom type P2T found in BONDS but not declared in ATOMS
+Warning: atom type P3T found in BONDS but not declared in ATOMS
+Warning: atom type N found in BONDS but not declared in ATOMS
+Warning: atom type A2P found in BONDS but not declared in ATOMS
+Warning: atom type PEG found in BONDS but not declared in ATOMS
+Warning: atom type PEG found in BONDS but not declared in ATOMS
+Warning: atom type THETAS found in BONDS but not declared in ATOMS
+Warning: atom type  found in BONDS but not declared in ATOMS
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/io/io.cxx:245
+Error: failed to read double from: 
+
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[15276,1],0]
+  Exit code:    1
+--------------------------------------------------------------------------

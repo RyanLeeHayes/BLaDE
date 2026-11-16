@@ -236,10 +236,12 @@ void State::update(int step,System *system)
   if (system->run->freqNPT>0 && (system->run->step%system->run->freqNPT)==0) {
     pressure_coupling(system);
   }
-
 #ifdef REPLICAEXCHANGE
   if (system->run->freqREx>0 && (system->run->step%system->run->freqREx)==0) {
     replica_exchange(system);
+    if (system->msld->new_implicit) {
+      system->msld->calc_lambda_from_theta(r->updateStream,system);
+    }
   }
 #endif
 

@@ -1,0 +1,1223 @@
+Creating a copy of system
+Opening file peptide.inp for r
+IN1> variables set temp 298
+IN1> variables set nsteps 100000
+IN1> parameters file forcefield/param_hyres_mix.inp
+Opening file forcefield/param_hyres_mix.inp for r
+TITLE> * HyRes force field for hyres_iConRNA
+TITLE> * mass of backbone atoms and H was increased to 25
+TITLE> * strength of bonds and angles was halfed
+TITLE> * parameter file for coarse grained proteins with heavy backbones
+TITLE> * 
+Warning: atom type H found in BONDS but not declared in ATOMS
+Warning: atom type NH1 found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type NH1 found in BONDS but not declared in ATOMS
+Warning: atom type C2E found in BONDS but not declared in ATOMS
+Warning: atom type NH1 found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type N found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type C2E found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type O found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type NH1 found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type N found in BONDS but not declared in ATOMS
+Warning: atom type C found in BONDS but not declared in ATOMS
+Warning: atom type C3E found in BONDS but not declared in ATOMS
+Warning: atom type C3E found in BONDS but not declared in ATOMS
+Warning: atom type NH1 found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type C3E found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A2V found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A1L found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A1I found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A5M found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P5N found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type QaD found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P4Q found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type QaE found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P1C found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P1S found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P1T found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A3K found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A3R found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A4H found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A1F found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A1Y found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A1W found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type A2P found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P2S found in BONDS but not declared in ATOMS
+Warning: atom type C1E found in BONDS but not declared in ATOMS
+Warning: atom type P2T found in BONDS but not declared in ATOMS
+Warning: atom type A3K found in BONDS but not declared in ATOMS
+Warning: atom type QdK found in BONDS but not declared in ATOMS
+Warning: atom type A3R found in BONDS but not declared in ATOMS
+Warning: atom type QdR found in BONDS but not declared in ATOMS
+Warning: atom type A4H found in BONDS but not declared in ATOMS
+Warning: atom type P1H found in BONDS but not declared in ATOMS
+Warning: atom type A4H found in BONDS but not declared in ATOMS
+Warning: atom type P2H found in BONDS but not declared in ATOMS
+Warning: atom type P1H found in BONDS but not declared in ATOMS
+Warning: atom type P2H found in BONDS but not declared in ATOMS
+Warning: atom type A1F found in BONDS but not declared in ATOMS
+Warning: atom type A2F found in BONDS but not declared in ATOMS
+Warning: atom type A1F found in BONDS but not declared in ATOMS
+Warning: atom type A3F found in BONDS but not declared in ATOMS
+Warning: atom type A2F found in BONDS but not declared in ATOMS
+Warning: atom type A3F found in BONDS but not declared in ATOMS
+Warning: atom type A1Y found in BONDS but not declared in ATOMS
+Warning: atom type A2Y found in BONDS but not declared in ATOMS
+Warning: atom type A1Y found in BONDS but not declared in ATOMS
+Warning: atom type P1Y found in BONDS but not declared in ATOMS
+Warning: atom type A2Y found in BONDS but not declared in ATOMS
+Warning: atom type P1Y found in BONDS but not declared in ATOMS
+Warning: atom type A1W found in BONDS but not declared in ATOMS
+Warning: atom type P1W found in BONDS but not declared in ATOMS
+Warning: atom type A1W found in BONDS but not declared in ATOMS
+Warning: atom type A2W found in BONDS but not declared in ATOMS
+Warning: atom type P1W found in BONDS but not declared in ATOMS
+Warning: atom type A2W found in BONDS but not declared in ATOMS
+Warning: atom type A2W found in BONDS but not declared in ATOMS
+Warning: atom type A3W found in BONDS but not declared in ATOMS
+Warning: atom type A2W found in BONDS but not declared in ATOMS
+Warning: atom type A4W found in BONDS but not declared in ATOMS
+Warning: atom type A3W found in BONDS but not declared in ATOMS
+Warning: atom type A4W found in BONDS but not declared in ATOMS
+Warning: atom type P2S found in BONDS but not declared in ATOMS
+Warning: atom type P3S found in BONDS but not declared in ATOMS
+Warning: atom type P2T found in BONDS but not declared in ATOMS
+Warning: atom type P3T found in BONDS but not declared in ATOMS
+Warning: atom type N found in BONDS but not declared in ATOMS
+Warning: atom type A2P found in BONDS but not declared in ATOMS
+Warning: atom type PEG found in BONDS but not declared in ATOMS
+Warning: atom type PEG found in BONDS but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type H found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type H found in ANGLES but not declared in ATOMS
+Warning: atom type C2E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type H found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type C2E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type N found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type N found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C2E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type N found in ANGLES but not declared in ATOMS
+Warning: atom type C2E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type N found in ANGLES but not declared in ATOMS
+Warning: atom type C2E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type O found in ANGLES but not declared in ATOMS
+Warning: atom type C2E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type O found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type O found in ANGLES but not declared in ATOMS
+Warning: atom type N found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type O found in ANGLES but not declared in ATOMS
+Warning: atom type C3E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type O found in ANGLES but not declared in ATOMS
+Warning: atom type C3E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type C3E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type N found in ANGLES but not declared in ATOMS
+Warning: atom type C3E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type H found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type C3E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type C3E found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A2V found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1L found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1I found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A5M found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type P5N found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type QaD found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type P4Q found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type QaE found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type P1C found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type P1S found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type P1T found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A3K found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A3R found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A4H found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1F found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1Y found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1W found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A2P found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type P2S found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type P2T found in ANGLES but not declared in ATOMS
+Warning: atom type C3E found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type A2V found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type A1L found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type A1I found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type A5M found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type P5N found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type QaD found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type P4Q found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type QaE found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type P1C found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type P1S found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type P1T found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type A3K found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type A3R found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type A4H found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type A1F found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type A1Y found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type A1W found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type P2S found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type P2T found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type NH1 found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A3K found in ANGLES but not declared in ATOMS
+Warning: atom type QdK found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A3R found in ANGLES but not declared in ATOMS
+Warning: atom type QdR found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A4H found in ANGLES but not declared in ATOMS
+Warning: atom type P1H found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A4H found in ANGLES but not declared in ATOMS
+Warning: atom type P2H found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1F found in ANGLES but not declared in ATOMS
+Warning: atom type A2F found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1F found in ANGLES but not declared in ATOMS
+Warning: atom type A3F found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1Y found in ANGLES but not declared in ATOMS
+Warning: atom type A2Y found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1Y found in ANGLES but not declared in ATOMS
+Warning: atom type P1Y found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1W found in ANGLES but not declared in ATOMS
+Warning: atom type P1W found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A1W found in ANGLES but not declared in ATOMS
+Warning: atom type A2W found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type P2S found in ANGLES but not declared in ATOMS
+Warning: atom type P3S found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type P2T found in ANGLES but not declared in ATOMS
+Warning: atom type P3T found in ANGLES but not declared in ATOMS
+Warning: atom type P1W found in ANGLES but not declared in ATOMS
+Warning: atom type A2W found in ANGLES but not declared in ATOMS
+Warning: atom type A3W found in ANGLES but not declared in ATOMS
+Warning: atom type A1W found in ANGLES but not declared in ATOMS
+Warning: atom type A2W found in ANGLES but not declared in ATOMS
+Warning: atom type A4W found in ANGLES but not declared in ATOMS
+Warning: atom type C found in ANGLES but not declared in ATOMS
+Warning: atom type N found in ANGLES but not declared in ATOMS
+Warning: atom type A2P found in ANGLES but not declared in ATOMS
+Warning: atom type P1H found in ANGLES but not declared in ATOMS
+Warning: atom type A4H found in ANGLES but not declared in ATOMS
+Warning: atom type P2H found in ANGLES but not declared in ATOMS
+Warning: atom type A4H found in ANGLES but not declared in ATOMS
+Warning: atom type P2H found in ANGLES but not declared in ATOMS
+Warning: atom type P1H found in ANGLES but not declared in ATOMS
+Warning: atom type P2H found in ANGLES but not declared in ATOMS
+Warning: atom type P1H found in ANGLES but not declared in ATOMS
+Warning: atom type A4H found in ANGLES but not declared in ATOMS
+Warning: atom type A1F found in ANGLES but not declared in ATOMS
+Warning: atom type A2F found in ANGLES but not declared in ATOMS
+Warning: atom type A3F found in ANGLES but not declared in ATOMS
+Warning: atom type A2F found in ANGLES but not declared in ATOMS
+Warning: atom type A3F found in ANGLES but not declared in ATOMS
+Warning: atom type A1F found in ANGLES but not declared in ATOMS
+Warning: atom type A3F found in ANGLES but not declared in ATOMS
+Warning: atom type A1F found in ANGLES but not declared in ATOMS
+Warning: atom type A2F found in ANGLES but not declared in ATOMS
+Warning: atom type A1Y found in ANGLES but not declared in ATOMS
+Warning: atom type A2Y found in ANGLES but not declared in ATOMS
+Warning: atom type P1Y found in ANGLES but not declared in ATOMS
+Warning: atom type A2Y found in ANGLES but not declared in ATOMS
+Warning: atom type P1Y found in ANGLES but not declared in ATOMS
+Warning: atom type A1Y found in ANGLES but not declared in ATOMS
+Warning: atom type P1Y found in ANGLES but not declared in ATOMS
+Warning: atom type A1Y found in ANGLES but not declared in ATOMS
+Warning: atom type A2Y found in ANGLES but not declared in ATOMS
+Warning: atom type A1W found in ANGLES but not declared in ATOMS
+Warning: atom type P1W found in ANGLES but not declared in ATOMS
+Warning: atom type A2W found in ANGLES but not declared in ATOMS
+Warning: atom type A1W found in ANGLES but not declared in ATOMS
+Warning: atom type A2W found in ANGLES but not declared in ATOMS
+Warning: atom type P1W found in ANGLES but not declared in ATOMS
+Warning: atom type A2W found in ANGLES but not declared in ATOMS
+Warning: atom type A1W found in ANGLES but not declared in ATOMS
+Warning: atom type P1W found in ANGLES but not declared in ATOMS
+Warning: atom type A2W found in ANGLES but not declared in ATOMS
+Warning: atom type A3W found in ANGLES but not declared in ATOMS
+Warning: atom type A4W found in ANGLES but not declared in ATOMS
+Warning: atom type A2W found in ANGLES but not declared in ATOMS
+Warning: atom type A4W found in ANGLES but not declared in ATOMS
+Warning: atom type A3W found in ANGLES but not declared in ATOMS
+Warning: atom type A3W found in ANGLES but not declared in ATOMS
+Warning: atom type A2W found in ANGLES but not declared in ATOMS
+Warning: atom type A4W found in ANGLES but not declared in ATOMS
+Warning: atom type N found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type A2P found in ANGLES but not declared in ATOMS
+Warning: atom type N found in ANGLES but not declared in ATOMS
+Warning: atom type A2P found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type C1E found in ANGLES but not declared in ATOMS
+Warning: atom type N found in ANGLES but not declared in ATOMS
+Warning: atom type A2P found in ANGLES but not declared in ATOMS
+Warning: atom type PEG found in ANGLES but not declared in ATOMS
+Warning: atom type PEG found in ANGLES but not declared in ATOMS
+Warning: atom type PEG found in ANGLES but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type N found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type N found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C2E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C2E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type O found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type QaD found in DIHEDRALS but not declared in ATOMS
+Warning: atom type O found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P5N found in DIHEDRALS but not declared in ATOMS
+Warning: atom type O found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1T found in DIHEDRALS but not declared in ATOMS
+Warning: atom type O found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type O found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2V found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C2E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C3E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type N found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type N found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C2E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type N found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type N found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C3E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C2E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C3E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C3E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C2E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C2E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C2E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C2E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C2E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C3E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3K found in DIHEDRALS but not declared in ATOMS
+Warning: atom type QdK found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3K found in DIHEDRALS but not declared in ATOMS
+Warning: atom type QdK found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3R found in DIHEDRALS but not declared in ATOMS
+Warning: atom type QdR found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3R found in DIHEDRALS but not declared in ATOMS
+Warning: atom type QdR found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P2S found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P3S found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P2S found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P3S found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P2T found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P3T found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P2T found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P3T found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P2H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3K found in DIHEDRALS but not declared in ATOMS
+Warning: atom type QDK found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3R found in DIHEDRALS but not declared in ATOMS
+Warning: atom type QDR found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P2H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P2S found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P3S found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P2T found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P3T found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P2H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P2H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1H found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2F found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2Y found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type P1W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A4W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A3W found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type N found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2P found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type N found in DIHEDRALS but not declared in ATOMS
+Warning: atom type A2P found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C1E found in DIHEDRALS but not declared in ATOMS
+Warning: atom type C found in DIHEDRALS but not declared in ATOMS
+Warning: atom type PEG found in DIHEDRALS but not declared in ATOMS
+Warning: atom type PEG found in DIHEDRALS but not declared in ATOMS
+Warning: atom type PEG found in DIHEDRALS but not declared in ATOMS
+Warning: atom type PEG found in DIHEDRALS but not declared in ATOMS
+Warning: atom type NH1 found in IMPROPERS but not declared in ATOMS
+Warning: atom type H found in IMPROPERS but not declared in ATOMS
+Warning: atom type C found in IMPROPERS but not declared in ATOMS
+Warning: atom type O found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type C3E found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A2V found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A1L found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A1I found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A5M found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type P5N found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type QaD found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type P4Q found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type QaE found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type P1C found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type P1S found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type P1T found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A3K found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A3R found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A4H found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A1F found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A1Y found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A1W found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A2P found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type P2S found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type P2T found in IMPROPERS but not declared in ATOMS
+Warning: atom type A2W found in IMPROPERS but not declared in ATOMS
+Warning: atom type A3W found in IMPROPERS but not declared in ATOMS
+Warning: atom type A4W found in IMPROPERS but not declared in ATOMS
+Warning: atom type A1W found in IMPROPERS but not declared in ATOMS
+Warning: atom type A2W found in IMPROPERS but not declared in ATOMS
+Warning: atom type A3W found in IMPROPERS but not declared in ATOMS
+Warning: atom type A4W found in IMPROPERS but not declared in ATOMS
+Warning: atom type P1W found in IMPROPERS but not declared in ATOMS
+Warning: atom type N found in IMPROPERS but not declared in ATOMS
+Warning: atom type C found in IMPROPERS but not declared in ATOMS
+Warning: atom type C1E found in IMPROPERS but not declared in ATOMS
+Warning: atom type A2P found in IMPROPERS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type NH1 found in CMAPS but not declared in ATOMS
+Warning: atom type C1E found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type NH1 found in CMAPS but not declared in ATOMS
+Warning: atom type C1E found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type NH1 found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type NH1 found in CMAPS but not declared in ATOMS
+Warning: atom type C1E found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type NH1 found in CMAPS but not declared in ATOMS
+Warning: atom type C1E found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type N found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type NH1 found in CMAPS but not declared in ATOMS
+Warning: atom type C2E found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type NH1 found in CMAPS but not declared in ATOMS
+Warning: atom type C2E found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type NH1 found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type NH1 found in CMAPS but not declared in ATOMS
+Warning: atom type C2E found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type NH1 found in CMAPS but not declared in ATOMS
+Warning: atom type C2E found in CMAPS but not declared in ATOMS
+Warning: atom type C found in CMAPS but not declared in ATOMS
+Warning: atom type N found in CMAPS but not declared in ATOMS
+Warning: atom type H found in NONBONDEDS but not declared in ATOMS
+Warning: atom type C found in NONBONDEDS but not declared in ATOMS
+Warning: atom type C1E found in NONBONDEDS but not declared in ATOMS
+Warning: atom type C2E found in NONBONDEDS but not declared in ATOMS
+Warning: atom type N found in NONBONDEDS but not declared in ATOMS
+Warning: atom type NH1 found in NONBONDEDS but not declared in ATOMS
+Warning: atom type O found in NONBONDEDS but not declared in ATOMS
+Warning: atom type C3E found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A2V found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A1L found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A1I found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A5M found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P5N found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P4Q found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P1S found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P1T found in NONBONDEDS but not declared in ATOMS
+Warning: atom type QaD found in NONBONDEDS but not declared in ATOMS
+Warning: atom type QaE found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P1C found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A2P found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A3K found in NONBONDEDS but not declared in ATOMS
+Warning: atom type QdK found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A3R found in NONBONDEDS but not declared in ATOMS
+Warning: atom type QdR found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A4H found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P1H found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P2H found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A1F found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A2F found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A3F found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A1Y found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A2Y found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P1Y found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A1W found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P1W found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A2W found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A3W found in NONBONDEDS but not declared in ATOMS
+Warning: atom type A4W found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P2S found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P3S found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P2T found in NONBONDEDS but not declared in ATOMS
+Warning: atom type P3T found in NONBONDEDS but not declared in ATOMS
+Warning: atom type C found in NBFIX but not declared in ATOMS
+Warning: atom type C found in NBFIX but not declared in ATOMS
+Warning: atom type P4Q found in NBFIX but not declared in ATOMS
+Warning: atom type P4Q found in NBFIX but not declared in ATOMS
+Warning: atom type P4Q found in NBFIX but not declared in ATOMS
+Warning: atom type P1Y found in NBFIX but not declared in ATOMS
+Warning: atom type P4Q found in NBFIX but not declared in ATOMS
+Warning: atom type P5N found in NBFIX but not declared in ATOMS
+Warning: atom type P5N found in NBFIX but not declared in ATOMS
+Warning: atom type P5N found in NBFIX but not declared in ATOMS
+Warning: atom type P5N found in NBFIX but not declared in ATOMS
+Warning: atom type P1Y found in NBFIX but not declared in ATOMS
+Warning: atom type QdR found in NBFIX but not declared in ATOMS
+Warning: atom type QdR found in NBFIX but not declared in ATOMS
+Warning: atom type QdR found in NBFIX but not declared in ATOMS
+Warning: atom type A1F found in NBFIX but not declared in ATOMS
+Warning: atom type QdR found in NBFIX but not declared in ATOMS
+Warning: atom type P1Y found in NBFIX but not declared in ATOMS
+Warning: atom type QdR found in NBFIX but not declared in ATOMS
+Warning: atom type A2W found in NBFIX but not declared in ATOMS
+Warning: atom type QdK found in NBFIX but not declared in ATOMS
+Warning: atom type A3F found in NBFIX but not declared in ATOMS
+Warning: atom type QdK found in NBFIX but not declared in ATOMS
+Warning: atom type P1Y found in NBFIX but not declared in ATOMS
+Warning: atom type QdK found in NBFIX but not declared in ATOMS
+Warning: atom type A2W found in NBFIX but not declared in ATOMS
+IN1> parameters print
+PRINT PARAMETERS> atomTypeCount=0
+PRINT PARAMETERS>
+PRINT PARAMETERS> atomTypeMap[     X]=   -1
+PRINT PARAMETERS>
+PRINT PARAMETERS>
+PRINT PARAMETERS>
+PRINT PARAMETERS> bondParameter[   A1F,   A2F]={kb=600 b0=2.45}
+PRINT PARAMETERS> bondParameter[   A1F,   A3F]={kb=600 b0=2.87}
+PRINT PARAMETERS> bondParameter[   C1E,   A1F]={kb=300 b0=2.3}
+PRINT PARAMETERS> bondParameter[   C1E,   A1I]={kb=200 b0=2.33}
+PRINT PARAMETERS> bondParameter[   C1E,   A1L]={kb=400 b0=2.71}
+PRINT PARAMETERS> bondParameter[   A1W,   A2W]={kb=600 b0=2.53}
+PRINT PARAMETERS> bondParameter[   C1E,   A1W]={kb=600 b0=1.99}
+PRINT PARAMETERS> bondParameter[   A1W,   P1W]={kb=600 b0=2.58}
+PRINT PARAMETERS> bondParameter[   A1Y,   A2Y]={kb=600 b0=2.45}
+PRINT PARAMETERS> bondParameter[   C1E,   A1Y]={kb=300 b0=2.3}
+PRINT PARAMETERS> bondParameter[   A1Y,   P1Y]={kb=600 b0=3.52}
+PRINT PARAMETERS> bondParameter[   A2F,   A3F]={kb=600 b0=2.22}
+PRINT PARAMETERS> bondParameter[   C1E,   A2P]={kb=600 b0=1.92}
+PRINT PARAMETERS> bondParameter[     N,   A2P]={kb=800 b0=1.86}
+PRINT PARAMETERS> bondParameter[   C1E,   A2V]={kb=600 b0=2.01}
+PRINT PARAMETERS> bondParameter[   A2W,   A3W]={kb=600 b0=2.15}
+PRINT PARAMETERS> bondParameter[   A2W,   A4W]={kb=600 b0=2.15}
+PRINT PARAMETERS> bondParameter[   P1W,   A2W]={kb=600 b0=1.85}
+PRINT PARAMETERS> bondParameter[   A2Y,   P1Y]={kb=600 b0=2.44}
+PRINT PARAMETERS> bondParameter[   C1E,   A3K]={kb=400 b0=2.65}
+PRINT PARAMETERS> bondParameter[   A3K,   QdK]={kb=200 b0=2.95}
+PRINT PARAMETERS> bondParameter[   C1E,   A3R]={kb=400 b0=2.65}
+PRINT PARAMETERS> bondParameter[   A3R,   QdR]={kb=200 b0=3.6}
+PRINT PARAMETERS> bondParameter[   A3W,   A4W]={kb=600 b0=2.25}
+PRINT PARAMETERS> bondParameter[   C1E,   A4H]={kb=800 b0=1.95}
+PRINT PARAMETERS> bondParameter[   A4H,   P1H]={kb=400 b0=2.52}
+PRINT PARAMETERS> bondParameter[   A4H,   P2H]={kb=600 b0=2.45}
+PRINT PARAMETERS> bondParameter[   C1E,   A5M]={kb=200 b0=3.26}
+PRINT PARAMETERS> bondParameter[     C,   C1E]={kb=500 b0=1.52}
+PRINT PARAMETERS> bondParameter[     C,   C2E]={kb=500 b0=1.52}
+PRINT PARAMETERS> bondParameter[     C,   C3E]={kb=500 b0=1.52}
+PRINT PARAMETERS> bondParameter[     C,     N]={kb=520 b0=1.33}
+PRINT PARAMETERS> bondParameter[     C,   NH1]={kb=740 b0=1.33}
+PRINT PARAMETERS> bondParameter[     C,     O]={kb=760 b0=1.23}
+PRINT PARAMETERS> bondParameter[   C1E,   C3E]={kb=600 b0=1.63}
+PRINT PARAMETERS> bondParameter[   C1E,     N]={kb=640 b0=1.45}
+PRINT PARAMETERS> bondParameter[   C1E,   NH1]={kb=640 b0=1.45}
+PRINT PARAMETERS> bondParameter[   C1E,   P1C]={kb=600 b0=2.4}
+PRINT PARAMETERS> bondParameter[   C1E,   P1S]={kb=600 b0=2.03}
+PRINT PARAMETERS> bondParameter[   C1E,   P1T]={kb=600 b0=2.01}
+PRINT PARAMETERS> bondParameter[   C1E,   P2S]={kb=500 b0=1.61}
+PRINT PARAMETERS> bondParameter[   C1E,   P2T]={kb=400 b0=2.03}
+PRINT PARAMETERS> bondParameter[   C1E,   P4Q]={kb=600 b0=3.45}
+PRINT PARAMETERS> bondParameter[   C1E,   P5N]={kb=400 b0=2.56}
+PRINT PARAMETERS> bondParameter[   C1E,   QaD]={kb=400 b0=2.54}
+PRINT PARAMETERS> bondParameter[   C1E,   QaE]={kb=200 b0=3.14}
+PRINT PARAMETERS> bondParameter[   C2E,   NH1]={kb=640 b0=1.45}
+PRINT PARAMETERS> bondParameter[   C3E,   NH1]={kb=640 b0=1.49}
+PRINT PARAMETERS> bondParameter[     H,   NH1]={kb=600 b0=0.98}
+PRINT PARAMETERS> bondParameter[   P1H,   P2H]={kb=600 b0=1.86}
+PRINT PARAMETERS> bondParameter[   P2S,   P3S]={kb=400 b0=2.53}
+PRINT PARAMETERS> bondParameter[   P2T,   P3T]={kb=400 b0=3.2}
+PRINT PARAMETERS> bondParameter[   PEG,   PEG]={kb=20 b0=3.6}
+PRINT PARAMETERS>
+PRINT PARAMETERS> angleParameter[   A1F,   A2F,   A3F]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A2F,   A3F,   A1F]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A1F]={kangle=40 angle0=2.15025 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A1F,   C1E,   NH1]={kangle=40 angle0=1.88845 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A1I]={kangle=40 angle0=2.056 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A1I,   C1E,   NH1]={kangle=40 angle0=1.92684 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A1L]={kangle=40 angle0=2.10487 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A1L,   C1E,   NH1]={kangle=40 angle0=1.99491 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A1W,   A2W,   A4W]={kangle=100 angle0=1.72089 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A1W,   A2W,   P1W]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A1W]={kangle=40 angle0=2.02458 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A1W,   C1E,   NH1]={kangle=40 angle0=1.93382 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A1W,   P1W,   A2W]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A1Y,   A2Y,   P1Y]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A1Y]={kangle=40 angle0=2.15723 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A1Y,   C1E,   NH1]={kangle=40 angle0=1.89717 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A2Y,   P1Y,   A1Y]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A3F,   A1F,   A2F]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   A1F,   A2F]={kangle=20 angle0=2.02458 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A2P]={kangle=40 angle0=2.00713 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     N,   C1E,   A2P]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,     N,   A2P]={kangle=0 angle0=2.82569 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,     N,   A2P]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A2V]={kangle=40 angle0=2.02982 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A2V,   C1E,   NH1]={kangle=40 angle0=1.94255 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   A1W,   A2W]={kangle=40 angle0=2.33351 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A2W,   A1W,   P1W]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A2W,   A3W,   A4W]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A2W,   A4W,   A3W]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   A1Y,   A2Y]={kangle=20 angle0=2.02109 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P1Y,   A1Y,   A2Y]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   A1F,   A3F]={kangle=40 angle0=2.44695 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A3K]={kangle=40 angle0=2.04204 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A3K,   C1E,   NH1]={kangle=40 angle0=1.96 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A3R]={kangle=40 angle0=2.06822 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A3R,   C1E,   NH1]={kangle=40 angle0=1.95826 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A3W,   A2W,   A4W]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P1W,   A2W,   A3W]={kangle=100 angle0=2.23228 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A4H]={kangle=40 angle0=1.9635 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A4H,   C1E,   NH1]={kangle=40 angle0=1.96873 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P2H,   P1H,   A4H]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A4H,   P2H,   P1H]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   A5M]={kangle=40 angle0=2.0909 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   A5M,   C1E,   NH1]={kangle=40 angle0=1.96699 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   C3E]={kangle=180 angle0=1.94081 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,     N]={kangle=90 angle0=1.94779 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   NH1]={kangle=90 angle0=1.94779 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   P1C]={kangle=40 angle0=2.06472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   P1S]={kangle=40 angle0=1.90939 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   P1T]={kangle=40 angle0=2.02807 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   P2S]={kangle=40 angle0=1.96 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   P2T]={kangle=40 angle0=1.76627 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   P4Q]={kangle=40 angle0=2.07869 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   P5N]={kangle=40 angle0=2.21657 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   QaD]={kangle=40 angle0=2.11359 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C1E,   QaE]={kangle=40 angle0=2.02807 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   C2E,   NH1]={kangle=140 angle0=1.94779 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,     N,   C1E]={kangle=160 angle0=2.0944 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   NH1,   C1E]={kangle=155 angle0=2.0944 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   NH1,   C2E]={kangle=155 angle0=2.0944 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   NH1,   C3E]={kangle=155 angle0=2.0944 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     C,   NH1,     H]={kangle=60 angle0=2.0944 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   A1W,   P1W]={kangle=40 angle0=2.19213 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   A1Y,   P1Y]={kangle=40 angle0=2.4295 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     N,   A2P,   C1E]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   A3K,   QdK]={kangle=40 angle0=2.52898 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   A3R,   QdR]={kangle=40 angle0=2.40681 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   A4H,   P1H]={kangle=40 angle0=2.2602 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   A4H,   P2H]={kangle=40 angle0=2.22704 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,     C,     N]={kangle=40 angle0=2.05076 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,     C,   NH1]={kangle=40 angle0=2.05076 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,     C,     O]={kangle=170 angle0=2.12057 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   NH1,     H]={kangle=70 angle0=2.0944 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   P2S,   P3S]={kangle=40 angle0=2.3178 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C1E,   P2T,   P3T]={kangle=40 angle0=1.26711 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C2E,     C,     N]={kangle=40 angle0=2.05076 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C2E,     C,   NH1]={kangle=40 angle0=2.05076 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C2E,     C,     O]={kangle=170 angle0=2.12232 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C2E,   NH1,     H]={kangle=70 angle0=2.0944 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C3E,     C,     N]={kangle=40 angle0=2.05076 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C3E,     C,   NH1]={kangle=40 angle0=2.05076 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C3E,     C,     O]={kangle=170 angle0=2.12057 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C3E,   C1E,   NH1]={kangle=180 angle0=1.91114 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   C3E,   NH1,     H]={kangle=70 angle0=2.0944 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[     N,     C,     O]={kangle=170 angle0=2.11185 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   NH1,     C,     O]={kangle=130 angle0=2.11185 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P1C,   C1E,   NH1]={kangle=40 angle0=1.8675 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P1S,   C1E,   NH1]={kangle=40 angle0=1.99317 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P1T,   C1E,   NH1]={kangle=40 angle0=1.86576 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P2S,   C1E,   NH1]={kangle=40 angle0=1.9251 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P2T,   C1E,   NH1]={kangle=40 angle0=1.7174 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P4Q,   C1E,   NH1]={kangle=40 angle0=1.93732 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P5N,   C1E,   NH1]={kangle=40 angle0=1.82561 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   QaD,   C1E,   NH1]={kangle=40 angle0=1.85703 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   QaE,   C1E,   NH1]={kangle=40 angle0=1.98444 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   P1H,   A4H,   P2H]={kangle=0 angle0=1.0472 kureyb=0 ureyb0=0}
+PRINT PARAMETERS> angleParameter[   PEG,   PEG,   PEG]={kangle=20 angle0=2.14675 kureyb=0 ureyb0=0}
+PRINT PARAMETERS>
+PRINT PARAMETERS> diheParameter[   A1W,   A2W,   A3W,   A4W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   A1W,   A2W,   A4W,   A3W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   A1W,   P1W,   A2W,   A3W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   A1W,   P1W,   A2W,   A4W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   A1F,   A2F]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   A1F,   A2F]={kdih=0.8 ndih=3 dih0=3.14159}
+PRINT PARAMETERS>                                           ={kdih=0.3 ndih=1 dih0=1.74533}
+PRINT PARAMETERS> diheParameter[   C1E,   A1F,   A3F,   A2F]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     O,     C,   C1E,   A2V]={kdih=0.3 ndih=1 dih0=4.18879}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   A1W,   A2W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   A1W,   A2W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,   A1W,   P1W,   A2W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   A1Y,   A2Y]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   A1Y,   A2Y]={kdih=0.9 ndih=3 dih0=3.14159}
+PRINT PARAMETERS>                                           ={kdih=0.3 ndih=1 dih0=1.5708}
+PRINT PARAMETERS> diheParameter[   C1E,   A1Y,   P1Y,   A2Y]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   A1F,   A3F]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   A1F,   A3F]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,   A1F,   A2F,   A3F]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,   A1W,   A2W,   A3W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   P1W,   A1W,   A2W,   A3W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   P1W,   A2W,   A4W,   A3W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,   A1W,   A2W,   A4W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   P1W,   A1W,   A2W,   A4W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   P1W,   A2W,   A3W,   A4W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   A1W,   P1W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   A1Y,   P1Y]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     N,   A2P,   C1E,     C]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   A3K,   QDK]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   A3R,   QDR]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   A4H,   P1H]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   A4H,   P2H]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,     N,     C]={kdih=0.3 ndih=3 dih0=0}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   NH1,     C]={kdih=0.3 ndih=3 dih0=0}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   P2S,   P3S]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C1E,   P2T,   P3T]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     C,   C2E,   NH1,     C]={kdih=0.3 ndih=3 dih0=0}
+PRINT PARAMETERS> diheParameter[     C,     N,   A2P,   C1E]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,   A1W,   A2W,   P1W]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,   A1Y,   A2Y,   P1Y]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,   A4H,   P1H,   P2H]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,   A4H,   P2H,   P1H]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,     C,     N,   C1E]={kdih=2.75 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,     C,   NH1,   C1E]={kdih=9 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,     C,   NH1,   C2E]={kdih=9 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C1E,     C,   NH1,   C3E]={kdih=9 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C2E,     C,     N,   C1E]={kdih=2.75 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C3E,     C,     N,   C1E]={kdih=2.75 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C2E,     C,   NH1,   C1E]={kdih=9 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C3E,     C,   NH1,   C1E]={kdih=9 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C2E,     C,   NH1,   C2E]={kdih=9 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C2E,     C,   NH1,   C3E]={kdih=9 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   C3E,     C,   NH1,   C2E]={kdih=9 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   A1W,   P1W]={kdih=0.8 ndih=3 dih0=0}
+PRINT PARAMETERS>                                           ={kdih=0.8 ndih=1 dih0=1.48353}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   A1Y,   P1Y]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   A3K,   QdK]={kdih=0.3 ndih=3 dih0=0}
+PRINT PARAMETERS>                                           ={kdih=0.5 ndih=1 dih0=1.309}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   A3R,   QdR]={kdih=0.3 ndih=3 dih0=0}
+PRINT PARAMETERS>                                           ={kdih=0.5 ndih=1 dih0=1.309}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   A4H,   P1H]={kdih=0.6 ndih=3 dih0=0}
+PRINT PARAMETERS>                                           ={kdih=0.4 ndih=1 dih0=1.309}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   A4H,   P2H]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   P2S,   P3S]={kdih=0.3 ndih=3 dih0=0}
+PRINT PARAMETERS>                                           ={kdih=0.5 ndih=1 dih0=1.309}
+PRINT PARAMETERS> diheParameter[   NH1,   C1E,   P2T,   P3T]={kdih=0.3 ndih=3 dih0=0}
+PRINT PARAMETERS>                                           ={kdih=0.5 ndih=1 dih0=1.309}
+PRINT PARAMETERS> diheParameter[     O,     C,   C1E,   P1C]={kdih=0.3 ndih=1 dih0=4.18879}
+PRINT PARAMETERS> diheParameter[     O,     C,   C1E,   P1T]={kdih=0.3 ndih=1 dih0=4.18879}
+PRINT PARAMETERS> diheParameter[     O,     C,   C1E,   P5N]={kdih=0.3 ndih=1 dih0=4.18879}
+PRINT PARAMETERS> diheParameter[     O,     C,   C1E,   QaD]={kdih=0.3 ndih=1 dih0=4.18879}
+PRINT PARAMETERS> diheParameter[   PEG,   PEG,   PEG,   PEG]={kdih=0 ndih=2 dih0=0}
+PRINT PARAMETERS> diheParameter[     X,     C,   C1E,     X]={kdih=0 ndih=3 dih0=0}
+PRINT PARAMETERS> diheParameter[     X,     C,   C2E,     X]={kdih=0 ndih=3 dih0=0}
+PRINT PARAMETERS> diheParameter[     X,     C,     N,     X]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     X,     C,   NH1,     X]={kdih=0 ndih=2 dih0=3.14159}
+PRINT PARAMETERS> diheParameter[     X,   C1E,     N,     X]={kdih=0 ndih=3 dih0=0}
+PRINT PARAMETERS> diheParameter[     X,   C1E,   NH1,     X]={kdih=0 ndih=3 dih0=0}
+PRINT PARAMETERS> diheParameter[     X,   C2E,   NH1,     X]={kdih=0 ndih=3 dih0=0}
+PRINT PARAMETERS>
+PRINT PARAMETERS> maxDiheTerms=2
+PRINT PARAMETERS>
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A1F]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A1I]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A1L]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   A2W,   A3W,   A4W,   A1W]={kimp=95.56 nimp=0 imp0=0}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A1W]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A1Y]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[     N,     C,   C1E,   A2P]={kimp=110 nimp=0 imp0=0}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A2P]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A2V]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   A2W,   A3W,   A4W,   P1W]={kimp=95.56 nimp=0 imp0=0}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A3K]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A3R]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A4H]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   A5M]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[     C,     X,     X,     O]={kimp=200 nimp=0 imp0=0}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   C3E]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   P1C]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   P1S]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   P1T]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   P2S]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   P2T]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   P4Q]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   P5N]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   QaD]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   C1E,     X,     X,   QaE]={kimp=110 nimp=0 imp0=0.616101}
+PRINT PARAMETERS> imprParameter[   NH1,     X,     X,     H]={kimp=90 nimp=0 imp0=0}
+PRINT PARAMETERS>
+PRINT PARAMETERS> nbondParameter[   A1F]={eps=0.1708 sig=2.6414 eps14=0.22 sig14=2.7414}
+PRINT PARAMETERS> nbondParameter[   A1I]={eps=0.2356 sig=2.97 eps14=0.472 sig14=2.57}
+PRINT PARAMETERS> nbondParameter[   A1L]={eps=0.2552 sig=2.9555 eps14=0.45 sig14=3.1555}
+PRINT PARAMETERS> nbondParameter[   A1W]={eps=0.1353 sig=2.4205 eps14=0.168 sig14=2.7205}
+PRINT PARAMETERS> nbondParameter[   A1Y]={eps=0.2098 sig=2.6414 eps14=0.1968 sig14=3.0414}
+PRINT PARAMETERS> nbondParameter[   A2F]={eps=0.1708 sig=2.3288 eps14=0.22 sig14=2.6289}
+PRINT PARAMETERS> nbondParameter[   A2P]={eps=0.0808 sig=2.7681 eps14=0.106 sig14=2.3681}
+PRINT PARAMETERS> nbondParameter[   A2V]={eps=0.2191 sig=2.7541 eps14=0.4 sig14=2.7541}
+PRINT PARAMETERS> nbondParameter[   A2W]={eps=0.1353 sig=2.087 eps14=0.168 sig14=2.387}
+PRINT PARAMETERS> nbondParameter[   A2Y]={eps=0.2098 sig=2.3291 eps14=0.1968 sig14=2.6291}
+PRINT PARAMETERS> nbondParameter[   A3F]={eps=0.1708 sig=2.3288 eps14=0.22 sig14=2.6288}
+PRINT PARAMETERS> nbondParameter[   A3K]={eps=0.015 sig=2.7769 eps14=0.05 sig14=3.3769}
+PRINT PARAMETERS> nbondParameter[   A3R]={eps=0.063 sig=2.7776 eps14=0.1588 sig14=3.0776}
+PRINT PARAMETERS> nbondParameter[   A3W]={eps=0.1353 sig=2.3293 eps14=0.168 sig14=2.6293}
+PRINT PARAMETERS> nbondParameter[   A4H]={eps=0.088 sig=2.3444 eps14=0.081 sig14=2.3444}
+PRINT PARAMETERS> nbondParameter[   A4W]={eps=0.1353 sig=2.3292 eps14=0.168 sig14=2.6292}
+PRINT PARAMETERS> nbondParameter[   A5M]={eps=0.3805 sig=2.9813 eps14=0.436 sig14=3.5813}
+PRINT PARAMETERS> nbondParameter[     C]={eps=0.0144 sig=2.1 eps14=0.1 sig14=1.9}
+PRINT PARAMETERS> nbondParameter[   C1E]={eps=0.0058 sig=2.365 eps14=0.1 sig14=1.9}
+PRINT PARAMETERS> nbondParameter[   C2E]={eps=0.025 sig=2.235 eps14=0.1 sig14=1.9}
+PRINT PARAMETERS> nbondParameter[   C3E]={eps=0.12 sig=2.1158 eps14=0.208 sig14=2.1158}
+PRINT PARAMETERS> nbondParameter[     H]={eps=0.006 sig=0.2245 eps14=0.0498 sig14=0.8}
+PRINT PARAMETERS> nbondParameter[     N]={eps=0.0285 sig=1.6 eps14=0.2384 sig14=1.6}
+PRINT PARAMETERS> nbondParameter[   NH1]={eps=0.0285 sig=1.6 eps14=0.2384 sig14=1.6}
+PRINT PARAMETERS> nbondParameter[     O]={eps=0.0191 sig=1.6 eps14=0.1591 sig14=1.6}
+PRINT PARAMETERS> nbondParameter[   P1C]={eps=0.1828 sig=2.4695 eps14=0.532 sig14=2.7695}
+PRINT PARAMETERS> nbondParameter[   P1H]={eps=0.064 sig=2.1806 eps14=0.0608 sig14=2.1806}
+PRINT PARAMETERS> nbondParameter[   P1S]={eps=0.048 sig=2.3237 eps14=0.288 sig14=2.0237}
+PRINT PARAMETERS> nbondParameter[   P1T]={eps=0.0502 sig=2.6231 eps14=0.228 sig14=2.6231}
+PRINT PARAMETERS> nbondParameter[   P1W]={eps=0.0982 sig=2.2364 eps14=0.084 sig14=2.5364}
+PRINT PARAMETERS> nbondParameter[   P1Y]={eps=0.1594 sig=2.4524 eps14=0.0984 sig14=2.7524}
+PRINT PARAMETERS> nbondParameter[   P2H]={eps=0.064 sig=2.1073 eps14=0.0608 sig14=2.1073}
+PRINT PARAMETERS> nbondParameter[   P2S]={eps=0.154 sig=2.1158 eps14=0.154 sig14=2.1158}
+PRINT PARAMETERS> nbondParameter[   P2T]={eps=0.22 sig=2.435 eps14=0.22 sig14=2.435}
+PRINT PARAMETERS> nbondParameter[   P3S]={eps=0.07 sig=2.25 eps14=0.07 sig14=2.25}
+PRINT PARAMETERS> nbondParameter[   P3T]={eps=0.07 sig=2.25 eps14=0.07 sig14=2.25}
+PRINT PARAMETERS> nbondParameter[   P4Q]={eps=0.0806 sig=2.8908 eps14=0.404 sig14=3.6408}
+PRINT PARAMETERS> nbondParameter[   P5N]={eps=0.072 sig=2.6548 eps14=0.88 sig14=3.4548}
+PRINT PARAMETERS> nbondParameter[   QaD]={eps=0.015 sig=2.6066 eps14=0.848 sig14=3.6066}
+PRINT PARAMETERS> nbondParameter[   QaE]={eps=0.018 sig=2.8516 eps14=0.44 sig14=3.9516}
+PRINT PARAMETERS> nbondParameter[   QdK]={eps=0.015 sig=2.3589 eps14=0.05 sig14=2.3589}
+PRINT PARAMETERS> nbondParameter[   QdR]={eps=0.107 sig=2.5363 eps14=0.1888 sig14=2.5363}
+PRINT PARAMETERS>
+PRINT PARAMETERS> nbfixParameter[   QdR,   A1F]={eps=0.5 sig=4.8651 eps14=0.5 sig14=4.8651}
+PRINT PARAMETERS> nbfixParameter[   QdK,   A2W]={eps=0.4 sig=4.4459 eps14=0.4 sig14=4.4459}
+PRINT PARAMETERS> nbfixParameter[   QdR,   A2W]={eps=0.7 sig=4.6233 eps14=0.7 sig14=4.6233}
+PRINT PARAMETERS> nbfixParameter[   QdK,   A3F]={eps=0.3 sig=4.6877 eps14=0.3 sig14=4.6877}
+PRINT PARAMETERS> nbfixParameter[     C,     C]={eps=0.0144 sig=4.2 eps14=0.0144 sig14=4.2}
+PRINT PARAMETERS> nbfixParameter[   P4Q,   P1Y]={eps=0.29 sig=4.8 eps14=0.29 sig14=4.8}
+PRINT PARAMETERS> nbfixParameter[   P5N,   P1Y]={eps=0.29 sig=4.8 eps14=0.29 sig14=4.8}
+PRINT PARAMETERS> nbfixParameter[   QdK,   P1Y]={eps=0.3 sig=4.8113 eps14=0.3 sig14=4.8113}
+PRINT PARAMETERS> nbfixParameter[   QdR,   P1Y]={eps=0.65 sig=4.9887 eps14=0.65 sig14=4.9887}
+PRINT PARAMETERS> nbfixParameter[   P4Q,   P4Q]={eps=0.29 sig=5 eps14=0.29 sig14=5}
+PRINT PARAMETERS> nbfixParameter[   P4Q,   P5N]={eps=0.29 sig=4.9 eps14=0.29 sig14=4.9}
+PRINT PARAMETERS> nbfixParameter[   P5N,   P5N]={eps=0.29 sig=4.8 eps14=0.29 sig14=4.8}
+PRINT PARAMETERS> nbfixParameter[   QdR,   QdR]={eps=1 sig=5.0726 eps14=1 sig14=5.0726}
+PRINT PARAMETERS>
+PRINT PARAMETERS> cmapParameter not printed
+PRINT PARAMETERS>
+IN1> structure file psf demo.psf
+Opening file demo.psf for r
+Reading PSF, found header string: 'CMAP'
+Reading PSF, expect !NTITLE: got  !NTITLE
+Reading PSF, expect !NATOM: got  !NATOM
+Reading PSF, expect !NBOND: bonds: got  !NBOND: bonds
+Reading PSF, expect !NTHETA: angles: got  !NTHETA: angles
+Reading PSF, expect !NPHI: dihedrals: got  !NPHI: dihedrals
+Reading PSF, expect !NIMPHI: impropers: got  !NIMPHI: impropers
+Reading PSF, expect !NDON: donors: got  !NDON: donors
+Reading PSF, expect !NACC: acceptors: got  !NACC: acceptors
+Reading PSF, expect !NNB: got  !NNB
+Reading PSF, expect !NGRP NST2: got        0 !NGRP
+Reading PSF, expect !NUMLP NUMLPH: got        6       8      10       6       8      10      12
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/io/io.cxx:186
+Error: could not convert string 10 to boolean value
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[36879,1],0]
+  Exit code:    1
+--------------------------------------------------------------------------

@@ -1,0 +1,21 @@
+* Debye-Huckel test parameters
+*
+
+BONDS
+QP   QN    100.0   3.80
+
+ANGLES
+QP   QN   QP    10.0   110.0
+QN   QP   QN    10.0   110.0
+
+DIHEDRALS
+X    QP   QN   X     0.0   1     0.0   ! zero force, but dihedrals must exist for the 1-4 list
+
+NONBONDED nbxmod 5 atom cdiel fshift vatom vdistance vfswitch -
+  cutnb 20.0 ctofnb 18.0 ctonb 16.0 eps 1.0 e14fac 1.0 wmin 1.5
+IP   0.0   -0.0    1.0     ! no LJ: pure electrostatics
+IN   0.0   -0.0    1.0
+QP   0.0   -0.1    2.0     ! nonzero eps so OpenMM keeps the 1-4 exceptions
+QN   0.0   -0.1    2.0
+
+END

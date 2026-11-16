@@ -1,0 +1,39 @@
+PSF CMAP XPLOR
+
+       2 !NTITLE
+* TWO POINT CHARGES                                                             
+*  DATE:     9/21/26     14:15:50      CREATED BY USER: cyeh5                   
+
+       2 !NATOM
+       1 PA   1    POS  Q1   IP      1.00000       10.0000           0
+       2 NA   1    NEG  Q1   IN     -1.00000       10.0000           0
+
+       0 !NBOND: bonds
+
+
+       0 !NTHETA: angles
+
+
+       0 !NPHI: dihedrals
+
+
+       0 !NIMPHI: impropers
+
+
+       0 !NDON: donors
+
+
+       0 !NACC: acceptors
+
+
+       0 !NNB
+
+       0       0
+
+       2       0 !NGRP NST2
+       0       2       0       1       2       0
+
+       0       0 !NUMLP NUMLPH
+
+       0 !NCRTERM: cross-terms
+

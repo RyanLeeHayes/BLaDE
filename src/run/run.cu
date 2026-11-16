@@ -46,10 +46,22 @@ Run::Run(System *system)
   freqNRG=10;
   hrLMD=true;
   prettyXTC=false;
+  useAngleReB=false;
 // Nonbonded options
   betaEwald=1/(3.2*ANGSTROM); // rCut=10*ANGSTROM, erfc(betaEwald*rCut)=1e-5
   rCut=10*ANGSTROM;
   rSwitch=8.5*ANGSTROM;
+  kappa=0;
+  invDielectric=1;
+  rCutHyRes=rCut;
+  rSwitchHyRes=rSwitch;
+  useHbond=false;
+  hbondSigma=2.9*ANGSTROM;
+  hbondEpsilon=2.2*KCAL_MOL;
+  hbondCut=4.5*ANGSTROM;
+  hbondSkin=2.0*ANGSTROM;
+  hbondListDomdec=true;
+  
   vdwMethod=evfswitch; // default to VFSWITCH (force switching)
   elecMethod=epme;    // default to PME
   gridSpace=1.0*ANGSTROM;
@@ -61,7 +73,10 @@ Run::Run(System *system)
   cutoffs.betaEwald=betaEwald;
   cutoffs.rCut=rCut;
   cutoffs.rSwitch=rSwitch;
-
+  cutoffs.kappa=kappa;
+  cutoffs.invDielectric=invDielectric;
+  cutoffs.rCutHyRes=rCutHyRes;
+  cutoffs.rSwitchHyRes=rSwitchHyRes;
   shakeTolerance=2e-7; // floating point precision is only 1.2e-7
 
   freqNPT=50;
@@ -84,6 +99,7 @@ Run::Run(System *system)
   termStringToInt["impr"]=eeimpr;
   termStringToInt["cmap"]=eecmap;
   termStringToInt["nb14"]=eenb14;
+  termStringToInt["hbond"]=eehbond;
   termStringToInt["nbdirect"]=eenbdirect;
   termStringToInt["nbrecip"]=eenbrecip;
   termStringToInt["nbrecipself"]=eenbrecipself;
@@ -268,10 +284,17 @@ void Run::dump(char *line,char *token,System *system)
   printlog("RUN PRINT> betaEwald=%f (input 1/invbetaewald in A^-1)\n",betaEwald*ANGSTROM);
   printlog("RUN PRINT> rcut=%f (input in A)\n",rCut/ANGSTROM);
   printlog("RUN PRINT> rswitch=%f (input in A)\n",rSwitch/ANGSTROM);
-  const char *vdwMethodNames[] = {"VFSWITCH", "VSWITCH", "VSHIFT"};
-  const char *elecMethodNames[] = {"FSWITCH", "PME", "FSHIFT"};
-  printlog("RUN PRINT> vdwmethod=%s (vfswitch, vswitch, or vshift)\n",vdwMethodNames[vdwMethod]);
-  printlog("RUN PRINT> elecmethod=%s (fswitch, pme, or fshift)\n",elecMethodNames[elecMethod]);
+  printlog("RUN PRINT> anglereb=%d (HyRes restricted bending force for all atoms besides backbone atoms(N,C,O,H) angles on/off\n",(int)useAngleReB);
+  printlog("RUN PRINT> hbond=%d (HyRes backbone N-H...O term on/off; donors N-H and acceptors O selected by atom name)\n",(int)useHbond);
+  printlog("RUN PRINT> hbondsigma=%f (H-bond minimum position, input in A)\n",hbondSigma/ANGSTROM);
+  printlog("RUN PRINT> hbondepsilon=%f (H-bond well depth, input in kcal/mol)\n",hbondEpsilon/KCAL_MOL);
+  printlog("RUN PRINT> hbondcut=%f (O-N hard cutoff, input in A)\n",hbondCut/ANGSTROM);
+  printlog("RUN PRINT> hbondskin=%f (H-bond list buffer for brute-force builds, input in A)\n",hbondSkin/ANGSTROM);
+  printlog("RUN PRINT> hbondlist=%s (domdec or brute; multiple GPUs always use brute)\n",hbondListDomdec?"domdec":"brute");
+  const char *vdwMethodNames[] = {"VFSWITCH", "VSWITCH", "VSHIFT", "HYRES"};
+  const char *elecMethodNames[] = {"FSWITCH", "PME", "FSHIFT","DEBYE"};
+  printlog("RUN PRINT> vdwmethod=%s (vfswitch, vswitch, or vshift or hyres)\n",vdwMethodNames[vdwMethod]);
+  printlog("RUN PRINT> elecmethod=%s (fswitch, pme, fshift or debye)\n",elecMethodNames[elecMethod]);
   printlog("RUN PRINT> gridspace=%f (For PME - input in A)\n",gridSpace/ANGSTROM);
   printlog("RUN PRINT> grid=[%d %d %d] (For PME if gridspace<0)\n",grid[0],grid[1],grid[2]);
   printlog("RUN PRINT> orderewald=%d (PME interpolation order, dimensionless. 4, 6, 8, or 10 supported, 6 recommended)\n",orderEwald);
@@ -330,6 +353,27 @@ void Run::set_variable(char *line,char *token,System *system)
     freqLMD=io_nexti(line);
   } else if (strcmp(token,"freqnrg")==0) {
     freqNRG=io_nexti(line);
+  } else if (strcmp(token,"anglereb")==0) {
+    useAngleReB=io_nextb(line);
+  } else if (strcmp(token,"hbond")==0) {
+    useHbond=io_nextb(line);
+  } else if (strcmp(token,"hbondsigma")==0) {
+    hbondSigma=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"hbondepsilon")==0) {
+    hbondEpsilon=io_nextf(line)*KCAL_MOL; // positive well depth
+  } else if (strcmp(token,"hbondcut")==0) {
+    hbondCut=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"hbondskin")==0) {
+    hbondSkin=io_nextf(line)*ANGSTROM;
+  } else if (strcmp(token,"hbondlist")==0) {
+    std::string listString=io_nexts(line);
+    if (listString=="domdec") {
+      hbondListDomdec=true;
+    } else if (listString=="brute") {
+      hbondListDomdec=false;
+    } else {
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for hbondlist. Options are: domdec or brute\n",listString.c_str());
+    }
   } else if (strcmp(token,"hrlmd")==0) {
     hrLMD=io_nextb(line);
   } else if (strcmp(token,"prettyxtc")==0) {
@@ -347,6 +391,18 @@ void Run::set_variable(char *line,char *token,System *system)
   } else if (strcmp(token,"rswitch")==0) {
     rSwitch=io_nextf(line)*ANGSTROM;
     cutoffs.rSwitch=rSwitch;
+  } else if (strcmp(token, "debyelength")==0) {
+    kappa=1/(io_nextf(line)*ANGSTROM);
+    cutoffs.kappa=kappa;
+  } else if (strcmp(token,"dielectric")==0) {
+    invDielectric=io_nextf(line);
+    cutoffs.invDielectric=1/invDielectric;
+  } else if (strcmp(token,"rcuthyres")==0) {
+    rCutHyRes=io_nextf(line)*ANGSTROM;
+    cutoffs.rCutHyRes=rCutHyRes;
+  } else if (strcmp(token,"rswitchhyres")==0) {
+    rSwitchHyRes=io_nextf(line)*ANGSTROM;
+    cutoffs.rSwitchHyRes=rSwitchHyRes;
   } else if (strcmp(token,"vfswitch")==0) {
     vdwMethod=(EVdw)io_nextb(line);
   } else if (strcmp(token,"usepme")==0) {
@@ -359,8 +415,10 @@ void Run::set_variable(char *line,char *token,System *system)
       vdwMethod=evswitch;
     } else if (strcmp(minString.c_str(),"vshift")==0) {
       vdwMethod=evshift;
+    } else if (strcmp(minString.c_str(),"hyres")==0) {
+      vdwMethod=evhyres;
     } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token %s for vdw method vdwMethod. Options are: vfswitch, vswitch, or vshift\n",minString.c_str());
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for vdw method vdwMethod. Options are: vfswitch, vswitch, or vshift, or hyres\n",minString.c_str());
     }
   } else if (strcmp(token,"elecmethod")==0) {
     std::string minString=io_nexts(line);
@@ -370,8 +428,10 @@ void Run::set_variable(char *line,char *token,System *system)
       elecMethod=epme;
     } else if (strcmp(minString.c_str(),"fshift")==0) {
       elecMethod=efshift;
+    } else if (strcmp(minString.c_str(),"debye")==0) {
+      elecMethod=edebye;
     } else {
-      fatal(__FILE__,__LINE__,"Unrecognized token %s for electrostatic method elecMethod. Options are: fswitch, pme, or fshift\n",minString.c_str());
+      fatal(__FILE__,__LINE__,"Unrecognized token %s for electrostatic method elecMethod. Options are: fswitch, pme, fshift, or debye\n",minString.c_str());
     }
   } else if (strcmp(token,"gridspace")==0) {
     gridSpace=io_nextf(line)*ANGSTROM;
@@ -459,7 +519,7 @@ void Run::test(char *line,char *token,System *system)
 {
   std::string testType=io_nexts(line);
   std::string name; // (selection name for spatial test)
-  real dx;
+  real dx,Ftmp;
   int i,j,ij,s;
   int ij0,imax,jmax;
   real_e F,E[2];
@@ -524,7 +584,8 @@ void Run::test(char *line,char *token,System *system)
           system->state->restore_position();
         }
         if (system->id==0) {
-          cudaMemcpy(&F,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
+          cudaMemcpy(&Ftmp,&system->state->forceBuffer_d[ij],sizeof(real),cudaMemcpyDeviceToHost);
+	  F=Ftmp;
           printlog("ij=%7d, Emin=%20.16g, Emax=%20.16g, (Emax-Emin)/dx=%20.16g, force=%20.16g\n",ij,E[0],E[1],(E[1]-E[0])/dx,F);
         }
       }
@@ -665,6 +726,8 @@ void blade_add_run_flags(System *system,
   double betaEwald,
   double rCut,
   double rSwitch,
+  double kappa,
+  double invDielectric,
   int vdWfSwitch,
   int elecPME,
   double gridSpace,
@@ -680,6 +743,8 @@ void blade_add_run_flags(System *system,
   system->run->betaEwald=betaEwald;
   system->run->rCut=rCut;
   system->run->rSwitch=rSwitch;
+  system->run->kappa=kappa;
+  system->run->invDielectric=invDielectric;
   // Set enum values from parameters
   system->run->vdwMethod=(EVdw)vdWfSwitch;
   system->run->elecMethod=(EElec)elecPME;
@@ -693,6 +758,8 @@ void blade_add_run_flags(System *system,
   system->run->cutoffs.betaEwald=betaEwald;
   system->run->cutoffs.rCut=rCut;
   system->run->cutoffs.rSwitch=rSwitch;
+  system->run->cutoffs.kappa=kappa;
+  system->run->cutoffs.invDielectric=invDielectric;
 }
 
 void blade_add_run_dynopts(System *system,

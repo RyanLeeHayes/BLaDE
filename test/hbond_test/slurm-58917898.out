@@ -1,0 +1,46 @@
+Creating a copy of system
+Opening file hbtest.inp for r
+IN1> parameters file hbtest.prm
+Opening file hbtest.prm for r
+TITLE> * H-bond test parameters. ATOMS section is needed for "write psf card xplor".
+TITLE> *
+IN1> structure file psf hbtest.psf
+Opening file hbtest.psf for r
+Reading PSF, found header string: 'CMAP'
+Reading PSF, found header string: 'XPLOR'
+Reading PSF, found header string: 'AUTOG'
+Reading PSF, expect !NTITLE: got  !NTITLE
+Reading PSF, expect !NATOM: got  !NATOM
+Reading PSF, expect !NBOND: bonds: got  !NBOND: bonds
+Reading PSF, expect !NTHETA: angles: got  !NTHETA: angles
+Reading PSF, expect !NPHI: dihedrals: got  !NPHI: dihedrals
+Reading PSF, expect !NIMPHI: impropers: got  !NIMPHI: impropers
+Reading PSF, expect !NDON: donors: got  !NDON: donors
+Reading PSF, expect !NACC: acceptors: got  !NACC: acceptors
+Reading PSF, expect !NNB: got  !NNB
+Reading PSF, expect !NGRP NST2: got        0 !NGRP NST2
+Reading PSF, expect !NUMLP NUMLPH: got  !NUMLP NUMLPH
+Reading PSF, expect !NCRTERM: got  !NCRTERM: cross-terms
+IN1> coordinates file crd crd/dist_2.90.crd
+Opening file crd/dist_2.90.crd for r
+IN1> msld nblocks 0
+NYI - Initialize all blocks in first site /dfs8/rhayes1_lab/cyeh5/BLaDE/src/msld/msld.cu:184
+IN1> coordinates box cubi 40 40 40 90 90 90
+IN1> run setvariable elecmethod fswitch
+IN1> run setvariable rcut 10
+IN1> run setvariable rswitch 8
+IN1> run setvariable hbond on
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/run/run.cu:425
+Unrecognized token hbond in run setvariable command
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[52141,1],0]
+  Exit code:    1
+--------------------------------------------------------------------------

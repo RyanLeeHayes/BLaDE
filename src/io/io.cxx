@@ -419,11 +419,13 @@ void print_dynamics_output(long int step,System *system)
 }
 void print_restraint(long int step, System *system)
 {
+  
+  if (system->run->fpREST==NULL) return;
   real *savedPhi=system->potential->savedPhi;
   int i;
   FILE *fp=system->run->fpREST;
   int N=system->potential->diRestCount;
-
+  
   fprintf(fp,"%101d",step);
   for (i=0;i<N;i++) {
     if (system->potential->diRests[i].printAng) {

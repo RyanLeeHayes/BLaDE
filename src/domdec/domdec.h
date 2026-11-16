@@ -47,6 +47,7 @@ class Domdec {
   int maxBlocks, maxPartnersPerBlock;
   int freqDomdec;
   real cullPad;
+  int resetSerial;
   int maxBlockExclCount;
 // Assign atoms to domains
   int *domain;

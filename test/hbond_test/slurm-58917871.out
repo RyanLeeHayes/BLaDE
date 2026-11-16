@@ -1,0 +1,22 @@
+Creating a copy of system
+Opening file hbtest.inp for r
+IN1> parameters file hbtest.prm
+Opening file hbtest.prm for r
+TITLE> * H-bond test parameters. ATOMS section is needed for "write psf card xplor".
+TITLE> *
+IN1> structure file psf hbtest.psf
+Opening file hbtest.psf for r
+FATAL ERROR:
+/dfs8/rhayes1_lab/cyeh5/BLaDE/src/io/io.cxx:81
+Error: Unable to open file hbtest.psf
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[54159,1],0]
+  Exit code:    1
+--------------------------------------------------------------------------

@@ -1,0 +1,24 @@
+* H-bond test topology: N-H donor and C=O acceptor fragments, no charges, no LJ
+*
+36 1
+
+MASS  -1  TN   14.007
+MASS  -1  TH    1.008
+MASS  -1  TC   12.011
+MASS  -1  TO   15.999
+
+RESI DNR   0.00      ! donor fragment: atom names N, H as in a backbone
+GROUP
+ATOM N   TN   0.00
+ATOM H   TH   0.00
+BOND N H
+PATCH FIRST NONE LAST NONE
+
+RESI ACR   0.00      ! acceptor fragment: atom names C, O as in a backbone
+GROUP
+ATOM C   TC   0.00
+ATOM O   TO   0.00
+BOND C O
+PATCH FIRST NONE LAST NONE
+
+END

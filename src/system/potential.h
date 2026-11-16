@@ -37,6 +37,7 @@ typedef enum eeterm {
   eemmfp,       // MMFP (GEO) restraint energy
   eeresd,       // eeresd
   eemlp,        // eemlp
+  eehbond,
   eebias,
   eepotential,
   eekinetic,
@@ -63,6 +64,7 @@ struct AnglePotential {
   real angle0;
   real kureyb;
   real ureyb0;
+  real nreb;
 };
 
 struct DihePotential {
@@ -101,6 +103,43 @@ struct NbExPotential {
   int idx[2];
   int siteBlock[2];
   real qxq;
+};
+
+struct HbondPotential {
+  int idx[3];
+  int siteBlock[2];
+};
+
+struct HbondParameters {
+  real sigma;
+  real epsilon;
+  real rCut;
+};
+
+struct HbondDonor {
+  int idx[2];
+  int siteBlock;
+};
+
+struct HbondList {
+  int donorCount;
+  int acceptorCount;
+  HbondDonor *donors_d;
+  int *acceptors_d;
+  int watchCount;
+  int *watch_d;
+  real3 *refPos_d;
+  
+  int capacity;
+  HbondPotential *list_d;
+  int *flags_d;
+  
+  real skin;
+  bool forceRebuild;
+
+  int *role_d;
+  int2 *donorRange_d;
+  int lastResetSerial;  
 };
 
 struct NbondPotential {
@@ -298,6 +337,9 @@ class Potential {
   std::vector<struct NbExPotential> nbexs_tmp;
   struct NbExPotential *nbexs;
   struct NbExPotential *nbexs_d;
+
+  struct HbondList hbondList;
+  struct HbondParameters hbondParameters;
 
   std::set<int> *virtExcl;
   std::set<int> *bondExcl;

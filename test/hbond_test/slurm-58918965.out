@@ -1,0 +1,281 @@
+Creating a copy of system
+Opening file hbtest.inp for r
+IN1> parameters file hbtest.prm
+Opening file hbtest.prm for r
+TITLE> * H-bond test parameters. ATOMS section is needed for "write psf card xplor".
+TITLE> *
+IN1> structure file psf hbtest.psf
+Opening file hbtest.psf for r
+Reading PSF, found header string: 'CMAP'
+Reading PSF, found header string: 'XPLOR'
+Reading PSF, found header string: 'AUTOG'
+Reading PSF, expect !NTITLE: got  !NTITLE
+Reading PSF, expect !NATOM: got  !NATOM
+Reading PSF, expect !NBOND: bonds: got  !NBOND: bonds
+Reading PSF, expect !NTHETA: angles: got  !NTHETA: angles
+Reading PSF, expect !NPHI: dihedrals: got  !NPHI: dihedrals
+Reading PSF, expect !NIMPHI: impropers: got  !NIMPHI: impropers
+Reading PSF, expect !NDON: donors: got  !NDON: donors
+Reading PSF, expect !NACC: acceptors: got  !NACC: acceptors
+Reading PSF, expect !NNB: got  !NNB
+Reading PSF, expect !NGRP NST2: got        0 !NGRP NST2
+Reading PSF, expect !NUMLP NUMLPH: got  !NUMLP NUMLPH
+Reading PSF, expect !NCRTERM: got  !NCRTERM: cross-terms
+IN1> coordinates file crd crd/dist_2.90.crd
+Opening file crd/dist_2.90.crd for r
+IN1> msld nblocks 0
+NYI - Initialize all blocks in first site /dfs8/rhayes1_lab/cyeh5/BLaDE/src/msld/msld.cu:184
+IN1> coordinates box cubi 40 40 40 90 90 90
+IN1> run setvariable elecmethod fswitch
+IN1> run setvariable rcut 10
+IN1> run setvariable rswitch 8
+IN1> run setvariable hbond on
+IN1> run setterm bond off
+IN1> run setterm angle off
+IN1> run setterm nb14 off
+IN1> run setterm nbdirect off
+IN1> run setvariable hbondlist domdec
+IN1> coordinates file crd crd/dist_2.60.crd
+Opening file crd/dist_2.60.crd for r
+IN1> run energy
+Opening file default.lmd for w
+Opening file default.nrg for w
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       1.4451       0.0000       1.4451       0.0000       1.4451
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_2.80.crd
+Opening file crd/dist_2.80.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -1.9889       0.0000      -1.9889       0.0000      -1.9889
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_2.90.crd
+Opening file crd/dist_2.90.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -2.2000       0.0000      -2.2000       0.0000      -2.2000
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_3.00.crd
+Opening file crd/dist_3.00.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -2.0812       0.0000      -2.0812       0.0000      -2.0812
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_3.20.crd
+Opening file crd/dist_3.20.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -1.5566       0.0000      -1.5566       0.0000      -1.5566
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_3.50.crd
+Opening file crd/dist_3.50.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.8614       0.0000      -0.8614       0.0000      -0.8614
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_4.00.crd
+Opening file crd/dist_4.00.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.2976       0.0000      -0.2976       0.0000      -0.2976
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_4.40.crd
+Opening file crd/dist_4.40.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.1303       0.0000      -0.1303       0.0000      -0.1303
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_4.60.crd
+Opening file crd/dist_4.60.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_180.crd
+Opening file crd/ang_180.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -2.2000       0.0000      -2.2000       0.0000      -2.2000
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_165.crd
+Opening file crd/ang_165.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -1.9827       0.0000      -1.9827       0.0000      -1.9827
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_150.crd
+Opening file crd/ang_150.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -1.4289       0.0000      -1.4289       0.0000      -1.4289
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_135.crd
+Opening file crd/ang_135.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.7778       0.0000      -0.7778       0.0000      -0.7778
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_120.crd
+Opening file crd/ang_120.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.2750       0.0000      -0.2750       0.0000      -0.2750
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_105.crd
+Opening file crd/ang_105.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.0381       0.0000      -0.0381       0.0000      -0.0381
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_095.crd
+Opening file crd/ang_095.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.0015       0.0000      -0.0015       0.0000      -0.0015
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_080.crd
+Opening file crd/ang_080.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000
+Opening file default.cpt for w
+IN1> coordinates file crd crd/bent.crd
+Opening file crd/bent.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -1.1914       0.0000      -1.1914       0.0000      -1.1914
+Opening file default.cpt for w
+IN1> coordinates file crd crd/multi.crd
+Opening file crd/multi.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -4.2812       0.0000      -4.2812       0.0000      -4.2812
+Opening file default.cpt for w
+IN1> coordinates file crd crd/pbc.crd
+Opening file crd/pbc.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -2.1012       0.0000      -2.1012       0.0000      -2.1012
+Opening file default.cpt for w
+IN1> run setvariable hbondlist brute
+IN1> coordinates file crd crd/dist_2.60.crd
+Opening file crd/dist_2.60.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       1.4451       0.0000       1.4451       0.0000       1.4451
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_2.80.crd
+Opening file crd/dist_2.80.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -1.9889       0.0000      -1.9889       0.0000      -1.9889
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_2.90.crd
+Opening file crd/dist_2.90.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -2.2000       0.0000      -2.2000       0.0000      -2.2000
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_3.00.crd
+Opening file crd/dist_3.00.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -2.0812       0.0000      -2.0812       0.0000      -2.0812
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_3.20.crd
+Opening file crd/dist_3.20.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -1.5566       0.0000      -1.5566       0.0000      -1.5566
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_3.50.crd
+Opening file crd/dist_3.50.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.8614       0.0000      -0.8614       0.0000      -0.8614
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_4.00.crd
+Opening file crd/dist_4.00.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.2976       0.0000      -0.2976       0.0000      -0.2976
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_4.40.crd
+Opening file crd/dist_4.40.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.1303       0.0000      -0.1303       0.0000      -0.1303
+Opening file default.cpt for w
+IN1> coordinates file crd crd/dist_4.60.crd
+Opening file crd/dist_4.60.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_180.crd
+Opening file crd/ang_180.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -2.2000       0.0000      -2.2000       0.0000      -2.2000
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_165.crd
+Opening file crd/ang_165.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -1.9827       0.0000      -1.9827       0.0000      -1.9827
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_150.crd
+Opening file crd/ang_150.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -1.4289       0.0000      -1.4289       0.0000      -1.4289
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_135.crd
+Opening file crd/ang_135.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.7778       0.0000      -0.7778       0.0000      -0.7778
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_120.crd
+Opening file crd/ang_120.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.2750       0.0000      -0.2750       0.0000      -0.2750
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_105.crd
+Opening file crd/ang_105.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.0381       0.0000      -0.0381       0.0000      -0.0381
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_095.crd
+Opening file crd/ang_095.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -0.0015       0.0000      -0.0015       0.0000      -0.0015
+Opening file default.cpt for w
+IN1> coordinates file crd crd/ang_080.crd
+Opening file crd/ang_080.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000
+Opening file default.cpt for w
+IN1> coordinates file crd crd/bent.crd
+Opening file crd/bent.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -1.1914       0.0000      -1.1914       0.0000      -1.1914
+Opening file default.cpt for w
+IN1> coordinates file crd crd/multi.crd
+Opening file crd/multi.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -4.2812       0.0000      -4.2812       0.0000      -4.2812
+Opening file default.cpt for w
+IN1> coordinates file crd crd/pbc.crd
+Opening file crd/pbc.crd for r
+IN1> run energy
+HBOND> 2 donors, 2 acceptors
+       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000       0.0000      -2.1012       0.0000      -2.1012       0.0000      -2.1012
+Opening file default.cpt for w
+Destroying a copy of system

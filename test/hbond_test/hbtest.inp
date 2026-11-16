@@ -1,0 +1,95 @@
+parameters file hbtest.prm
+structure file psf hbtest.psf
+coordinates file crd crd/dist_2.90.crd
+msld nblocks 0
+coordinates box cubi 40 40 40 90 90 90
+run setvariable elecmethod fswitch
+run setvariable rcut 10
+run setvariable rswitch 8
+run setvariable hbond on
+run setterm bond off
+run setterm angle off
+run setterm nb14 off
+run setterm nbdirect off
+run setvariable hbondlist domdec
+coordinates file crd crd/dist_2.60.crd
+run energy
+coordinates file crd crd/dist_2.80.crd
+run energy
+coordinates file crd crd/dist_2.90.crd
+run energy
+coordinates file crd crd/dist_3.00.crd
+run energy
+coordinates file crd crd/dist_3.20.crd
+run energy
+coordinates file crd crd/dist_3.50.crd
+run energy
+coordinates file crd crd/dist_4.00.crd
+run energy
+coordinates file crd crd/dist_4.40.crd
+run energy
+coordinates file crd crd/dist_4.60.crd
+run energy
+coordinates file crd crd/ang_180.crd
+run energy
+coordinates file crd crd/ang_165.crd
+run energy
+coordinates file crd crd/ang_150.crd
+run energy
+coordinates file crd crd/ang_135.crd
+run energy
+coordinates file crd crd/ang_120.crd
+run energy
+coordinates file crd crd/ang_105.crd
+run energy
+coordinates file crd crd/ang_095.crd
+run energy
+coordinates file crd crd/ang_080.crd
+run energy
+coordinates file crd crd/bent.crd
+run energy
+coordinates file crd crd/multi.crd
+run energy
+coordinates file crd crd/pbc.crd
+run energy
+run setvariable hbondlist brute
+coordinates file crd crd/dist_2.60.crd
+run energy
+coordinates file crd crd/dist_2.80.crd
+run energy
+coordinates file crd crd/dist_2.90.crd
+run energy
+coordinates file crd crd/dist_3.00.crd
+run energy
+coordinates file crd crd/dist_3.20.crd
+run energy
+coordinates file crd crd/dist_3.50.crd
+run energy
+coordinates file crd crd/dist_4.00.crd
+run energy
+coordinates file crd crd/dist_4.40.crd
+run energy
+coordinates file crd crd/dist_4.60.crd
+run energy
+coordinates file crd crd/ang_180.crd
+run energy
+coordinates file crd crd/ang_165.crd
+run energy
+coordinates file crd crd/ang_150.crd
+run energy
+coordinates file crd crd/ang_135.crd
+run energy
+coordinates file crd crd/ang_120.crd
+run energy
+coordinates file crd crd/ang_105.crd
+run energy
+coordinates file crd crd/ang_095.crd
+run energy
+coordinates file crd crd/ang_080.crd
+run energy
+coordinates file crd crd/bent.crd
+run energy
+coordinates file crd crd/multi.crd
+run energy
+coordinates file crd crd/pbc.crd
+run energy
