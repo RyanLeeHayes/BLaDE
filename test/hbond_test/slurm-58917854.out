@@ -1,9 +1,0 @@
---------------------------------------------------------------------------
-mpirun was unable to launch the specified application as it could not access
-or execute an executable:
-
-Executable: ../../buildDebugDebye/blade
-Node: hpc3-gpu-16-00
-
-while attempting to start process rank 0.
---------------------------------------------------------------------------

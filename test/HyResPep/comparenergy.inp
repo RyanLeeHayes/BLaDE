@@ -1,5 +1,5 @@
 variables set temp 298
-parameters file comp/param_hyres_mix.inp
+parameters file param_hyres_mix.inp
 structure file psf demo.psf
 coordinates file crd minimized.crd
 msld nblocks 0
