@@ -1436,7 +1436,7 @@ void Potential::initialize(System *system)
       }
       donors_tmp[i].siteBlock=((0xFFFF&sN)?sN:sH);
     }
-    // if (acceptors_tmp.size()>donors_tmp.size()) acceptors_tmp.resize(donors_tmp.size()); //openMM chops off N acceptors from C terminus N=num prolines
+    if (acceptors_tmp.size()>donors_tmp.size()) acceptors_tmp.resize(donors_tmp.size()); //openMM truncates N acceptors from interacting from C terminus, N=Num Prolines
       hbondList.donorCount=donors_tmp.size();
       hbondList.acceptorCount=acceptors_tmp.size();
       if ((long long)hbondList.donorCount*hbondList.acceptorCount>2147483647LL) {
